@@ -1,4 +1,17 @@
+import { francsToWolof } from "../../src/assistant/wolofNumbers.ts";
 import type { ShopContext } from "./schema.ts";
+
+/** Les montants du contexte déjà dits en wolof (dërëm), calculés ici et non par le modèle. */
+function wolofAmounts(context: ShopContext): string {
+  const lines = [
+    `ventes du jour = ${francsToWolof(context.figures.daySales)}`,
+    `dépenses du jour = ${francsToWolof(context.figures.dayExpenses)}`,
+    `caisse attendue = ${francsToWolof(context.figures.expectedCash)}`,
+    ...context.clients.filter((c) => c.debt > 0).map((c) => `dette de ${c.name} = ${francsToWolof(c.debt)}`),
+    ...context.products.map((p) => `prix ${p.name} = ${francsToWolof(p.price)}`),
+  ];
+  return `Montants du contexte à dire tels quels en wolof (dërëm, déjà calculés) : ${lines.join(" ; ")}. Pour tout autre montant en wolof, divise les francs par 5 et compte en dërëm.`;
+}
 
 export const SYSTEM_INSTRUCTION = `Tu es Jokko, l'assistante d'une boutique au Sénégal (quartier, marché, banlieue de Dakar).
 Tu interprètes UNE phrase de commerçant et tu réponds uniquement par l'objet JSON demandé.
@@ -40,6 +53,7 @@ Règles de réponse
 export function buildAudioPrompt(context: ShopContext): string {
   return [
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
+    wolofAmounts(context),
     "La phrase du commerçant est dans l'audio joint.",
     "Remplis transcript avec ce qui est dit, mot pour mot, dans la langue parlée (wolof écrit comme on le prononce à Dakar). Si l'audio est vide ou inaudible, transcript = \"(inaudible)\", intent \"unknown\" et demande de répéter.",
     "Ensuite interprète cette phrase avec exactement les mêmes règles.",
@@ -49,6 +63,7 @@ export function buildAudioPrompt(context: ShopContext): string {
 export function buildPrompt(message: string, context: ShopContext): string {
   return [
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
+    wolofAmounts(context),
     `Phrase du commerçant : """${message.replaceAll('"""', '"')}"""`,
   ].join("\n");
 }

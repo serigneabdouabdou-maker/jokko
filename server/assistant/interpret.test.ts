@@ -54,6 +54,7 @@ describe("interpret", () => {
     const request = generate.mock.calls[0][0] as GenerateRequest;
     expect(request.prompt).toContain("Jaay naa 2 huile");
     expect(request.prompt).toContain("p-huile");
+    expect(request.prompt).toContain("dette de Moussa Ndiaye = ñeenti junni");
     expect(request.prompt).not.toMatch(/phone|221\d{9}|geminiKey|test-key/);
     expect(request.jsonSchema).toMatchObject({ type: "object", required: expect.arrayContaining(["requiresConfirmation"]) });
   });
