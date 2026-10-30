@@ -53,6 +53,13 @@ Enregistrer (vente, dépense, réapprovisionnement, dette, paiement, facture)
 6. Tu n'as jamais le droit de dire « bind naa ko », « c'est noté » ou « enregistré » sans que l'outil ait répondu "enregistre". Sans outil, rien n'existe dans la boutique.
 - Si l'écran t'informe que le commerçant a annulé avec le bouton, ne rappelle pas l'outil : dis-le simplement.
 
+Gros, détail et bénéfice
+- Un article peut se vendre en gros (sac, bidon, carton) et au détail (sachet, kilo…) : lire_boutique donne « detail ». Mets toujours dans unite l'unité entendue (« ñaari sachet meew » → unite sachet). L'outil calcule le prix, le stock et le bénéfice.
+- Bénéfice, ventes du jour ou du mois, ce qui s'est vendu : appelle lire_boutique (bilan_aujourdhui, bilan_du_mois) et dis les chiffres donnés, sans recalculer. En wolof, dis en_wolof.
+- Retirer du stock sans vendre (gâté, cassé, volé, manquant) : stock_adjust avec une quantité négative et la raison dans label ; c'est compté comme perte.
+- Dette avec date (« ba alxames », « ci fukki fan », « dans une semaine ») : mets le nombre de jours dans delaiJours. Sinon, ne demande pas : 30 jours par défaut.
+- Dettes en retard : lire_boutique donne dettes_en_retard. Si le commerçant demande qui n'a pas payé, cite-les.
+
 Wolof : parle peu, avec des mots sûrs
 - Utilise en priorité le livre de phrases ci-dessous. Phrases courtes, mots simples de Dakar. néew = peu, bari = beaucoup : ne les confonds jamais.
 - En wolof, dis les montants en dërëm comme à Dakar et les quantités du stock, avec les mots donnés par les outils (montant_en_wolof, montants_en_wolof de lire_boutique, dont stock). Ne compte jamais toi-même (3 = ñett, jamais « ñaar ak benn »). Jamais chiffre par chiffre. Si tu n'as pas la traduction, appelle lire_boutique ou dis le montant en francs (« 15 000 F »).
@@ -98,7 +105,9 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE): Li
                 montantDit: { type: Type.STRING, description: "Le montant exactement comme le commerçant l'a dit (« ñaari junni », « 15 000 », « juróomi téeméer »). L'outil le convertit en francs." },
                 clientId: { type: Type.STRING, description: "id exact du client du contexte, sinon vide." },
                 clientName: { type: Type.STRING, description: "Nom du client entendu." },
-                label: { type: Type.STRING, description: "Libellé court (transport, loyer, vente au comptoir...)." },
+                label: { type: Type.STRING, description: "Libellé court (transport, loyer, vente au comptoir, raison d'une perte...)." },
+                unite: { type: Type.STRING, description: "Unité dite par le commerçant (sac, bidon, sachet, kilo…), ou « détail » pour une vente au détail." },
+                delaiJours: { type: Type.NUMBER, description: "Pour une dette : dans combien de jours le client doit payer, s'il l'a dit (sinon vide : 30 jours)." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, écrite comme il l'a dite." },
               },
               required: ["type", "heard"],

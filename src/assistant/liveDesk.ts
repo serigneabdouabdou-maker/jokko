@@ -1,4 +1,6 @@
 import { type Lang, type Shop, lowStock, uid } from "../model";
+import { overdueDebts } from "../data/debts";
+import { buildReport, periodOf } from "../data/report";
 import { applyDraft } from "./apply";
 import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
@@ -112,8 +114,24 @@ export class LiveDesk {
       const shop = this.deps.getShop();
       const context = buildShopContext(shop, this.deps.lang());
       // Montants déjà traduits en wolof de comptoir (dërëm), pour que Jokko les dise juste.
+      const day = buildReport(shop, periodOf("jour"));
+      const month = buildReport(shop, periodOf("mois"));
+      const summary = (r: typeof day) => ({
+        ventes: r.revenue,
+        benefice: r.grossProfit,
+        depenses: r.expenses,
+        pertes: r.losses,
+        benefice_net: r.netProfit,
+        ventes_sans_prix_achat: r.unknownRevenue,
+        vendu: r.byProduct.map((l) => ({ article: l.name, gros: l.bulkQty ? `${l.bulkQty} ${l.bulkUnit}` : null, detail: l.retailQty ? `${l.retailQty} ${l.retailUnit}` : null, benefice: l.profit })),
+        en_wolof: { ventes: francsToWolof(r.revenue), benefice_net: r.netProfit > 0 ? francsToWolof(r.netProfit) : "dara" },
+      });
       return {
         ...context,
+        detail: shop.products.filter((p) => p.retail).map((p) => ({ article: p.name, unite_detail: p.retail!.unit, par_unite_gros: p.retail!.perUnit, prix_detail: p.retail!.price })),
+        bilan_aujourdhui: summary(day),
+        bilan_du_mois: summary(month),
+        dettes_en_retard: overdueDebts(shop).map((d) => ({ client: d.client.name, montant: d.client.debt, en_wolof: francsToWolof(d.client.debt), jours_de_retard: -(d.daysLeft ?? 0) })),
         montants_en_wolof: {
           ventes_du_jour: francsToWolof(context.figures.daySales),
           depenses_du_jour: francsToWolof(context.figures.dayExpenses),
@@ -331,6 +349,8 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
       clientId: client.item?.id ?? null,
       clientName: client.item?.name ?? clientName,
       label: text(args.label),
+      unit: text(args.unite),
+      dueDays: number(args.delaiJours),
     },
     ambigu,
   };

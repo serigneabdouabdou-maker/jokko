@@ -576,6 +576,40 @@
   .add-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--j-line); }
   .add-row:has(> :only-child) { grid-template-columns: auto; justify-content: start; border-top: 0; padding-top: 0; margin-top: 10px; }
 
+  /* Bilan, fiche article, dettes */
+  .sheet h3 { font-size: 17px; font-weight: 700; margin: 22px 0 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--j-wash); flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; color: var(--j-ink-2); }
+  .seg button.on { background: var(--j-white); color: var(--j-ink); font-weight: 650; box-shadow: var(--j-shadow); }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  .kpis article { border: 1px solid var(--j-line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 4px; background: var(--j-white); }
+  .kpis article span { font-size: 13px; color: var(--j-ink-3); }
+  .kpis article b { font-size: 20px; font-weight: 680; }
+  .kpis .kpi-main { grid-column: 1 / -1; background: var(--j-soft-2); border-color: color-mix(in oklab, var(--j-yellow) 35%, var(--j-line)); }
+  .kpis .kpi-main b { font-size: 34px; letter-spacing: -0.03em; }
+  .kpis .kpi-main[data-tone="bad"] b { color: #9b2c2c; }
+  .banner { display: block; width: 100%; text-align: left; margin: 10px 0; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in oklab, var(--j-yellow) 45%, var(--j-line)); background: var(--j-soft-2); font: inherit; font-weight: 600; color: var(--j-ink); }
+  .banner-link { cursor: pointer; }
+  .banner-link:hover { background: var(--j-soft); }
+  .inventory { display: grid; gap: 8px; margin-top: 10px; }
+  .inventory-row { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--j-line); }
+  .inventory-row small { color: var(--j-ink-3); }
+  .product-editor { display: grid; gap: 12px; padding: 16px; margin: 6px 0; border: 1px solid color-mix(in oklab, var(--j-yellow) 45%, var(--j-line)); border-radius: 16px; background: var(--j-white); }
+  .margins { display: grid; gap: 4px; font-size: 14px; color: var(--j-ink-2); }
+  .margins [data-tone="bad"] b { color: #9b2c2c; }
+  .is-clickable { cursor: pointer; }
+  .stat-profit { font-size: 12px; color: var(--j-ink-2); font-weight: 600; }
+  .stock-retail { display: block; font-size: 12px; color: var(--j-ink-3); font-weight: 500; }
+  .debt-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .debt-actions button { display: inline-flex; align-items: center; gap: 4px; }
+  .list article.is-late > span small { color: #9b2c2c; font-weight: 600; }
+  .note[data-tone="error"] { color: #9b2c2c; }
+  @media (max-width: 720px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
   /* Import du stock en masse */
   .import-box { margin-top: 18px; padding: 16px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-wash); display: grid; gap: 12px; }
   .import-head { display: grid; gap: 2px; }

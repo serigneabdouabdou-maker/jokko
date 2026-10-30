@@ -16,19 +16,21 @@ const TABLE_ORDER: string[] = ["shops", ...CHILD_TABLES];
 const opt = <T>(v: T | undefined): T | null => (v === undefined ? null : v);
 
 export function shopRow(s: Shop): Row {
-  return { id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash };
+  return { id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash, last_inventory_at: opt(s.lastInventoryAt) };
 }
 
 const toRow = {
   products: (p: Product, shopId: string): Row => ({
     id: p.id, shop_id: shopId, name: p.name, unit: p.unit, stock: p.stock, min: p.min, price: p.price,
+    cost: opt(p.cost), retail_unit: p.retail?.unit ?? null, retail_per_unit: p.retail?.perUnit ?? null, retail_price: p.retail?.price ?? null,
   }),
-  clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt }),
+  clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt) }),
   sales: (s: Sale, shopId: string): Row => ({
     id: s.id, shop_id: shopId, at: s.at, label: s.label, amount: s.amount,
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
+    cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit),
   }),
-  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount }),
+  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense" }),
   invoices: (i: Invoice, shopId: string): Row => ({
     id: i.id, shop_id: shopId, number: i.number, at: i.at, client_id: i.clientId, amount: i.amount, status: i.status,
   }),
@@ -299,10 +301,22 @@ export function rowsToShop(rows: ShopRows): Shop {
     city: str(s.city),
     activity: str(s.activity),
     openingCash: num(s.opening_cash),
-    products: rows.products.map((r) => ({
-      id: str(r.id), name: str(r.name), unit: str(r.unit), stock: num(r.stock), min: num(r.min), price: num(r.price),
-    })),
-    clients: rows.clients.map((r) => ({ id: str(r.id), name: str(r.name), phone: str(r.phone), debt: num(r.debt) })),
+    ...(optStr(s.last_inventory_at) ? { lastInventoryAt: iso(s.last_inventory_at) } : {}),
+    products: rows.products.map((r) => {
+      const product: Product = { id: str(r.id), name: str(r.name), unit: str(r.unit), stock: num(r.stock), min: num(r.min), price: num(r.price) };
+      const cost = optNum(r.cost);
+      if (cost !== undefined) product.cost = cost;
+      const perUnit = optNum(r.retail_per_unit);
+      const retailUnit = optStr(r.retail_unit);
+      if (retailUnit && perUnit) product.retail = { unit: retailUnit, perUnit, price: optNum(r.retail_price) ?? 0 };
+      return product;
+    }),
+    clients: rows.clients.map((r) => {
+      const client: Client = { id: str(r.id), name: str(r.name), phone: str(r.phone), debt: num(r.debt) };
+      const due = optStr(r.due_at);
+      if (due) client.dueAt = iso(due);
+      return client;
+    }),
     sales: byAtDesc(
       rows.sales.map((r) => {
         const sale: Sale = { id: str(r.id), at: iso(r.at), label: str(r.label), amount: num(r.amount) };
@@ -312,10 +326,21 @@ export function rowsToShop(rows: ShopRows): Shop {
         if (qty !== undefined) sale.qty = qty;
         if (productId !== undefined) sale.productId = productId;
         if (clientId !== undefined) sale.clientId = clientId;
+        const cost = optNum(r.cost);
+        if (cost !== undefined) sale.cost = cost;
+        if (r.retail === true) sale.retail = true;
+        const unit = optStr(r.unit);
+        if (unit) sale.unit = unit;
         return sale;
       }),
     ),
-    expenses: byAtDesc(rows.expenses.map((r) => ({ id: str(r.id), at: iso(r.at), label: str(r.label), amount: num(r.amount) }))),
+    expenses: byAtDesc(
+      rows.expenses.map((r) => {
+        const expense: Expense = { id: str(r.id), at: iso(r.at), label: str(r.label), amount: num(r.amount) };
+        if (r.kind === "perte") expense.kind = "perte";
+        return expense;
+      }),
+    ),
     invoices: byAtDesc(
       rows.invoices.map((r) => {
         const status = str(r.status) as Invoice["status"];

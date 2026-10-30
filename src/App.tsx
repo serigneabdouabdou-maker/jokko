@@ -45,6 +45,11 @@ import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive
 import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
+import { ProductEditor } from "@/components/jokko/ProductEditor";
+import { Bilan } from "@/components/jokko/Bilan";
+import { Debts } from "@/components/jokko/Debts";
+import { buildReport, inventoryDue, periodOf } from "@/data/report";
+import { overdueDebts } from "@/data/debts";
 import { signInOrUp, supabase } from "@/data/supabase";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
@@ -53,7 +58,7 @@ const TEXT_SESSION_IDLE_MS = 3 * 60_000;
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "reglages";
+type Screen = "parler" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -62,6 +67,7 @@ const LANGS: Array<[Lang, string]> = [
 
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
+  ["bilan", "Bilan"],
   ["ventes", "Ventes"],
   ["stock", "Stock"],
   ["clients", "Clients"],
@@ -464,6 +470,8 @@ const NOISE = /<[^>]*>/g;
 function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const [screen, setScreen] = useState<Screen>("parler");
   const shop = currentShop(profile);
+  const today = useMemo(() => buildReport(shop, periodOf("jour")), [shop]);
+  const late = useMemo(() => overdueDebts(shop), [shop]);
   function commit(next: Shop) {
     setProfile(replaceShop(profile, next));
   }
@@ -960,7 +968,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             <small>Fond {amount(shop.openingCash)} + ventes − dépenses</small>
           </article>
           <article className="stat stat-sales">
-            <span>Ventes du jour</span>
+            <span>Ventes du jour{today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
             <Num value={daySales(shop)} />
           </article>
           <article className="stat">
@@ -998,6 +1006,14 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
               </section>
               <section className="sheet today">
                 <h2>Aujourd’hui</h2>
+                {inventoryDue(shop) && (
+                  <button type="button" className="banner banner-link" onClick={() => setScreen("bilan")}>Nouveau mois : fais l'inventaire du stock →</button>
+                )}
+                {late.length > 0 && (
+                  <button type="button" className="banner banner-link" onClick={() => setScreen("dettes")}>
+                    {late.length} dette(s) en retard ({amount(late.reduce((a, d) => a + d.client.debt, 0))}) : relancer →
+                  </button>
+                )}
                 <div className="list">
                   {lowStock(shop).map((p) => <article key={p.id} className="is-low"><span>{p.name} <em>stock bas</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
                   {shop.sales.slice(0, 4).map((s) => <article key={s.id}><span>{s.label}</span><b className="num">{amount(s.amount)}</b></article>)}
@@ -1010,7 +1026,8 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
-          {screen === "dettes" && <Debts shop={shop} />}
+          {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
+          {screen === "bilan" && <Bilan shop={shop} commit={commit} />}
           {screen === "caisse" && <Cash shop={shop} commit={commit} />}
           {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} />}
         </div>
@@ -1050,6 +1067,7 @@ function MoneyList({ title, rows }: { title: string; rows: string[][] }) {
 function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
+  const [editing, setEditing] = useState<string | null>(null);
   return (
     <section className="sheet">
       <div className="sheet-head">
@@ -1061,14 +1079,32 @@ function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           const low = p.stock <= p.min;
           const fill = Math.max(4, Math.min(100, (p.stock / Math.max(1, p.min * 3)) * 100));
           return (
-            <article key={p.id} className={low ? "is-low" : ""}>
+            editing === p.id ? (
+              <ProductEditor
+                key={p.id}
+                product={p}
+                onClose={() => setEditing(null)}
+                onSave={(next) => {
+                  commit({ ...shop, products: shop.products.map((x) => (x.id === next.id ? next : x)) });
+                  setEditing(null);
+                }}
+              />
+            ) : (
+            <article key={p.id} className={`${low ? "is-low" : ""} is-clickable`} onClick={() => setEditing(p.id)} title="Modifier les prix et le détail">
               <div className="stock-name">
                 <b>{p.name}</b>
-                <small className="num">{amount(p.price)} · seuil {p.min}</small>
+                <small className="num">
+                  {p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · "}vente {amount(p.price)}
+                  {p.retail ? ` · détail ${amount(p.retail.price)}/${p.retail.unit}` : ""}
+                </small>
               </div>
               <span className="meter" aria-hidden="true"><i style={{ width: `${fill}%` }} /></span>
-              <b className="stock-qty num">{p.stock} <small>{p.unit}</small></b>
+              <b className="stock-qty num">
+                {Number.isInteger(p.stock) ? p.stock : p.stock.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} <small>{p.unit}</small>
+                {p.retail && !Number.isInteger(p.stock) && <small className="stock-retail"> ≈ {Math.round(p.stock * p.retail.perUnit)} {p.retail.unit}s</small>}
+              </b>
             </article>
+            )
           );
         })}
       </div>
@@ -1165,23 +1201,6 @@ function Invoices({ shop }: { shop: Shop }) {
           const client = shop.clients.find((c) => c.id === inv.clientId);
           return <article key={inv.id}><span>{inv.number} · {client?.name}<small>{inv.status}</small></span><b className="num">{amount(inv.amount)}</b></article>;
         })}
-      </div>
-    </section>
-  );
-}
-
-function Debts({ shop }: { shop: Shop }) {
-  const rows = debtors(shop);
-  const total = rows.reduce((a, c) => a + c.debt, 0);
-  return (
-    <section className="sheet">
-      <div className="sheet-head">
-        <h2>Dettes et relances</h2>
-        <Num value={total} className="sheet-total" />
-      </div>
-      <div className="list">
-        {rows.length === 0 && <p className="note">Personne ne vous doit d’argent.</p>}
-        {rows.map((c) => <article key={c.id}><span>{c.name}<small>{shop.reminders.filter((r) => r.clientId === c.id).length} relance(s)</small></span><b className="num owes">{amount(c.debt)}</b></article>)}
       </div>
     </section>
   );

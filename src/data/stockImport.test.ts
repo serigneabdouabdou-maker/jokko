@@ -49,3 +49,13 @@ describe("import du stock", () => {
     expect(added.products.find((p) => p.name === "Huile")!.stock).toBe(23);
   });
 });
+
+describe("import : prix d'achat et détail", () => {
+  it("lit prix d'achat, prix de vente et vente au détail", () => {
+    const { items } = parseRows(textToRows("Article;Unité;Quantité;Prix d'achat;Prix de vente;Seuil;Unité détail;Nb par unité;Prix détail\nLait;sac;2;30000;40000;1;sachet;50;900"));
+    expect(items[0]).toMatchObject({ name: "Lait", cost: 30000, price: 40000, retailUnit: "sachet", retailPerUnit: 50, retailPrice: 900 });
+    const base = seedShop();
+    const s = applyImport(base, previewImport(base, items), "remplacer");
+    expect(s.products.find((p) => p.name === "Lait")).toMatchObject({ cost: 30000, price: 40000, retail: { unit: "sachet", perUnit: 50, price: 900 } });
+  });
+});

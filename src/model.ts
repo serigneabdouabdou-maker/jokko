@@ -1,12 +1,20 @@
 export type Lang = "fr" | "wo" | "en" | "ff";
 
+/** Vente au détail d'un article : 1 sac = 50 sachets à 150 F. */
+export type Retail = { unit: string; perUnit: number; price: number };
+
 export type Product = {
   id: string;
   name: string;
+  /** Unité de gros (sac, bidon, carton…). Le stock est compté dans cette unité (50 sachets vendus = 1 sac). */
   unit: string;
   stock: number;
   min: number;
+  /** Prix de vente d'une unité de gros. */
   price: number;
+  /** Prix d'achat d'une unité de gros (pour le bénéfice). */
+  cost?: number;
+  retail?: Retail;
 };
 
 export type Client = {
@@ -14,6 +22,8 @@ export type Client = {
   name: string;
   phone: string;
   debt: number;
+  /** Date à laquelle la dette doit être payée. */
+  dueAt?: string;
 };
 
 export type Sale = {
@@ -24,9 +34,15 @@ export type Sale = {
   qty?: number;
   productId?: string;
   clientId?: string;
+  /** Coût d'achat de la marchandise vendue (bénéfice = amount - cost). Absent si inconnu. */
+  cost?: number;
+  /** Vente au détail (qty en unités de détail, ex. sachets). */
+  retail?: boolean;
+  unit?: string;
 };
 
-export type Expense = { id: string; at: string; label: string; amount: number };
+/** kind « perte » : marchandise perdue ou manquante à l'inventaire (au prix d'achat). */
+export type Expense = { id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" };
 
 export type Invoice = {
   id: string;
@@ -52,6 +68,8 @@ export type Shop = {
   city: string;
   activity: string;
   openingCash: number;
+  /** Date du dernier inventaire (comptage du stock). */
+  lastInventoryAt?: string;
   products: Product[];
   clients: Client[];
   sales: Sale[];
@@ -202,8 +220,9 @@ export function daySales(shop: Shop): number {
   return shop.sales.filter((s) => isToday(s.at)).reduce((a, s) => a + s.amount, 0);
 }
 
+/** Dépenses payées aujourd'hui (les pertes de stock ne sortent pas de la caisse : elles sont exclues). */
 export function dayExpenses(shop: Shop): number {
-  return shop.expenses.filter((s) => isToday(s.at)).reduce((a, s) => a + s.amount, 0);
+  return shop.expenses.filter((s) => isToday(s.at) && s.kind !== "perte").reduce((a, s) => a + s.amount, 0);
 }
 
 export function expectedCash(shop: Shop): number {

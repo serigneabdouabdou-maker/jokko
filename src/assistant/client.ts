@@ -14,6 +14,10 @@ export type DraftAction = {
   clientId: string | null;
   clientName: string | null;
   label: string | null;
+  /** Unité dite par le commerçant (« sachet », « sac ») : sert à reconnaître une vente au détail. */
+  unit?: string | null;
+  /** Délai de paiement d'une dette, en jours (30 par défaut). */
+  dueDays?: number | null;
 };
 
 export type Interpretation = {
