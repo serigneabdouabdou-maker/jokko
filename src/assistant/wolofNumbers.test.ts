@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractSpokenAmount, francsToWolof, readWolofNumber, spokenAmountToFrancs } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, readWolofNumber, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 
 describe("lire les chiffres wolof", () => {
   it("nombres simples et composés", () => {
@@ -90,5 +90,14 @@ describe("garde-fou : trouver le montant dans la phrase entière", () => {
   });
   it("quantité et montant ensemble : le montant gagne", () => {
     expect(extractSpokenAmount("jaay naa ñaari bidon diw ñetti junni")!.francs).toBe(15000);
+  });
+});
+
+describe("quantités en wolof", () => {
+  it("3 = ñett (jamais « ñaar ak benn »), 12 = fukk ak ñaar", () => {
+    expect(wolofNumber(3)).toBe("ñett");
+    expect(wolofNumber(12)).toBe("fukk ak ñaar");
+    expect(wolofNumber(7)).toBe("juróom-ñaar");
+    expect(wolofNumber(40)).toBe("ñeent-fukk");
   });
 });

@@ -1,6 +1,6 @@
 import { type Lang, type Shop, lowStock, uid } from "../model";
 import { applyDraft } from "./apply";
-import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 
@@ -120,6 +120,7 @@ export class LiveDesk {
           caisse_attendue: francsToWolof(context.figures.expectedCash),
           dettes: Object.fromEntries(context.clients.filter((c) => c.debt > 0).map((c) => [c.name, francsToWolof(c.debt)])),
           prix: Object.fromEntries(context.products.map((p) => [p.name, francsToWolof(p.price)])),
+          stock: Object.fromEntries(context.products.map((p) => [p.name, p.stock > 0 ? `${wolofNumber(p.stock)} ${p.unit}` : "amul (stock fini)"])),
         },
       };
     }
