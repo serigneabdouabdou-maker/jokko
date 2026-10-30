@@ -18,7 +18,7 @@ Production : `npm run build` puis `npm start` (port 8787).
 | Variable | Rôle |
 | --- | --- |
 | `GEMINI_API_KEY` | Clé Gemini, utilisée seulement par le serveur |
-| `GEMINI_LIVE_MODEL` | Modèle de conversation en direct (par défaut `gemini-2.5-flash-native-audio-latest`) |
+| `GEMINI_LIVE_MODEL` | Modèle de conversation en direct (par défaut `gemini-3.8-live`) |
 | `GEMINI_TTS_VOICE` | Voix de Jokko (par défaut `Sulafat`) |
 | `GEMINI_MODEL` | Modèle du mode secours (texte ou message vocal) |
 
