@@ -38,6 +38,10 @@ jobs:
 
   publication:
     needs: verification
+    # Une seule publication à la fois : la suivante attend la précédente.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
