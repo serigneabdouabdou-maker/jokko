@@ -574,6 +574,25 @@
   @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
   .add-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--j-line); }
+  .add-row:has(> :only-child) { grid-template-columns: auto; justify-content: start; border-top: 0; padding-top: 0; margin-top: 10px; }
+
+  /* Import du stock en masse */
+  .import-box { margin-top: 18px; padding: 16px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-wash); display: grid; gap: 12px; }
+  .import-head { display: grid; gap: 2px; }
+  .import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .import-actions button { display: inline-flex; align-items: center; gap: 6px; }
+  .import-paste { display: grid; gap: 8px; }
+  .import-paste textarea { width: 100%; border: 1px solid var(--j-line); border-radius: 12px; padding: 10px 12px; font: inherit; background: var(--j-white); color: var(--j-ink); resize: vertical; }
+  .import-errors { margin: 0; padding-left: 18px; color: #9b2c2c; font-size: 14px; }
+  .import-preview { display: grid; gap: 12px; overflow-x: auto; }
+  .import-preview table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--j-white); border-radius: 12px; overflow: hidden; }
+  .import-preview th, .import-preview td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--j-line); }
+  .import-preview th { font-weight: 650; color: var(--j-ink-3); }
+  .import-tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--j-wash); white-space: nowrap; }
+  .import-tag.is-new { background: color-mix(in oklab, var(--j-yellow) 55%, var(--j-white)); }
+  .import-mode { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 14px; }
+  .import-mode legend { font-weight: 650; margin-bottom: 4px; }
+  .import-mode label { display: flex; gap: 8px; align-items: center; }
 
   .cash { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 14px; align-items: start; }
   .cash-main { background: var(--j-ink); border-color: var(--j-ink); color: var(--j-white); }

@@ -44,6 +44,7 @@ import {
 import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive } from "@/assistant/live";
 import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
 import { useCountUp } from "@/components/jokko/useCountUp";
+import { StockImport } from "@/components/jokko/StockImport";
 import { signInOrUp, supabase } from "@/data/supabase";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
@@ -559,6 +560,21 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     };
   }, [assistant, live]);
 
+  // Liste des clients et articles : la préparer à l'avance avec la liste à jour, et prévenir
+  // une conversation déjà ouverte quand un client ou un article est ajouté ou renommé.
+  const names = JSON.stringify([shop.clients.map((c) => c.name), shop.products.map((p) => p.name)]);
+  const namesRef = useRef(names);
+  useEffect(() => {
+    if (namesRef.current === names) return;
+    namesRef.current = names;
+    if (!liveRef.current && assistant === "ready") {
+      prewarmLive(buildShopContext(currentShop(profileRef.current), profileRef.current.lang));
+    }
+    liveRef.current?.note(
+      `(Info de l'écran, ne réponds pas : la boutique a changé. Clients : ${shop.clients.map((c) => `${c.name} [${c.id}]`).join(", ") || "aucun"}. Articles : ${shop.products.map((p) => `${p.name} [${p.id}]`).join(", ") || "aucun"}.)`,
+    );
+  }, [names]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function say(text: string) {
     setMessages((m) => [...m, { id: uid("m"), role: "jokko", text, at: new Date().toISOString() }]);
   }
@@ -1065,13 +1081,48 @@ function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           setName("");
         }}>Ajouter au stock</Button>
       </div>
+      <StockImport shop={shop} commit={commit} />
     </section>
   );
 }
 
+type ContactPicker = { select: (props: string[], options: { multiple: boolean }) => Promise<Array<{ name?: string[]; tel?: string[] }>> };
+
+/** 77 123 45 67 / +221 77… → 221771234567 ; vide si ce n'est pas un numéro. */
+function phoneDigits(raw: string): string {
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 9) d = `221${d}`;
+  return d;
+}
+
 function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("22177");
+  const [phone, setPhone] = useState("");
+  const [note, setNote] = useState("");
+  // Choisir dans le répertoire du téléphone : possible sur Android (Chrome), pas sur iPhone ni ordinateur.
+  const picker = (typeof navigator !== "undefined" ? (navigator as Navigator & { contacts?: ContactPicker }).contacts : undefined);
+
+  function addClients(found: Array<{ name: string; phone: string }>) {
+    const known = new Set(shop.clients.map((c) => c.phone || c.name.toLowerCase()));
+    const fresh = found.filter((f) => f.name && !known.has(f.phone || f.name.toLowerCase()));
+    if (!fresh.length) {
+      setNote("Ces contacts sont déjà dans tes clients.");
+      return;
+    }
+    commit({ ...shop, clients: [...shop.clients, ...fresh.map((f) => ({ id: uid("c"), name: f.name, phone: f.phone, debt: 0 }))] });
+    setNote(`${fresh.length} client(s) ajouté(s).`);
+  }
+
+  async function pickContacts() {
+    if (!picker) return;
+    try {
+      const chosen = await picker.select(["name", "tel"], { multiple: true });
+      addClients(chosen.map((c) => ({ name: (c.name?.[0] ?? "").trim(), phone: phoneDigits(c.tel?.[0] ?? "") })));
+    } catch {
+      setNote("Le répertoire n'a pas pu s'ouvrir. Ajoute le client à la main.");
+    }
+  }
   return (
     <section className="sheet">
       <div className="sheet-head">
@@ -1083,13 +1134,20 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
       </div>
       <div className="add-row">
         <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />
-        <Input className="num h-11" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Téléphone" />
+        <Input className="num h-11" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
         <Button className="h-11 rounded-full px-5 font-semibold" onClick={() => {
           if (!name.trim()) return;
-          commit({ ...shop, clients: [...shop.clients, { id: uid("c"), name: name.trim(), phone: phone.replace(/\D/g, ""), debt: 0 }] });
+          addClients([{ name: name.trim(), phone: phoneDigits(phone) }]);
           setName("");
+          setPhone("");
         }}>Ajouter le client</Button>
       </div>
+      {picker && (
+        <div className="add-row">
+          <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => void pickContacts()}>Choisir dans mes contacts</Button>
+        </div>
+      )}
+      {note && <p className="note" role="status">{note}</p>}
     </section>
   );
 }

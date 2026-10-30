@@ -4,7 +4,6 @@ import type { DraftAction } from "./client";
 /** amount : montant en francs de l'écriture (pour le redire en wolof). */
 export type Applied = { shop: Shop; summary: string; amount?: number };
 
-const first = (name: string) => name.split(" ")[0];
 
 /**
  * Applique une écriture complète à la boutique. Renvoie null s'il manque une information
@@ -31,7 +30,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
         sales: [{ id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id }, ...shop.sales],
       },
       amount: total,
-      summary: `Vente · ${qty && product ? `${qty} ${product.unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${money(total)}`,
+      summary: `Vente · ${qty && product ? `${qty} ${product.unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${money(total)}${known ? ` · ${known.name}` : ""}`,
     };
   }
 
@@ -60,7 +59,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     return {
       shop: { ...shop, clients: shop.clients.map((c) => (c.id === known.id ? { ...c, debt } : c)) },
       amount,
-      summary: `${first(known.name)} a payé ${money(amount)} · reste ${money(debt)}`,
+      summary: `${known.name} a payé ${money(amount)} · reste ${money(debt)}`,
     };
   }
 
@@ -71,7 +70,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     return {
       shop: { ...shop, clients: clients.map((c) => (c.id === client.id ? { ...c, debt } : c)) },
       amount,
-      summary: `${first(client.name)} doit ${money(debt)}`,
+      summary: `${client.name} doit ${money(debt)}`,
     };
   }
 
@@ -89,7 +88,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     return {
       shop: { ...shop, clients, invoices: [invoice, ...shop.invoices] },
       amount,
-      summary: `Facture ${invoice.number} · ${first(client.name)} · ${money(amount)}`,
+      summary: `Facture ${invoice.number} · ${client.name} · ${money(amount)}`,
     };
   }
 

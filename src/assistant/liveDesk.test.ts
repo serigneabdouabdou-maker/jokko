@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type Shop, seedShop } from "../model";
 import { applyDraft } from "./apply";
 import type { DraftAction } from "./client";
-import { type Entry, LiveDesk, normalizeAction, sameName } from "./liveDesk";
+import { type Entry, LiveDesk, normalizeAction, pickByName, sameName } from "./liveDesk";
 
 const blank: DraftAction = {
   type: "sale",
@@ -208,6 +208,33 @@ describe("LiveDesk : enregistrement automatique", () => {
     set(other);
     expect(desk.undo()).toBeNull();
     expect(shop()).toBe(other);
+  });
+
+  it("clients : prend le bon client, pas le premier de la liste", () => {
+    const { desk, shop } = setup();
+    const moussa = shop().clients.find((c) => c.name.startsWith("Moussa"))!;
+    const fatou = shop().clients.find((c) => c.name.startsWith("Fatou"))!;
+    // Le modèle envoie l'id de Moussa mais le commerçant a dit « Fatou » : c'est Fatou.
+    desk.handle({ name: "enregistrer", args: { type: "debt_payment", clientId: moussa.id, clientName: "Fatou", amount: 1000, heard: "Fatou fey na 1000" } });
+    expect(shop().clients.find((c) => c.id === fatou.id)!.debt).toBe(7500);
+    expect(shop().clients.find((c) => c.id === moussa.id)!.debt).toBe(20000);
+  });
+
+  it("clients : deux noms proches → Jokko demande lequel, rien n'est enregistré", () => {
+    const { desk, shop, set } = setup();
+    set({ ...shop(), clients: [...shop().clients, { id: "c-awa2", name: "Awa Fall", phone: "", debt: 0 }] });
+    const result = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Awa", amount: 2000, heard: "Awa bor na 2000" } });
+    expect(result).toMatchObject({ statut: "incomplet", besoin: expect.stringContaining("Awa Diop ou Awa Fall") });
+    expect(shop().clients.every((c) => c.debt === 0 || c.name !== "Awa Fall")).toBe(true);
+  });
+
+  it("pickByName : nom complet exact, puis prénom", () => {
+    const list = [{ id: "1", name: "Awa Diop" }, { id: "2", name: "Awa Fall" }, { id: "3", name: "Moussa Ndiaye" }];
+    expect(pickByName(list, "Awa Fall").item?.id).toBe("2");
+    expect(pickByName(list, "awa fall bi").item?.id).toBe("2");
+    expect(pickByName(list, "Moussa").item?.id).toBe("3");
+    expect(pickByName(list, "Awa").ambiguous.map((x) => x.id)).toEqual(["1", "2"]);
+    expect(pickByName(list, "Ibrahima").item).toBeUndefined();
   });
 
   it("lit la boutique sans téléphone et ignore les outils inconnus", () => {

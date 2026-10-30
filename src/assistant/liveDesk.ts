@@ -126,8 +126,12 @@ export class LiveDesk {
     }
 
     if (call.name === "enregistrer") {
-      const action = normalizeAction(args, this.deps.getShop());
-      if (!action) return { statut: "incomplet", besoin: "le type d'écriture (vente, dépense, stock, dette, paiement ou facture)" };
+      const resolved = resolveAction(args, this.deps.getShop());
+      if (!resolved) return { statut: "incomplet", besoin: "le type d'écriture (vente, dépense, stock, dette, paiement ou facture)" };
+      if (resolved.ambigu) {
+        return { statut: "incomplet", besoin: resolved.ambigu, consigne: "Deux noms se ressemblent. N'enregistre rien : demande lequel, en disant les deux noms." };
+      }
+      const action = resolved.action;
       // Garde-fou des chiffres : le montant est recalculé ici, jamais laissé au calcul du modèle.
       const heardText = typeof args.heard === "string" ? args.heard : "";
       const saidText = typeof args.montantDit === "string" ? args.montantDit.trim() : "";
@@ -260,7 +264,42 @@ export function sameName(known: string, heard: string): boolean {
   return false;
 }
 
-export function normalizeAction(args: Record<string, unknown>, shop: Shop): DraftAction | null {
+/**
+ * Retrouve un client ou un article d'après le nom entendu, en prenant le MEILLEUR nom, pas le premier.
+ * Si deux noms se valent (« Awa » pour Awa Diop et Awa Fall), renvoie les deux pour que Jokko demande lequel.
+ */
+export function pickByName<T extends { id: string; name: string }>(items: T[], heard: string): { item?: T; ambiguous: T[] } {
+  const h = plain(heard);
+  if (!h) return { ambiguous: [] };
+  const hw = h.split(" ").filter((w) => w.length >= 3 && !UNITS.has(w));
+  const score = (name: string) => {
+    const k = plain(name);
+    const kw = k.split(" ");
+    if (k === h) return 100;
+    if (hw.length && hw.every((w) => kw.includes(w))) return 80 + Math.min(hw.length, 5);
+    if (hw.some((w) => kw.includes(w))) return 60 + hw.filter((w) => kw.includes(w)).length;
+    return sameName(name, heard) ? 40 : 0;
+  };
+  const ranked = items.map((item) => ({ item, s: score(item.name) })).filter((r) => r.s > 0).sort((x, y) => y.s - x.s);
+  if (!ranked.length) return { ambiguous: [] };
+  const top = ranked.filter((r) => r.s === ranked[0].s);
+  if (top.length > 1) return { ambiguous: top.map((r) => r.item) };
+  return { item: ranked[0].item, ambiguous: [] };
+}
+
+/** Le nom entendu l'emporte sur un id qui ne lui correspond pas (le modèle se trompe parfois d'id). */
+function resolveOne<T extends { id: string; name: string }>(items: T[], id: unknown, heard: string | null): { item?: T; ambiguous: T[] } {
+  const byId = items.find((x) => x.id === id);
+  if (!heard) return { item: byId, ambiguous: [] };
+  const byName = pickByName(items, heard);
+  if (byName.item) return byName;
+  if (byName.ambiguous.length) return byId && byName.ambiguous.includes(byId) ? { item: byId, ambiguous: [] } : byName;
+  return { item: byId, ambiguous: [] };
+}
+
+export type Resolved = { action: DraftAction; ambigu: string | null };
+
+export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolved | null {
   const type = TYPES.find((t) => t === args.type);
   if (!type) return null;
   const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
@@ -275,22 +314,30 @@ export function normalizeAction(args: Record<string, unknown>, shop: Shop): Draf
   };
   const productName = text(args.productName);
   const clientName = text(args.clientName);
-  const product =
-    shop.products.find((p) => p.id === args.productId) ??
-    (productName ? shop.products.find((p) => plain(p.name) === plain(productName)) ?? shop.products.find((p) => sameName(p.name, productName)) : undefined);
-  const client =
-    shop.clients.find((c) => c.id === args.clientId) ??
-    (clientName ? shop.clients.find((c) => sameName(c.name, clientName)) : undefined);
+  const product = resolveOne(shop.products, args.productId, productName);
+  const client = resolveOne(shop.clients, args.clientId, clientName);
+  const ambigu = client.ambiguous.length
+    ? `quel client : ${client.ambiguous.map((c) => c.name).join(" ou ")} ?`
+    : product.ambiguous.length
+      ? `quel article : ${product.ambiguous.map((p) => p.name).join(" ou ")} ?`
+      : null;
   return {
-    type,
-    productId: product?.id ?? null,
-    productName: product?.name ?? productName,
-    quantity: number(args.quantity),
-    amount: number(args.amount),
-    clientId: client?.id ?? null,
-    clientName: client?.name ?? clientName,
-    label: text(args.label),
+    action: {
+      type,
+      productId: product.item?.id ?? null,
+      productName: product.item?.name ?? productName,
+      quantity: number(args.quantity),
+      amount: number(args.amount),
+      clientId: client.item?.id ?? null,
+      clientName: client.item?.name ?? clientName,
+      label: text(args.label),
+    },
+    ambigu,
   };
+}
+
+export function normalizeAction(args: Record<string, unknown>, shop: Shop): DraftAction | null {
+  return resolveAction(args, shop)?.action ?? null;
 }
 
 function missing(action: DraftAction): string {

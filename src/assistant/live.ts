@@ -23,6 +23,8 @@ export type LiveHandle = {
   readonly listening: boolean;
   stop: () => void;
   tell: (text: string) => void;
+  /** Ajoute une information au contexte sans faire parler Jokko (ex. nouveau client ajouté à l'écran). */
+  note: (text: string) => void;
   listen: () => Promise<MediaStream>;
 };
 
@@ -69,6 +71,12 @@ registerProcessor("jokko-capture", JokkoCapture);
 
 type LiveTicket = { token: string; model: string; config: Record<string, unknown>; at: number };
 
+/** Empreinte des noms (clients, articles) : si elle change, le jeton préparé est périmé. */
+function signature(context: ShopContext): string {
+  return JSON.stringify([context.clients.map((c) => [c.id, c.name]), context.products.map((p) => [p.id, p.name])]);
+}
+let ticketSignature = "";
+
 /** Un jeton Gemini est valable 90 s pour ouvrir une conversation : on le garde 70 s au plus. */
 const TICKET_MS = 70_000;
 let ticket: Promise<LiveTicket> | null = null;
@@ -100,8 +108,10 @@ async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
  */
 export function prewarmLive(context: ShopContext) {
   genai ??= import("@google/genai");
-  if (ticket && Date.now() - ticketAt < TICKET_MS) return;
+  const sig = signature(context);
+  if (ticket && Date.now() - ticketAt < TICKET_MS && sig === ticketSignature) return;
   ticketAt = Date.now();
+  ticketSignature = sig;
   const next = fetchTicket(context);
   next.catch(() => {
     if (ticket === next) ticket = null;
@@ -111,7 +121,7 @@ export function prewarmLive(context: ShopContext) {
 
 /** Prend le jeton préparé s'il est encore bon, sinon en demande un. Un jeton ne sert qu'une fois. */
 async function takeTicket(context: ShopContext): Promise<LiveTicket> {
-  const ready = ticket && Date.now() - ticketAt < TICKET_MS ? ticket : null;
+  const ready = ticket && Date.now() - ticketAt < TICKET_MS && signature(context) === ticketSignature ? ticket : null;
   ticket = null;
   if (ready) {
     try {
@@ -253,6 +263,10 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       if (!open || !live) return;
       player.stop();
       live.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true });
+    },
+    note: (text: string) => {
+      if (!open || !live) return;
+      live.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: false });
     },
     listen: async () => {
       if (media) return media;
