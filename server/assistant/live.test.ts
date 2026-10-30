@@ -34,6 +34,7 @@ describe("conversation en direct", () => {
     expect(instruction).toContain("Baal ma, waxaat ko.");
     expect(instruction).not.toContain("waxaatal");
     expect(instruction).toContain("Livre de phrases wolof");
+    expect(instruction).toContain("WOLOF ET FRANÇAIS, RIEN D'AUTRE");
     expect(instruction).toContain("p-huile");
     const names = (config.tools as Array<{ functionDeclarations: Array<{ name: string }> }>)[0].functionDeclarations.map((f) => f.name);
     expect(names).toEqual(["lire_boutique", "enregistrer", "convertir_montant", "annuler_derniere"]);

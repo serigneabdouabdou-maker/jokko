@@ -157,8 +157,10 @@ export function enforceRules(result: Interpretation, context: ShopContext): Inte
     };
   }
   const intent = WRITE_INTENTS.has(result.intent) && !draftAction ? "unknown" : result.intent;
+  // Lancement : wolof et français seulement. Une autre langue retombe sur celle de la boutique (ou le wolof).
+  const allowed = (l: string) => l === "wo" || l === "fr";
   return {
-    language: result.language,
+    language: allowed(result.language) ? result.language : allowed(context.language) ? context.language : "wo",
     spokenReply: result.spokenReply,
     intent,
     draftAction,

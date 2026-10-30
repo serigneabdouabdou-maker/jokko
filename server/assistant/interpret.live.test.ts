@@ -36,11 +36,10 @@ describe.skipIf(!apiKey)("Gemini réel", () => {
     expect(r.spokenReply).toMatch(/12/);
   });
 
-  it("question de stock en anglais", async () => {
+  it("une question en anglais reçoit une réponse en wolof ou en français, jamais en anglais", async () => {
     const r = await ask("How much oil do I have left?");
     console.info("en stock", JSON.stringify(r));
-    expect(r).toMatchObject({ language: "en", intent: "stock_query", draftAction: null, requiresConfirmation: false });
-    expect(r.spokenReply).toMatch(/3/);
+    expect(["wo", "fr"]).toContain(r.language);
   });
 
   it("commande ambiguë", async () => {

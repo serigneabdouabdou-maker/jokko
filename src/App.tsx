@@ -57,8 +57,6 @@ type Screen = "parler" | "ventes" | "stock" | "clients" | "factures" | "depenses
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
   ["fr", "Français"],
-  ["en", "Anglais"],
-  ["ff", "Pulaar"],
 ];
 
 const NAV: Array<[Screen, string]> = [
@@ -177,7 +175,7 @@ function Landing({ onStart }: { onStart: () => void }) {
             Votre boutique <em className="accent">suit.</em>
           </h1>
           <p className="lede">
-            Jokko note les ventes, surveille le stock, relance les dettes et compte la caisse. En wolof, en français, en anglais ou en pulaar.
+            Jokko note les ventes, surveille le stock, relance les dettes et compte la caisse. En wolof, en français, ou les deux mélangés, comme on parle à Dakar.
           </p>
           <div className="hero-cta">
             <Button className="h-12 rounded-full px-6 text-[15px] font-semibold" onClick={onStart}>Ouvrir ma boutique</Button>

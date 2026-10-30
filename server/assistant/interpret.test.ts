@@ -92,7 +92,7 @@ describe("interpret", () => {
     expect(result).toMatchObject({ language: "fr", intent: "stock_query", draftAction: null, requiresConfirmation: false });
   });
 
-  it("question de stock en anglais : réponse en anglais, sans confirmation", async () => {
+  it("lancement wolof + français : une langue étrangère retombe sur la langue de la boutique", async () => {
     const generate = modelReturns({
       language: "en",
       spokenReply: "You have 12 bags of broken rice left.",
@@ -104,7 +104,7 @@ describe("interpret", () => {
 
     const result = await interpret({ message: "How many bags of rice are left?", shopContext }, { apiKey: KEY, generate });
 
-    expect(result).toMatchObject({ language: "en", intent: "stock_query", requiresConfirmation: false });
+    expect(result).toMatchObject({ language: "fr", intent: "stock_query", requiresConfirmation: false });
     expect(result.spokenReply).toMatch(/12/);
   });
 

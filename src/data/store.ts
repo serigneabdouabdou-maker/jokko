@@ -91,7 +91,8 @@ async function saveProfileRow(profile: Profile) {
   if (error) console.warn("[jokko] profil non sauvegardé :", error.message);
 }
 
-const LANGS: Lang[] = ["wo", "fr", "en", "ff"];
+/** Lancement : wolof et français seulement. */
+const LANGS: Lang[] = ["wo", "fr"];
 
 /**
  * Au démarrage ou après connexion : retrouve le profil et les boutiques du commerçant.
@@ -111,7 +112,7 @@ export async function bootstrap(session: Session): Promise<Profile> {
       supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
       loadShops(supabase as unknown as LoadClient),
     ]);
-    const lang = LANGS.find((l) => l === row?.lang) ?? mine?.lang ?? "wo";
+    const lang = LANGS.find((l) => l === row?.lang) ?? LANGS.find((l) => l === mine?.lang) ?? "wo";
     const shopId = shops.find((s) => s.id === (mine?.shopId ?? row?.current_shop_id))?.id ?? shops[0]?.id ?? "";
     const profile: Profile = {
       userId,

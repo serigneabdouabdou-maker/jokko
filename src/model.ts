@@ -165,7 +165,10 @@ export function loadProfile(): Profile | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as Profile;
+    const profile = JSON.parse(raw) as Profile;
+    // Lancement : wolof et français seulement (anciens profils en anglais ou pulaar → wolof).
+    if (profile.lang !== "wo" && profile.lang !== "fr") profile.lang = "wo";
+    return profile;
   } catch {
     return null;
   }

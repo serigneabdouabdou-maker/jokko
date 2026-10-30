@@ -22,11 +22,10 @@ function digits(raw: string): number {
 
 function detectLang(text: string, fallback: Lang): Lang {
   const t = text.toLowerCase();
-  if (/\b(njaay|pulaar|mi |aɗa)\b/.test(t)) return "ff";
-  if (/\b(jaay|ñata|nata|yónnee|yonnee|fàttali|fattali|wax|bor|des)\b/.test(t)) return "wo";
-  if (/\b(sale|invoice|stock|owes|expense)\b/.test(t)) return "en";
+  // Lancement : wolof et français seulement.
+  if (/\b(jaay|ñata|nata|ñaata|yónnee|yonnee|fàttali|fattali|wax|bor|des|naa|bi|dafa)\b/.test(t)) return "wo";
   if (/[a-zàâçéèêëîïôùû]/i.test(t)) return "fr";
-  return fallback;
+  return fallback === "wo" ? "wo" : "fr";
 }
 
 function saySale(lang: Lang, amount: number, label: string): string {
