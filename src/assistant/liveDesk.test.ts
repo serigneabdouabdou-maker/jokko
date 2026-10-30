@@ -133,7 +133,7 @@ describe("LiveDesk : enregistrement automatique", () => {
   it("garde-fou : montant pas clair → rien n'est enregistré, Jokko fait répéter", () => {
     const { desk, shop } = setup();
     const result = desk.handle({ name: "enregistrer", args: { type: "sale", amount: 3000, montantDit: "euh je sais pas", heard: "jaay naa euh" } });
-    expect(result).toMatchObject({ statut: "pas_compris", consigne: expect.stringContaining("waxaatal") });
+    expect(result).toMatchObject({ statut: "pas_compris", consigne: expect.stringContaining("Baal ma, ñaata la") });
     expect(shop().sales).toHaveLength(1);
   });
 

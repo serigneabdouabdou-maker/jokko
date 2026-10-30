@@ -15,7 +15,7 @@ const UNITS = new Set(["sac", "sacs", "bidon", "bidons", "paquet", "paquets", "k
 /** Montant pas clair : Jokko n'enregistre rien et fait répéter. */
 const NOT_UNDERSTOOD = {
   statut: "pas_compris",
-  consigne: "Le montant n'est pas clair. N'enregistre rien et ne devine pas. Demande de répéter : « Baal ma, waxaatal ko ? » (en français : « Pardon, tu peux répéter le montant ? »).",
+  consigne: "Le montant n'est pas clair. N'enregistre rien et ne devine pas. Demande de répéter : « Baal ma, ñaata la ? » (en français : « Pardon, c'est combien ? »).",
 };
 
 /** Une écriture enregistrée, que le commerçant peut encore annuler. */
