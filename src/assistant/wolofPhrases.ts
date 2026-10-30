@@ -2,26 +2,27 @@
  * Livre de phrases de Jokko en wolof : les SEULES phrases toutes faites qu'il a le droit de dire.
  * Orthographe officielle du wolof (décret 2005-992, CLAD). Chaque phrase porte son statut :
  * "valide" = vérifiée par un locuteur natif ; "a_valider" = en attente de vérification.
+ * Les 14 phrases ci-dessous ont été validées par le patron de Jokko le 31/10/2026.
  * Pour corriger une phrase : changer `wo`, puis passer `statut` à "valide".
  */
 export type Phrase = { situation: string; wo: string; fr: string; statut: "valide" | "a_valider" };
 
 export const WOLOF_PHRASES: Phrase[] = [
-  { situation: "faire répéter", wo: "Baal ma, waxaat ko.", fr: "Pardon, redis-le.", statut: "a_valider" },
-  { situation: "montant pas clair", wo: "Baal ma, ñaata la ?", fr: "Pardon, c'est combien ?", statut: "a_valider" },
-  { situation: "quel article", wo: "Ban produit ?", fr: "Quel article ?", statut: "a_valider" },
-  { situation: "quelle quantité", wo: "Ñaata ?", fr: "Combien ?", statut: "a_valider" },
-  { situation: "quel client", wo: "Kan la ?", fr: "C'est qui ?", statut: "a_valider" },
-  { situation: "écriture enregistrée", wo: "Bind naa ko.", fr: "Je l'ai noté.", statut: "a_valider" },
-  { situation: "écriture annulée", wo: "Dindi naa ko.", fr: "Je l'ai enlevé.", statut: "a_valider" },
-  { situation: "rien à annuler", wo: "Amul dara lu ma war a dindi.", fr: "Il n'y a rien à enlever.", statut: "a_valider" },
-  { situation: "stock bas (article)", wo: "{article} bi dafa néew.", fr: "{article} : il en reste peu.", statut: "a_valider" },
-  { situation: "stock restant", wo: "{article} bi, {nombre} la des.", fr: "{article} : il en reste {nombre}.", statut: "a_valider" },
-  { situation: "dette d'un client", wo: "{client} dafa la bor {montant}.", fr: "{client} te doit {montant}.", statut: "a_valider" },
-  { situation: "caisse attendue", wo: "Caisse bi, {montant} la.", fr: "La caisse : {montant}.", statut: "a_valider" },
-  { situation: "j'écoute", wo: "Maa ngi lay déglu.", fr: "Je t'écoute.", statut: "a_valider" },
-  { situation: "oui", wo: "Waaw.", fr: "Oui.", statut: "a_valider" },
-  { situation: "non", wo: "Déedéet.", fr: "Non.", statut: "a_valider" },
+  { situation: "faire répéter", wo: "Baal ma, waxaat ko.", fr: "Pardon, redis-le.", statut: "valide" },
+  { situation: "montant pas clair", wo: "Baal ma, ñaata la ?", fr: "Pardon, c'est combien ?", statut: "valide" },
+  { situation: "quel article", wo: "Ban produit ?", fr: "Quel article ?", statut: "valide" },
+  { situation: "quelle quantité", wo: "Ñaata ?", fr: "Combien ?", statut: "valide" },
+  { situation: "quel client", wo: "Kan la ?", fr: "C'est qui ?", statut: "valide" },
+  { situation: "écriture enregistrée", wo: "Bind naa ko.", fr: "Je l'ai noté.", statut: "valide" },
+  { situation: "écriture annulée", wo: "Dindi naa ko.", fr: "Je l'ai enlevé.", statut: "valide" },
+  { situation: "rien à annuler", wo: "Amul dara lu ma war a dindi.", fr: "Il n'y a rien à enlever.", statut: "valide" },
+  { situation: "stock bas (article)", wo: "{article} bi dafa néew.", fr: "{article} : il en reste peu.", statut: "valide" },
+  { situation: "stock restant", wo: "{article} bi, {nombre} la des.", fr: "{article} : il en reste {nombre}.", statut: "valide" },
+  { situation: "dette d'un client", wo: "{client} dafa la bor {montant}.", fr: "{client} te doit {montant}.", statut: "valide" },
+  { situation: "caisse attendue", wo: "Caisse bi, {montant} la.", fr: "La caisse : {montant}.", statut: "valide" },
+  { situation: "j'écoute", wo: "Maa ngi lay déglu.", fr: "Je t'écoute.", statut: "valide" },
+  { situation: "oui", wo: "Waaw.", fr: "Oui.", statut: "valide" },
+  { situation: "non", wo: "Déedéet.", fr: "Non.", statut: "valide" },
 ];
 
 /** Bloc à mettre dans les consignes de Jokko. */

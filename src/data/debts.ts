@@ -30,7 +30,7 @@ const dateFr = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", mont
 
 /**
  * Message de relance poli, dans la langue de la boutique.
- * Le wolof est volontairement simple ; à valider avec le livre de phrases.
+ * Message wolof validé par le patron de Jokko le 31/10/2026 : ne pas le reformuler sans nouvelle validation.
  */
 export function reminderMessage(client: Client, shop: Shop, lang: Lang, now = new Date()): string {
   const first = client.name.split(" ")[0];

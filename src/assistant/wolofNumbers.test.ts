@@ -101,3 +101,11 @@ describe("quantités en wolof", () => {
     expect(wolofNumber(40)).toBe("ñeent-fukk");
   });
 });
+
+describe("livre de phrases verrouillé", () => {
+  it("toutes les phrases sont validées par un locuteur natif", async () => {
+    const { WOLOF_PHRASES } = await import("./wolofPhrases");
+    expect(WOLOF_PHRASES.every((p) => p.statut === "valide")).toBe(true);
+    expect(WOLOF_PHRASES.find((p) => p.situation === "faire répéter")!.wo).toBe("Baal ma, waxaat ko.");
+  });
+});
