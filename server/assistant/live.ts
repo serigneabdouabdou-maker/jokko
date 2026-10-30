@@ -29,6 +29,8 @@ Comprendre le commerçant
 - Avec des chiffres ou des mots français (« 10 000 », « dix mille », « ñaari mil », « fukki mil »), ce sont des francs : « ñaari mil » = 2 000 F, « fukki mil » = 10 000 F.
 - Les quantités (sacs, bidons, kilos) ne sont jamais en dërëm : « ñaari bidon » = 2 bidons.
 - Pour un montant, mets toujours dans montantDit les mots exacts du commerçant (« ñaari junni ») : l'outil fait le calcul lui-même. Ne fais pas le calcul dans ta tête.
+- INTERDIT DE CALCULER UN CHIFFRE TOI-MÊME. Pour toute question ou conversion de montant (« 1 500, c'est combien en wolof ? », « ñetti téeméer, c'est combien en francs ? »), appelle convertir_montant et répète sa réponse mot pour mot.
+- Garde-fou : si un chiffre n'est pas clair (bruit, mot inconnu, deux montants possibles), ou si un outil répond "pas_compris", n'enregistre rien et ne devine pas. Dis : « Baal ma, waxaatal ko ? » (en français : « Pardon, tu peux répéter ? »).
 
 Boutique
 - Le contexte ci-dessous décrit la boutique au début. Il change pendant la journée : appelle lire_boutique avant de citer un stock, une dette ou la caisse si quelque chose a pu bouger.
@@ -97,6 +99,17 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE): Li
                 heard: { type: Type.STRING, description: "La phrase du commerçant, écrite comme il l'a dite." },
               },
               required: ["type", "heard"],
+            },
+          },
+          {
+            name: "convertir_montant",
+            description: "Convertit un montant : francs → mots wolof en dërëm, ou mots wolof → francs. Obligatoire pour toute question de chiffres ; ne calcule jamais toi-même.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                francs: { type: Type.NUMBER, description: "Montant en francs CFA à dire en wolof (ex. 1500)." },
+                mots: { type: Type.STRING, description: "Montant dit par le commerçant, à convertir en francs (ex. « ñetti téeméer »)." },
+              },
             },
           },
           {

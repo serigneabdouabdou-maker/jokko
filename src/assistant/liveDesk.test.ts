@@ -123,6 +123,26 @@ describe("LiveDesk : enregistrement automatique", () => {
     expect(shop().sales[0].amount).toBe(10000);
   });
 
+  it("convertir_montant : 1 500 F = ñetti téeméer, et l'inverse", () => {
+    const { desk } = setup();
+    expect(desk.handle({ name: "convertir_montant", args: { francs: 1500 } })).toMatchObject({ en_wolof: "ñetti téeméer", en_derem: 300 });
+    expect(desk.handle({ name: "convertir_montant", args: { mots: "ñetti téeméer" } })).toMatchObject({ francs: 1500 });
+    expect(desk.handle({ name: "convertir_montant", args: { mots: "bla bla" } })).toMatchObject({ statut: "pas_compris" });
+  });
+
+  it("garde-fou : montant pas clair → rien n'est enregistré, Jokko fait répéter", () => {
+    const { desk, shop } = setup();
+    const result = desk.handle({ name: "enregistrer", args: { type: "sale", amount: 3000, montantDit: "euh je sais pas", heard: "jaay naa euh" } });
+    expect(result).toMatchObject({ statut: "pas_compris", consigne: expect.stringContaining("waxaatal") });
+    expect(shop().sales).toHaveLength(1);
+  });
+
+  it("garde-fou : la calculatrice relit la phrase et corrige un montant faux du modèle", () => {
+    const { desk, shop } = setup();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 2000, heard: "jaay naa ñaari junni" } });
+    expect(shop().sales[0].amount).toBe(10000);
+  });
+
   it("lire_boutique donne les dettes en wolof (20 000 F = ñeenti junni)", () => {
     const { desk } = setup();
     const context = desk.handle({ name: "lire_boutique" }) as { montants_en_wolof: { dettes: Record<string, string> } };

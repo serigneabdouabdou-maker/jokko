@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
+import { extractSpokenAmount } from "../../src/assistant/wolofNumbers.ts";
 import { buildAudioPrompt, buildPrompt, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
@@ -81,12 +82,24 @@ export type InterpretOptions = {
 
 export async function interpret(request: InterpretRequest, options: InterpretOptions): Promise<Interpretation> {
   const result = await run(options, interpretationSchema, interpretationJsonSchema(), buildPrompt(request.message, request.shopContext));
-  return enforceRules(result, request.shopContext);
+  return checkAmount(enforceRules(result, request.shopContext), request.message);
+}
+
+/**
+ * Garde-fou des chiffres : si la phrase contient un montant clair, c'est la calculatrice qui décide,
+ * pas le modèle (« ñaari junni » = 10 000 F, jamais 2 000).
+ */
+export function checkAmount(result: Interpretation, phrase: string): Interpretation {
+  const action = result.draftAction;
+  if (!action || action.type === "stock_adjust") return result;
+  const found = extractSpokenAmount(phrase);
+  if (!found || found.francs <= 0 || found.francs === action.amount) return result;
+  return { ...result, draftAction: { ...action, amount: found.francs } };
 }
 
 export async function listen(request: ListenRequest, options: InterpretOptions): Promise<Heard> {
   const { transcript, ...result } = await run(options, heardSchema, heardJsonSchema(), buildAudioPrompt(request.shopContext), request.audio);
-  return { transcript, interpretation: enforceRules(result, request.shopContext) };
+  return { transcript, interpretation: checkAmount(enforceRules(result, request.shopContext), transcript) };
 }
 
 async function run<T extends z.ZodType>(

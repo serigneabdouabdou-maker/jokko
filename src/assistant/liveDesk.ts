@@ -1,6 +1,6 @@
 import { type Lang, type Shop, lowStock, uid } from "../model";
 import { applyDraft } from "./apply";
-import { francsToWolof, spokenAmountToFrancs } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 
@@ -11,6 +11,12 @@ const UNDO_WINDOW_MS = 2 * 60_000;
 /** Même écriture répétée par le modèle (coupure, relance) : on ne l'enregistre pas deux fois. */
 const DUPLICATE_MS = 10_000;
 const UNITS = new Set(["sac", "sacs", "bidon", "bidons", "paquet", "paquets", "kilo", "kilos", "kg", "pot", "pots", "boite", "boites", "piece", "pieces", "litre", "litres", "carton", "cartons", "bouteille"]);
+
+/** Montant pas clair : Jokko n'enregistre rien et fait répéter. */
+const NOT_UNDERSTOOD = {
+  statut: "pas_compris",
+  consigne: "Le montant n'est pas clair. N'enregistre rien et ne devine pas. Demande de répéter : « Baal ma, waxaatal ko ? » (en français : « Pardon, tu peux répéter le montant ? »).",
+};
 
 /** Une écriture enregistrée, que le commerçant peut encore annuler. */
 export type Entry = { id: string; summary: string; heard: string; before: Shop; after: Shop; at: number; callId?: string; key?: string; amount?: number };
@@ -121,9 +127,19 @@ export class LiveDesk {
     if (call.name === "enregistrer") {
       const action = normalizeAction(args, this.deps.getShop());
       if (!action) return { statut: "incomplet", besoin: "le type d'écriture (vente, dépense, stock, dette, paiement ou facture)" };
-      // Le montant tel que dit (« ñaari junni ») est recalculé ici, sans laisser le calcul au modèle.
-      const said = typeof args.montantDit === "string" ? spokenAmountToFrancs(args.montantDit) : null;
-      if (said && said.francs > 0) action.amount = said.francs;
+      // Garde-fou des chiffres : le montant est recalculé ici, jamais laissé au calcul du modèle.
+      const heardText = typeof args.heard === "string" ? args.heard : "";
+      const saidText = typeof args.montantDit === "string" ? args.montantDit.trim() : "";
+      if (action.type !== "stock_adjust") {
+        if (saidText) {
+          const said = spokenAmountToFrancs(saidText) ?? extractSpokenAmount(saidText);
+          if (!said || said.francs <= 0) return NOT_UNDERSTOOD;
+          action.amount = said.francs;
+        } else {
+          const inPhrase = extractSpokenAmount(heardText);
+          if (inPhrase && inPhrase.francs > 0) action.amount = inPhrase.francs;
+        }
+      }
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
       const result = this.record(action, heard, call.id);
@@ -138,6 +154,20 @@ export class LiveDesk {
         montant_francs: amount ?? null,
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
+      };
+    }
+
+    if (call.name === "convertir_montant") {
+      const words = typeof args.mots === "string" ? args.mots.trim() : "";
+      const francsArg = typeof args.francs === "number" ? args.francs : typeof args.francs === "string" ? Number(args.francs.replace(/[\s\u202f\u00a0]/g, "")) : NaN;
+      const francs = words ? (spokenAmountToFrancs(words) ?? extractSpokenAmount(words))?.francs ?? NaN : francsArg;
+      if (!Number.isFinite(francs) || francs <= 0) return NOT_UNDERSTOOD;
+      return {
+        francs: Math.round(francs),
+        en_francs: `${Math.round(francs).toLocaleString("fr-FR")} F`,
+        en_wolof: francsToWolof(francs),
+        en_derem: francs % 5 === 0 ? francs / 5 : null,
+        consigne: "Répète en_wolof mot pour mot. Ne change aucun chiffre.",
       };
     }
 

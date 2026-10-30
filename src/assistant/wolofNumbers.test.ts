@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { francsToWolof, readWolofNumber, spokenAmountToFrancs } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, readWolofNumber, spokenAmountToFrancs } from "./wolofNumbers";
 
 describe("lire les chiffres wolof", () => {
   it("nombres simples et composés", () => {
@@ -65,5 +65,30 @@ describe("dire un montant en wolof", () => {
     for (const f of [500, 1000, 2500, 5000, 7500, 10000, 15000, 18000, 20000, 37500, 50000, 100000]) {
       expect(spokenAmountToFrancs(francsToWolof(f))!.francs).toBe(f);
     }
+  });
+});
+
+describe("garde-fou : trouver le montant dans la phrase entière", () => {
+  it("1 500 F se dit ñetti téeméer", () => {
+    expect(francsToWolof(1500)).toBe("ñetti téeméer");
+    expect(spokenAmountToFrancs("ñetti téeméer")!.francs).toBe(1500);
+  });
+  it("montant wolof dans une phrase", () => {
+    expect(extractSpokenAmount("jaay naa ñaari junni")!.francs).toBe(10000);
+    expect(extractSpokenAmount("dama fey transport juróomi téeméer")!.francs).toBe(2500);
+    expect(extractSpokenAmount("Moussa fey na benn junni ak juróomi téeméer")!.francs).toBe(7500);
+    expect(extractSpokenAmount("vente bi ñaari mil")!.francs).toBe(2000);
+  });
+  it("chiffres dans une phrase", () => {
+    expect(extractSpokenAmount("ajoute une vente de 15 000")!.francs).toBe(15000);
+    expect(extractSpokenAmount("transport 2500 F")!.francs).toBe(2500);
+  });
+  it("une quantité n'est pas de l'argent", () => {
+    expect(extractSpokenAmount("jaay naa ñaari bidon diw")).toBeNull();
+    expect(extractSpokenAmount("jaay naa 2 sac ceeb")).toBeNull();
+    expect(extractSpokenAmount("ceeb bi ñaata la des")).toBeNull();
+  });
+  it("quantité et montant ensemble : le montant gagne", () => {
+    expect(extractSpokenAmount("jaay naa ñaari bidon diw ñetti junni")!.francs).toBe(15000);
   });
 });

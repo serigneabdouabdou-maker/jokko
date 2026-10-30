@@ -170,3 +170,56 @@ export function francsToWolof(francs: number): string {
   if (f % 5 !== 0) return `${f.toLocaleString("fr-FR")} F`;
   return wolofNumber(f / 5);
 }
+
+const QUANTITY_UNITS = new Set([
+  "bidon", "bidons", "sac", "sacs", "kilo", "kilos", "kg", "paquet", "paquets", "pot", "pots", "boite", "boites",
+  "piece", "pieces", "litre", "litres", "carton", "cartons", "bouteille", "bouteilles", "sachet", "sachets", "pain", "pains",
+]);
+const MONEY_WORDS = new Set(["derem", "dorom", "deurem", "francs", "franc", "f", "cfa", "fcfa", "xaalis", "njeg", "njég"]);
+
+/**
+ * Cherche un montant d'argent dans une phrase entière (« jaay naa ñaari junni », « transport 2 500 »).
+ * Garde-fou : un nombre wolof n'est pris comme argent que s'il contient téeméer/junni, ou s'il est suivi
+ * de « dërëm » / « francs ». « ñaari bidon » est une quantité, pas de l'argent.
+ * Renvoie null si aucun montant clair n'est trouvé.
+ */
+export function extractSpokenAmount(text: string): SpokenAmount | null {
+  const words = clean(text);
+  // 1. Chiffres écrits : « 2 500 », « 15000 », « 15 000 F » (pas suivis d'une unité de quantité)
+  const digitRun = text.match(/\d[\d\s.  ]*\d|\d/g);
+  if (digitRun) {
+    for (const raw of digitRun) {
+      const n = Number(raw.replace(/[\s.  ]/g, ""));
+      const after = text.slice(text.indexOf(raw) + raw.length).trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+      if (QUANTITY_UNITS.has(after) || !Number.isFinite(n) || n === 0) continue;
+      if (/^d[eë]r[eë]m/.test(after)) return { francs: n * 5, derem: n, unit: "derem" };
+      if (n >= 25) return { francs: n, derem: null, unit: "francs" };
+    }
+  }
+  // 2. Suites de nombres wolof
+  let best: SpokenAmount | null = null;
+  for (let i = 0; i < words.length; i++) {
+    if (!base(words[i]) || base(words[i]) === "derem") continue;
+    let j = i;
+    const run: string[] = [];
+    while (j < words.length && (base(words[j]) && base(words[j]) !== "derem" || (words[j] === "ak" && j + 1 < words.length && base(words[j + 1])) || words[j] === "mil" || words[j] === "mille")) {
+      run.push(words[j]);
+      j++;
+    }
+    const next = words[j] ?? "";
+    const phrase = run.join(" ");
+    const hasMultiplier = run.some((w) => base(w) === "teemeer" || base(w) === "junni" || base(w) === "milyon");
+    const french = run.includes("mil") || run.includes("mille");
+    const money = MONEY_WORDS.has(next);
+    if (QUANTITY_UNITS.has(next) && !hasMultiplier) {
+      i = j;
+      continue;
+    }
+    if (hasMultiplier || money || french) {
+      const amount = spokenAmountToFrancs(money && next !== "derem" && next !== "dorom" && next !== "deurem" ? `${phrase} ${next}` : `${phrase}${next.startsWith("d") ? " derem" : ""}`);
+      if (amount && (!best || amount.francs > best.francs)) best = amount;
+    }
+    i = j;
+  }
+  return best;
+}
