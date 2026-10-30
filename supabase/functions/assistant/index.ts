@@ -3,9 +3,9 @@
 // Exige un utilisateur connecté (verify_jwt) : personne ne peut utiliser la clé sans compte.
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
 import { z } from "zod";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/db09cf6b0a54b3a30cc1395cbd6e62ffc52827ee/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/db09cf6b0a54b3a30cc1395cbd6e62ffc52827ee/server/assistant/live.ts";
-import { interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/db09cf6b0a54b3a30cc1395cbd6e62ffc52827ee/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/2c599dae6cc25a8e71ae101d7ac5d38f3cac62cf/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/2c599dae6cc25a8e71ae101d7ac5d38f3cac62cf/server/assistant/live.ts";
+import { interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/2c599dae6cc25a8e71ae101d7ac5d38f3cac62cf/server/assistant/schema.ts";
 
 const MAX_TEXT_BODY = 32 * 1024;
 const MAX_AUDIO_BODY = 3 * 1024 * 1024;
