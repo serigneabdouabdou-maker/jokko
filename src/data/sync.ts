@@ -1,4 +1,4 @@
-import type { Client, Expense, Invoice, Product, Reminder, Sale, Shop, Shortcut } from "../model";
+import type { Client, Expense, Invoice, InvoiceLine, Product, Reminder, Sale, Shop, Shortcut } from "../model";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -16,7 +16,10 @@ const TABLE_ORDER: string[] = ["shops", ...CHILD_TABLES];
 const opt = <T>(v: T | undefined): T | null => (v === undefined ? null : v);
 
 export function shopRow(s: Shop): Row {
-  return { id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash, last_inventory_at: opt(s.lastInventoryAt) };
+  return {
+    id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash, last_inventory_at: opt(s.lastInventoryAt),
+    address: s.address ?? "", phone: s.phone ?? "", ninea: s.ninea ?? "", payment_info: s.paymentInfo ?? "", invoice_note: s.invoiceNote ?? "",
+  };
 }
 
 const toRow = {
@@ -33,6 +36,7 @@ const toRow = {
   expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense" }),
   invoices: (i: Invoice, shopId: string): Row => ({
     id: i.id, shop_id: shopId, number: i.number, at: i.at, client_id: i.clientId, amount: i.amount, status: i.status,
+    lines: i.lines ?? [], due_at: opt(i.dueAt), pdf_path: opt(i.pdfPath),
   }),
   reminders: (r: Reminder, shopId: string): Row => ({ id: r.id, shop_id: shopId, at: r.at, client_id: r.clientId, note: r.note }),
   shortcuts: (k: Shortcut, shopId: string): Row => ({ id: k.id, shop_id: shopId, phrase: k.phrase, does: k.does }),
@@ -53,7 +57,14 @@ export function childRows(shop: Shop, table: ChildTable): Row[] {
 
 function sameRow(a: Row, b: Row): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  for (const k of keys) if (!Object.is(a[k], b[k])) return false;
+  for (const k of keys) {
+    const x = a[k];
+    const y = b[k];
+    // Les lignes de facture (tableaux) se comparent par leur contenu.
+    if (typeof x === "object" && x !== null && typeof y === "object" && y !== null) {
+      if (JSON.stringify(x) !== JSON.stringify(y)) return false;
+    } else if (!Object.is(x, y)) return false;
+  }
   return true;
 }
 
@@ -293,6 +304,19 @@ function byAtDesc<T extends { at: string }>(list: T[]): T[] {
   return list.map((x, i) => ({ x, i })).sort((a, b) => time(b.x) - time(a.x) || a.i - b.i).map((e) => e.x);
 }
 
+/** Lignes de facture lues depuis le jsonb (tolérant aux données incomplètes). */
+function readLines(value: unknown): InvoiceLine[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((l): l is Record<string, unknown> => Boolean(l) && typeof l === "object")
+    .map((l) => {
+      const line: InvoiceLine = { label: str(l.label), qty: num(l.qty), unit: str(l.unit), unitPrice: num(l.unitPrice) };
+      if (typeof l.productId === "string") line.productId = l.productId;
+      return line;
+    })
+    .filter((l) => l.label);
+}
+
 export function rowsToShop(rows: ShopRows): Shop {
   const s = rows.shop;
   return {
@@ -302,6 +326,11 @@ export function rowsToShop(rows: ShopRows): Shop {
     activity: str(s.activity),
     openingCash: num(s.opening_cash),
     ...(optStr(s.last_inventory_at) ? { lastInventoryAt: iso(s.last_inventory_at) } : {}),
+    ...(optStr(s.address) ? { address: str(s.address) } : {}),
+    ...(optStr(s.phone) ? { phone: str(s.phone) } : {}),
+    ...(optStr(s.ninea) ? { ninea: str(s.ninea) } : {}),
+    ...(optStr(s.payment_info) ? { paymentInfo: str(s.payment_info) } : {}),
+    ...(optStr(s.invoice_note) ? { invoiceNote: str(s.invoice_note) } : {}),
     products: rows.products.map((r) => {
       const product: Product = { id: str(r.id), name: str(r.name), unit: str(r.unit), stock: num(r.stock), min: num(r.min), price: num(r.price) };
       const cost = optNum(r.cost);
@@ -344,10 +373,17 @@ export function rowsToShop(rows: ShopRows): Shop {
     invoices: byAtDesc(
       rows.invoices.map((r) => {
         const status = str(r.status) as Invoice["status"];
-        return {
+        const invoice: Invoice = {
           id: str(r.id), number: str(r.number), at: iso(r.at), clientId: str(r.client_id), amount: num(r.amount),
           status: STATUSES.includes(status) ? status : "brouillon",
         };
+        const lines = readLines(r.lines);
+        if (lines.length) invoice.lines = lines;
+        const due = optStr(r.due_at);
+        if (due) invoice.dueAt = iso(due);
+        const pdf = optStr(r.pdf_path);
+        if (pdf) invoice.pdfPath = pdf;
+        return invoice;
       }),
     ),
     reminders: byAtDesc(rows.reminders.map((r) => ({ id: str(r.id), at: iso(r.at), clientId: str(r.client_id), note: str(r.note) }))),

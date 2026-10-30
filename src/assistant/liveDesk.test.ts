@@ -49,7 +49,7 @@ describe("applyDraft", () => {
     expect(applyDraft(shop, { ...blank, type: "expense", amount: 2000, label: "Transport" })!.shop.expenses[0]).toMatchObject({ label: "Transport", amount: 2000 });
     expect(applyDraft(shop, { ...blank, type: "stock_adjust", productId: riz.id, quantity: 10 })!.shop.products.find((p) => p.id === riz.id)!.stock).toBe(22);
     expect(applyDraft(shop, { ...blank, type: "debt_payment", clientId: moussa.id, amount: 5000 })!.shop.clients.find((c) => c.id === moussa.id)!.debt).toBe(15000);
-    expect(applyDraft(shop, { ...blank, type: "invoice", clientId: moussa.id, amount: 9000 })!.shop.invoices[0]).toMatchObject({ number: "JK-1", amount: 9000 });
+    expect(applyDraft(shop, { ...blank, type: "invoice", clientId: moussa.id, amount: 9000 })!.shop.invoices[0]).toMatchObject({ number: `JK-${new Date().getFullYear()}-0001`, amount: 9000, lines: [{ label: "Marchandises", qty: 1, unitPrice: 9000 }] });
   });
 
   it("une dette pour un client inconnu crée le client", () => {

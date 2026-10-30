@@ -48,6 +48,7 @@ import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
+import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
 import { signInOrUp, supabase } from "@/data/supabase";
@@ -520,6 +521,8 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     },
     onSaved: (entry) => {
       setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: `✓ ${entry.summary}`, at: new Date().toISOString() }]);
+      // Facture dite à la voix : on l'affiche tout de suite, avec le bouton « Envoyer sur WhatsApp ».
+      if (entry.summary.startsWith("Facture ")) setScreen("factures");
       setReply({ text: "C’est enregistré.", summary: entry.summary, tone: "ok", undo: true });
       setWave((w) => w + 1);
       if (!liveRef.current?.listening) {
@@ -1024,7 +1027,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "stock" && <Stock shop={shop} commit={commit} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
-          {screen === "factures" && <Invoices shop={shop} />}
+          {screen === "factures" && <Invoices shop={shop} commit={commit} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && <Bilan shop={shop} commit={commit} />}
@@ -1184,24 +1187,6 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
         </div>
       )}
       {note && <p className="note" role="status">{note}</p>}
-    </section>
-  );
-}
-
-function Invoices({ shop }: { shop: Shop }) {
-  return (
-    <section className="sheet">
-      <div className="sheet-head">
-        <h2>Factures</h2>
-        <span className="count num">{shop.invoices.length}</span>
-      </div>
-      <div className="list">
-        {shop.invoices.length === 0 && <p className="note">Dis « envoie la facture à Awa ».</p>}
-        {shop.invoices.map((inv) => {
-          const client = shop.clients.find((c) => c.id === inv.clientId);
-          return <article key={inv.id}><span>{inv.number} · {client?.name}<small>{inv.status}</small></span><b className="num">{amount(inv.amount)}</b></article>;
-        })}
-      </div>
     </section>
   );
 }

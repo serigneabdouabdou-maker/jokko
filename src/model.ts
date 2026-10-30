@@ -44,13 +44,20 @@ export type Sale = {
 /** kind « perte » : marchandise perdue ou manquante à l'inventaire (au prix d'achat). */
 export type Expense = { id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" };
 
+export type InvoiceLine = { label: string; qty: number; unit: string; unitPrice: number; productId?: string };
+
 export type Invoice = {
   id: string;
   number: string;
   at: string;
   clientId: string;
+  /** Total de la facture (somme des lignes, ou montant seul si pas de lignes). */
   amount: number;
   status: "brouillon" | "envoyee" | "payee";
+  lines?: InvoiceLine[];
+  dueAt?: string;
+  /** Chemin du PDF en ligne (stockage Supabase), une fois envoyé. */
+  pdfPath?: string;
 };
 
 export type Reminder = {
@@ -70,6 +77,13 @@ export type Shop = {
   openingCash: number;
   /** Date du dernier inventaire (comptage du stock). */
   lastInventoryAt?: string;
+  /** Infos imprimées sur les factures */
+  address?: string;
+  phone?: string;
+  ninea?: string;
+  /** Comment payer (ex. « Wave ou Orange Money au 77 123 45 67 ») */
+  paymentInfo?: string;
+  invoiceNote?: string;
   products: Product[];
   clients: Client[];
   sales: Sale[];

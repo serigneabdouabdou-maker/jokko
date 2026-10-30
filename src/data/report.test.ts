@@ -139,3 +139,15 @@ describe("corrections de la relecture", () => {
     expect(applyDraft(base, { ...blank, productId: "p-huile", quantity: 2, unit: "sachet" })).toBeNull();
   });
 });
+
+describe("factures", () => {
+  it("facture à la voix avec article et quantité : lignes, total, numéro de l'année", () => {
+    const s = applyDraft(shop(), { ...blank, type: "invoice", clientId: "c-moussa", productId: "p-huile", quantity: 2 })!.shop;
+    const inv = s.invoices[0];
+    expect(inv).toMatchObject({ amount: 15000, status: "brouillon", lines: [{ label: "Huile", qty: 2, unit: "bidon", unitPrice: 7500 }] });
+    expect(inv.number).toBe(`JK-${new Date().getFullYear()}-0001`);
+    const s2 = applyDraft(s, { ...blank, type: "invoice", clientId: "c-fatou", amount: 3000 })!.shop;
+    expect(s2.invoices[0].number).toBe(`JK-${new Date().getFullYear()}-0002`);
+    expect(s2.products[0].stock).toBe(20);
+  });
+});

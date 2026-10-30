@@ -1,5 +1,7 @@
+import { nextInvoiceNumber } from "./assistant/apply";
 import {
   type Client,
+  type Invoice,
   type Lang,
   type Shop,
   dayExpenses,
@@ -126,23 +128,22 @@ export function talk(shop: Shop, text: string, fallback: Lang): TalkResult {
           : "Dis-moi le client et le montant. Par exemple : facture Awa 15 000.";
       return { say, lang, shop };
     }
-    const invoice = {
+    const invoice: Invoice = {
       id: uid("inv"),
-      number: `JK-${shop.invoices.length + 1}`,
+      number: nextInvoiceNumber(shop),
       at: todayStamp(),
       clientId: client.id,
       amount,
-      status: "brouillon" as const,
+      status: "brouillon",
+      lines: [{ label: "Marchandises", qty: 1, unit: "", unitPrice: amount }],
     };
     const next: Shop = { ...shop, invoices: [invoice, ...shop.invoices] };
-    const note = `Facture ${invoice.number} — ${shop.name} — ${money(amount)}`;
+    // La facture s'envoie depuis l'écran Factures (PDF + WhatsApp).
     const say =
       lang === "wo"
-        ? `Facture ${invoice.number} bi pare na ngir ${client.name.split(" ")[0]} ci WhatsApp.`
-        : lang === "en"
-          ? `Invoice ${invoice.number} is ready for ${client.name.split(" ")[0]} on WhatsApp.`
-          : `Facture ${invoice.number} prête pour ${client.name.split(" ")[0]} sur WhatsApp.`;
-    return { say, lang, shop: next, wa: waLink(client, note) };
+        ? `Facture ${invoice.number} bi pare na ngir ${client.name.split(" ")[0]}. Yónnee ko ci écran Factures.`
+        : `Facture ${invoice.number} prête pour ${client.name.split(" ")[0]}. Envoie-la depuis l'écran Factures.`;
+    return { say, lang, shop: next };
   }
 
   if (/(relance|rappelle|fàttali|fattali|remind)/.test(q)) {

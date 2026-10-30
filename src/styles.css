@@ -610,6 +610,52 @@
     .grid-3 { grid-template-columns: 1fr; }
   }
 
+  /* Factures */
+  .invoice-view { display: grid; gap: 12px; margin: 14px 0 18px; }
+  .invoice-paper { position: relative; background: #fff; color: #17191F; border: 1px solid var(--j-line); border-radius: 18px; padding: 26px 24px 20px; box-shadow: var(--j-shadow); overflow: hidden; display: grid; gap: 16px; }
+  .inv-band { position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--j-yellow); }
+  .inv-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .inv-shop { display: flex; gap: 12px; align-items: flex-start; }
+  .inv-shop > div, .inv-title, .inv-client { display: grid; gap: 2px; }
+  .inv-shop b { font-size: 19px; }
+  .inv-shop small, .inv-title small, .inv-client small, .inv-pay small { color: #6E727C; font-size: 12.5px; }
+  .inv-mark { width: 44px; height: 44px; border-radius: 12px; background: #17191F; color: var(--j-yellow); display: grid; place-items: center; font-weight: 800; font-size: 20px; flex: none; }
+  .inv-title { text-align: right; }
+  .inv-title b { font-size: 28px; letter-spacing: 0.02em; }
+  .inv-client { background: #FFF6D6; border-radius: 12px; padding: 12px 14px; }
+  .inv-client b { font-size: 16px; }
+  .inv-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .inv-table th { background: #17191F; color: #fff; font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; text-align: left; padding: 9px 10px; }
+  .inv-table th:not(:first-child), .inv-table td:not(:first-child) { text-align: right; }
+  .inv-table th:first-child { border-radius: 8px 0 0 8px; }
+  .inv-table th:last-child { border-radius: 0 8px 8px 0; }
+  .inv-table td { padding: 10px; border-bottom: 1px solid #E4E2DA; }
+  .inv-table tbody tr:nth-child(even) td { background: #FAF9F5; }
+  .inv-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .inv-total { background: var(--j-yellow); border-radius: 12px; padding: 10px 16px; display: grid; text-align: right; min-width: 210px; }
+  .inv-total small { font-size: 11.5px; }
+  .inv-total b { font-size: 24px; letter-spacing: -0.02em; }
+  .inv-stamp { border: 2px solid #16804A; color: #16804A; border-radius: 8px; padding: 4px 12px; font-weight: 800; letter-spacing: 0.08em; transform: rotate(-4deg); }
+  .inv-pay { font-size: 14px; display: grid; gap: 2px; }
+  .inv-thanks { font-style: italic; font-size: 14px; color: #3a3d45; }
+  .inv-status { font-weight: 650; }
+  .inv-status.is-payee { color: #16804A; }
+  .inv-status.is-brouillon { color: #9a6b00; }
+  .list article.is-open { background: var(--j-soft-2); }
+  .inv-lines { display: grid; gap: 8px; }
+  .inv-line { display: grid; grid-template-columns: 1.2fr 2fr 0.7fr 1fr auto; gap: 8px; align-items: center; }
+  .native-select { height: 44px; width: 100%; border: 1px solid var(--j-line); border-radius: 10px; padding: 0 10px; background: var(--j-white); color: var(--j-ink); font: inherit; }
+  .inv-line .native-select { height: 40px; }
+  .inv-form-total { font-size: 16px; }
+  @media (max-width: 720px) {
+    .inv-line { grid-template-columns: 1fr 1fr; }
+    .inv-line > :nth-child(2) { grid-column: 1 / -1; grid-row: 1; }
+    .inv-title { text-align: left; }
+    .invoice-paper { padding: 22px 14px 16px; }
+    .inv-table { font-size: 12.5px; }
+    .inv-table th, .inv-table td { padding: 8px 6px; }
+  }
+
   /* Import du stock en masse */
   .import-box { margin-top: 18px; padding: 16px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-wash); display: grid; gap: 12px; }
   .import-head { display: grid; gap: 2px; }

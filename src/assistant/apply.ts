@@ -1,4 +1,4 @@
-import { type Client, type Sale, type Shop, money, todayStamp, uid } from "../model";
+import { type Client, type Invoice, type InvoiceLine, type Sale, type Shop, money, todayStamp, uid } from "../model";
 import type { DraftAction } from "./client";
 
 /** amount : montant en francs de l'écriture (pour le redire en wolof). */
@@ -6,6 +6,22 @@ export type Applied = { shop: Shop; summary: string; amount?: number };
 
 const DAY = 86_400_000;
 export const DEFAULT_DUE_DAYS = 30;
+
+/** Total d'une facture : somme des lignes, arrondie au franc. */
+export function invoiceTotal(lines: InvoiceLine[]): number {
+  return Math.round(lines.reduce((a, l) => a + l.qty * l.unitPrice, 0));
+}
+
+/** Numéro suivant pour l'année : JK-2026-0001, JK-2026-0002… */
+export function nextInvoiceNumber(shop: Shop, now = new Date()): string {
+  const year = now.getFullYear();
+  const prefix = `JK-${year}-`;
+  const max = shop.invoices.reduce((m, i) => {
+    const n = i.number.startsWith(prefix) ? Number(i.number.slice(prefix.length)) : 0;
+    return Number.isFinite(n) && n > m ? n : m;
+  }, 0);
+  return `${prefix}${String(max + 1).padStart(4, "0")}`;
+}
 
 /** Quantités à 3 décimales au plus (1 sachet sur 50 = 0,02 sac). */
 export function roundQty(n: number): number {
@@ -155,20 +171,35 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
   }
 
   if (action.type === "invoice") {
-    if (!amount || (!known && !heardClient)) return null;
+    if (!known && !heardClient) return null;
+    // Lignes : l'article et sa quantité (« facture Moussa ñaari bidon diw »), sinon le montant seul.
+    let lines: InvoiceLine[] = [];
+    if (product) {
+      if (unitKind(action.unit, product) === "inconnue") return null;
+      const retail = product.retail && unitKind(action.unit, product) === "detail" ? product.retail : undefined;
+      const unitPrice = retail ? retail.price : product.price;
+      const qty = quantity !== null && Math.abs(quantity) > 0 ? roundQty(Math.abs(quantity)) : amount && unitPrice ? roundQty(amount / unitPrice) : 1;
+      lines = [{ label: product.name, qty, unit: retail ? retail.unit : product.unit, unitPrice: amount ? Math.round(amount / qty) : unitPrice, productId: product.id }];
+    } else if (amount) {
+      lines = [{ label: action.label?.trim() || action.productName?.trim() || "Marchandises", qty: 1, unit: "", unitPrice: amount }];
+    }
+    const total = invoiceTotal(lines);
+    if (!total) return null;
     const { clients, client } = withClient(shop, known, heardClient);
-    const invoice = {
+    const invoice: Invoice = {
       id: uid("inv"),
-      number: `JK-${shop.invoices.length + 1}`,
+      number: nextInvoiceNumber(shop),
       at: todayStamp(),
       clientId: client.id,
-      amount,
-      status: "brouillon" as const,
+      amount: total,
+      status: "brouillon",
+      lines,
     };
+    if (action.dueDays && action.dueDays > 0) invoice.dueAt = new Date(Date.now() + action.dueDays * DAY).toISOString();
     return {
       shop: { ...shop, clients, invoices: [invoice, ...shop.invoices] },
-      amount,
-      summary: `Facture ${invoice.number} · ${client.name} · ${money(amount)}`,
+      amount: total,
+      summary: `Facture ${invoice.number} · ${client.name} · ${money(total)}`,
     };
   }
 
