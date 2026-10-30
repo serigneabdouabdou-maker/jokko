@@ -1,4 +1,5 @@
 import type { LiveServerMessage, Session } from "@google/genai";
+import { api } from "../data/supabase";
 import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 
@@ -70,9 +71,9 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   handlers.onPhase("connexion");
   let session: { token: string; model: string; config: Record<string, unknown> };
   try {
-    const response = await fetch("/api/assistant/live", {
+    const response = await api("live", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shopContext: context }),
     });
     const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;

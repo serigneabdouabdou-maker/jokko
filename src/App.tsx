@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import {
   type ChatMessage,
   type Lang,
   type Profile,
   type Shop,
-  blankProfile,
   currentShop,
   dayExpenses,
   daySales,
@@ -13,8 +13,8 @@ import {
   loadProfile,
   lowStock,
   money,
+  newShop,
   replaceShop,
-  saveProfile,
   toCsv,
   uid,
 } from "./model";
@@ -44,10 +44,14 @@ import {
 import { type LiveHandle, type LivePhase, LiveStartError, startLive } from "@/assistant/live";
 import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
 import { useCountUp } from "@/components/jokko/useCountUp";
+import { signInOrUp, supabase } from "@/data/supabase";
+import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
 const MAX_RECORDING_MS = 30_000;
 const TEXT_SESSION_IDLE_MS = 3 * 60_000;
 const TEXT_REPLY_TIMEOUT_MS = 15_000;
+
+const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
 type Screen = "parler" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "reglages";
 
@@ -71,19 +75,67 @@ const NAV: Array<[Screen, string]> = [
 ];
 
 export function App() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [profile, setProfileState] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [wantsLogin, setWantsLogin] = useState(false);
+  const profileRef = useRef<Profile | null>(null);
+
   useEffect(() => {
-    setProfile(loadProfile());
-    setReady(true);
+    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => data.subscription.unsubscribe();
   }, []);
+
+  const userId = session?.user.id;
   useEffect(() => {
-    if (profile) saveProfile(profile);
-  }, [profile]);
-  if (!ready) return null;
-  if (!profile) return <Landing onStart={() => setProfile(blankProfile())} />;
-  if (!profile.phone) return <Onboard profile={profile} setProfile={setProfile} />;
+    if (!session) {
+      profileRef.current = null;
+      setProfileState(null);
+      return;
+    }
+    let live = true;
+    // La copie du téléphone s'affiche tout de suite ; Supabase la met à jour ensuite.
+    const local = loadProfile();
+    if (local?.userId === session.user.id) {
+      profileRef.current = local;
+      setProfileState(local);
+    } else {
+      setLoading(true);
+    }
+    void bootstrap(session).then((loaded) => {
+      if (!live) return;
+      profileRef.current = loaded;
+      setProfileState(loaded);
+      setLoading(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setProfile = useCallback((next: Profile) => {
+    persist(profileRef.current, next);
+    profileRef.current = next;
+    setProfileState(next);
+  }, []);
+
+  if (session === undefined) return null;
+  if (!session) return wantsLogin ? <Login onBack={() => setWantsLogin(false)} /> : <Landing onStart={() => setWantsLogin(true)} />;
+  if (!profile) return <Splash text={loading ? "Jokko ouvre ta boutique…" : "Un instant…"} />;
+  if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;
   return <Desk profile={profile} setProfile={setProfile} />;
+}
+
+function Splash({ text }: { text: string }) {
+  return (
+    <main className="gate">
+      <section className="gate-copy">
+        <JokkoMark size={52} />
+        <p className="lede">{text}</p>
+      </section>
+    </main>
+  );
 }
 
 const amount = (n: number) => money(n).replace(/\u202f/g, "\u00a0");
@@ -283,24 +335,20 @@ function JokkoBars() {
   );
 }
 
-function Onboard({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
-  const [step, setStep] = useState(0);
-  const [phone, setPhone] = useState("77");
+function Login({ onBack }: { onBack: () => void }) {
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
-  const [owner, setOwner] = useState("");
-  const [shopName, setShopName] = useState(profile.shops[0].name);
-  const [activity, setActivity] = useState(profile.shops[0].activity);
-  const [lang, setLang] = useState<Lang>("wo");
-  const shop = profile.shops[0];
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const digits = code.replace(/\D/g, "").slice(0, 6);
 
-  function acceptCode() {
-    if (code.trim() !== "123456") return;
-    setStep(2);
-  }
-
-  function finish() {
-    const nextShop: Shop = { ...shop, name: shopName, activity };
-    setProfile({ ...profile, phone: `221${phone.replace(/\D/g, "")}`, owner, lang, shops: [nextShop], shopId: nextShop.id });
+  async function enter() {
+    setBusy(true);
+    setError("");
+    const outcome = await signInOrUp(phone, digits);
+    setBusy(false);
+    if (!outcome.ok) setError(outcome.message);
+    // Si c'est bon, la session change et l'appli ouvre la boutique toute seule.
   }
 
   return (
@@ -311,59 +359,86 @@ function Onboard({ profile, setProfile }: { profile: Profile; setProfile: (p: Pr
         <h1>Bonjour. <em className="accent">Je suis Jokko.</em></h1>
         <p className="lede">Tu parles, je travaille : ventes, stock, clients, factures.</p>
       </section>
-      <section className="gate-card" key={step}>
-        <ol className="steps" aria-label={`Étape ${step + 1} sur 3`}>
-          {["Numéro", "Code", "Boutique"].map((name, i) => (
-            <li key={name} className={i === step ? "on" : i < step ? "done" : ""}>{name}</li>
-          ))}
-        </ol>
-        {step === 0 && (
-          <div className="fields">
-            <div className="field">
-              <Label htmlFor="phone">Ton numéro, Sénégal +221</Label>
-              <Input id="phone" className="h-12 text-base" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
-            </div>
-            <p className="note">Dans cette démo, le code est 123456. Un vrai envoi SMS se branche plus tard.</p>
-            <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={phone.replace(/\D/g, "").length < 9} onClick={() => setStep(1)}>Recevoir mon code</Button>
+      <section className="gate-card">
+        <form
+          className="fields"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!busy) void enter();
+          }}
+        >
+          <div className="field">
+            <Label htmlFor="phone">Ton numéro de téléphone</Label>
+            <Input id="phone" className="h-12 text-base" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
           </div>
-        )}
-        {step === 1 && (
-          <div className="fields">
-            <div className="field">
-              <Label htmlFor="code">Code de vérification</Label>
-              <Input id="code" className="num h-12 text-lg tracking-[0.3em]" value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
-            </div>
-            <Button className="h-12 rounded-full text-[15px] font-semibold" onClick={acceptCode}>Entrer</Button>
+          <div className="field">
+            <Label htmlFor="code">Ton code secret (6 chiffres)</Label>
+            <Input id="code" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete="current-password" value={digits} onChange={(e) => setCode(e.target.value)} placeholder="••••••" />
           </div>
-        )}
-        {step === 2 && (
-          <div className="fields">
-            <div className="grid-2">
-              <div className="field">
-                <Label htmlFor="owner">Ton prénom</Label>
-                <Input id="owner" className="h-11" value={owner} onChange={(e) => setOwner(e.target.value)} />
-              </div>
-              <div className="field">
-                <Label>Langue de Jokko</Label>
-                <Select value={lang} onValueChange={(value) => setLang(value as Lang)}>
-                  <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANGS.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+          <p className="note">Première fois ? Choisis un code de 6 chiffres et retiens-le bien : il protège ta boutique. Déjà inscrit ? Mets ton code habituel.</p>
+          {error && <p className="note" role="alert" data-tone="error">{error}</p>}
+          <Button type="submit" className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || phone.replace(/\D/g, "").length < 9 || digits.length !== 6}>
+            {busy ? "Un instant…" : "Entrer"}
+          </Button>
+          <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+  const [owner, setOwner] = useState(profile.owner);
+  const [shopName, setShopName] = useState("");
+  const [activity, setActivity] = useState("Alimentation");
+  const [city, setCity] = useState("");
+  const [lang, setLang] = useState<Lang>(profile.lang || "wo");
+
+  function finish() {
+    setProfile(firstShop(profile, owner.trim(), lang, newShop(shopName.trim(), activity.trim(), city.trim())));
+  }
+
+  return (
+    <main className="gate">
+      <section className="gate-copy">
+        <JokkoMark size={52} />
+        <p className="eyebrow">Jokko</p>
+        <h1>Ta boutique. <em className="accent">En deux mots.</em></h1>
+        <p className="lede">Ensuite, tu parles à Jokko et il note tout.</p>
+      </section>
+      <section className="gate-card">
+        <div className="fields">
+          <div className="grid-2">
+            <div className="field">
+              <Label htmlFor="owner">Ton prénom</Label>
+              <Input id="owner" className="h-11" value={owner} onChange={(e) => setOwner(e.target.value)} />
             </div>
             <div className="field">
-              <Label htmlFor="shop">Nom de la boutique</Label>
-              <Input id="shop" className="h-11" value={shopName} onChange={(e) => setShopName(e.target.value)} />
+              <Label>Langue de Jokko</Label>
+              <Select value={lang} onValueChange={(value) => setLang(value as Lang)}>
+                <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANGS.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div className="field">
+            <Label htmlFor="shop">Nom de la boutique</Label>
+            <Input id="shop" className="h-11" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Boutique Awa" />
+          </div>
+          <div className="grid-2">
             <div className="field">
               <Label htmlFor="activity">Tu vends quoi ?</Label>
               <Input id="activity" className="h-11" value={activity} onChange={(e) => setActivity(e.target.value)} />
             </div>
-            <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner || !shopName} onClick={finish}>Ouvrir la boutique</Button>
+            <div className="field">
+              <Label htmlFor="city">Quartier ou ville</Label>
+              <Input id="city" className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pikine" />
+            </div>
           </div>
-        )}
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim()} onClick={finish}>Ouvrir la boutique</Button>
+        </div>
       </section>
     </main>
   );
@@ -405,6 +480,8 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   const [wave, setWave] = useState(0);
   const [assistant, setAssistant] = useState<AssistantStatus>("checking");
   const [live, setLive] = useState<{ phase: LivePhase; caption: string } | null>(null);
+  const [sync, setSync] = useState<SyncState>("ok");
+  useEffect(() => onSyncState(setSync), []);
   const rec = useRef<MediaRecorder | null>(null);
   const timers = useRef<number[]>([]);
   const status = useRef<Promise<Exclude<AssistantStatus, "checking">> | null>(null);
@@ -851,7 +928,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           </div>
           <div className="who">
             <span>{profile.owner}</span>
-            <Badge variant="secondary" className="capitalize">{profile.role}</Badge>
+            <Badge variant={sync === "ok" ? "secondary" : "outline"} title="Sauvegarde en ligne">{SYNC_LABELS[sync]}</Badge>
           </div>
         </header>
 
@@ -1112,7 +1189,19 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
         </div>
         <div className="field field-end">
           <Button variant="outline" className="h-11 rounded-full" onClick={() => {
-            const copy = { ...shop, id: uid("shop"), name: `${shop.name} 2`, sales: [], expenses: [], invoices: [], reminders: [] };
+            // Nouvelle boutique : mêmes articles et clients, mais avec de nouveaux identifiants (base partagée).
+            const copy = {
+              ...shop,
+              id: uid("shop"),
+              name: `${shop.name} 2`,
+              products: shop.products.map((p) => ({ ...p, id: uid("p") })),
+              clients: shop.clients.map((c) => ({ ...c, id: uid("c"), debt: 0 })),
+              shortcuts: shop.shortcuts.map((k) => ({ ...k, id: uid("k") })),
+              sales: [],
+              expenses: [],
+              invoices: [],
+              reminders: [],
+            };
             setProfile({ ...profile, shops: [...profile.shops, copy], shopId: copy.id });
           }}>Nouvelle boutique</Button>
         </div>
@@ -1124,7 +1213,11 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
       </div>
       <div className="row actions">
         <Button variant="outline" className="h-11 rounded-full" onClick={() => download(`jokko-${shop.name}.csv`, file)}>Exporter CSV</Button>
-        <Button variant="destructive" className="h-11 rounded-full" onClick={() => { localStorage.removeItem("jokko.v1"); location.reload(); }}>Effacer la démo</Button>
+        <Button variant="outline" className="h-11 rounded-full" onClick={() => {
+          void signOut().then((ok) => {
+            if (!ok) window.alert("Des ventes ne sont pas encore sauvegardées. Connecte-toi à internet, puis réessaie.");
+          });
+        }}>Se déconnecter</Button>
       </div>
     </section>
   );

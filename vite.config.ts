@@ -5,6 +5,8 @@ import react from "@vitejs/plugin-react";
 import { jokkoApi } from "./server/plugin.ts";
 
 export default defineConfig({
+  // Sur GitHub Pages, l'appli vit sous /jokko/ ; en local, à la racine.
+  base: process.env.JOKKO_BASE ?? "/",
   plugins: [react(), tailwindcss(), jokkoApi()],
   resolve: {
     alias: {

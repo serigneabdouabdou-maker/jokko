@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@google/genai": "npm:@google/genai@2.32.0",
+    "zod": "npm:zod@4.6.7"
+  }
+}

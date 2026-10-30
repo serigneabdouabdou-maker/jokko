@@ -62,6 +62,8 @@ export type Shop = {
 };
 
 export type Profile = {
+  /** Compte Supabase propriétaire de ce profil (sur ce téléphone). */
+  userId?: string;
   phone: string;
   owner: string;
   lang: Lang;
@@ -76,8 +78,10 @@ export type ChatMessage = { id: string; role: "user" | "jokko"; text: string; at
 
 const KEY = "jokko.v1";
 
+/** Identifiant unique, même entre plusieurs téléphones (sauvegardé tel quel dans Supabase). */
 export function uid(prefix = "id"): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
+  const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${random}`;
 }
 
 export function money(n: number): string {
@@ -125,6 +129,24 @@ export function seedShop(): Shop {
   };
 }
 
+/** Boutique neuve d'un vrai commerçant : vide, il ajoute ses articles en parlant ou dans Stock. */
+export function newShop(name: string, activity: string, city = ""): Shop {
+  return {
+    id: uid("shop"),
+    name,
+    city,
+    activity,
+    openingCash: 0,
+    products: [],
+    clients: [],
+    sales: [],
+    expenses: [],
+    invoices: [],
+    reminders: [],
+    shortcuts: [],
+  };
+}
+
 export function blankProfile(): Profile {
   const shop = seedShop();
   return {
@@ -150,7 +172,19 @@ export function loadProfile(): Profile | null {
 }
 
 export function saveProfile(profile: Profile) {
-  localStorage.setItem(KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(profile));
+  } catch {
+    // stockage plein ou bloqué : Supabase garde la copie
+  }
+}
+
+export function clearProfile() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // rien à effacer
+  }
 }
 
 export function currentShop(profile: Profile): Shop {

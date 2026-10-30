@@ -1,10 +1,15 @@
 # Vérification automatique : à chaque envoi de code, GitHub installe le projet,
 # lance les tests, vérifie les types et construit l'appli.
+# Sur la branche main, si tout est bon, l'appli est publiée sur GitHub Pages.
 name: Verification
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   verification:
@@ -16,10 +21,32 @@ jobs:
           node-version: 22
           cache: npm
       - name: Installer
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Tests
         run: npm test
       - name: Types
         run: npm run typecheck
       - name: Construction de l'appli
         run: npx vite build
+        env:
+          JOKKO_BASE: /jokko/
+      - name: Préparer la publication
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publication:
+    needs: verification
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - name: Publier sur GitHub Pages
+        id: deploiement
+        uses: actions/deploy-pages@v4

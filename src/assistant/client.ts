@@ -1,3 +1,4 @@
+import { api } from "../data/supabase";
 import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
 
 export type AssistantLanguage = "wo" | "fr" | "en" | "fuc";
@@ -63,7 +64,7 @@ export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
 
 export async function assistantStatus(signal?: AbortSignal): Promise<Exclude<AssistantStatus, "checking">> {
   try {
-    const response = await fetch("/api/assistant/status", { signal, headers: { Accept: "application/json" } });
+    const response = await api("status", { signal });
     if (!response.ok) return "off";
     const body = (await response.json()) as { configured?: unknown };
     return body.configured === true ? "ready" : "off";
@@ -75,9 +76,9 @@ export async function assistantStatus(signal?: AbortSignal): Promise<Exclude<Ass
 export async function interpretMessage(message: string, shopContext: ShopContext, signal?: AbortSignal): Promise<InterpretOutcome> {
   let response: Response;
   try {
-    response = await fetch("/api/assistant/interpret", {
+    response = await api("interpret", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, shopContext }),
       signal,
     });
@@ -105,9 +106,9 @@ export type ListenOutcome =
 export async function listenAudio(audio: { mimeType: string; data: string }, shopContext: ShopContext, signal?: AbortSignal): Promise<ListenOutcome> {
   let response: Response;
   try {
-    response = await fetch("/api/assistant/listen", {
+    response = await api("listen", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ audio: { mimeType: audio.mimeType.split(";")[0], data: audio.data }, shopContext }),
       signal,
     });
