@@ -1,7 +1,7 @@
 import { type Lang, type Shop, lowStock, uid } from "../model";
 import { overdueDebts } from "../data/debts";
 import { buildReport, periodOf } from "../data/report";
-import { applyDraft } from "./apply";
+import { applyDraft, roundQty, unitKind } from "./apply";
 import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
@@ -123,8 +123,13 @@ export class LiveDesk {
         pertes: r.losses,
         benefice_net: r.netProfit,
         ventes_sans_prix_achat: r.unknownRevenue,
-        vendu: r.byProduct.map((l) => ({ article: l.name, gros: l.bulkQty ? `${l.bulkQty} ${l.bulkUnit}` : null, detail: l.retailQty ? `${l.retailQty} ${l.retailUnit}` : null, benefice: l.profit })),
-        en_wolof: { ventes: francsToWolof(r.revenue), benefice_net: r.netProfit > 0 ? francsToWolof(r.netProfit) : "dara" },
+        note: r.unknownRevenue > 0 ? "Une partie des ventes n'a pas de prix d'achat : le bénéfice réel est plus élevé que benefice_net." : undefined,
+        vendu: r.byProduct.slice(0, 10).map((l) => ({ article: l.name, gros: l.bulkQty ? `${l.bulkQty} ${l.bulkUnit}` : null, detail: l.retailQty ? `${l.retailQty} ${l.retailUnit}` : null, benefice: l.profit })),
+        en_wolof: {
+          ventes: francsToWolof(r.revenue),
+          benefice: r.grossProfit > 0 ? francsToWolof(r.grossProfit) : "dara",
+          benefice_net: r.netProfit > 0 ? francsToWolof(r.netProfit) : r.netProfit < 0 ? `perte de ${francsToWolof(-r.netProfit)}` : "dara",
+        },
       });
       return {
         ...context,
@@ -165,6 +170,11 @@ export class LiveDesk {
       }
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
+      const product = action.productId ? this.deps.getShop().products.find((p) => p.id === action.productId) : undefined;
+      if (product && (action.type === "sale" || action.type === "stock_adjust") && unitKind(action.unit, product) === "inconnue") {
+        const units = [product.unit, product.retail?.unit].filter(Boolean).join(" ou ");
+        return { statut: "incomplet", besoin: `l'unité : ${product.name} se compte en ${units}`, consigne: "N'enregistre rien. Demande l'unité en disant les unités possibles." };
+      }
       const result = this.record(action, heard, call.id);
       if (!result.ok) return { statut: "incomplet", besoin: result.besoin, consigne: "Rien n'est enregistré. Pose une seule question courte pour avoir cette information." };
       const low = lowStock(result.entry.after)
@@ -224,7 +234,7 @@ function revert(current: Shop, entry: Entry): Shop {
     products: current.products.map((p) => {
       const b = before.products.find((x) => x.id === p.id);
       const a = after.products.find((x) => x.id === p.id);
-      return b && a ? { ...p, stock: Math.max(0, p.stock + (b.stock - a.stock)) } : p;
+      return b && a ? { ...p, stock: Math.max(0, roundQty(p.stock + (b.stock - a.stock))) } : p;
     }),
     clients: current.clients
       .filter((c) => !newClients.has(c.id) || c.debt !== (after.clients.find((x) => x.id === c.id)?.debt ?? 0))
@@ -232,7 +242,10 @@ function revert(current: Shop, entry: Entry): Shop {
         const b = before.clients.find((x) => x.id === c.id);
         const a = after.clients.find((x) => x.id === c.id);
         if (a && !b) return { ...c, debt: Math.max(0, c.debt - a.debt) };
-        return b && a ? { ...c, debt: Math.max(0, c.debt + (b.debt - a.debt)) } : c;
+        if (!b || !a) return c;
+        // L'échéance revient aussi à ce qu'elle était (paiement annulé, délai annulé).
+        const dueAt = a.dueAt !== b.dueAt && c.dueAt === a.dueAt ? b.dueAt : c.dueAt;
+        return { ...c, debt: Math.max(0, c.debt + (b.debt - a.debt)), dueAt };
       }),
   };
 }

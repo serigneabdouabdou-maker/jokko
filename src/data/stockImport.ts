@@ -30,16 +30,17 @@ const HEADERS: Record<Column, RegExp> = {
   name: /^(article|produit|produits|nom|designation|désignation|libelle|libellé|item|marchandise)s?$/,
   unit: /^(unite|unité|unites|unités|unit|conditionnement|mesure|unite gros|unité gros|unité de gros)$/,
   quantity: /^(quantite|quantité|qte|qté|qty|stock|nombre|nb|en stock)$/,
-  price: /^(prix|prix de vente|prix unitaire|pu|p\.u\.|tarif|prix vente|pv|prix vente gros|prix de vente gros)$/,
+  // Au Sénégal, « prix gros » = prix de vente en gros (le prix d'achat s'écrit « prix d'achat »).
+  price: /^(prix|prix de vente|prix unitaire|pu|p\.u\.|tarif|prix vente|vente|pv|prix gros|prix en gros|prix vente gros|prix de vente gros|prix de vente en gros)$/,
   min: /^(seuil|minimum|min|alerte|stock minimum|seuil d'alerte)$/,
-  cost: /^(prix d'achat|prix achat|achat|pa|p\.a\.|prix gros|prix en gros|cout|coût|prix de revient)$/,
+  cost: /^(prix d' ?achat|prix achat|achat|pa|p\.a\.|cout|coût|cout d'achat|coût d'achat|prix de revient)$/,
   retailUnit: /^(unite detail|unité détail|unité de détail|unite de detail|detail|détail)$/,
   retailPerUnit: /^(nb par unite|nb par unité|nombre par unite|nombre par unité|par unite|par unité|contenance|nb detail|nb détail)$/,
   retailPrice: /^(prix detail|prix détail|prix de detail|prix de détail|prix au detail|prix au détail)$/,
 };
 
 const norm = (v: Cell) => (v === null || v === undefined ? "" : String(v)).trim();
-const head = (v: Cell) => norm(v).toLowerCase().replace(/\s+/g, " ").replace(/[:*]/g, "").trim();
+const head = (v: Cell) => norm(v).toLowerCase().replace(/[’‘`]/g, "'").replace(/\s+/g, " ").replace(/[:*]/g, "").trim();
 
 function num(v: Cell): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -100,6 +101,8 @@ export function parseRows(rows: Cell[][]): Parsed {
       const prev = items[seen.get(key)!];
       prev.quantity += quantity;
       if (item.price !== null) prev.price = item.price;
+      if (item.cost !== undefined) prev.cost = item.cost;
+      if (item.retailUnit) Object.assign(prev, { retailUnit: item.retailUnit, retailPerUnit: item.retailPerUnit, retailPrice: item.retailPrice });
     } else {
       seen.set(key, items.length);
       items.push(item);

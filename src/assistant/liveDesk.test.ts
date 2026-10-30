@@ -237,6 +237,27 @@ describe("LiveDesk : enregistrement automatique", () => {
     expect(pickByName(list, "Ibrahima").item).toBeUndefined();
   });
 
+  it("annuler un paiement remet aussi l'échéance de la dette", () => {
+    const { desk, shop, set } = setup();
+    const moussa = shop().clients.find((c) => c.name.startsWith("Moussa"))!;
+    const due = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    set({ ...shop(), clients: shop().clients.map((c) => (c.id === moussa.id ? { ...c, dueAt: due } : c)) });
+    desk.handle({ name: "enregistrer", args: { type: "debt_payment", clientId: moussa.id, amount: 20000, heard: "Moussa fey na" } });
+    expect(shop().clients.find((c) => c.id === moussa.id)!.dueAt).toBeUndefined();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 500, heard: "vente 500" } });
+    desk.cancelCalls([]);
+    // annule le paiement alors qu'une autre écriture a suivi
+    const entry = desk.history[1];
+    desk.history = [entry, desk.history[0]];
+    desk.undo();
+    expect(shop().clients.find((c) => c.id === moussa.id)).toMatchObject({ debt: 20000, dueAt: due });
+  });
+
+  it("unité inconnue à la voix : Jokko demande l'unité", () => {
+    const { desk } = setup();
+    expect(desk.handle({ name: "enregistrer", args: { type: "sale", productName: "huile", quantity: 2, unite: "sachet", heard: "ñaari sachet diw" } })).toMatchObject({ statut: "incomplet", besoin: expect.stringContaining("bidon") });
+  });
+
   it("lit la boutique sans téléphone et ignore les outils inconnus", () => {
     const { desk } = setup();
     const context = desk.handle({ name: "lire_boutique" });

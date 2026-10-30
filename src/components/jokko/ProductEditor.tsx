@@ -14,7 +14,7 @@ const toNum = (s: string) => {
  * Fiche d'un article : prix d'achat (gros), prix de vente, et vente au détail.
  * Le bénéfice par unité s'affiche en direct pendant la saisie.
  */
-export function ProductEditor({ product, onSave, onClose }: { product: Product; onSave: (p: Product) => void; onClose: () => void }) {
+export function ProductEditor({ product, onSave, onClose }: { product: Product; onSave: (p: Product, stockChanged: boolean) => void; onClose: () => void }) {
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit);
   const [cost, setCost] = useState(product.cost !== undefined ? String(product.cost) : "");
@@ -53,7 +53,8 @@ export function ProductEditor({ product, onSave, onClose }: { product: Product; 
     };
     if (cost && Number.isFinite(c)) next.cost = Math.round(c);
     if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp) };
-    onSave(next);
+    // Le stock n'est remplacé que si on l'a changé ici (une vente à la voix a pu le modifier entre-temps).
+    onSave(next, stock.trim() !== String(product.stock));
   }
 
   return (

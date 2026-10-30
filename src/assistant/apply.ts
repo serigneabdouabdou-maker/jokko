@@ -8,19 +8,42 @@ const DAY = 86_400_000;
 export const DEFAULT_DUE_DAYS = 30;
 
 /** Quantités à 3 décimales au plus (1 sachet sur 50 = 0,02 sac). */
-function roundQty(n: number): number {
+export function roundQty(n: number): number {
   return Math.round(n * 1000) / 1000;
 }
 
-const simple = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/s$/, "").trim();
+/** Unités qui veulent dire la même chose (« kg » = « kilo »). */
+const UNIT_ALIASES: Record<string, string> = {
+  kg: "kilo", kilogramme: "kilo", kilogram: "kilo", kilo: "kilo",
+  l: "litre", lit: "litre", litre: "litre",
+  pc: "piece", piece: "piece", unite: "piece",
+  g: "gramme", gr: "gramme", gramme: "gramme",
+  sac: "sac", sak: "sac", bidon: "bidon", sachet: "sachet", paquet: "paquet", carton: "carton", boite: "boite", pot: "pot", bouteille: "bouteille",
+};
 
-/** L'unité dite (« sachet », « au détail ») désigne-t-elle la vente au détail de l'article ? */
+export function unitKey(s: string): string {
+  const w = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]/g, "").replace(/s$/, "");
+  return UNIT_ALIASES[w] ?? w;
+}
+
+/**
+ * Que veut dire l'unité entendue pour cet article ?
+ * « gros » (sac, bidon…), « detail » (sachet, kilo… ou le mot « détail »), « aucune » (rien dit),
+ * « inconnue » (une unité que l'article n'a pas : on ne devine pas, Jokko demande).
+ */
+export function unitKind(said: string | null | undefined, product: { unit: string; retail?: { unit: string } }): "gros" | "detail" | "aucune" | "inconnue" {
+  if (!said || !said.trim()) return "aucune";
+  const w = unitKey(said);
+  if (/detail|detay|tuuti|xottu/.test(said.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) return product.retail ? "detail" : "inconnue";
+  if (w === unitKey(product.unit)) return "gros";
+  if (product.retail && w === unitKey(product.retail.unit)) return "detail";
+  if (w === "piece" || w === "unite") return "aucune";
+  return "inconnue";
+}
+
+/** Compatibilité : l'unité dite désigne-t-elle le détail ? */
 export function isRetailUnit(said: string | null | undefined, retailUnit: string, bulkUnit: string): boolean {
-  if (!said) return false;
-  const w = simple(said);
-  if (!w) return false;
-  if (/detail|detay|tuuti|xottu/.test(w)) return true;
-  return w === simple(retailUnit) && w !== simple(bulkUnit);
+  return unitKind(said, { unit: bulkUnit, retail: { unit: retailUnit } }) === "detail";
 }
 
 
@@ -36,9 +59,17 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
   const heardClient = action.clientName?.trim() || null;
 
   if (action.type === "sale") {
-    const retail = product?.retail && isRetailUnit(action.unit, product.retail.unit, product.unit) ? product.retail : undefined;
-    const qty = product ? roundQty(Math.abs(quantity ?? 1) || 1) : undefined;
+    if (product && unitKind(action.unit, product) === "inconnue") return null;
+    const retail = product?.retail && unitKind(action.unit, product) === "detail" ? product.retail : undefined;
     const unitPrice = product ? (retail ? retail.price : product.price) : 0;
+    // Montant dit sans quantité (« meew 1 800 F ») : la quantité se déduit du prix (2 sachets), pas « 1 sac ».
+    const qty = product
+      ? quantity !== null && Math.abs(quantity) > 0
+        ? roundQty(Math.abs(quantity))
+        : amount && unitPrice > 0
+          ? roundQty(amount / unitPrice)
+          : 1
+      : undefined;
     const total = amount ?? (product && qty ? Math.round(unitPrice * qty) : null);
     if (!total) return null;
     // Quantité retirée du stock, en unités de gros (50 sachets = 1 sac).
@@ -75,7 +106,8 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
 
   if (action.type === "stock_adjust") {
     if (!product || quantity === null || quantity === 0) return null;
-    const retail = product.retail && isRetailUnit(action.unit, product.retail.unit, product.unit) ? product.retail : undefined;
+    if (unitKind(action.unit, product) === "inconnue") return null;
+    const retail = product.retail && unitKind(action.unit, product) === "detail" ? product.retail : undefined;
     const delta = retail ? quantity / retail.perUnit : quantity;
     const stock = Math.max(0, roundQty(product.stock + delta));
     const removed = roundQty(product.stock - stock);

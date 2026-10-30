@@ -59,3 +59,10 @@ describe("import : prix d'achat et détail", () => {
     expect(s.products.find((p) => p.name === "Lait")).toMatchObject({ cost: 30000, price: 40000, retail: { unit: "sachet", perUnit: 50, price: 900 } });
   });
 });
+
+describe("import : en-têtes courants au Sénégal", () => {
+  it("« Prix gros » = prix de vente en gros ; « Prix d’achat » avec apostrophe courbe", () => {
+    const { items } = parseRows([["Article", "Quantité", "Prix d’achat", "Prix gros"], ["Huile", 10, 6500, 7500]]);
+    expect(items[0]).toMatchObject({ cost: 6500, price: 7500 });
+  });
+});

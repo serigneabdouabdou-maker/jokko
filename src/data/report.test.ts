@@ -123,3 +123,19 @@ describe("dettes", () => {
     expect(whatsappLink("", "x")).toBeNull();
   });
 });
+
+describe("corrections de la relecture", () => {
+  it("montant dit sans quantité : la quantité se déduit du prix (1 800 F = 2 sachets, pas 1 sac)", () => {
+    const s = applyDraft(shop(), { ...blank, productId: "p-lait", amount: 1800, unit: "sachet" })!.shop;
+    expect(s.sales[0]).toMatchObject({ qty: 2, retail: true, cost: 1200 });
+    expect(s.products[1].stock).toBe(1.96);
+  });
+
+  it("« kilo » = « kg » ; unité inconnue → rien n'est vendu au prix de gros", () => {
+    const base = shop();
+    base.products.push({ id: "p-riz", name: "Riz", unit: "sac", stock: 5, min: 1, price: 18000, cost: 16000, retail: { unit: "kg", perUnit: 50, price: 400 } });
+    const s = applyDraft(base, { ...blank, productId: "p-riz", quantity: 2, unit: "kilos" })!.shop;
+    expect(s.sales[0]).toMatchObject({ amount: 800, retail: true });
+    expect(applyDraft(base, { ...blank, productId: "p-huile", quantity: 2, unit: "sachet" })).toBeNull();
+  });
+});

@@ -155,6 +155,8 @@ export function newShop(name: string, activity: string, city = ""): Shop {
     city,
     activity,
     openingCash: 0,
+    // Boutique neuve : premier inventaire attendu le mois prochain.
+    lastInventoryAt: new Date().toISOString(),
     products: [],
     clients: [],
     sales: [],

@@ -41,9 +41,10 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
     commit(done.shop);
     setCounting(false);
     const missing = done.lines.filter((l) => l.counted < l.expected);
+    const noCost = missing.filter((l) => l.loss === 0).length;
     setResult(
       missing.length
-        ? `Inventaire enregistré. ${missing.length} article(s) manquant(s), perte ${money(done.losses)}.`
+        ? `Inventaire enregistré. ${missing.length} article(s) manquant(s), perte ${money(done.losses)}.${noCost ? ` ${noCost} article(s) sans prix d'achat : leur perte n'est pas chiffrée.` : ""}`
         : "Inventaire enregistré. Rien ne manque.",
     );
   }
