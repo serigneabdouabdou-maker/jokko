@@ -47,6 +47,8 @@ export type Report = {
   /** Ventes sans prix d'achat connu (vente au comptoir sans article, article sans prix d'achat) */
   unknownRevenue: number;
   expenses: number;
+  /** Marchandise achetée pour le stock : sortie de caisse, pas une dépense du bénéfice */
+  purchases: number;
   losses: number;
   /** Bénéfice net = bénéfice − dépenses − pertes */
   netProfit: number;
@@ -96,7 +98,8 @@ export function buildReport(shop: Shop, period: Period): Report {
   }
 
   const inPeriod = shop.expenses.filter((e) => within(e.at, period));
-  const expenses = inPeriod.filter((e) => e.kind !== "perte").reduce((a, e) => a + e.amount, 0);
+  const expenses = inPeriod.filter((e) => e.kind !== "perte" && e.kind !== "achat").reduce((a, e) => a + e.amount, 0);
+  const purchases = inPeriod.filter((e) => e.kind === "achat").reduce((a, e) => a + e.amount, 0);
   const losses = inPeriod.filter((e) => e.kind === "perte").reduce((a, e) => a + e.amount, 0);
   const grossProfit = revenue - unknownRevenue - cost;
 
@@ -112,6 +115,7 @@ export function buildReport(shop: Shop, period: Period): Report {
     grossProfit,
     unknownRevenue,
     expenses,
+    purchases,
     losses,
     netProfit: grossProfit - expenses - losses,
     byProduct,

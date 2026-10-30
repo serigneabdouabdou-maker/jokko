@@ -3,7 +3,7 @@ import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../mo
 
 export type AssistantLanguage = "wo" | "fr" | "en" | "fuc";
 export type AssistantIntent = "sale" | "stock_query" | "debt_query" | "expense" | "cash_query" | "invoice" | "unknown";
-export type DraftActionType = "sale" | "expense" | "invoice" | "stock_adjust" | "debt_add" | "debt_payment" | "cash_count";
+export type DraftActionType = "sale" | "expense" | "invoice" | "stock_adjust" | "debt_add" | "debt_payment" | "cash_count" | "purchase";
 
 export type DraftAction = {
   type: DraftActionType;
@@ -18,6 +18,8 @@ export type DraftAction = {
   unit?: string | null;
   /** Délai de paiement d'une dette, en jours (30 par défaut). */
   dueDays?: number | null;
+  /** Prix d'UN article (« 20 000 chacun ») : le total est calculé par le code, quantité × prix. */
+  unitPrice?: number | null;
 };
 
 export type Interpretation = {

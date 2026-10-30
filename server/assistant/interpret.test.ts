@@ -26,6 +26,7 @@ const draft = {
   clientId: null,
   clientName: null,
   label: null,
+  unitPrice: null,
 };
 
 describe("interpret", () => {

@@ -2,11 +2,11 @@ import { type Lang, type Shop, lowStock, uid } from "../model";
 import { overdueDebts } from "../data/debts";
 import { buildReport, periodOf } from "../data/report";
 import { applyDraft, roundQty, unitKind } from "./apply";
-import { extractSpokenAmount, francsToWolof, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, settleAmounts, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 
-const TYPES: DraftActionType[] = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment"];
+const TYPES: DraftActionType[] = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment", "purchase"];
 const HISTORY = 20;
 /** Une annulation par la voix ne touche qu'une écriture récente. */
 const UNDO_WINDOW_MS = 2 * 60_000;
@@ -157,21 +157,11 @@ export class LiveDesk {
       const action = resolved.action;
       // Garde-fou des chiffres : le montant est recalculé ici, jamais laissé au calcul du modèle.
       const heardText = typeof args.heard === "string" ? args.heard : "";
-      const saidText = typeof args.montantDit === "string" ? args.montantDit.trim() : "";
-      if (action.type !== "stock_adjust") {
-        if (saidText) {
-          const said = spokenAmountToFrancs(saidText) ?? extractSpokenAmount(saidText);
-          if (!said || said.francs <= 0) return NOT_UNDERSTOOD;
-          action.amount = said.francs;
-        } else {
-          const inPhrase = extractSpokenAmount(heardText);
-          if (inPhrase && inPhrase.francs > 0) action.amount = inPhrase.francs;
-        }
-      }
+      if (action.type !== "stock_adjust" && !fixAmounts(action, args, heardText)) return NOT_UNDERSTOOD;
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
       const product = action.productId ? this.deps.getShop().products.find((p) => p.id === action.productId) : undefined;
-      if (product && (action.type === "sale" || action.type === "stock_adjust") && unitKind(action.unit, product) === "inconnue") {
+      if (product && (action.type === "sale" || action.type === "stock_adjust" || action.type === "purchase") && unitKind(action.unit, product) === "inconnue") {
         const units = [product.unit, product.retail?.unit].filter(Boolean).join(" ou ");
         return { statut: "incomplet", besoin: `l'unité : ${product.name} se compte en ${units}`, consigne: "N'enregistre rien. Demande l'unité en disant les unités possibles." };
       }
@@ -226,16 +216,23 @@ function revert(current: Shop, entry: Entry): Shop {
   const newExpenses = added(before.expenses, after.expenses);
   const newInvoices = added(before.invoices, after.invoices);
   const newClients = added(before.clients, after.clients);
+  const newProducts = added(before.products, after.products);
   return {
     ...current,
     sales: current.sales.filter((s) => !newSales.has(s.id)),
     expenses: current.expenses.filter((e) => !newExpenses.has(e.id)),
     invoices: current.invoices.filter((i) => !newInvoices.has(i.id)),
-    products: current.products.map((p) => {
-      const b = before.products.find((x) => x.id === p.id);
-      const a = after.products.find((x) => x.id === p.id);
-      return b && a ? { ...p, stock: Math.max(0, roundQty(p.stock + (b.stock - a.stock))) } : p;
-    }),
+    products: current.products
+      // Article créé par un achat : retiré, sauf s'il a servi depuis.
+      .filter((p) => !newProducts.has(p.id) || p.stock !== after.products.find((x) => x.id === p.id)?.stock)
+      .map((p) => {
+        const b = before.products.find((x) => x.id === p.id);
+        const a = after.products.find((x) => x.id === p.id);
+        if (!b || !a) return p;
+        // Le prix d'achat revient aussi à l'ancien (achat annulé).
+        const cost = a.cost !== b.cost && p.cost === a.cost ? b.cost : p.cost;
+        return { ...p, stock: Math.max(0, roundQty(p.stock + (b.stock - a.stock))), cost };
+      }),
     clients: current.clients
       .filter((c) => !newClients.has(c.id) || c.debt !== (after.clients.find((x) => x.id === c.id)?.debt ?? 0))
       .map((c) => {
@@ -364,6 +361,7 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
       label: text(args.label),
       unit: text(args.unite),
       dueDays: number(args.delaiJours),
+      unitPrice: number(args.prixUnitaire),
     },
     ambigu,
   };
@@ -373,11 +371,18 @@ export function normalizeAction(args: Record<string, unknown>, shop: Shop): Draf
   return resolveAction(args, shop)?.action ?? null;
 }
 
+/** Garde-fou des chiffres (voir settleAmounts) : renvoie false si un montant dit n'a pas pu être lu. */
+export function fixAmounts(action: DraftAction, args: Record<string, unknown>, heard: string): boolean {
+  const said = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  return settleAmounts(action, { total: said(args.montantDit), each: said(args.prixUnitaireDit) }, heard);
+}
+
 function missing(action: DraftAction): string {
   if (action.type === "sale") return "le montant, ou l'article avec sa quantité";
   if (action.type === "stock_adjust") return "l'article (il doit être dans le stock) et la quantité";
   if (action.type === "expense") return "le montant";
   if (action.type === "debt_payment") return "le client (il doit déjà avoir une dette) et le montant";
+  if (action.type === "purchase") return "l'article acheté, la quantité et le prix";
   if (action.type === "cash_count") return "le comptage de caisse, qui se fait dans l'écran Caisse";
   return "le nom du client et le montant";
 }

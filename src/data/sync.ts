@@ -366,7 +366,7 @@ export function rowsToShop(rows: ShopRows): Shop {
     expenses: byAtDesc(
       rows.expenses.map((r) => {
         const expense: Expense = { id: str(r.id), at: iso(r.at), label: str(r.label), amount: num(r.amount) };
-        if (r.kind === "perte") expense.kind = "perte";
+        if (r.kind === "perte" || r.kind === "achat") expense.kind = r.kind;
         return expense;
       }),
     ),

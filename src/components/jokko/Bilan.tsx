@@ -73,6 +73,11 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           {money(report.unknownRevenue)} de ventes sans prix d'achat connu (vente au comptoir ou article sans prix d'achat) : leur bénéfice n'est pas compté. Mets le prix d'achat dans Stock.
         </p>
       )}
+      {report.purchases > 0 && (
+        <p className="note">
+          Marchandise achetée : {money(report.purchases)}. Cet argent est sorti de la caisse, mais ce n'est pas une perte : il est dans ton stock, et son coût compte quand tu vends.
+        </p>
+      )}
 
       <h3>Ce qui s'est vendu</h3>
       {report.byProduct.length === 0 ? (

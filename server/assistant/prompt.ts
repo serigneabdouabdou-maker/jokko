@@ -32,13 +32,15 @@ Intentions
 - debt_query : une question sur les dettes des clients.
 - cash_query : une question sur la caisse ou les ventes du jour.
 - unknown : autre chose, ou une phrase trop ambiguë.
-- Réapprovisionnement, correction de stock, paiement ou ajout de dette, comptage de caisse : intent "unknown" avec draftAction de type stock_adjust, debt_payment, debt_add ou cash_count.
+- Achat de marchandise pour la boutique (« j'ai acheté 2 sacs de sucre à 20 000 », « jënd naa ñetti sac ceeb ») : intent "unknown" avec draftAction de type purchase (article, quantité, prix). Ce n'est pas une dépense.
+- Réapprovisionnement sans argent, correction de stock, paiement ou ajout de dette, comptage de caisse : intent "unknown" avec draftAction de type stock_adjust, debt_payment, debt_add ou cash_count.
 
 Données
 - Utilise uniquement le contexte boutique fourni. N'invente ni article, ni client, ni chiffre.
 - productId et clientId : copie l'id exact du contexte quand le nom correspond, sinon null. Garde le nom entendu dans productName ou clientName.
-- amount est le montant total en francs CFA, nombre entier sans espace. « 15 000 francs », « 15 000 F », « 15k » = 15000.
-- Si la quantité et l'article sont connus sans montant, amount = quantité × price du contexte.
+- amount est le montant TOTAL dit, en francs CFA, nombre sans espace. « 15 000 francs », « 15 000 F », « 15k » = 15000 ; « 2 millions » = 2000000 ; « 1,5 milliard » = 1500000000.
+- unitPrice est le prix d'UN SEUL article, quand le commerçant le dit (« chacun », « chaque sac », « l'unité », « par bidon », « bu nekk », « 2 sacs à 20 000 ») ; amount reste alors null. Ne multiplie jamais : le code calcule quantité × prix.
+- Si la quantité et l'article sont connus sans montant, amount et unitPrice restent null : le code prend le prix du contexte.
 - Une vente avec seulement un montant est complète (vente au comptoir) : draftAction de type sale avec amount, productId null et label "Vente". Une vente n'est ambiguë que si on ne connaît ni le montant, ni l'article avec sa quantité.
 - Chiffres wolof : benn 1, ñaar 2, ñett 3, ñeent 4, juróom 5, juróom-benn 6, juróom-ñaar 7, juróom-ñett 8, juróom-ñeent 9, fukk 10, ñaar-fukk 20, fanweer 30, téeméer 100, junni 1000.
 - ARGENT EN WOLOF = DËRËM (1 dërëm = 5 F), même sans dire le mot : « téeméer » = 500 F, « juróomi téeméer » = 2 500 F, « benn junni » = 5 000 F, « ñaari junni » = 10 000 F, « ñetti junni » = 15 000 F, « fukki junni » = 50 000 F. Chiffres ou français (« 10 000 », « ñaari mil ») = francs. Les quantités ne sont jamais en dërëm.

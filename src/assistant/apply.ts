@@ -1,4 +1,4 @@
-import { type Client, type Invoice, type InvoiceLine, type Sale, type Shop, money, todayStamp, uid } from "../model";
+import { type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
 import type { DraftAction } from "./client";
 
 /** amount : montant en francs de l'écriture (pour le redire en wolof). */
@@ -22,6 +22,16 @@ export function nextInvoiceNumber(shop: Shop, now = new Date()): string {
   }, 0);
   return `${prefix}${String(max + 1).padStart(4, "0")}`;
 }
+
+/**
+ * Quantité × prix de l'unité, au franc près. Les nombres de JavaScript sont exacts jusqu'à
+ * 9 millions de milliards : les milliards se calculent sans erreur.
+ */
+export function times(qty: number, unitPrice: number): number {
+  return Math.round(qty * unitPrice);
+}
+
+const qtyLabel = (n: number) => (Number.isInteger(n) ? String(n) : String(roundQty(n)).replace(".", ","));
 
 /** Quantités à 3 décimales au plus (1 sachet sur 50 = 0,02 sac). */
 export function roundQty(n: number): number {
@@ -70,23 +80,31 @@ export function isRetailUnit(said: string | null | undefined, retailUnit: string
 export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
   const product = action.productId ? shop.products.find((p) => p.id === action.productId) : undefined;
   const quantity = action.quantity !== null && Number.isFinite(action.quantity) ? action.quantity : null;
-  const amount = action.amount !== null && Number.isFinite(action.amount) && action.amount > 0 ? Math.round(action.amount) : null;
+  const given = action.amount !== null && Number.isFinite(action.amount) && action.amount > 0 ? Math.round(action.amount) : null;
+  const unitPrice = action.unitPrice !== null && action.unitPrice !== undefined && Number.isFinite(action.unitPrice) && action.unitPrice > 0 ? action.unitPrice : null;
+  // Prix de l'unité dit : le total, c'est le code qui le calcule (2 sacs × 20 000 = 40 000), jamais le modèle.
+  const each = unitPrice !== null ? { qty: quantity !== null && Math.abs(quantity) > 0 ? roundQty(Math.abs(quantity)) : 1, price: unitPrice } : null;
+  const amount = each ? times(each.qty, each.price) : given;
   const known = action.clientId ? shop.clients.find((c) => c.id === action.clientId) : undefined;
   const heardClient = action.clientName?.trim() || null;
 
   if (action.type === "sale") {
     if (product && unitKind(action.unit, product) === "inconnue") return null;
     const retail = product?.retail && unitKind(action.unit, product) === "detail" ? product.retail : undefined;
-    const unitPrice = product ? (retail ? retail.price : product.price) : 0;
+    const listPrice = product ? (retail ? retail.price : product.price) : 0;
     // Montant dit sans quantité (« meew 1 800 F ») : la quantité se déduit du prix (2 sachets), pas « 1 sac ».
-    const qty = product
-      ? quantity !== null && Math.abs(quantity) > 0
-        ? roundQty(Math.abs(quantity))
-        : amount && unitPrice > 0
-          ? roundQty(amount / unitPrice)
-          : 1
-      : undefined;
-    const total = amount ?? (product && qty ? Math.round(unitPrice * qty) : null);
+    const qty = each
+      ? each.qty
+      : product
+        ? quantity !== null && Math.abs(quantity) > 0
+          ? roundQty(Math.abs(quantity))
+          : amount && listPrice > 0
+            ? roundQty(amount / listPrice)
+            : 1
+        : quantity !== null && Math.abs(quantity) > 0
+          ? roundQty(Math.abs(quantity))
+          : undefined;
+    const total = amount ?? (product && qty ? times(qty, listPrice) : null);
     if (!total) return null;
     // Quantité retirée du stock, en unités de gros (50 sachets = 1 sac).
     const baseQty = product && qty ? (retail ? qty / retail.perUnit : qty) : 0;
@@ -106,7 +124,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
         sales: [sale, ...shop.sales],
       },
       amount: total,
-      summary: `Vente · ${qty && product ? `${qty} ${unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${money(total)}${cost !== undefined ? ` · bénéfice ${money(total - cost)}` : ""}${known ? ` · ${known.name}` : ""}`,
+      summary: `Vente · ${qty && product ? `${qtyLabel(qty)} ${unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(total)}${cost !== undefined ? ` · bénéfice ${money(total - cost)}` : ""}${known ? ` · ${known.name}` : ""}`,
     };
   }
 
@@ -116,7 +134,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     return {
       shop: { ...shop, expenses: [{ id: uid("e"), at: todayStamp(), label, amount }, ...shop.expenses] },
       amount,
-      summary: `Dépense · ${label} · ${money(amount)}`,
+      summary: `Dépense · ${label} · ${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(amount)}`,
     };
   }
 
@@ -177,9 +195,12 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     if (product) {
       if (unitKind(action.unit, product) === "inconnue") return null;
       const retail = product.retail && unitKind(action.unit, product) === "detail" ? product.retail : undefined;
-      const unitPrice = retail ? retail.price : product.price;
-      const qty = quantity !== null && Math.abs(quantity) > 0 ? roundQty(Math.abs(quantity)) : amount && unitPrice ? roundQty(amount / unitPrice) : 1;
-      lines = [{ label: product.name, qty, unit: retail ? retail.unit : product.unit, unitPrice: amount ? Math.round(amount / qty) : unitPrice, productId: product.id }];
+      const listPrice = retail ? retail.price : product.price;
+      const qty = each ? each.qty : quantity !== null && Math.abs(quantity) > 0 ? roundQty(Math.abs(quantity)) : amount && listPrice ? roundQty(amount / listPrice) : 1;
+      const linePrice = each ? each.price : amount ? amount / qty : listPrice;
+      lines = [{ label: product.name, qty, unit: retail ? retail.unit : product.unit, unitPrice: linePrice, productId: product.id }];
+    } else if (each) {
+      lines = [{ label: action.label?.trim() || action.productName?.trim() || "Marchandises", qty: each.qty, unit: action.unit?.trim() || "", unitPrice: each.price }];
     } else if (amount) {
       lines = [{ label: action.label?.trim() || action.productName?.trim() || "Marchandises", qty: 1, unit: "", unitPrice: amount }];
     }
@@ -203,7 +224,48 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     };
   }
 
+  if (action.type === "purchase") return applyPurchase(shop, action, product, quantity, unitPrice, given);
+
   return null;
+}
+
+/**
+ * Achat de marchandise : « j'ai acheté 2 sacs de sucre à 20 000 chacun ».
+ * Stock + 2 sacs ; caisse − 40 000 F (écriture « achat ») ; prix d'achat du sac = 20 000 F.
+ * L'achat ne baisse pas le bénéfice : le coût est compté quand le sucre est vendu.
+ * Article inconnu : il est créé (le prix de vente se règle ensuite dans Stock).
+ */
+function applyPurchase(shop: Shop, action: DraftAction, found: Product | undefined, quantity: number | null, unitPrice: number | null, total: number | null): Applied | null {
+  const name = found?.name ?? action.productName?.trim() ?? action.label?.trim() ?? "";
+  if (!name) return null;
+  const heardUnit = action.unit?.trim() || "";
+  if (found && unitKind(heardUnit, found) === "inconnue") return null;
+  const retail = found?.retail && unitKind(heardUnit, found) === "detail" ? found.retail : undefined;
+  // Prix de l'unité achetée : dit, sinon total ÷ quantité, sinon le dernier prix d'achat connu.
+  const knownCost = found?.cost !== undefined ? (retail ? found.cost / retail.perUnit : found.cost) : undefined;
+  const qty =
+    quantity !== null && Math.abs(quantity) > 0
+      ? roundQty(Math.abs(quantity))
+      : total && (unitPrice ?? knownCost)
+        ? roundQty(total / (unitPrice ?? knownCost)!)
+        : null;
+  if (!qty) return null;
+  const price = unitPrice ?? (total ? total / qty : knownCost);
+  if (!price) return null;
+  const paid = unitPrice ? times(qty, unitPrice) : total ?? times(qty, price);
+  const baseQty = retail ? qty / retail.perUnit : qty;
+  const unit = retail ? retail.unit : found?.unit ?? (heardUnit ? heardUnit.replace(/s$/, "") : "pièce");
+  const costPerBase = Math.round(retail ? price * retail.perUnit : price);
+  const product: Product = found
+    ? { ...found, stock: roundQty(found.stock + baseQty), cost: costPerBase }
+    : { id: uid("p"), name: name.charAt(0).toUpperCase() + name.slice(1), unit, stock: qty, min: 0, price: 0, cost: costPerBase };
+  const products = found ? shop.products.map((p) => (p.id === found.id ? product : p)) : [...shop.products, product];
+  const label = `Achat ${qtyLabel(qty)} ${unit} ${product.name}`;
+  return {
+    shop: { ...shop, products, expenses: [{ id: uid("e"), at: todayStamp(), label, amount: paid, kind: "achat" }, ...shop.expenses] },
+    amount: paid,
+    summary: `Achat · ${qtyLabel(qty)} ${unit} ${product.name} · ${qty !== 1 ? `${qtyLabel(qty)} × ${money(Math.round(price))} = ` : ""}${money(paid)} · stock ${qtyLabel(product.stock)} ${product.unit}${found ? "" : " · nouvel article : mets son prix de vente dans Stock"}`,
+  };
 }
 
 /** Client connu, ou nouveau client créé à partir du nom entendu (« Fatou bor na… »). */

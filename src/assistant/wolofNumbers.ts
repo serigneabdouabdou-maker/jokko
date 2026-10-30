@@ -20,6 +20,7 @@ const MULTIPLIERS: Record<string, number> = {
   teemeer: 100,
   junni: 1000,
   milyon: 1_000_000,
+  miliyaar: 1_000_000_000,
 };
 
 /** Écritures courantes → forme de base (sans accents ni ñ). */
@@ -33,11 +34,119 @@ const SPELLINGS: Array<[RegExp, string]> = [
   [/^(?:fanweer|fanwer|fanweeri)i?$/, "fanweer"],
   [/^(?:teemeer|temeer|teemer|temer|téeméer|teeméer)i?$/, "teemeer"],
   [/^(?:junni|juni|djouni|jounni|douni)i?$/, "junni"],
-  [/^(?:milyon|milyoŋ|million|millioni)i?$/, "milyon"],
+  [/^(?:milyon|milyoŋ|miliyon|milyong)i?$/, "milyon"],
+  [/^(?:miliyaar|milyaar|miliyar|milyar|miliaar)i?$/, "miliyaar"],
   [/^(?:derem|dërëm|dorom|deurem|dereum)$/, "derem"],
 ];
 
-const FRENCH_MONEY = /\b(mil|mille|cent|cents|francs?|fcfa|cfa|f)\b|\d/;
+/** Signes d'un montant dit en français (donc en francs) : chiffres, « mille », « million », « deux », « francs »… */
+const FRENCH_MONEY =
+  /\b(mil|mille|cent|cents|millions?|milliards?|francs?|fcfa|cfa|f|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante)\b|\d/;
+
+const FR_UNITS: Record<string, number> = {
+  zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9,
+  dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16,
+  vingt: 20, vingts: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
+};
+const FR_SCALES: Record<string, number> = {
+  cent: 100, cents: 100, mil: 1000, mille: 1000, k: 1000,
+  million: 1_000_000, millions: 1_000_000, milliard: 1_000_000_000, milliards: 1_000_000_000,
+};
+
+/**
+ * Découpe une phrase en mots et nombres, comme on l'écrit au Sénégal :
+ * « 20 000 » et « 20.000 » = 20000 ; « 1,5 » = 1.5 ; « 20k » = 20 k. La ponctuation coupe les nombres.
+ */
+function frTokens(text: string): string[] {
+  let t = text
+    .toLowerCase()
+    .replace(/ñ/g, "n")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[-–]/g, " ");
+  // Groupes de milliers : « 2 500 000 », « 20.000 », « 20 000 »
+  let prev = "";
+  while (prev !== t) {
+    prev = t;
+    t = t.replace(/(\d)[\s\u00a0\u202f.](?=\d{3}(?!\d))/g, "$1");
+  }
+  t = t
+    .replace(/(\d),(\d)/g, "$1.$2") // virgule décimale
+    .replace(/(\d)([a-z])/g, "$1 $2")
+    .replace(/([a-z])(\d)/g, "$1 $2")
+    .replace(/\.(?!\d)|(?<!\d)\./g, " | ")
+    .replace(/[^a-z0-9.ŋ\s]/g, " | ");
+  return t.split(/\s+/).filter(Boolean);
+}
+
+type Run = { value: number; start: number; end: number; next: string };
+
+/**
+ * Nombres dits en français ou en chiffres, avec leurs grandeurs :
+ * « 2 millions 500 mille » = 2 500 000 ; « 1,5 milliard » = 1 500 000 000 ; « deux mille cinq cents » = 2 500 ;
+ * « quatre-vingt-dix » = 90. Chaque nombre de la phrase est rendu à part (« 2 sacs à 20 000 » → 2 et 20 000).
+ */
+function frenchRuns(tokens: string[]): Run[] {
+  const runs: Run[] = [];
+  const isDigit = (w: string) => /^\d+(\.\d+)?$/.test(w);
+  let i = 0;
+  while (i < tokens.length) {
+    if (!isDigit(tokens[i]) && !(tokens[i] in FR_UNITS)) {
+      i++;
+      continue;
+    }
+    let total = 0;
+    let current = 0;
+    let last: "digit" | "word" | "scale" | null = null;
+    let j = i;
+    for (; j < tokens.length; j++) {
+      const w = tokens[j];
+      if (w === "et" && last === "word" && tokens[j + 1] in FR_UNITS) continue;
+      if (isDigit(w)) {
+        if (last === "digit" || last === "word") break;
+        current += Number(w);
+        last = "digit";
+      } else if (w in FR_UNITS) {
+        if (last === "digit") break;
+        const v = FR_UNITS[w];
+        // « quatre-vingt » = 80
+        if (v === 20 && current % 100 === 4) current += 76;
+        else current += v;
+        last = "word";
+      } else if (w in FR_SCALES) {
+        const f = FR_SCALES[w];
+        if (f === 100) current = (current || 1) * 100;
+        else {
+          total += (current || 1) * f;
+          current = 0;
+        }
+        last = "scale";
+      } else break;
+    }
+    runs.push({ value: Math.round((total + current) * 100) / 100, start: i, end: j, next: tokens[j] ?? "" });
+    i = j;
+  }
+  return runs;
+}
+
+/** Le plus grand nombre français (ou en chiffres) de la phrase, ou null. */
+export function readFrenchNumber(text: string): number | null {
+  const runs = frenchRuns(frTokens(text));
+  return runs.length ? Math.max(...runs.map((r) => r.value)) : null;
+}
+
+/**
+ * Le prix dit est-il celui d'UN article ? « chacun », « chaque sac », « l'unité », « le sac à »,
+ * « par bidon », « bu nekk », ou « 2 sacs à 20 000 » (« à » après une quantité = prix de l'unité ;
+ * « pour 40 000 » ou « en tout » = total).
+ */
+export function saysUnitPrice(text: string): boolean {
+  const t = text.toLowerCase().replace(/ñ/g, "n").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, " ");
+  const unit = "(?:sac|bidon|kilo|kg|paquet|carton|piece|litre|unite|sachet|boite|bouteille|pot|pain|caisse|tonne|balle)";
+  if (new RegExp(`\\b(?:chacun|chacune|chaque|l unite|la piece|par ${unit}s?|le ${unit}|la ${unit}|bu nekk|bu ne|ku nekk|benn bi)\\b`).test(t)) return true;
+  if (/\b(?:en tout|au total|total|tout compris|lepp|yepp|pour)\b/.test(t)) return false;
+  return new RegExp(`\\b${unit}s\\b[^,;|]*?\\ba\\s+(?:\\d|un|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|vingt|trente|quarante|cinquante|soixante|cent|mille)`).test(t);
+}
 
 function clean(text: string): string[] {
   return text
@@ -106,17 +215,17 @@ export function spokenAmountToFrancs(text: string): SpokenAmount | null {
   const explicitDerem = /d[eë]r[eë]m|dorom/.test(t);
   const wolof = readWolofNumber(t);
   if (wolof !== null && (explicitDerem || !FRENCH_MONEY.test(t))) {
-    return { francs: wolof * 5, derem: wolof, unit: "derem" };
+    return { francs: Math.round(wolof * 5), derem: wolof, unit: "derem" };
   }
-  const digits = t.replace(/[\s  .]/g, "").match(/\d+/);
-  if (digits) {
-    let n = Number(digits[0]);
-    if (/\bk\b|\d\s*k\b/.test(t)) n *= 1000;
-    return explicitDerem ? { francs: n * 5, derem: n, unit: "derem" } : { francs: n, derem: null, unit: "francs" };
+  const french = readFrenchNumber(t);
+  if (french !== null && french > 0) {
+    return explicitDerem ? { francs: Math.round(french * 5), derem: french, unit: "derem" } : { francs: Math.round(french), derem: null, unit: "francs" };
   }
-  // « ñaari mil », « fukki mil » : nombre wolof + « mil » français = francs
-  const withMil = readWolofNumber(t.replace(/\bmil(?:le)?\b/g, "junni"));
-  if (withMil !== null) return { francs: withMil, derem: null, unit: "francs" };
+  // « ñaari mil », « fukki million » : nombre wolof + grandeur française = francs
+  const withFrench = readWolofNumber(
+    t.replace(/\bmil(?:le)?\b/g, "junni").replace(/\bmillions?\b/g, "milyon").replace(/\bmilliards?\b/g, "miliyaar"),
+  );
+  if (withFrench !== null) return { francs: Math.round(withFrench), derem: null, unit: "francs" };
   return null;
 }
 
@@ -149,13 +258,15 @@ function under1000(n: number): string {
 export function wolofNumber(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "dara";
   n = Math.round(n);
-  const thousands = Math.floor(n / 1000);
-  const rest = n % 1000;
   const parts: string[] = [];
-  if (thousands) {
-    parts.push(thousands === 1 ? "benn junni" : `${linked(under1000(thousands))} junni`);
+  const scales: Array<[number, string]> = [[1_000_000_000, "miliyaar"], [1_000_000, "milyoŋ"], [1000, "junni"]];
+  for (const [size, word] of scales) {
+    const count = Math.floor(n / size);
+    n %= size;
+    if (!count) continue;
+    parts.push(count === 1 ? `benn ${word}` : `${linked(count >= 1000 ? wolofNumber(count) : under1000(count))} ${word}`);
   }
-  if (rest) parts.push(under1000(rest));
+  if (n) parts.push(under1000(n));
   return parts.join(" ak ");
 }
 
@@ -174,6 +285,7 @@ export function francsToWolof(francs: number): string {
 const QUANTITY_UNITS = new Set([
   "bidon", "bidons", "sac", "sacs", "kilo", "kilos", "kg", "paquet", "paquets", "pot", "pots", "boite", "boites",
   "piece", "pieces", "litre", "litres", "carton", "cartons", "bouteille", "bouteilles", "sachet", "sachets", "pain", "pains",
+  "caisse", "caisses", "tonne", "tonnes", "balle", "balles", "unite", "unites",
 ]);
 const MONEY_WORDS = new Set(["derem", "dorom", "deurem", "francs", "franc", "f", "cfa", "fcfa", "xaalis", "njeg", "njég"]);
 
@@ -185,16 +297,12 @@ const MONEY_WORDS = new Set(["derem", "dorom", "deurem", "francs", "franc", "f",
  */
 export function extractSpokenAmount(text: string): SpokenAmount | null {
   const words = clean(text);
-  // 1. Chiffres écrits : « 2 500 », « 15000 », « 15 000 F » (pas suivis d'une unité de quantité)
-  const digitRun = text.match(/\d[\d\s.  ]*\d|\d/g);
-  if (digitRun) {
-    for (const raw of digitRun) {
-      const n = Number(raw.replace(/[\s.  ]/g, ""));
-      const after = text.slice(text.indexOf(raw) + raw.length).trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-      if (QUANTITY_UNITS.has(after) || !Number.isFinite(n) || n === 0) continue;
-      if (/^d[eë]r[eë]m/.test(after)) return { francs: n * 5, derem: n, unit: "derem" };
-      if (n >= 25) return { francs: n, derem: null, unit: "francs" };
-    }
+  // 1. Chiffres et nombres français : « 2 500 », « 15 000 F », « 2 millions », « vingt mille »
+  //    (un nombre suivi d'une unité de quantité — « 2 sacs » — n'est pas de l'argent)
+  for (const run of frenchRuns(frTokens(text))) {
+    if (QUANTITY_UNITS.has(run.next) || run.value <= 0) continue;
+    if (/^d[e]r[e]m|^dorom|^deurem/.test(run.next)) return { francs: Math.round(run.value * 5), derem: run.value, unit: "derem" };
+    if (run.value >= 25) return { francs: Math.round(run.value), derem: null, unit: "francs" };
   }
   // 2. Suites de nombres wolof
   let best: SpokenAmount | null = null;
@@ -202,14 +310,14 @@ export function extractSpokenAmount(text: string): SpokenAmount | null {
     if (!base(words[i]) || base(words[i]) === "derem") continue;
     let j = i;
     const run: string[] = [];
-    while (j < words.length && (base(words[j]) && base(words[j]) !== "derem" || (words[j] === "ak" && j + 1 < words.length && base(words[j + 1])) || words[j] === "mil" || words[j] === "mille")) {
+    while (j < words.length && (base(words[j]) && base(words[j]) !== "derem" || (words[j] === "ak" && j + 1 < words.length && base(words[j + 1])) || /^(mil|mille|millions?|milliards?)$/.test(words[j]))) {
       run.push(words[j]);
       j++;
     }
     const next = words[j] ?? "";
     const phrase = run.join(" ");
-    const hasMultiplier = run.some((w) => base(w) === "teemeer" || base(w) === "junni" || base(w) === "milyon");
-    const french = run.includes("mil") || run.includes("mille");
+    const hasMultiplier = run.some((w) => ["teemeer", "junni", "milyon", "miliyaar"].includes(base(w) ?? ""));
+    const french = run.some((w) => /^(mil|mille|millions?|milliards?)$/.test(w));
     const money = MONEY_WORDS.has(next);
     if (QUANTITY_UNITS.has(next) && !hasMultiplier) {
       i = j;
@@ -222,4 +330,47 @@ export function extractSpokenAmount(text: string): SpokenAmount | null {
     i = j;
   }
   return best;
+}
+
+export type Priced = { amount: number | null; quantity: number | null; unitPrice?: number | null };
+
+/**
+ * Garde-fou des chiffres : les montants sont relus ici depuis les mots dits, jamais pris du calcul du modèle.
+ * - words.total : le total dit ; words.each : le prix d'UN article (« 20 000 chacun »).
+ * - Sans mots fournis, le montant est cherché dans la phrase entendue.
+ * - « chacun », « chaque sac », « bu nekk », « 2 sacs à 20 000 » : ce montant est le prix de l'unité ;
+ *   le total sera calculé par le code (quantité × prix), même si le modèle l'a pris pour le total.
+ * Modifie l'écriture. Renvoie false si un montant dit n'a pas pu être lu (il faut faire répéter).
+ */
+export function settleAmounts(action: Priced, words: { total?: string; each?: string }, heard: string): boolean {
+  const read = (s: string) => spokenAmountToFrancs(s) ?? extractSpokenAmount(s);
+  const saidTotal = words.total?.trim() ?? "";
+  const saidEach = words.each?.trim() ?? "";
+  if (saidEach) {
+    const each = read(saidEach);
+    if (!each || each.francs <= 0) return false;
+    action.unitPrice = each.francs;
+  }
+  if (saidTotal) {
+    const total = read(saidTotal);
+    if (!total || total.francs <= 0) return false;
+    action.amount = total.francs;
+  }
+  const inPhrase = extractSpokenAmount(heard);
+  const eachInPhrase = saysUnitPrice(heard);
+  // Prix de l'unité calculé par le modèle alors que la phrase dit un total (« 3 sacs pour 60 000 ») : on l'oublie.
+  if (!saidEach && action.unitPrice && inPhrase && inPhrase.francs !== action.unitPrice && !eachInPhrase) action.unitPrice = null;
+  if (!saidTotal && !saidEach && inPhrase && inPhrase.francs > 0) {
+    if (action.unitPrice && inPhrase.francs === action.unitPrice) action.amount = null;
+    else action.amount = inPhrase.francs;
+  }
+  const qty = action.quantity !== null && Number.isFinite(action.quantity) ? Math.abs(action.quantity) : 0;
+  // Le prix entendu est celui d'un article : on ne le prend pas pour le total.
+  if (!action.unitPrice && action.amount && qty > 1 && inPhrase?.francs === action.amount && eachInPhrase) {
+    action.unitPrice = action.amount;
+    action.amount = null;
+  }
+  // Prix de l'unité et quantité connus : c'est le calcul du code qui compte.
+  if (action.unitPrice && qty > 0) action.amount = null;
+  return true;
 }

@@ -41,8 +41,12 @@ export type Sale = {
   unit?: string;
 };
 
-/** kind « perte » : marchandise perdue ou manquante à l'inventaire (au prix d'achat). */
-export type Expense = { id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" };
+/**
+ * kind « perte » : marchandise perdue ou manquante à l'inventaire (au prix d'achat).
+ * kind « achat » : marchandise achetée pour le stock. L'argent sort de la caisse, mais ce n'est pas
+ * une dépense du bénéfice : le coût compte quand l'article est vendu.
+ */
+export type Expense = { id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" | "achat" };
 
 export type InvoiceLine = { label: string; qty: number; unit: string; unitPrice: number; productId?: string };
 

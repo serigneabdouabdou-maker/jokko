@@ -454,7 +454,7 @@ function describeChange(before: Shop, after: Shop): string | undefined {
   const sales = fresh(before.sales, after.sales);
   if (sales.length) return `Vente notée · ${amount(sales.reduce((a, s) => a + s.amount, 0))}`;
   const expenses = fresh(before.expenses, after.expenses);
-  if (expenses.length) return `${expenses.every((e) => e.kind === "perte") ? "Perte enregistrée" : "Dépense notée"} · ${amount(expenses.reduce((a, s) => a + s.amount, 0))}`;
+  if (expenses.length) return `${expenses.every((e) => e.kind === "perte") ? "Perte enregistrée" : expenses.every((e) => e.kind === "achat") ? "Achat noté" : "Dépense notée"} · ${amount(expenses.reduce((a, s) => a + s.amount, 0))}`;
   const invoices = fresh(before.invoices, after.invoices);
   if (invoices.length) return `Facture ${invoices[0].number} prête`;
   if (fresh(before.reminders, after.reminders).length) return "Relance préparée";
@@ -1028,7 +1028,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           {screen === "stock" && <Stock shop={shop} commit={commit} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} />}
-          {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
+          {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && <Bilan shop={shop} commit={commit} />}
           {screen === "caisse" && <Cash shop={shop} commit={commit} />}

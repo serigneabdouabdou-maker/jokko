@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
-import { extractSpokenAmount } from "../../src/assistant/wolofNumbers.ts";
+import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
 import { buildAudioPrompt, buildPrompt, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
@@ -92,9 +92,10 @@ export async function interpret(request: InterpretRequest, options: InterpretOpt
 export function checkAmount(result: Interpretation, phrase: string): Interpretation {
   const action = result.draftAction;
   if (!action || action.type === "stock_adjust") return result;
-  const found = extractSpokenAmount(phrase);
-  if (!found || found.francs <= 0 || found.francs === action.amount) return result;
-  return { ...result, draftAction: { ...action, amount: found.francs } };
+  const next = { ...action };
+  settleAmounts(next, {}, phrase);
+  if (next.amount === action.amount && next.unitPrice === action.unitPrice) return result;
+  return { ...result, draftAction: next };
 }
 
 export async function listen(request: ListenRequest, options: InterpretOptions): Promise<Heard> {

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const LANGUAGES = ["wo", "fr", "en", "fuc"] as const;
 export const INTENTS = ["sale", "stock_query", "debt_query", "expense", "cash_query", "invoice", "unknown"] as const;
-export const ACTION_TYPES = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment", "cash_count"] as const;
+export const ACTION_TYPES = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment", "cash_count", "purchase"] as const;
 
 export type Language = (typeof LANGUAGES)[number];
 export type Intent = (typeof INTENTS)[number];
@@ -14,7 +14,9 @@ export const draftActionSchema = z.strictObject({
   productId: z.string().max(64).nullable(),
   productName: z.string().max(80).nullable(),
   quantity: z.number().min(0).max(1_000_000).nullable(),
-  amount: z.number().min(0).max(1_000_000_000).nullable(),
+  amount: z.number().min(0).max(1_000_000_000_000).nullable(),
+  /** Prix d'UN article, quand le commerçant l'a dit (« 20 000 chacun ») : le total est calculé par le code. */
+  unitPrice: z.number().min(0).max(1_000_000_000_000).nullable(),
   clientId: z.string().max(64).nullable(),
   clientName: z.string().max(80).nullable(),
   label: z.string().max(120).nullable(),
