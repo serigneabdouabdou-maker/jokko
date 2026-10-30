@@ -16,7 +16,7 @@ export const draftActionSchema = z.strictObject({
   quantity: z.number().min(0).max(1_000_000).nullable(),
   amount: z.number().min(0).max(1_000_000_000_000).nullable(),
   /** Prix d'UN article, quand le commerçant l'a dit (« 20 000 chacun ») : le total est calculé par le code. */
-  unitPrice: z.number().min(0).max(1_000_000_000_000).nullable(),
+  unitPrice: z.number().min(0).max(1_000_000_000_000).nullable().optional(),
   clientId: z.string().max(64).nullable(),
   clientName: z.string().max(80).nullable(),
   label: z.string().max(120).nullable(),
