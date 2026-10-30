@@ -67,30 +67,80 @@ class JokkoCapture extends AudioWorkletProcessor {
 registerProcessor("jokko-capture", JokkoCapture);
 `;
 
-export async function startLive(context: ShopContext, handlers: LiveHandlers, options: LiveOptions): Promise<LiveHandle> {
-  handlers.onPhase("connexion");
-  let session: { token: string; model: string; config: Record<string, unknown> };
+type LiveTicket = { token: string; model: string; config: Record<string, unknown>; at: number };
+
+/** Un jeton Gemini est valable 90 s pour ouvrir une conversation : on le garde 70 s au plus. */
+const TICKET_MS = 70_000;
+let ticket: Promise<LiveTicket> | null = null;
+let ticketAt = 0;
+let genai: Promise<typeof import("@google/genai")> | null = null;
+
+async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
+  let response: Response;
   try {
-    const response = await api("live", {
+    response = await api("live", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shopContext: context }),
     });
-    const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-    if (response.status === 503) throw new LiveStartError("Gemini n’est pas configuré sur le serveur.", "not_configured");
-    if (!response.ok || typeof body?.token !== "string" || typeof body.model !== "string") {
-      throw new LiveStartError(typeof body?.message === "string" ? body.message : "La conversation en direct ne démarre pas pour le moment.", "unavailable");
-    }
-    session = { token: body.token, model: body.model, config: (body.config ?? {}) as Record<string, unknown> };
-  } catch (error) {
-    if (error instanceof LiveStartError) throw error;
+  } catch {
     throw new LiveStartError("Jokko ne joint pas le serveur. Vérifie la connexion.", "unavailable");
+  }
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (response.status === 503) throw new LiveStartError("Gemini n’est pas configuré sur le serveur.", "not_configured");
+  if (!response.ok || typeof body?.token !== "string" || typeof body.model !== "string") {
+    throw new LiveStartError(typeof body?.message === "string" ? body.message : "La conversation en direct ne démarre pas pour le moment.", "unavailable");
+  }
+  return { token: body.token, model: body.model, config: (body.config ?? {}) as Record<string, unknown>, at: Date.now() };
+}
+
+/**
+ * Préchauffe la conversation : le module Gemini et un jeton sont prêts AVANT que le commerçant
+ * touche le micro. L'appui ne fait plus qu'ouvrir la ligne.
+ */
+export function prewarmLive(context: ShopContext) {
+  genai ??= import("@google/genai");
+  if (ticket && Date.now() - ticketAt < TICKET_MS) return;
+  ticketAt = Date.now();
+  const next = fetchTicket(context);
+  next.catch(() => {
+    if (ticket === next) ticket = null;
+  });
+  ticket = next;
+}
+
+/** Prend le jeton préparé s'il est encore bon, sinon en demande un. Un jeton ne sert qu'une fois. */
+async function takeTicket(context: ShopContext): Promise<LiveTicket> {
+  const ready = ticket && Date.now() - ticketAt < TICKET_MS ? ticket : null;
+  ticket = null;
+  if (ready) {
+    try {
+      return await ready;
+    } catch {
+      // jeton préparé raté : on en redemande un
+    }
+  }
+  return fetchTicket(context);
+}
+
+export async function startLive(context: ShopContext, handlers: LiveHandlers, options: LiveOptions): Promise<LiveHandle> {
+  handlers.onPhase("connexion");
+  // Micro, jeton et module Gemini en même temps, pas l'un après l'autre.
+  const micro = options.microphone ? openMicrophone() : Promise.resolve(null);
+  micro.catch(() => undefined);
+  const sdk = (genai ??= import("@google/genai"));
+  let session: LiveTicket;
+  try {
+    session = await takeTicket(context);
+  } catch (error) {
+    void micro.then((m) => m?.getTracks().forEach((t) => t.stop())).catch(() => undefined);
+    throw error;
   }
 
   const audio = audioContext();
   if (audio.state === "suspended") await audio.resume().catch(() => undefined);
   const player = new PcmPlayer(audio);
-  let media: MediaStream | null = options.microphone ? await openMicrophone() : null;
+  let media: MediaStream | null = await micro;
   let open = false;
   let ended = false;
   let live: Session | null = null;
@@ -165,7 +215,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   };
 
   try {
-    const { GoogleGenAI } = await import("@google/genai");
+    const { GoogleGenAI } = await sdk;
     const ai = new GoogleGenAI({ apiKey: session.token, httpOptions: { apiVersion: "v1alpha" } });
     live = await ai.live.connect({
       model: session.model,

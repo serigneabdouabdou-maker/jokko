@@ -41,7 +41,7 @@ import {
   interpretMessage,
   listenAudio,
 } from "@/assistant/client";
-import { type LiveHandle, type LivePhase, LiveStartError, startLive } from "@/assistant/live";
+import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive } from "@/assistant/live";
 import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { signInOrUp, supabase } from "@/data/supabase";
@@ -49,7 +49,6 @@ import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } f
 
 const MAX_RECORDING_MS = 30_000;
 const TEXT_SESSION_IDLE_MS = 3 * 60_000;
-const TEXT_REPLY_TIMEOUT_MS = 15_000;
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
@@ -544,6 +543,24 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     };
   }, []);
 
+  // Préchauffage : quand Gemini est prêt et que le micro n'est pas ouvert, on garde
+  // une conversation prête à démarrer (jeton renouvelé toutes les minutes).
+  useEffect(() => {
+    if (assistant !== "ready" || live) return;
+    const warm = () => {
+      if (!liveRef.current && document.visibilityState === "visible") {
+        prewarmLive(buildShopContext(currentShop(profileRef.current), profileRef.current.lang));
+      }
+    };
+    warm();
+    const id = window.setInterval(warm, 60_000);
+    document.addEventListener("visibilitychange", warm);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", warm);
+    };
+  }, [assistant, live]);
+
   function say(text: string) {
     setMessages((m) => [...m, { id: uid("m"), role: "jokko", text, at: new Date().toISOString() }]);
   }
@@ -805,25 +822,15 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     const id = uid("m");
     setMessages((m) => [...m, { id, role: "user", text: input, at: new Date().toISOString() }]);
     setText("");
-    if (liveRef.current || (await isReady())) {
-      if (!liveRef.current?.listening) {
-        setReply(null);
-        setVoice("comprehension");
-      }
-      const handle = await openLive(false);
-      if (handle && handle !== "microphone") {
-        clearIdle();
-        turn.current = { user: id, userText: input, jokkoText: "" };
-        lastUserBubble.current = id;
-        handle.tell(input);
-        const asked = replies.current;
-        later(TEXT_REPLY_TIMEOUT_MS, () => {
-          if (liveRef.current === handle && !handle.listening && replies.current === asked) {
-            fail("Jokko ne répond pas pour le moment. Réessaie dans un instant.");
-          }
-        });
-        return;
-      }
+    // Pendant une conversation au micro, le texte rejoint la conversation.
+    // Sinon, il passe par la compréhension rapide (texte), sans ouvrir de ligne audio.
+    const handle = liveRef.current;
+    if (handle?.listening) {
+      clearIdle();
+      turn.current = { user: id, userText: input, jokkoText: "" };
+      lastUserBubble.current = id;
+      handle.tell(input);
+      return;
     }
     setReply(null);
     setVoice("comprehension");

@@ -2,6 +2,7 @@
 // POST /assistant/interpret | /assistant/listen | /assistant/live, GET /assistant/status
 // Exige un utilisateur connecté (verify_jwt) : personne ne peut utiliser la clé sans compte.
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/2c599dae6cc25a8e71ae101d7ac5d38f3cac62cf/server/assistant/interpret.ts";
 import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/2c599dae6cc25a8e71ae101d7ac5d38f3cac62cf/server/assistant/live.ts";
@@ -41,20 +42,20 @@ function send(req: Request, status: number, body: unknown, headers: Record<strin
   });
 }
 
-/**
- * Commerçant connecté, ou null. Le jeton est vérifié par Supabase Auth lui-même :
- * une simple clé publique (sans connexion) ne suffit pas pour utiliser Gemini.
- */
+/** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
+const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+/** Commerçant connecté, ou null. Une simple clé publique (sans connexion) ne suffit pas pour utiliser Gemini. */
 async function userOf(req: Request): Promise<string | null> {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token || token.startsWith("sb_")) return null;
   try {
-    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "" },
-    });
-    if (!res.ok) return null;
-    const user = await res.json();
-    return typeof user?.id === "string" ? user.id : null;
+    const { data, error } = await authClient.auth.getClaims(token);
+    const claims = data?.claims;
+    if (error || !claims || claims.role !== "authenticated" || typeof claims.sub !== "string") return null;
+    return claims.sub;
   } catch {
     return null;
   }
