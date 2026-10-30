@@ -1,0 +1,187 @@
+import { describe, expect, it } from "vitest";
+import { type Shop, seedShop } from "../model";
+import { applyDraft } from "./apply";
+import type { DraftAction } from "./client";
+import { type Entry, LiveDesk, normalizeAction, sameName } from "./liveDesk";
+
+const blank: DraftAction = {
+  type: "sale",
+  productId: null,
+  productName: null,
+  quantity: null,
+  amount: null,
+  clientId: null,
+  clientName: null,
+  label: null,
+};
+
+function setup() {
+  let shop: Shop = seedShop();
+  const saved: Entry[] = [];
+  const undone: Entry[] = [];
+  const desk = new LiveDesk({
+    getShop: () => shop,
+    lang: () => "wo",
+    write: (next) => {
+      shop = next;
+    },
+    onSaved: (entry) => saved.push(entry),
+    onUndone: (entry) => undone.push(entry),
+  });
+  return { desk, saved, undone, shop: () => shop, set: (next: Shop) => (shop = next) };
+}
+
+describe("applyDraft", () => {
+  it("vend 2 bidons d’huile : vente notée et stock baissé", () => {
+    const shop = seedShop();
+    const huile = shop.products.find((p) => p.name === "Huile")!;
+    const applied = applyDraft(shop, { ...blank, productId: huile.id, quantity: 2 })!;
+    expect(applied.summary).toMatch(/^Vente · 2 bidon Huile · 15\s000 F$/);
+    expect(applied.shop.sales[0]).toMatchObject({ label: "Huile", amount: 15000, qty: 2, productId: huile.id });
+    expect(applied.shop.products.find((p) => p.id === huile.id)!.stock).toBe(1);
+  });
+
+  it("vente au comptoir, dépense, réapprovisionnement, dette et facture", () => {
+    const shop = seedShop();
+    const riz = shop.products.find((p) => p.name === "Riz brisé")!;
+    const moussa = shop.clients.find((c) => c.name.startsWith("Moussa"))!;
+    expect(applyDraft(shop, { ...blank, amount: 15000 })!.shop.sales[0]).toMatchObject({ label: "Vente", amount: 15000 });
+    expect(applyDraft(shop, { ...blank, type: "expense", amount: 2000, label: "Transport" })!.shop.expenses[0]).toMatchObject({ label: "Transport", amount: 2000 });
+    expect(applyDraft(shop, { ...blank, type: "stock_adjust", productId: riz.id, quantity: 10 })!.shop.products.find((p) => p.id === riz.id)!.stock).toBe(22);
+    expect(applyDraft(shop, { ...blank, type: "debt_payment", clientId: moussa.id, amount: 5000 })!.shop.clients.find((c) => c.id === moussa.id)!.debt).toBe(15000);
+    expect(applyDraft(shop, { ...blank, type: "invoice", clientId: moussa.id, amount: 9000 })!.shop.invoices[0]).toMatchObject({ number: "JK-1", amount: 9000 });
+  });
+
+  it("une dette pour un client inconnu crée le client", () => {
+    const shop = seedShop();
+    const applied = applyDraft(shop, { ...blank, type: "debt_add", clientName: "ibrahima", amount: 3000 })!;
+    const ibra = applied.shop.clients.find((c) => c.name === "Ibrahima")!;
+    expect(ibra.debt).toBe(3000);
+    expect(applied.shop.clients).toHaveLength(shop.clients.length + 1);
+  });
+
+  it("refuse une écriture incomplète", () => {
+    const shop = seedShop();
+    expect(applyDraft(shop, blank)).toBeNull();
+    expect(applyDraft(shop, { ...blank, type: "expense" })).toBeNull();
+    expect(applyDraft(shop, { ...blank, type: "debt_add", amount: 1000 })).toBeNull();
+    expect(applyDraft(shop, { ...blank, type: "debt_payment", clientName: "Inconnu", amount: 1000 })).toBeNull();
+  });
+});
+
+describe("noms wolof des articles", () => {
+  it("ceeb = riz, diw = huile, suukar = sucre", () => {
+    expect(sameName("Riz brisé", "ceeb")).toBe(true);
+    expect(sameName("Huile", "ñaari bidon diw")).toBe(true);
+    expect(sameName("Sucre", "suukar")).toBe(true);
+    expect(sameName("Huile", "huiles")).toBe(true);
+    expect(sameName("Sucre", "riz")).toBe(false);
+    expect(sameName("Pomme de terre", "de")).toBe(false);
+  });
+
+  it("ne confond pas les articles (sel ≠ liquide vaisselle, sac ≠ sac de charbon)", () => {
+    const shop = seedShop();
+    const extra: Shop = {
+      ...shop,
+      products: [
+        { id: "p-vaisselle", name: "Liquide vaisselle", unit: "bouteille", stock: 5, min: 1, price: 1000 },
+        { id: "p-charbon", name: "Sac de charbon", unit: "sac", stock: 5, min: 1, price: 3000 },
+        { id: "p-sel", name: "Sel", unit: "paquet", stock: 5, min: 1, price: 200 },
+        ...shop.products,
+      ],
+    };
+    expect(normalizeAction({ type: "sale", productName: "xorom", quantity: 1 }, extra)!.productId).toBe("p-sel");
+    expect(normalizeAction({ type: "sale", productName: "sac de riz", quantity: 1 }, extra)!.productName).toBe("Riz brisé");
+  });
+
+  it("lit 15.000 et 15 000 F comme quinze mille", () => {
+    expect(normalizeAction({ type: "sale", amount: "15.000" }, seedShop())!.amount).toBe(15000);
+    expect(normalizeAction({ type: "sale", amount: "15 000 F" }, seedShop())!.amount).toBe(15000);
+  });
+
+  it("normalise les montants dits avec des espaces", () => {
+    const action = normalizeAction({ type: "sale", productName: "diw", quantity: "2", amount: "15 000" }, seedShop())!;
+    expect(action).toMatchObject({ productName: "Huile", quantity: 2, amount: 15000 });
+  });
+});
+
+describe("LiveDesk : enregistrement automatique", () => {
+  it("enregistre tout de suite, sans attendre de oui", () => {
+    const { desk, saved, shop } = setup();
+    const result = desk.handle({ name: "enregistrer", args: { type: "sale", productName: "diw", quantity: 2, heard: "Jaay naa ñaari bidon diw" } });
+    expect(result).toMatchObject({ statut: "enregistre", resume: expect.stringContaining("15") });
+    expect(result.stock_bas).toEqual(["Huile : 1 bidon"]);
+    expect(shop().sales).toHaveLength(2);
+    expect(shop().products.find((p) => p.name === "Huile")!.stock).toBe(1);
+    expect(saved).toHaveLength(1);
+  });
+
+  it("phrase incomplète : rien n’est enregistré, Jokko doit demander", () => {
+    const { desk, shop } = setup();
+    const result = desk.handle({ name: "enregistrer", args: { type: "expense", heard: "transport" } });
+    expect(result).toMatchObject({ statut: "incomplet", besoin: "le montant" });
+    expect(shop().expenses).toHaveLength(1);
+  });
+
+  it("« déedéet » : annule la dernière écriture", () => {
+    const { desk, undone, shop } = setup();
+    const before = shop();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 5000, heard: "vente 5000" } });
+    expect(desk.handle({ name: "annuler_derniere" })).toMatchObject({ statut: "annule" });
+    expect(shop()).toBe(before);
+    expect(undone).toHaveLength(1);
+    expect(desk.handle({ name: "annuler_derniere" })).toMatchObject({ statut: "rien_a_annuler" });
+  });
+
+  it("annuler garde les changements faits à la main après l’écriture", () => {
+    const { desk, shop, set } = setup();
+    desk.handle({ name: "enregistrer", args: { type: "sale", productName: "huile", quantity: 2, heard: "2 huile" } });
+    const sucre = shop().products.find((p) => p.name === "Sucre")!;
+    set({ ...shop(), products: shop().products.map((p) => (p.id === sucre.id ? { ...p, stock: 99 } : p)) });
+    desk.undo();
+    expect(shop().sales).toHaveLength(1);
+    expect(shop().products.find((p) => p.name === "Huile")!.stock).toBe(3);
+    expect(shop().products.find((p) => p.name === "Sucre")!.stock).toBe(99);
+  });
+
+  it("le commerçant coupe la parole : l’appel annulé par Gemini est défait (pas de double vente)", () => {
+    const { desk, shop } = setup();
+    desk.handle({ id: "call-1", name: "enregistrer", args: { type: "sale", productName: "huile", quantity: 2, heard: "ñaari diw" } });
+    desk.cancelCalls(["call-1"]);
+    desk.handle({ id: "call-2", name: "enregistrer", args: { type: "sale", productName: "huile", quantity: 2, heard: "ñaari diw ak suukar" } });
+    expect(shop().sales).toHaveLength(2);
+    expect(shop().products.find((p) => p.name === "Huile")!.stock).toBe(1);
+  });
+
+  it("la même écriture répétée tout de suite n’est enregistrée qu’une fois", () => {
+    const { desk, shop } = setup();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 5000, heard: "vente 5000" } });
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 5000, heard: "vente 5000" } });
+    expect(shop().sales).toHaveLength(2);
+  });
+
+  it("« déedéet » ne défait pas une vente d’il y a une heure", () => {
+    const { desk, shop } = setup();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 5000, heard: "vente" } });
+    desk.history[0].at -= 60 * 60_000;
+    expect(desk.handle({ name: "annuler_derniere" })).toMatchObject({ statut: "rien_a_annuler" });
+    expect(shop().sales).toHaveLength(2);
+  });
+
+  it("n’annule jamais une écriture d’une autre boutique", () => {
+    const { desk, shop, set } = setup();
+    desk.handle({ name: "enregistrer", args: { type: "sale", amount: 5000, heard: "vente" } });
+    const other = { ...seedShop() };
+    set(other);
+    expect(desk.undo()).toBeNull();
+    expect(shop()).toBe(other);
+  });
+
+  it("lit la boutique sans téléphone et ignore les outils inconnus", () => {
+    const { desk } = setup();
+    const context = desk.handle({ name: "lire_boutique" });
+    expect(context).toMatchObject({ language: "wo" });
+    expect(JSON.stringify(context)).not.toMatch(/phone|221\d{9}/);
+    expect(desk.handle({ name: "supprimer_tout" })).toEqual({ statut: "outil_inconnu" });
+  });
+});

@@ -1,0 +1,25 @@
+# Vérification automatique : à chaque envoi de code, GitHub installe le projet,
+# lance les tests, vérifie les types et construit l'appli.
+name: Verification
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Installer
+        run: npm ci
+      - name: Tests
+        run: npm test
+      - name: Types
+        run: npm run typecheck
+      - name: Construction de l'appli
+        run: npx vite build
