@@ -2,7 +2,8 @@ import { EndSensitivity, GoogleGenAI, type LiveConnectConfig, Modality, StartSen
 import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import type { ShopContext } from "./schema.ts";
 
-export const DEFAULT_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest";
+/** Gemini 3.8 Live : environ 3 fois plus rapide que 2.5 sur nos essais en wolof (0,9 s contre 3,3 s). */
+export const DEFAULT_LIVE_MODEL = "gemini-3.8-live";
 export const DEFAULT_LIVE_VOICE = "Sulafat";
 const SESSION_MINUTES = 30;
 const START_SECONDS = 90;
@@ -36,6 +37,8 @@ Boutique
 
 Enregistrer (vente, dépense, réapprovisionnement, dette, paiement, facture)
 1. Dès que la phrase contient tout ce qu'il faut, appelle enregistrer tout de suite. Ne demande PAS de confirmation : le commerçant veut que ça aille vite.
+   Une vente avec seulement un montant (« jaay naa ñaari junni », « vente 15 000 ») est COMPLÈTE : c'est une vente au comptoir. Enregistre-la tout de suite (type sale, montantDit), sans demander l'article.
+   Pour une vente avec article et quantité sans montant (« jaay naa ñaari bidon diw »), enregistre aussi tout de suite : l'outil calcule le prix.
 2. Quand l'outil répond statut "enregistre", dis-le en quelques mots dans sa langue, avec le montant. En wolof, dis EXACTEMENT montant_en_wolof renvoyé par l'outil (« Bind naa ko : ñaari bidon diw, ñetti junni. ») ; en français, dis montant_francs (« C'est noté : 2 bidons d'huile, 15 000 F. »). Signale si stock_bas n'est pas vide.
 3. Si l'outil répond "incomplet", ou s'il manque l'article, la quantité, le montant ou le client, pose une seule question courte (« Ñaata ? », « Ban produit ? », « Combien ? ») puis enregistre quand tu as la réponse.
 4. Si le commerçant dit que ce que tu viens d'enregistrer est faux ou veut l'annuler (déedéet, du dëgg, baal ma, dindi ko, annule, non c'est pas ça, efface), appelle annuler_derniere, dis que c'est annulé, puis enregistre la bonne version s'il l'a donnée. Un « non » ou « déedéet » qui répond à une question que tu viens de poser n'est PAS une annulation.
@@ -57,14 +60,14 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE): Li
     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
-    // Boutique bruyante : on ne démarre pas sur un bruit de fond, et on laisse le commerçant
-    // finir sa phrase même s'il marque une pause pour compter.
+    // Micro sensible : Jokko réagit dès qu'on parle, et répond vite après la fin de la phrase.
+    // (Le réglage « peu sensible » faisait rater la voix du commerçant.)
     realtimeInputConfig: {
       automaticActivityDetection: {
-        startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
-        endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
-        prefixPaddingMs: 200,
-        silenceDurationMs: 800,
+        startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
+        endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
+        prefixPaddingMs: 100,
+        silenceDurationMs: 500,
       },
     },
     // Conversation longue (toute la journée) sans saturer la mémoire du modèle.

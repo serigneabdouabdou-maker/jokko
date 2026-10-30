@@ -636,7 +636,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     }, TEXT_SESSION_IDLE_MS);
   }
 
-  async function openLive(microphone: boolean, greet = microphone): Promise<LiveHandle | "microphone" | null> {
+  async function openLive(microphone: boolean, greet = false): Promise<LiveHandle | "microphone" | null> {
     const existing = liveRef.current;
     if (existing) {
       if (!microphone || existing.listening) return existing;
