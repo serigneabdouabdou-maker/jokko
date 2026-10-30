@@ -36,9 +36,9 @@ export function reminderMessage(client: Client, shop: Shop, lang: Lang, now = ne
   const first = client.name.split(" ")[0];
   const status = debtStatus(client, now);
   if (lang === "wo") {
+    // Uniquement le texte validé (pas de phrase en plus sur la date, non validée).
     const amount = `${francsToWolof(client.debt)} (${formatF(client.debt)})`;
-    const due = status.overdue && status.dueAt ? ` Bés bi ñu waxoon moo ngi ${dateFr(status.dueAt)}.` : "";
-    return `Salaam aleekum ${first}. ${shop.name} la. Sa bor bi, ${amount} la.${due} Su la neexee, nga fey ko. Jërëjëf.`;
+    return `Salaam aleekum ${first}. ${shop.name} la. Sa bor bi, ${amount} la. Su la neexee, nga fey ko. Jërëjëf.`;
   }
   const due = status.overdue && status.dueAt ? ` La date prévue était le ${dateFr(status.dueAt)}.` : status.dueAt ? ` À régler avant le ${dateFr(status.dueAt)}.` : "";
   return `Bonjour ${first}, c'est ${shop.name}. Il reste ${formatF(client.debt)} à payer.${due} Merci beaucoup.`;
