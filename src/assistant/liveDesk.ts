@@ -1,5 +1,6 @@
 import { type Lang, type Shop, lowStock, uid } from "../model";
 import { applyDraft } from "./apply";
+import { francsToWolof, spokenAmountToFrancs } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 
@@ -12,7 +13,7 @@ const DUPLICATE_MS = 10_000;
 const UNITS = new Set(["sac", "sacs", "bidon", "bidons", "paquet", "paquets", "kilo", "kilos", "kg", "pot", "pots", "boite", "boites", "piece", "pieces", "litre", "litres", "carton", "cartons", "bouteille"]);
 
 /** Une écriture enregistrée, que le commerçant peut encore annuler. */
-export type Entry = { id: string; summary: string; heard: string; before: Shop; after: Shop; at: number; callId?: string; key?: string };
+export type Entry = { id: string; summary: string; heard: string; before: Shop; after: Shop; at: number; callId?: string; key?: string; amount?: number };
 
 export type Recorded = { ok: true; entry: Entry } | { ok: false; besoin: string };
 
@@ -51,11 +52,11 @@ export class LiveDesk {
     const before = this.deps.getShop();
     const applied = applyDraft(before, action);
     if (!applied) return { ok: false, besoin: missing(action) };
-    return { ok: true, entry: this.commit(before, applied.shop, applied.summary, heard, { callId, key }) };
+    return { ok: true, entry: this.commit(before, applied.shop, applied.summary, heard, { callId, key, amount: applied.amount }) };
   }
 
   /** Enregistre un changement déjà calculé (mode local sans Gemini, écrans). */
-  commit(before: Shop, after: Shop, summary: string, heard = "", extra: { callId?: string; key?: string } = {}): Entry {
+  commit(before: Shop, after: Shop, summary: string, heard = "", extra: { callId?: string; key?: string; amount?: number } = {}): Entry {
     this.deps.write(after);
     const entry: Entry = { id: uid("act"), summary, heard, before, after, at: Date.now(), ...extra };
     this.history = [entry, ...this.history].slice(0, HISTORY);
@@ -101,11 +102,28 @@ export class LiveDesk {
 
   handle(call: LiveToolCall): Record<string, unknown> {
     const args = call.args ?? {};
-    if (call.name === "lire_boutique") return buildShopContext(this.deps.getShop(), this.deps.lang());
+    if (call.name === "lire_boutique") {
+      const shop = this.deps.getShop();
+      const context = buildShopContext(shop, this.deps.lang());
+      // Montants déjà traduits en wolof de comptoir (dërëm), pour que Jokko les dise juste.
+      return {
+        ...context,
+        montants_en_wolof: {
+          ventes_du_jour: francsToWolof(context.figures.daySales),
+          depenses_du_jour: francsToWolof(context.figures.dayExpenses),
+          caisse_attendue: francsToWolof(context.figures.expectedCash),
+          dettes: Object.fromEntries(context.clients.filter((c) => c.debt > 0).map((c) => [c.name, francsToWolof(c.debt)])),
+          prix: Object.fromEntries(context.products.map((p) => [p.name, francsToWolof(p.price)])),
+        },
+      };
+    }
 
     if (call.name === "enregistrer") {
       const action = normalizeAction(args, this.deps.getShop());
       if (!action) return { statut: "incomplet", besoin: "le type d'écriture (vente, dépense, stock, dette, paiement ou facture)" };
+      // Le montant tel que dit (« ñaari junni ») est recalculé ici, sans laisser le calcul au modèle.
+      const said = typeof args.montantDit === "string" ? spokenAmountToFrancs(args.montantDit) : null;
+      if (said && said.francs > 0) action.amount = said.francs;
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
       const result = this.record(action, heard, call.id);
@@ -113,7 +131,14 @@ export class LiveDesk {
       const low = lowStock(result.entry.after)
         .filter((p) => p.id === action.productId)
         .map((p) => `${p.name} : ${p.stock} ${p.unit}`);
-      return { statut: "enregistre", resume: result.entry.summary, stock_bas: low };
+      const amount = result.entry.amount;
+      return {
+        statut: "enregistre",
+        resume: result.entry.summary,
+        montant_francs: amount ?? null,
+        montant_en_wolof: amount ? francsToWolof(amount) : null,
+        stock_bas: low,
+      };
     }
 
     if (call.name === "annuler_derniere") {

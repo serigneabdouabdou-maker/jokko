@@ -1,7 +1,8 @@
 import { type Client, type Shop, money, todayStamp, uid } from "../model";
 import type { DraftAction } from "./client";
 
-export type Applied = { shop: Shop; summary: string };
+/** amount : montant en francs de l'écriture (pour le redire en wolof). */
+export type Applied = { shop: Shop; summary: string; amount?: number };
 
 const first = (name: string) => name.split(" ")[0];
 
@@ -29,6 +30,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
           : shop.products,
         sales: [{ id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id }, ...shop.sales],
       },
+      amount: total,
       summary: `Vente · ${qty && product ? `${qty} ${product.unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${money(total)}`,
     };
   }
@@ -38,6 +40,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     const label = action.label?.trim() || "Dépense";
     return {
       shop: { ...shop, expenses: [{ id: uid("e"), at: todayStamp(), label, amount }, ...shop.expenses] },
+      amount,
       summary: `Dépense · ${label} · ${money(amount)}`,
     };
   }
@@ -56,6 +59,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     const debt = Math.max(0, known.debt - amount);
     return {
       shop: { ...shop, clients: shop.clients.map((c) => (c.id === known.id ? { ...c, debt } : c)) },
+      amount,
       summary: `${first(known.name)} a payé ${money(amount)} · reste ${money(debt)}`,
     };
   }
@@ -66,6 +70,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     const debt = client.debt + amount;
     return {
       shop: { ...shop, clients: clients.map((c) => (c.id === client.id ? { ...c, debt } : c)) },
+      amount,
       summary: `${first(client.name)} doit ${money(debt)}`,
     };
   }
@@ -83,6 +88,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     };
     return {
       shop: { ...shop, clients, invoices: [invoice, ...shop.invoices] },
+      amount,
       summary: `Facture ${invoice.number} · ${first(client.name)} · ${money(amount)}`,
     };
   }

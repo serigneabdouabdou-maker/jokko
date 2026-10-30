@@ -116,6 +116,19 @@ describe("LiveDesk : enregistrement automatique", () => {
     expect(saved).toHaveLength(1);
   });
 
+  it("« ñaari junni » se calcule en dërëm : 10 000 F, et Jokko reçoit la phrase wolof à dire", () => {
+    const { desk, shop } = setup();
+    const result = desk.handle({ name: "enregistrer", args: { type: "sale", amount: 2000, montantDit: "ñaari junni", heard: "jaay naa ñaari junni" } });
+    expect(result).toMatchObject({ statut: "enregistre", montant_francs: 10000, montant_en_wolof: "ñaari junni" });
+    expect(shop().sales[0].amount).toBe(10000);
+  });
+
+  it("lire_boutique donne les dettes en wolof (20 000 F = ñeenti junni)", () => {
+    const { desk } = setup();
+    const context = desk.handle({ name: "lire_boutique" }) as { montants_en_wolof: { dettes: Record<string, string> } };
+    expect(context.montants_en_wolof.dettes["Moussa Ndiaye"]).toBe("ñeenti junni");
+  });
+
   it("phrase incomplète : rien n’est enregistré, Jokko doit demander", () => {
     const { desk, shop } = setup();
     const result = desk.handle({ name: "enregistrer", args: { type: "expense", heard: "transport" } });
