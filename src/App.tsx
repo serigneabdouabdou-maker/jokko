@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   type ChatMessage,
   type Lang,
+  type Payment,
   type Profile,
   type Shop,
   currentShop,
@@ -41,6 +42,7 @@ import {
   type Interpretation,
   assistantStatus,
   buildShopContext,
+  guessOrder,
   interpretMessage,
   listenAudio,
 } from "@/assistant/client";
@@ -62,11 +64,16 @@ import { Journal } from "@/components/jokko/Journal";
 import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { normalizeCode } from "@/data/barcode";
+import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
+import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
 const MAX_RECORDING_MS = 30_000;
 const TEXT_SESSION_IDLE_MS = 3 * 60_000;
+
+/** Message du fil de discussion ; card = panier compris dans une liste en vrac. */
+type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
@@ -591,7 +598,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     setProfile(replaceShop(profile, next));
   }
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+  const [messages, setMessages] = useState<LogMessage[]>(() => [
     { id: "hello", role: "jokko", at: new Date().toISOString(), text: profile.lang === "wo" ? "Nanga def ? Wax ma sa jaay, sa stock, walla ku la ame." : "Dis-moi une vente, un stock, ou qui te doit de l’argent." },
   ]);
   const [text, setText] = useState("");
@@ -972,6 +979,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
       handle.tell(input);
       return;
     }
+    if (await tryOrder(input)) return;
     setReply(null);
     setVoice("comprehension");
     let handled: boolean;
@@ -990,6 +998,68 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     const summary = describeChange(shop, result.shop);
     if (result.shop !== shop) desk.commit(shop, result.shop, summary ?? "Boutique mise à jour", input);
     else settle(result.say, undefined);
+  }
+
+  /** Met à jour la carte d'un message du fil. */
+  function updateCard(id: string, patch: Partial<OrderCardData>) {
+    setMessages((list) => list.map((m) => (m.id === id && m.card ? { ...m, card: { ...m.card, ...patch } } : m)));
+  }
+
+  /** Enregistre une carte (vente encaissée, achat, facture). Le commerçant peut annuler depuis la carte. */
+  function finishOrder(id: string, order: Order, payment: Payment | null) {
+    const before = currentShop(profileRef.current);
+    if (order.intent === "achat" && roleIn(profileRef.current) !== "patron") {
+      updateCard(id, { order, note: "Les achats pour le stock se font avec le compte du patron." });
+      return;
+    }
+    const missing = orderMissing(before, order, payment);
+    if (missing) {
+      updateCard(id, { order, note: missing });
+      return;
+    }
+    const applied = applyOrder(before, order, payment);
+    if (!applied) {
+      updateCard(id, { order, note: "Je n'ai pas pu l'enregistrer. Vérifie les articles." });
+      return;
+    }
+    const entry = desk.commit(before, applied.shop, applied.summary, "");
+    updateCard(id, { order: { ...order, payment }, status: "enregistre", entryId: entry.id, summary: applied.summary, note: undefined });
+  }
+
+  function undoOrder(id: string, entryId?: string) {
+    if (!entryId) return;
+    if (desk.undoEntry(entryId)) updateCard(id, { status: "annule" });
+  }
+
+  /**
+   * Liste en vrac (« 2 sacs de riz, big bleu, big bleu… ») : panier regroupé et calculé par le code.
+   * Si le paiement est dit (« payé cash »), c'est encaissé tout de suite ; sinon Jokko le demande.
+   * Renvoie false si ce n'est pas une liste : la phrase suit alors le chemin habituel.
+   */
+  async function tryOrder(input: string): Promise<boolean> {
+    // Réponse courte à « C'est payé comment ? » pour le dernier panier en attente
+    const pending = [...messages].reverse().find((m) => m.card?.status === "attente" && m.card.order.intent === "vente");
+    const pay = orderPayment(input);
+    if (pending?.card && pay && input.trim().length <= 30) {
+      finishOrder(pending.id, pending.card.order, pay);
+      return true;
+    }
+    if (!looksLikeOrder(input)) return false;
+    let order = parseOrder(input, shop);
+    // Mots flous (wolof, fautes) : Gemini léger propose les articles, le code garde les calculs.
+    if ((order.unknown.length || !order.lines.length) && assistant !== "off") {
+      const guess = await guessOrder(input, buildShopContext(shop, profile.lang));
+      const better = guess ? orderFromGuess(guess, input, shop) : null;
+      if (better && better.lines.length >= order.lines.length) order = better;
+      else if (!order.lines.length) return false;
+    }
+    if (!order.lines.length) return false;
+    const id = uid("m");
+    const missing = orderMissing(shop, order, order.payment);
+    setMessages((m) => [...m, { id, role: "jokko", text: "", at: new Date().toISOString(), card: { order, status: "attente" } }]);
+    if (!missing && (order.intent !== "vente" || order.payment)) finishOrder(id, order, order.payment);
+    else say(missing ?? "C'est payé comment ?");
+    return true;
   }
 
   async function toggleMic() {
@@ -1125,7 +1195,21 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
                   {prompts.map((p) => <button key={p} disabled={busy} onClick={() => void send(p)}>{p}</button>)}
                 </div>
                 <div className="log">
-                  {messages.map((m) => <div key={m.id} className={`bubble ${m.role}`}>{m.text}</div>)}
+                  {messages.map((m) =>
+                    m.card ? (
+                      <OrderCard
+                        key={m.id}
+                        card={m.card}
+                        shop={shop}
+                        role={role}
+                        onChange={(order) => updateCard(m.id, { order, note: undefined })}
+                        onConfirm={(payment, order) => finishOrder(m.id, order ?? m.card!.order, payment)}
+                        onUndo={() => undoOrder(m.id, m.card?.entryId)}
+                      />
+                    ) : (
+                      <div key={m.id} className={`bubble ${m.role}`}>{m.text}</div>
+                    ),
+                  )}
                 </div>
               </section>
               <section className="sheet today">

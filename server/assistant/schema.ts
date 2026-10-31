@@ -88,6 +88,30 @@ export const heardSchema = z.strictObject({
   ...interpretationSchema.shape,
 });
 
+/** Liste en vrac (« 2 sacs de riz, big bleu, big bleu ») : Gemini dit QUELS articles, le code compte et calcule. */
+export const orderGuessSchema = z.strictObject({
+  intent: z.enum(["vente", "achat", "facture", "autre"]),
+  payment: z.enum(["especes", "wave", "om", "credit", "inconnu"]),
+  clientName: z.string().max(80).nullable(),
+  items: z
+    .array(
+      z.strictObject({
+        productId: z.string().max(64).nullable(),
+        heard: z.string().max(80),
+        quantity: z.number().min(0).max(100_000),
+        unit: z.string().max(24).nullable(),
+        unitPriceSaid: z.string().max(40).nullable(),
+      }),
+    )
+    .max(60),
+});
+
+export type OrderGuess = z.infer<typeof orderGuessSchema>;
+
+export function orderGuessJsonSchema(): Record<string, unknown> {
+  return jsonSchema(orderGuessSchema);
+}
+
 export const liveRequestSchema = z.strictObject({
   shopContext: shopContextSchema,
 });

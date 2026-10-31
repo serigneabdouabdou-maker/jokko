@@ -87,6 +87,12 @@ export class LiveDesk {
     return this.undoAt(0);
   }
 
+  /** Annule une écriture précise (bouton Annuler d'une carte du chat). */
+  undoEntry(id: string): Entry | null {
+    const index = this.history.findIndex((e) => e.id === id);
+    return index >= 0 ? this.undoAt(index) : null;
+  }
+
   /** Oublie l'historique (changement de boutique) : on n'annule jamais dans une autre boutique. */
   reset() {
     this.history = [];

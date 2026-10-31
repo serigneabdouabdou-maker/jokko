@@ -4,7 +4,7 @@
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b5979b34351dee65b6eaa8d052d7a35e7797b25f/server/assistant/interpret.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b5979b34351dee65b6eaa8d052d7a35e7797b25f/server/assistant/interpret.ts";
 import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b5979b34351dee65b6eaa8d052d7a35e7797b25f/server/assistant/live.ts";
 import { interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b5979b34351dee65b6eaa8d052d7a35e7797b25f/server/assistant/schema.ts";
 
@@ -120,6 +120,10 @@ Deno.serve(async (req) => {
     if (route === "interpret") {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
       return b.ok ? send(req, 200, await interpret(b.data, env())) : b.res;
+    }
+    if (route === "order") {
+      const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
+      return b.ok ? send(req, 200, await understandOrder(b.data, env())) : b.res;
     }
     if (route === "listen") {
       const b = await body(req, MAX_AUDIO_BODY, listenRequestSchema);

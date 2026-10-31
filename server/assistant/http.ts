@@ -7,6 +7,7 @@ import {
   GeminiNotConfiguredError,
   interpret,
   listen,
+  understandOrder,
 } from "./interpret.ts";
 import { type CreateToken, createLiveSession, LiveUnavailableError } from "./live.ts";
 import { interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "./schema.ts";
@@ -39,6 +40,10 @@ export async function handleAssistant(req: IncomingMessage, res: ServerResponse,
 
   if (path === "/api/assistant/interpret") {
     return post(req, res, MAX_TEXT_BODY, interpretRequestSchema, async (body) => send(res, 200, await interpret(body, env)));
+  }
+
+  if (path === "/api/assistant/order") {
+    return post(req, res, MAX_TEXT_BODY, interpretRequestSchema, async (body) => send(res, 200, await understandOrder(body, env)));
   }
 
   if (path === "/api/assistant/listen") {

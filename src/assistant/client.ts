@@ -1,4 +1,5 @@
 import { api } from "../data/supabase";
+import type { OrderGuess } from "./order";
 import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
 
 export type AssistantLanguage = "wo" | "fr" | "en" | "fuc";
@@ -146,4 +147,21 @@ function isInterpretation(value: unknown): value is Interpretation {
     typeof v.confidence === "number" &&
     (v.draftAction === null || typeof v.draftAction === "object")
   );
+}
+
+/** Liste en vrac : demande à Gemini (modèle léger) quels articles du stock sont cités. null si indisponible. */
+export async function guessOrder(message: string, shopContext: ShopContext): Promise<OrderGuess | null> {
+  try {
+    const response = await api("order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message.slice(0, 500), shopContext }),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body || !Array.isArray(body.items) || typeof body.intent !== "string") return null;
+    return body as unknown as OrderGuess;
+  } catch {
+    return null;
+  }
 }

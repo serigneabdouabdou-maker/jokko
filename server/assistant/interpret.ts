@@ -1,13 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
 import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
-import { buildAudioPrompt, buildPrompt, SYSTEM_INSTRUCTION } from "./prompt.ts";
+import { buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
   type Interpretation,
   type InterpretRequest,
   type ListenRequest,
+  type OrderGuess,
   type ShopContext,
+  orderGuessJsonSchema,
+  orderGuessSchema,
   heardJsonSchema,
   heardSchema,
   interpretationJsonSchema,
@@ -103,12 +106,30 @@ export async function listen(request: ListenRequest, options: InterpretOptions):
   return { transcript, interpretation: checkAmount(enforceRules(result, request.shopContext), transcript) };
 }
 
+/**
+ * Liste en vrac → articles du stock. Modèle léger (le moins cher) : il ne fait que reconnaître les mots.
+ * Les ids inventés sont effacés ici ; le regroupement et les calculs se font dans l'appli.
+ */
+export async function understandOrder(request: InterpretRequest, options: InterpretOptions): Promise<OrderGuess> {
+  const guess = await run(
+    { ...options, model: FALLBACK_MODEL },
+    orderGuessSchema,
+    orderGuessJsonSchema(),
+    buildOrderPrompt(request.message, request.shopContext),
+    undefined,
+    ORDER_INSTRUCTION,
+  );
+  const ids = new Set(request.shopContext.products.map((p) => p.id));
+  return { ...guess, items: guess.items.map((i) => (i.productId && !ids.has(i.productId) ? { ...i, productId: null } : i)) };
+}
+
 async function run<T extends z.ZodType>(
   options: InterpretOptions,
   schema: T,
   jsonSchema: Record<string, unknown>,
   prompt: string,
   audio?: { mimeType: string; data: string },
+  systemInstruction: string = SYSTEM_INSTRUCTION,
 ): Promise<z.infer<T>> {
   const apiKey = options.apiKey?.trim();
   if (!apiKey) throw new GeminiNotConfiguredError();
@@ -120,7 +141,7 @@ async function run<T extends z.ZodType>(
   for (const [index, model] of models.entries()) {
     const signals = [AbortSignal.timeout(TIMEOUT_MS), ...(options.signal ? [options.signal] : [])];
     try {
-      raw = await generate({ model, systemInstruction: SYSTEM_INSTRUCTION, prompt, jsonSchema, audio, signal: AbortSignal.any(signals) });
+      raw = await generate({ model, systemInstruction, prompt, jsonSchema, audio, signal: AbortSignal.any(signals) });
       break;
     } catch (error) {
       const status = typeof (error as { status?: unknown }).status === "number" ? (error as { status: number }).status : undefined;

@@ -3,7 +3,8 @@ import { type Payment, PAYMENT_LABELS, type Product, type Shop, money } from "..
 
 /** Caisse par scan : un panier d'articles, puis un seul encaissement. */
 
-export type CartLine = { productId: string; retail: boolean; qty: number };
+/** price : prix d'une unité dit par le commerçant (sinon le prix du stock). */
+export type CartLine = { productId: string; retail: boolean; qty: number; price?: number };
 
 const DAY = 86_400_000;
 
@@ -29,7 +30,7 @@ export function setQty(lines: CartLine[], index: number, qty: number): CartLine[
 export function cartTotal(shop: Shop, lines: CartLine[]): number {
   return lines.reduce((sum, l) => {
     const p = shop.products.find((x) => x.id === l.productId);
-    return p ? sum + Math.round(l.qty * unitPrice(p, l.retail)) : sum;
+    return p ? sum + Math.round(l.qty * (l.price ?? unitPrice(p, l.retail))) : sum;
   }, 0);
 }
 
@@ -68,6 +69,7 @@ export function checkout(shop: Shop, lines: CartLine[], payment: Payment, client
       clientName: null,
       label: null,
       unit: unitName(product, line.retail),
+      unitPrice: line.price ?? null,
     });
     if (!applied) continue;
     current = applied.shop;

@@ -12,7 +12,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 /** Appel d'une route Gemini de Jokko (fonction Supabase « assistant »), avec la session du commerçant. */
-export async function api(route: "status" | "interpret" | "listen" | "live", init: RequestInit = {}): Promise<Response> {
+export async function api(route: "status" | "interpret" | "listen" | "live" | "order", init: RequestInit = {}): Promise<Response> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const headers = new Headers(init.headers);
