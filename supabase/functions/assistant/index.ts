@@ -4,9 +4,9 @@
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0c01003682231dc94aaa22784a98c01808dff66c/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0c01003682231dc94aaa22784a98c01808dff66c/server/assistant/live.ts";
-import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0c01003682231dc94aaa22784a98c01808dff66c/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/ffb3749554a8e9d40c221e647dc14c37846f6d3b/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/ffb3749554a8e9d40c221e647dc14c37846f6d3b/server/assistant/live.ts";
+import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/ffb3749554a8e9d40c221e647dc14c37846f6d3b/server/assistant/schema.ts";
 
 const MAX_TEXT_BODY = 32 * 1024;
 const MAX_AUDIO_BODY = 3 * 1024 * 1024;
