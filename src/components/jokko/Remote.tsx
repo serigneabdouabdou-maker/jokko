@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { type Profile, type Shop, expectedCash, money, PAYMENT_LABELS, roleIn } from "@/model";
 import { supabase } from "@/data/supabase";
 import { loadShops, type LoadClient } from "@/data/sync";
-import { type Alert, detectAlerts, openedAt } from "@/data/alerts";
+import { detectAlerts, openedAt } from "@/data/alerts";
 import type { JournalRow } from "@/data/journal";
 import { loadJournal, loadTeam, type Member, watchJournal } from "@/data/team";
 import { buildReport, periodOf } from "@/data/report";
 import { whatsappLink } from "@/data/debts";
-import { showNotification } from "@/pwa";
+import { daySummary } from "@/data/summary";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const hour = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -23,24 +23,6 @@ function ago(iso: string): string {
   return h < 24 ? `il y a ${h} h` : `le ${day(iso)}`;
 }
 
-/** Résumé du jour, prêt à envoyer sur WhatsApp. */
-export function daySummary(shop: Shop, alerts: Alert[], counted: JournalRow | undefined): string {
-  const r = buildReport(shop, periodOf("jour"));
-  const today = shop.sales.filter((s) => isToday(s.at));
-  const by = (m: string) => today.filter((s) => (s.payment ?? "especes") === m).reduce((a, s) => a + s.amount, 0);
-  const grave = alerts.filter((a) => a.level === "grave" && isToday(a.at)).length;
-  const lines = [
-    `📊 ${shop.name} · ${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`,
-    `Ventes : ${amount(r.revenue)} (${r.salesCount} vente${r.salesCount > 1 ? "s" : ""})`,
-    `  Espèces ${amount(by("especes"))} · Wave ${amount(by("wave"))} · Orange Money ${amount(by("om"))} · Crédit ${amount(by("credit"))}`,
-    `Dépenses : ${amount(r.expenses)}${r.losses ? ` · Pertes : ${amount(r.losses)}` : ""}${r.purchases ? ` · Achats de stock : ${amount(r.purchases)}` : ""}`,
-    `Bénéfice du jour : ${amount(r.netProfit)}`,
-    counted ? `Caisse : comptée ${amount(Number(counted.after?.counted ?? 0))} pour ${amount(Number(counted.after?.expected ?? 0))} attendus` : "Caisse : pas encore clôturée",
-    grave ? `⚠️ ${grave} alerte${grave > 1 ? "s" : ""} grave${grave > 1 ? "s" : ""} à vérifier dans Jokko` : "✅ Aucune alerte grave",
-  ];
-  return lines.join("\n");
-}
-
 /** Écran « À distance » (patron) : la boutique en direct, les alertes et le résumé du soir. */
 export function Remote({ profile }: { profile: Profile }) {
   const shops = profile.shops.filter((s) => roleIn(profile, s.id) === "patron");
@@ -52,7 +34,6 @@ export function Remote({ profile }: { profile: Profile }) {
   const [live, setLive] = useState(false);
   const [scope, setScope] = useState<"jour" | "semaine">("jour");
   const reload = useRef<number | null>(null);
-  const seen = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
     if (!shopId) return;
@@ -69,7 +50,6 @@ export function Remote({ profile }: { profile: Profile }) {
 
   useEffect(() => {
     setState("charge");
-    seen.current = new Set();
     void refresh();
     // Direct : chaque action dans la boutique arrive ici tout de suite
     const stop = watchJournal(shopId, (row) => {
@@ -88,16 +68,6 @@ export function Remote({ profile }: { profile: Profile }) {
 
   const patronIds = useMemo(() => new Set(members.filter((m) => m.role === "patron").map((m) => m.user_id)), [members]);
   const alerts = useMemo(() => (shop ? detectAlerts(rows, shop.products, patronIds) : []), [rows, shop, patronIds]);
-
-  // Nouvelle alerte grave pendant que l'écran est ouvert : notification sur le téléphone
-  useEffect(() => {
-    if (state !== "ok") return;
-    const fresh = alerts.filter((a) => !seen.current.has(a.id));
-    const first = seen.current.size === 0;
-    for (const a of alerts) seen.current.add(a.id);
-    if (first) return;
-    for (const a of fresh.filter((x) => x.level === "grave").slice(0, 3)) void showNotification(`Jokko · ${shop?.name ?? ""}`, a.text);
-  }, [alerts, state, shop?.name]);
 
   const who = (userId: string | null) => {
     const m = members.find((x) => x.user_id === userId);

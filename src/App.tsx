@@ -71,6 +71,7 @@ import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
+import { ensurePush } from "@/pwa";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
 const MAX_RECORDING_MS = 30_000;
@@ -595,7 +596,14 @@ const LETTERS = /[A-Za-zÀ-ÿŋñ]/;
 const NOISE = /<[^>]*>/g;
 
 function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
-  const [screen, setScreen] = useState<Screen>("parler");
+  // Une notification touchée ouvre le bon écran (?ecran=distance)
+  const [screen, setScreen] = useState<Screen>(() => {
+    const wanted = new URLSearchParams(window.location.search).get("ecran");
+    return NAV.some(([id]) => id === wanted) ? (wanted as Screen) : "parler";
+  });
+  useEffect(() => {
+    void ensurePush();
+  }, []);
   const shop = currentShop(profile);
   const today = useMemo(() => buildReport(shop, periodOf("jour")), [shop]);
   const late = useMemo(() => overdueDebts(shop), [shop]);
@@ -1478,7 +1486,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
   return (
     <section className="sheet settings">
       <h2>Réglages</h2>
-      <InstallSettings />
+      <InstallSettings userId={roleIn(profile) === "patron" ? profile.userId : undefined} />
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>

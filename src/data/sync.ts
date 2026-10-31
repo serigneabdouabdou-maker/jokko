@@ -1,4 +1,4 @@
-import type { Client, Expense, Invoice, InvoiceLine, Product, Reminder, Sale, Shop, Shortcut } from "../model";
+import type { Client, Expense, Invoice, InvoiceLine, Product, Reminder, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 

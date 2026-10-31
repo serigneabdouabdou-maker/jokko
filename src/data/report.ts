@@ -1,4 +1,4 @@
-import type { Shop } from "../model";
+import type { Shop } from "../model.ts";
 
 /**
  * Bilan de la boutique sur une période : ce qui s'est vendu, ce que ça a rapporté,

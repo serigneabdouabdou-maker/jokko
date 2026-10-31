@@ -1,6 +1,6 @@
 // Jokko — service worker : l'appli s'ouvre même sans internet, et peut afficher des notifications.
 // Les données de la boutique ne passent jamais par ce cache : seulement les fichiers de l'appli.
-const VERSION = "jokko-v1";
+const VERSION = "jokko-v2";
 const SHELL = ["./", "manifest.webmanifest", "icon-192.png", "icon-512.png", "jokko-mark.svg"];
 
 self.addEventListener("install", (event) => {
@@ -76,7 +76,12 @@ self.addEventListener("notificationclick", (event) => {
   const target = new URL(event.notification.data?.url || "./", self.registration.scope).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const client of list) if ("focus" in client) return client.focus();
+      for (const client of list) {
+        if ("focus" in client) {
+          if ("navigate" in client && event.notification.data?.url) void client.navigate(target).catch(() => undefined);
+          return client.focus();
+        }
+      }
       return self.clients.openWindow(target);
     }),
   );

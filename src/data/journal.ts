@@ -1,4 +1,4 @@
-import { money } from "../model";
+import { money } from "../model.ts";
 
 /** Une ligne du journal, telle que la base l'écrit (personne ne peut la modifier ni l'effacer). */
 export type JournalRow = {

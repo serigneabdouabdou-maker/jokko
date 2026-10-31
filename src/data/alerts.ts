@@ -1,5 +1,5 @@
-import { money, type Product } from "../model";
-import type { JournalRow } from "./journal";
+import { money, type Product } from "../model.ts";
+import type { JournalRow } from "./journal.ts";
 
 /**
  * Alertes de sécurité pour le patron, calculées à partir du journal (que personne ne peut effacer).

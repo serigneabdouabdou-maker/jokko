@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/data/supabase";
 import { Button } from "@/components/ui/button";
-import { enableNotifications, notificationState, type NotifyState, useInstall } from "@/pwa";
+import { enableNotifications, notificationState, type NotifyState, setSummaryHour, useInstall } from "@/pwa";
 
 const HIDE_KEY = "jokko.install.hidden";
 
@@ -53,12 +54,12 @@ function IosSteps() {
 const NOTIFY_TEXT: Record<NotifyState, string> = {
   non_dispo: "Ce navigateur ne sait pas afficher de notifications. Installe Jokko, ou ouvre-le avec Chrome.",
   a_demander: "Active les notifications : Jokko pourra te prévenir (dettes en retard, alertes de la boutique).",
-  acceptees: "Notifications activées.",
+  acceptees: "Notifications activées : Jokko te prévient même quand l’appli est fermée.",
   refusees: "Notifications bloquées. Pour les débloquer : touche le cadenas à côté de l’adresse, puis Notifications → Autoriser.",
 };
 
 /** Dans Réglages : installer l'appli et activer les notifications. */
-export function InstallSettings() {
+export function InstallSettings({ userId }: { userId?: string }) {
   const { installed, canPrompt, ios, install } = useInstall();
   const [notify, setNotify] = useState<NotifyState>(notificationState);
   const [busy, setBusy] = useState(false);
@@ -94,6 +95,40 @@ export function InstallSettings() {
           </Button>
         </div>
       )}
+      {userId && notify === "acceptees" && <SummaryHour userId={userId} />}
+    </div>
+  );
+}
+
+/** Patron : heure du résumé du soir envoyé en notification (heure de Dakar). */
+function SummaryHour({ userId }: { userId: string }) {
+  const [hour, setHour] = useState<string>("20");
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    void supabase
+      .from("profiles")
+      .select("summary_hour")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }) => setHour(data?.summary_hour === null || data?.summary_hour === undefined ? "aucun" : String(data.summary_hour)));
+  }, [userId]);
+  return (
+    <div className="field">
+      <label htmlFor="summary-hour" className="text-sm font-medium">Résumé du jour en notification, chaque soir à</label>
+      <select
+        id="summary-hour"
+        className="h-11 rounded-md border px-3"
+        value={hour}
+        onChange={async (e) => {
+          setHour(e.target.value);
+          const ok = await setSummaryHour(userId, e.target.value === "aucun" ? null : Number(e.target.value));
+          setNote(ok ? "✓ Enregistré." : "Pas de connexion internet. Réessaie.");
+        }}
+      >
+        {[17, 18, 19, 20, 21, 22, 23].map((h) => <option key={h} value={String(h)}>{h} h</option>)}
+        <option value="aucun">Pas de résumé</option>
+      </select>
+      {note && <p className="note">{note}</p>}
     </div>
   );
 }
