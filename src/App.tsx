@@ -54,6 +54,7 @@ import { overdueDebts } from "@/data/debts";
 import { acceptTerms, signIn, signUp, supabase } from "@/data/supabase";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
+import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
 const MAX_RECORDING_MS = 30_000;
@@ -1108,6 +1109,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
               </section>
               <section className="sheet today">
                 <h2>Aujourd’hui</h2>
+                <InstallBanner />
                 {inventoryDue(shop) && (
                   <button type="button" className="banner banner-link" onClick={() => setScreen("bilan")}>Nouveau mois : fais l'inventaire du stock →</button>
                 )}
@@ -1325,6 +1327,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
   return (
     <section className="sheet settings">
       <h2>Réglages</h2>
+      <InstallSettings />
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>

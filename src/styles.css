@@ -1073,3 +1073,17 @@
   .legal-foot { color: var(--j-ink-3); font-size: 13px; margin: 20px 0 14px !important; }
   @media (min-width: 720px) { .legal-scrim { align-items: center; padding: 32px; } .legal-sheet { border-radius: 24px; } }
 }
+
+/* Installation et notifications */
+@layer components {
+  .install-banner { margin: 10px 0; padding: 14px; border-radius: 16px; background: var(--j-ink); color: var(--j-white); display: grid; gap: 10px; }
+  .install-banner p { margin: 0; line-height: 1.45; }
+  .install-banner .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .install-banner [data-slot="button"]:first-child { background: var(--j-yellow); color: var(--j-ink); }
+  .install-banner [data-variant="ghost"], .install-banner button:last-child { color: var(--j-white); }
+  .install-banner [data-variant="ghost"]:hover { background: rgba(255, 253, 247, 0.12); color: var(--j-white); }
+  .install-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.45; }
+  .install-settings { display: grid; gap: 10px; padding: 14px; margin-bottom: 18px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-soft-2); }
+  .install-settings h3 { font-size: 16px; font-weight: 700; margin: 0; }
+  .install-settings .note { margin: 0; }
+}
