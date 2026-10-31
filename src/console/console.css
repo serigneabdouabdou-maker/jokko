@@ -1,0 +1,148 @@
+/* Console CFC : tour de contrôle. Même marque que Jokko, mais une ambiance « bureau » sombre à gauche
+   pour ne jamais la confondre avec l'appli d'une boutique. */
+:root {
+  --cx-ink: #17191F;
+  --cx-ink-soft: #23262E;
+  --cx-on-ink: #F3F1EA;
+  --cx-on-ink-2: color-mix(in oklab, #F3F1EA 62%, #17191F);
+  --cx-good: oklch(0.52 0.13 150);
+  --cx-warn: oklch(0.62 0.15 70);
+}
+
+.cx { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; background: var(--j-white); }
+
+.cx-side {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 22px;
+  padding: 22px 14px;
+  background: var(--cx-ink); color: var(--cx-on-ink);
+}
+.cx-brand { display: flex; align-items: center; gap: 10px; font-family: "Bricolage Grotesque", sans-serif; font-size: 18px; letter-spacing: -0.03em; padding: 0 6px; }
+.cx-brand b { font-weight: 700; color: var(--j-yellow); }
+.cx-nav { display: grid; gap: 2px; }
+.cx-nav button {
+  display: flex; align-items: center; justify-content: space-between;
+  text-align: left; padding: 10px 12px; border-radius: 12px;
+  color: var(--cx-on-ink-2); font-size: 14.5px; font-weight: 550;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.cx-nav button:hover { background: var(--cx-ink-soft); color: var(--cx-on-ink); }
+.cx-nav button.on { background: var(--cx-ink-soft); color: var(--cx-on-ink); box-shadow: inset 3px 0 0 var(--j-yellow); }
+.cx-nav button:focus-visible { outline: 2px solid var(--j-yellow); outline-offset: 2px; }
+.cx-dot { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--j-yellow); color: var(--cx-ink); font-size: 12px; font-weight: 700; }
+.cx-side-foot { margin-top: auto; display: grid; gap: 8px; font-size: 12.5px; color: var(--cx-on-ink-2); padding: 0 6px; }
+.cx-side-foot .cx-link { color: var(--cx-on-ink); text-align: left; }
+
+.cx-link { color: var(--j-ink); font-weight: 600; font-size: 13.5px; text-decoration: underline; text-decoration-color: var(--j-yellow); text-underline-offset: 3px; text-decoration-thickness: 2px; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+
+.cx-main { padding: 28px 32px 64px; min-width: 0; }
+.cx-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.cx-top h1 { font-size: clamp(28px, 3.4vw, 40px); font-weight: 720; }
+.cx-stack { display: grid; gap: 16px; }
+
+.cx-alert {
+  text-align: left; padding: 14px 18px; border-radius: 16px;
+  background: var(--j-soft-2); border: 1px solid color-mix(in oklab, var(--j-yellow) 45%, var(--j-line));
+  font-size: 14.5px; color: var(--j-ink); cursor: pointer;
+}
+.cx-alert:hover { background: var(--j-soft); }
+
+.cx-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.cx-kpi { display: grid; gap: 4px; align-content: start; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--j-line); background: var(--j-card); box-shadow: var(--j-shadow); }
+.cx-kpi span { font-size: 13px; color: var(--j-ink-3); font-weight: 550; }
+.cx-kpi b { font-size: clamp(22px, 2.2vw, 28px); font-weight: 700; letter-spacing: -0.03em; }
+.cx-kpi small { font-size: 12.5px; color: var(--j-ink-3); }
+.cx-kpi[data-tone="good"] small { color: var(--cx-good); font-weight: 600; }
+.cx-kpi[data-tone="bad"] small { color: var(--j-danger); font-weight: 600; }
+.cx-kpi[data-tone="warn"] small { color: var(--cx-warn); font-weight: 600; }
+.cx-kpis:first-of-type .cx-kpi:first-child { background: var(--cx-ink); border-color: var(--cx-ink); }
+.cx-kpis:first-of-type .cx-kpi:first-child span,
+.cx-kpis:first-of-type .cx-kpi:first-child small { color: var(--cx-on-ink-2); }
+.cx-kpis:first-of-type .cx-kpi:first-child b { color: var(--j-yellow); }
+
+.cx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cx-card { display: grid; gap: 12px; align-content: start; padding: 18px 20px; border-radius: 20px; border: 1px solid var(--j-line); background: var(--j-card); box-shadow: var(--j-shadow); min-width: 0; }
+.cx-card h3 { font-size: 17px; font-weight: 680; }
+
+.cx-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 170px; align-items: end; }
+.cx-bar { display: grid; grid-template-rows: 18px 1fr 18px; height: 100%; align-items: end; justify-items: center; gap: 4px; min-width: 0; }
+.cx-bar-fill { width: 100%; max-width: 34px; border-radius: 6px 6px 2px 2px; background: var(--j-yellow); align-self: end; transition: height var(--t-slow) var(--ease); }
+.cx-bar:hover .cx-bar-fill { background: color-mix(in oklab, var(--j-yellow) 80%, var(--j-ink)); }
+.cx-bar-val { font-size: 11px; color: var(--j-ink-2); white-space: nowrap; }
+.cx-bar-lab { font-size: 11px; color: var(--j-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+.cx-rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cx-rank li { display: grid; grid-template-columns: minmax(80px, 1fr) 2fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.cx-rank li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-rank-track { height: 8px; border-radius: 4px; background: var(--j-wash); overflow: hidden; }
+.cx-rank-track span { display: block; height: 100%; border-radius: 4px; background: var(--j-ink); }
+
+.cx-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cx-plan { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--j-line); background: var(--j-white); }
+.cx-plan span { font-size: 13px; color: var(--j-ink-3); }
+.cx-plan b { font-size: 24px; font-weight: 700; }
+.cx-plan.is-medium { background: var(--j-soft-2); }
+.cx-plan.is-avance { background: var(--cx-ink); border-color: var(--cx-ink); }
+.cx-plan.is-avance span { color: var(--cx-on-ink-2); }
+.cx-plan.is-avance b { color: var(--j-yellow); }
+
+.cx-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.cx-list li { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--j-line); font-size: 14px; }
+.cx-list li:first-child { border-top: 0; }
+.cx-list li > span:first-child { flex: 1 1 260px; min-width: 0; }
+.cx-list small, .cx-table small { color: var(--j-ink-3); font-size: 12.5px; }
+.cx-ref { font-family: ui-monospace, "SFMono-Regular", monospace; letter-spacing: 0.02em; background: var(--j-soft-2); padding: 1px 6px; border-radius: 6px; }
+
+.cx-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14.5px; color: var(--j-ink-2); }
+
+.cx-chip { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-white); font-size: 13.5px; font-weight: 550; color: var(--j-ink-2); }
+.cx-chip.on { background: var(--cx-ink); border-color: var(--cx-ink); color: var(--cx-on-ink); }
+.cx-filters { display: grid; gap: 10px; }
+
+.cx-tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--j-wash); color: var(--j-ink-2); white-space: nowrap; }
+.cx-tag.is-medium { background: var(--j-soft); color: var(--j-ink); }
+.cx-tag.is-avance { background: var(--cx-ink); color: var(--j-yellow); }
+.cx-tag.is-active { background: color-mix(in oklab, var(--cx-good) 16%, var(--j-white)); color: var(--cx-good); }
+.cx-tag.is-refusee { background: color-mix(in oklab, var(--j-danger) 12%, var(--j-white)); color: var(--j-danger); }
+
+.cx-status { font-size: 12.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
+.cx-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--j-ink-3); }
+.cx-status.is-active::before { background: var(--cx-good); }
+.cx-status.is-calme::before { background: var(--cx-warn); }
+.cx-status.is-endormie::before { background: var(--j-danger); }
+.cx-status.is-nouvelle::before { background: var(--j-yellow); }
+
+.cx-table-card { padding: 6px 0; overflow-x: auto; }
+.cx-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cx-table th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--j-ink-3); padding: 10px 14px; border-bottom: 1px solid var(--j-line); white-space: nowrap; }
+.cx-table td { padding: 12px 14px; border-top: 1px solid var(--j-line); vertical-align: top; }
+.cx-table .r { text-align: right; }
+.cx-table tr.is-open td { background: var(--j-wash); }
+.cx-detail td { background: var(--j-wash); border-top: 0; }
+.cx-detail-grid { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13.5px; margin-bottom: 10px; }
+
+.cx-gate { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--cx-ink); }
+.cx-gate-card { width: min(420px, 100%); display: grid; gap: 12px; padding: 28px; border-radius: 24px; background: var(--j-white); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6); }
+.cx-gate-card h1 { font-size: 28px; font-weight: 720; }
+.cx-gate-card .cx-brand { padding: 0; }
+
+@media (max-width: 1100px) {
+  .cx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .cx { display: block; }
+  .cx-side { position: sticky; z-index: 20; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
+  .cx-nav { display: flex; gap: 4px; overflow-x: auto; flex: 1 1 100%; order: 3; scrollbar-width: none; }
+  .cx-nav::-webkit-scrollbar { display: none; }
+  .cx-nav button { white-space: nowrap; gap: 8px; padding: 8px 12px; }
+  .cx-nav button.on { box-shadow: inset 0 -3px 0 var(--j-yellow); }
+  .cx-side-foot { margin: 0 0 0 auto; display: flex; gap: 12px; }
+  .cx-side-foot > span, .cx-side-foot > a { display: none; }
+  .cx-main { padding: 20px 16px 48px; }
+  .cx-grid { grid-template-columns: 1fr; }
+  .cx-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cx-table th:nth-child(2), .cx-table td:nth-child(2), .cx-table th:nth-child(5), .cx-table td:nth-child(5) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-bar-fill, .cx-nav button { transition: none; }
+}

@@ -1,6 +1,6 @@
 // Jokko — service worker : l'appli s'ouvre même sans internet, et peut afficher des notifications.
 // Les données de la boutique ne passent jamais par ce cache : seulement les fichiers de l'appli.
-const VERSION = "jokko-v2";
+const VERSION = "jokko-v3";
 const SHELL = ["./", "manifest.webmanifest", "icon-192.png", "icon-512.png", "jokko-mark.svg"];
 
 self.addEventListener("install", (event) => {
@@ -46,7 +46,10 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   // Seulement les fichiers de l'appli elle-même ; Supabase, Gemini, polices : jamais mis en cache ici.
-  if (url.origin !== self.location.origin || !url.pathname.startsWith(new URL(self.registration.scope).pathname)) return;
+  const scope = new URL(self.registration.scope).pathname;
+  if (url.origin !== self.location.origin || !url.pathname.startsWith(scope)) return;
+  // La console CFC n'est jamais gardée hors ligne : toujours la dernière version, et jamais à la place de l'appli.
+  if (url.pathname.startsWith(`${scope}console`)) return;
   if (request.mode === "navigate") event.respondWith(page(request));
   else event.respondWith(asset(request));
 });

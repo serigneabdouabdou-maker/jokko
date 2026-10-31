@@ -69,8 +69,7 @@ import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { Plans, Upsell } from "@/components/jokko/Plans";
-import { Admin } from "@/components/jokko/Admin";
-import { can, subscriptionInfo } from "@/data/plans";
+import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -89,7 +88,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "admin" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -113,7 +112,6 @@ const NAV: Array<[Screen, string]> = [
   ["journal", "Journal"],
   ["offre", "Mon offre"],
   ["reglages", "Réglages"],
-  ["admin", "Administration"],
 ];
 
 /** Rubriques réservées au patron. */
@@ -418,11 +416,6 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   useEffect(() => {
     void ensurePush();
   }, []);
-  // Administration de la plateforme (CFC) : visible seulement pour les administrateurs (vérifié par le serveur).
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    void subscriptionInfo().then((i) => setIsAdmin(Boolean(i?.is_admin)), () => setIsAdmin(false));
-  }, [profile.userId]);
   // Wave branché pour la boutique ouverte : les paiements Wave du chat passent par la confirmation de Wave.
   const [waveOn, setWaveOn] = useState(false);
   useEffect(() => {
@@ -970,7 +963,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && (id !== "admin" || isAdmin)).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id))).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}>{label}</button>
           ))}
         </nav>
@@ -1070,7 +1063,6 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "offre" && patron && <Plans shop={shop} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
-          {screen === "admin" && isAdmin && <Admin />}
           {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}

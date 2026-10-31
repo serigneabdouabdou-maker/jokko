@@ -13,6 +13,15 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  build: {
+    // Deux pages : l'appli des boutiques, et la console CFC (tableau de bord général), séparée.
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        console: fileURLToPath(new URL("./console/index.html", import.meta.url)),
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: false,
