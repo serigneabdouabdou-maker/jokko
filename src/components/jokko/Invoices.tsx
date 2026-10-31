@@ -17,7 +17,7 @@ type Draft = { label: string; qty: string; unit: string; unitPrice: string; prod
 /**
  * Factures : créer, voir, télécharger, partager, envoyer au client sur WhatsApp, marquer payée.
  */
-export function Invoices({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+export function Invoices({ shop, commit, canEditShop = true }: { shop: Shop; commit: (s: Shop) => void; canEditShop?: boolean }) {
   const [openId, setOpenId] = useState<string | null>(shop.invoices[0]?.id ?? null);
   const [creating, setCreating] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -64,12 +64,12 @@ export function Invoices({ shop, commit }: { shop: Shop; commit: (s: Shop) => vo
           <Button className="h-10 rounded-full px-4 font-semibold" onClick={() => { setCreating(true); setOpenId(null); }}>
             <Plus size={16} /> Nouvelle facture
           </Button>
-          <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => setSettings(!settings)}>Infos de la boutique</Button>
+          {canEditShop && <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => setSettings(!settings)}>Infos de la boutique</Button>}
         </div>
       </div>
       <p className="note">Tu peux aussi dire à Jokko : « Facture Moussa ñaari bidon diw » ou « Fais une facture de 15 000 pour Awa ».</p>
 
-      {settings && <InvoiceSettings shop={shop} commit={commit} onClose={() => setSettings(false)} />}
+      {settings && canEditShop && <InvoiceSettings shop={shop} commit={commit} onClose={() => setSettings(false)} />}
       {creating && (
         <InvoiceForm
           shop={shop}

@@ -1087,3 +1087,26 @@
   .install-settings h3 { font-size: 16px; font-weight: 700; margin: 0; }
   .install-settings .note { margin: 0; }
 }
+
+/* Équipe et journal */
+@layer components {
+  .team h3, .journal h3 { font-size: 17px; font-weight: 700; margin: 22px 0 10px; }
+  .team-invite { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+  .team .list article { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .team .list em { font-style: normal; font-size: 12px; color: var(--j-ink-3); margin-left: 6px; text-transform: capitalize; }
+  .team .row { display: flex; gap: 6px; }
+  .journal-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 14px; }
+  .journal-filters button { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--j-line); font-size: 13px; font-weight: 600; color: var(--j-ink-2); background: var(--j-card); }
+  .journal-filters button.on { background: var(--j-ink); color: var(--j-white); border-color: var(--j-ink); }
+  .journal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .journal-list li { display: grid; grid-template-columns: 112px 110px 1fr; gap: 10px; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+  .journal-list li:nth-child(odd) { background: var(--j-wash); }
+  .journal-list li time { color: var(--j-ink-3); font-size: 13px; }
+  .journal-list li b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .journal-list li.is-alert { background: color-mix(in oklab, var(--j-danger) 10%, var(--j-white)); box-shadow: inset 3px 0 0 var(--j-danger); }
+  @media (max-width: 640px) {
+    .team-invite { grid-template-columns: 1fr; }
+    .journal-list li { grid-template-columns: 1fr auto; }
+    .journal-list li span { grid-column: 1 / -1; }
+  }
+}

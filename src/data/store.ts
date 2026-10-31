@@ -1,5 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
-import { type Lang, type Profile, type Shop, clearProfile, loadProfile, saveProfile } from "../model";
+import { type Lang, type Profile, type Role, type Shop, clearProfile, loadProfile, roleIn, saveProfile } from "../model";
 import { phoneOf, supabase } from "./supabase";
 import { diffShop, loadShops, type LoadClient, type SyncClient, SyncQueue } from "./sync";
 
@@ -63,7 +63,8 @@ export function persist(prev: Profile | null, next: Profile) {
   for (const shop of next.shops) {
     const before = prev?.shops.find((s) => s.id === shop.id) ?? null;
     if (before === shop) continue;
-    const ops = diffShop(before, shop);
+    // Un vendeur ne modifie pas la fiche de la boutique (le serveur le refuserait de toute façon).
+    const ops = diffShop(before, shop).filter((op) => op.table !== "shops" || roleIn(next, shop.id) === "patron");
     if (ops.length) {
       queue.push(ops);
       changed = true;
@@ -108,10 +109,18 @@ export async function bootstrap(session: Session): Promise<Profile> {
   if (mine && !synced) return mine;
 
   try {
-    const [{ data: row }, shops] = await Promise.all([
+    // Invitations en attente pour ce numéro : la boutique du patron apparaît tout de suite.
+    await supabase.rpc("accept_invites").then(
+      () => undefined,
+      () => undefined,
+    );
+    const [{ data: row }, shops, { data: members }] = await Promise.all([
       supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
       loadShops(supabase as unknown as LoadClient),
+      supabase.from("shop_members").select("shop_id, role").eq("user_id", userId),
     ]);
+    const roles: Record<string, Role> = {};
+    for (const m of (members ?? []) as Array<{ shop_id: string; role: string }>) roles[m.shop_id] = m.role === "vendeur" ? "vendeur" : "patron";
     const lang = LANGS.find((l) => l === row?.lang) ?? LANGS.find((l) => l === mine?.lang) ?? "wo";
     const shopId = shops.find((s) => s.id === (mine?.shopId ?? row?.current_shop_id))?.id ?? shops[0]?.id ?? "";
     const profile: Profile = {
@@ -125,6 +134,7 @@ export async function bootstrap(session: Session): Promise<Profile> {
       shopId,
       shops: shops.length ? shops : (mine?.shops ?? []),
       termsVersion: typeof row?.terms_version === "string" ? row.terms_version : null,
+      roles,
     };
     saveProfile(profile);
     return profile;

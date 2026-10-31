@@ -1,4 +1,4 @@
-import { type Lang, type Shop, lowStock, uid } from "../model";
+import { type Lang, type Role, type Shop, lowStock, uid } from "../model";
 import { overdueDebts } from "../data/debts";
 import { buildReport, periodOf } from "../data/report";
 import { applyDraft, roundQty, unitKind } from "./apply";
@@ -32,7 +32,13 @@ export type DeskDeps = {
   onSaved: (entry: Entry) => void;
   onUndone: (entry: Entry) => void;
   onHeard?: (heard: string) => void;
+  /** Rôle dans la boutique ouverte (patron par défaut). */
+  role?: () => Role;
 };
+
+/** Écritures réservées au patron : elles changent le stock sans vente ou le prix d'achat. */
+const PATRON_ONLY: DraftActionType[] = ["purchase", "stock_adjust"];
+export const PATRON_ONLY_MESSAGE = "réservé au patron : les achats et les corrections de stock se font avec le compte du patron";
 
 /**
  * Le comptoir de Jokko : chaque phrase complète est enregistrée tout de suite,
@@ -57,6 +63,7 @@ export class LiveDesk {
     if (last?.key === key && Date.now() - last.at < DUPLICATE_MS && last.after.id === this.deps.getShop().id) {
       return { ok: true, entry: last };
     }
+    if (this.deps.role?.() === "vendeur" && PATRON_ONLY.includes(action.type)) return { ok: false, besoin: PATRON_ONLY_MESSAGE };
     const before = this.deps.getShop();
     const applied = applyDraft(before, action);
     if (!applied) return { ok: false, besoin: missing(action) };
@@ -131,11 +138,13 @@ export class LiveDesk {
           benefice_net: r.netProfit > 0 ? francsToWolof(r.netProfit) : r.netProfit < 0 ? `perte de ${francsToWolof(-r.netProfit)}` : "dara",
         },
       });
+      const vendeur = this.deps.role?.() === "vendeur";
       return {
         ...context,
+        ...(vendeur ? { note_role: "Tu parles à un vendeur : ne donne jamais le bénéfice ni les prix d'achat." } : {}),
         detail: shop.products.filter((p) => p.retail).map((p) => ({ article: p.name, unite_detail: p.retail!.unit, par_unite_gros: p.retail!.perUnit, prix_detail: p.retail!.price })),
-        bilan_aujourdhui: summary(day),
-        bilan_du_mois: summary(month),
+        bilan_aujourdhui: vendeur ? { ventes: day.revenue, en_wolof: { ventes: francsToWolof(day.revenue) } } : summary(day),
+        bilan_du_mois: vendeur ? undefined : summary(month),
         dettes_en_retard: overdueDebts(shop).map((d) => ({ client: d.client.name, montant: d.client.debt, en_wolof: francsToWolof(d.client.debt), jours_de_retard: -(d.daysLeft ?? 0) })),
         montants_en_wolof: {
           ventes_du_jour: francsToWolof(context.figures.daySales),
@@ -166,6 +175,9 @@ export class LiveDesk {
         return { statut: "incomplet", besoin: `l'unité : ${product.name} se compte en ${units}`, consigne: "N'enregistre rien. Demande l'unité en disant les unités possibles." };
       }
       const result = this.record(action, heard, call.id);
+      if (!result.ok && result.besoin === PATRON_ONLY_MESSAGE) {
+        return { statut: "refuse", raison: PATRON_ONLY_MESSAGE, consigne: "N'enregistre rien. Dis en une phrase que seul le patron peut faire ça." };
+      }
       if (!result.ok) return { statut: "incomplet", besoin: result.besoin, consigne: "Rien n'est enregistré. Pose une seule question courte pour avoir cette information." };
       const low = lowStock(result.entry.after)
         .filter((p) => p.id === action.productId)

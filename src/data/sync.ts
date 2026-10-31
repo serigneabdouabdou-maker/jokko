@@ -136,7 +136,13 @@ export interface SyncClient {
   };
 }
 
-export type FlushResult = { sent: number; pending: number; error: string | null };
+/** rejected : écritures refusées par les règles de la boutique (ex. un vendeur qui change un prix) et abandonnées. */
+export type FlushResult = { sent: number; pending: number; error: string | null; rejected?: number };
+
+/** Refus définitif du serveur (droits) : réessayer ne servirait à rien et bloquerait toute la file. */
+export function isRefusal(error: string): boolean {
+  return /row-level security|permission denied|42501|violates check constraint/i.test(error);
+}
 
 export const QUEUE_KEY = "jokko.sync.v1";
 
@@ -226,6 +232,7 @@ export class SyncQueue {
   private async send(client: SyncClient): Promise<FlushResult> {
     const ordered = sortForFlush(this.pending);
     let sent = 0;
+    let rejected = 0;
     let i = 0;
     while (i < ordered.length) {
       // lot : même table et même type d'op, consécutifs
@@ -244,14 +251,17 @@ export class SyncQueue {
       } catch (e) {
         error = errorText(e);
       }
-      if (error !== null) return { sent, pending: this.ops.size, error };
+      if (error !== null && !isRefusal(error)) return { sent, pending: this.ops.size, error, rejected };
+      if (error !== null) {
+        rejected += batch.length;
+        console.warn("[jokko] écriture refusée par les règles de la boutique :", error);
+      } else sent += batch.length;
       // retire seulement les ops non remplacées entre-temps par un push
       for (const op of batch) if (this.ops.get(opKey(op)) === op) this.ops.delete(opKey(op));
       this.save();
-      sent += batch.length;
       i = j;
     }
-    return { sent, pending: this.ops.size, error: null };
+    return { sent, pending: this.ops.size, error: null, rejected };
   }
 }
 

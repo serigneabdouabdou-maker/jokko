@@ -165,7 +165,7 @@ describe("SyncQueue", () => {
     ]);
     const client = fakeClient();
     const res = await q.flush(client);
-    expect(res).toEqual({ sent: 7, pending: 0, error: null });
+    expect(res).toEqual({ sent: 7, pending: 0, error: null, rejected: 0 });
     expect(client.calls).toEqual([
       { table: "shops", kind: "upsert", ids: ["shop-1"], onConflict: "id" },
       { table: "products", kind: "upsert", ids: ["p-1"], onConflict: "id" },
@@ -190,7 +190,21 @@ describe("SyncQueue", () => {
     const thrown = await q.flush(fakeClient({ throwOn: "sales" }));
     expect(thrown).toMatchObject({ sent: 0, pending: 6, error: "Failed to fetch" });
     const ok = await q.flush(fakeClient());
-    expect(ok).toEqual({ sent: 6, pending: 0, error: null });
+    expect(ok).toEqual({ sent: 6, pending: 0, error: null, rejected: 0 });
+  });
+
+  it("écriture refusée par les règles (vendeur) : abandonnée, la file ne reste pas bloquée", async () => {
+    const q = new SyncQueue(memory());
+    q.push([up("shops", "shop-1"), up("sales", "s-1")]);
+    const client: SyncClient = {
+      from: (table) => ({
+        upsert: () => Promise.resolve({ error: table === "shops" ? { message: 'new row violates row-level security policy for table "shops"' } : null }),
+        delete: () => ({ in: () => Promise.resolve({ error: null }) }),
+      }),
+    };
+    const res = await q.flush(client);
+    expect(res).toEqual({ sent: 1, pending: 0, error: null, rejected: 1 });
+    expect(q.size).toBe(0);
   });
 
   it("deux flush simultanés → un seul envoi", async () => {
@@ -218,7 +232,7 @@ describe("SyncQueue", () => {
     q.push([up("products", "p-1", { stock: 4 })]);
     release();
     const res = await pending;
-    expect(res).toEqual({ sent: 1, pending: 1, error: null });
+    expect(res).toEqual({ sent: 1, pending: 1, error: null, rejected: 0 });
     expect(q.pending[0].row).toEqual({ id: "p-1", stock: 4 });
   });
 });

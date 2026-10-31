@@ -103,7 +103,10 @@ export type Profile = {
   phone: string;
   owner: string;
   lang: Lang;
+  /** Ancien réglage, gardé pour les copies du téléphone. Le vrai rôle vient de roles (fixé par le serveur). */
   role: "patron" | "caissier";
+  /** Rôle dans chaque boutique (id → rôle), lu sur le serveur. Absent = boutique à soi (patron). */
+  roles?: Record<string, Role>;
   geminiKey: string;
   speak: boolean;
   shopId: string;
@@ -114,6 +117,13 @@ export type Profile = {
    */
   termsVersion?: string | null;
 };
+
+/** patron : voit et règle tout. vendeur : vend, encaisse, note les dettes ; ne touche ni aux prix ni au bilan. */
+export type Role = "patron" | "vendeur";
+
+export function roleIn(profile: Pick<Profile, "roles" | "shopId">, shopId = profile.shopId): Role {
+  return profile.roles?.[shopId] === "vendeur" ? "vendeur" : "patron";
+}
 
 export type ChatMessage = { id: string; role: "user" | "jokko"; text: string; at: string };
 

@@ -15,6 +15,7 @@ import {
   money,
   newShop,
   replaceShop,
+  roleIn,
   toCsv,
   uid,
 } from "./model";
@@ -54,6 +55,8 @@ import { overdueDebts } from "@/data/debts";
 import { acceptTerms, signIn, signUp, supabase } from "@/data/supabase";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
+import { Team } from "@/components/jokko/Team";
+import { Journal } from "@/components/jokko/Journal";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
@@ -62,7 +65,7 @@ const TEXT_SESSION_IDLE_MS = 3 * 60_000;
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "reglages";
+type Screen = "parler" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -79,8 +82,13 @@ const NAV: Array<[Screen, string]> = [
   ["depenses", "Dépenses"],
   ["dettes", "Dettes"],
   ["caisse", "Caisse"],
+  ["equipe", "Équipe"],
+  ["journal", "Journal"],
   ["reglages", "Réglages"],
 ];
+
+/** Rubriques réservées au patron. */
+const PATRON_SCREENS: Screen[] = ["bilan", "equipe", "journal"];
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -605,6 +613,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   deskRef.current ??= new LiveDesk({
     getShop: () => currentShop(profileRef.current),
     lang: () => profileRef.current.lang,
+    role: () => roleIn(profileRef.current),
     write: (next) => {
       const updated = replaceShop(profileRef.current, next);
       profileRef.current = updated;
@@ -1033,6 +1042,12 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
 
   const prompts = ["Ajoute une vente de 15 000", "Il me reste combien de riz ?", "Qui me doit de l'argent ?", "Jaay naa 2 huile", "Caisse du jour", "Relance Moussa"];
   const busy = voice === "transcription" || voice === "comprehension";
+  const role = roleIn(profile);
+  const patron = role === "patron";
+  // Un vendeur ne reste jamais sur une rubrique du patron (ex. après un changement de boutique).
+  useEffect(() => {
+    if (!patron && PATRON_SCREENS.includes(screen)) setScreen("parler");
+  }, [patron, screen]);
 
   return (
     <div className="desk">
@@ -1042,13 +1057,13 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.map(([id, label]) => (
+          {NAV.filter(([id]) => patron || !PATRON_SCREENS.includes(id)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}>{label}</button>
           ))}
         </nav>
         <div className="side-foot">
           <span>{profile.owner}</span>
-          <Badge variant="secondary" className="capitalize">{profile.role}</Badge>
+          <Badge variant="secondary" className="capitalize">{role}</Badge>
         </div>
       </aside>
 
@@ -1071,7 +1086,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             <small>Fond {amount(shop.openingCash)} + ventes − dépenses</small>
           </article>
           <article className="stat stat-sales">
-            <span>Ventes du jour{today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
+            <span>Ventes du jour{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
             <Num value={daySales(shop)} />
           </article>
           <article className="stat">
@@ -1126,13 +1141,15 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             </div>
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
-          {screen === "stock" && <Stock shop={shop} commit={commit} />}
+          {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
-          {screen === "factures" && <Invoices shop={shop} commit={commit} />}
+          {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
-          {screen === "bilan" && <Bilan shop={shop} commit={commit} />}
-          {screen === "caisse" && <Cash shop={shop} commit={commit} />}
+          {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
+          {screen === "caisse" && <Cash shop={shop} commit={commit} canEdit={patron} />}
+          {screen === "equipe" && patron && <Team shop={shop} />}
+          {screen === "journal" && patron && <Journal shop={shop} />}
           {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} />}
         </div>
       </main>
@@ -1168,7 +1185,7 @@ function MoneyList({ title, rows }: { title: string; rows: string[][] }) {
   );
 }
 
-function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+function Stock({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
@@ -1194,11 +1211,11 @@ function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
                 }}
               />
             ) : (
-            <article key={p.id} className={`${low ? "is-low" : ""} is-clickable`} onClick={() => setEditing(p.id)} title="Modifier les prix et le détail">
+            <article key={p.id} className={`${low ? "is-low" : ""}${canEdit ? " is-clickable" : ""}`} onClick={canEdit ? () => setEditing(p.id) : undefined} title={canEdit ? "Modifier les prix et le détail" : undefined}>
               <div className="stock-name">
                 <b>{p.name}</b>
                 <small className="num">
-                  {p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · "}vente {amount(p.price)}
+                  {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}vente {amount(p.price)}
                   {p.retail ? ` · détail ${amount(p.retail.price)}/${p.retail.unit}` : ""}
                 </small>
               </div>
@@ -1212,7 +1229,8 @@ function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           );
         })}
       </div>
-      <div className="add-row">
+      {!canEdit && <p className="note">Seul le patron ajoute des articles et change les prix.</p>}
+      {canEdit && <div className="add-row">
         <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nouvel article" />
         <Input className="num h-11" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Prix" />
         <Button className="h-11 rounded-full px-5 font-semibold" onClick={() => {
@@ -1220,8 +1238,8 @@ function Stock({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           commit({ ...shop, products: [...shop.products, { id: uid("p"), name: name.trim(), unit: "pièce", stock: 0, min: 2, price: Number(price) || 0 }] });
           setName("");
         }}>Ajouter au stock</Button>
-      </div>
-      <StockImport shop={shop} commit={commit} />
+      </div>}
+      {canEdit && <StockImport shop={shop} commit={commit} />}
     </section>
   );
 }
@@ -1292,7 +1310,7 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   );
 }
 
-function Cash({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [counted, setCounted] = useState(String(expectedCash(shop)));
   const expected = expectedCash(shop);
   const gap = (Number(counted) || 0) - expected;
@@ -1314,7 +1332,7 @@ function Cash({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           <Input id="counted" className="num h-14 text-2xl font-semibold" value={counted} onChange={(e) => setCounted(e.target.value)} />
         </div>
         <p className={`cash-gap${gap === 0 ? " ok" : " off"}`}>{gap === 0 ? "La caisse tombe juste." : `Écart ${amount(gap)}.`}</p>
-        <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>
+        {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}
       </article>
     </section>
   );
@@ -1339,16 +1357,6 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
           </Select>
         </div>
         <div className="field">
-          <Label>Rôle</Label>
-          <Select value={profile.role} onValueChange={(value) => setProfile({ ...profile, role: value as Profile["role"] })}>
-            <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="patron">Patron</SelectItem>
-              <SelectItem value="caissier">Caissier</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="field">
           <Label>Boutique active</Label>
           <Select value={profile.shopId} onValueChange={(value) => setProfile({ ...profile, shopId: value })}>
             <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
@@ -1357,7 +1365,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
             </SelectContent>
           </Select>
         </div>
-        <div className="field field-end">
+        {roleIn(profile) === "patron" && <div className="field field-end">
           <Button variant="outline" className="h-11 rounded-full" onClick={() => {
             // Nouvelle boutique : mêmes articles et clients, mais avec de nouveaux identifiants (base partagée).
             const copy = {
@@ -1374,7 +1382,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
             };
             setProfile({ ...profile, shops: [...profile.shops, copy], shopId: copy.id });
           }}>Nouvelle boutique</Button>
-        </div>
+        </div>}
       </div>
       <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
       <p className="note">
