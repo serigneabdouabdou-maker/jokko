@@ -2,6 +2,7 @@ import type { LiveServerMessage, Session } from "@google/genai";
 import { api } from "../data/supabase";
 import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
+import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
 export type LiveToolCall = { id?: string; name?: string; args?: Record<string, unknown> };
@@ -28,7 +29,8 @@ export type LiveHandle = {
   listen: () => Promise<MediaStream>;
 };
 
-export type LiveOptions = { microphone: boolean; greet: boolean; mute?: boolean };
+/** clear : chaque phrase de Jokko est lue par la voix claire de l'accueil (au lieu de la voix directe de Gemini). */
+export type LiveOptions = { microphone: boolean; greet: boolean; mute?: boolean; clear?: boolean; lang?: () => SpeechLang };
 
 export class LiveStartError extends Error {
   reason: "not_configured" | "unavailable" | "microphone";
@@ -150,6 +152,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const audio = audioContext();
   if (audio.state === "suspended") await audio.resume().catch(() => undefined);
   const player = new PcmPlayer(audio);
+  const clear = options.clear && !options.mute ? new ClearSpeaker(player, options.lang ?? (() => "wo"), () => handlers.onPhase("parle")) : null;
   let media: MediaStream | null = await micro;
   let open = false;
   let ended = false;
@@ -161,6 +164,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     if (ended) return;
     ended = true;
     open = false;
+    clear?.reset();
     player.stop();
     node?.port.close();
     node?.disconnect();
@@ -199,18 +203,25 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const onmessage = (message: LiveServerMessage) => {
     const content = message.serverContent;
     if (content?.interrupted) {
+      clear?.reset();
       player.stop();
       handlers.onPhase("ecoute");
     }
     for (const part of content?.modelTurn?.parts ?? []) {
-      if (part.inlineData?.data && !options.mute) {
+      if (part.inlineData?.data && !options.mute && !clear) {
         player.push(base64ToBytes(part.inlineData.data), rateOf(part.inlineData.mimeType));
         handlers.onPhase("parle");
       }
     }
     if (content?.inputTranscription?.text) handlers.onUser(content.inputTranscription.text);
-    if (content?.outputTranscription?.text) handlers.onJokko(content.outputTranscription.text);
-    if (content?.turnComplete) handlers.onTurnEnd();
+    if (content?.outputTranscription?.text) {
+      handlers.onJokko(content.outputTranscription.text);
+      clear?.add(content.outputTranscription.text);
+    }
+    if (content?.turnComplete) {
+      clear?.flush();
+      handlers.onTurnEnd();
+    }
     if (message.toolCallCancellation?.ids?.length) handlers.onToolCancel(message.toolCallCancellation.ids);
     if (message.toolCall?.functionCalls?.length && live) {
       live.sendToolResponse({
@@ -261,6 +272,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     stop: () => finish(null),
     tell: (text: string) => {
       if (!open || !live) return;
+      clear?.reset();
       player.stop();
       live.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true });
     },

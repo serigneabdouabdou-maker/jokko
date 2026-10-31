@@ -11,8 +11,8 @@ const TIMEOUT_MS = 20_000;
 const CACHE_LIMIT = 40;
 
 const DIRECTION: Record<Language, string> = {
-  wo: "Dis en wolof de Dakar, d'une voix chaleureuse et calme, comme une commerçante au comptoir :",
-  fr: "Dis en français, avec un léger accent sénégalais, d'une voix chaleureuse et calme, comme une commerçante de Dakar :",
+  wo: "Dis en wolof de Dakar, clairement et posément, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui t'aide au comptoir :",
+  fr: "Dis en français, avec un léger accent sénégalais, clairement et posément, d'une voix chaleureuse, souriante et rassurante :",
   en: "Say in English with a light Senegalese accent, in a warm and calm voice, like a shopkeeper in Dakar:",
   fuc: "Dis en pulaar, d'une voix chaleureuse et calme, comme une commerçante au comptoir :",
 };

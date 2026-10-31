@@ -69,6 +69,7 @@ import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
+import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
@@ -700,7 +701,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
               if (reason) fail(reason);
             },
           },
-          { microphone, greet, mute: !profileRef.current.speak },
+          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo") },
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
@@ -1365,6 +1366,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
         <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
         <Label htmlFor="speak">Lire les réponses à voix haute</Label>
       </div>
+      <ClearVoiceSetting />
       <div className="row actions">
         <Button variant="outline" className="h-11 rounded-full" onClick={() => download(`jokko-${shop.name}.csv`, file)}>Exporter CSV</Button>
         <Button variant="outline" className="h-11 rounded-full" onClick={() => {
@@ -1393,4 +1395,15 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+}
+
+/** Voix claire et posée (celle de l'accueil) ou voix directe de Gemini (un peu plus rapide). */
+function ClearVoiceSetting() {
+  const [on, setOn] = useState(clearVoicePreferred);
+  return (
+    <div className="row">
+      <Checkbox id="voix-claire" checked={on} onCheckedChange={(checked) => { setOn(checked === true); setClearVoicePreferred(checked === true); }} />
+      <Label htmlFor="voix-claire">Voix claire et posée, comme sur la page d’accueil (réponse un peu plus lente d’une seconde)</Label>
+    </div>
+  );
 }
