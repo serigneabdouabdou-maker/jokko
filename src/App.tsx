@@ -68,6 +68,7 @@ import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
+import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
@@ -409,9 +410,16 @@ const NOISE = /<[^>]*>/g;
 
 function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   // Une notification touchée ouvre le bon écran (?ecran=distance)
+  // Offre choisie sur la page d'accueil avant de créer le compte : on l'ouvre tout de suite.
+  const [wantedPlan] = useState(() => {
+    const w = peekWantedPlan();
+    return w === "medium" || w === "avance" ? w : null;
+  });
+  useEffect(() => clearWantedPlan(), []);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
-    return NAV.some(([id]) => id === wanted) ? (wanted as Screen) : "parler";
+    if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
+    return wantedPlan ? "offre" : "parler";
   });
   useEffect(() => {
     void ensurePush();
@@ -1062,7 +1070,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             </div>
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
-          {screen === "offre" && patron && <Plans shop={shop} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
+          {screen === "offre" && patron && <Plans shop={shop} initialChoice={wantedPlan} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
           {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}

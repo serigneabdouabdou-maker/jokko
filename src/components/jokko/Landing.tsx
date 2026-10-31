@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc } from "@/legal";
+import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@/components/jokko/voiceIntro";
 import "./landing.css";
 
 /**
@@ -165,8 +166,154 @@ function BentoFigure({ value, prefix = "" }: { value: number; prefix?: string })
   return <p ref={ref} className="b-figure num">{prefix}{fmt(v)}</p>;
 }
 
+
+/** « Écoutez Jokko » : l'audio enregistré, avec le sous-titre de chaque phrase (wolof + traduction). */
+function VoiceIntro({ onChoose, autoplay }: { onChoose: () => void; autoplay: number }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [state, setState] = useState<"pret" | "charge" | "parle" | "pause" | "fini" | "erreur">("pret");
+  const [t, setT] = useState(0);
+  const [duration, setDuration] = useState(VOICE_LINES[VOICE_LINES.length - 1].end);
+  const current = lineAt(t);
+  const line = current >= 0 ? VOICE_LINES[current] : null;
+
+  async function toggle() {
+    const el = audio.current;
+    if (!el) return;
+    if (state === "parle") return el.pause();
+    if (state === "fini") el.currentTime = 0;
+    setState("charge");
+    try {
+      await el.play();
+    } catch {
+      setState("erreur");
+    }
+  }
+  // Le bouton « Écouter Jokko » du haut de page lance la lecture.
+  useEffect(() => {
+    if (autoplay) void toggle();
+  }, [autoplay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const playing = state === "parle" || state === "charge";
+  return (
+    <section className="lx-voice-sec" id="voix" aria-label="Écoutez Jokko">
+      <Reveal className="lx-voice-card" threshold={0.25}>
+        <div className="lx-voice-left" style={at(0)}>
+          <p className="eyebrow">Écoutez Jokko</p>
+          <h2>Il parle <em className="accent">wolof</em>. Et français.</h2>
+          <p className="lx-voice-lede">Touchez le bouton : Jokko se présente lui-même, en moins d’une minute.</p>
+          <button type="button" className={`lx-play${playing ? " is-on" : ""}`} onClick={() => void toggle()} aria-label={playing ? "Mettre en pause" : "Écouter Jokko"}>
+            <span className="lx-play-mark"><JokkoMark size={64} listening={state === "parle"} /></span>
+            <span className="lx-play-icon" aria-hidden="true">{playing ? "❚❚" : "▶"}</span>
+          </button>
+          <div className="lx-progress" aria-hidden="true"><span style={{ width: `${Math.min(100, (t / (duration || 1)) * 100)}%` }} /></div>
+          {state === "erreur" && <p className="note" data-tone="error">L’audio ne se lance pas. Vérifiez le son du téléphone et la connexion, puis réessayez.</p>}
+        </div>
+        <div className="lx-voice-right" style={at(1)} aria-live="polite">
+          <div className={`lx-eq${state === "parle" ? " is-on" : ""}`} aria-hidden="true">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ "--k": i } as CSSProperties} />)}</div>
+          {line ? (
+            <div className="lx-caption" key={current}>
+              <span className="lx-lang">{line.lang === "wo" ? "Wolof" : "Français"}</span>
+              <p className="lx-cap-main">{line.text}</p>
+              {line.fr && <p className="lx-cap-fr">{line.fr}</p>}
+            </div>
+          ) : (
+            <div className="lx-caption">
+              <span className="lx-lang">Wolof · Français</span>
+              <p className="lx-cap-main">« Asalaa maalekum ! Maa ngi tudd Jokko. »</p>
+              <p className="lx-cap-fr">Bonjour ! Je m’appelle Jokko.</p>
+            </div>
+          )}
+          <div className={`lx-voice-cta${state === "fini" ? " is-shown" : ""}`}>
+            <Button className="lx-cta h-12 rounded-full px-6 text-[15px] font-semibold" onClick={onChoose}>Choisir mon offre <span className="lx-arrow" aria-hidden="true">↓</span></Button>
+          </div>
+        </div>
+      </Reveal>
+      <audio
+        ref={audio}
+        src={VOICE_URL}
+        preload="none"
+        onPlaying={() => setState("parle")}
+        onPause={() => setState((s) => (s === "fini" ? s : "pause"))}
+        onEnded={() => setState("fini")}
+        onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => Number.isFinite(e.currentTarget.duration) && setDuration(e.currentTarget.duration)}
+        onError={() => setState("erreur")}
+      />
+    </section>
+  );
+}
+
+type Art = { title: string; body: ReactNode };
+
+/** Trois petites images par offre : de vraies scènes de l'appli, dessinées en léger (pas de photos lourdes). */
+const OFFER_ART: Record<WantedPlan, Art[]> = {
+  gratuit: [
+    { title: "Vente à la voix", body: <><p className="oa-said">« Jaay naa 2 huile »</p><p className="oa-big num">+15 000 F</p></> },
+    { title: "Stock qui prévient", body: <div className="oa-levels"><span><i style={{ "--w": "90%" } as CSSProperties} />Riz</span><span className="low"><i style={{ "--w": "18%" } as CSSProperties} />Huile</span><span><i style={{ "--w": "60%" } as CSSProperties} />Sucre</span></div> },
+    { title: "Caisse et dettes", body: <><p className="oa-row"><span>Moussa</span><b className="num">20 000 F</b></p><p className="oa-row"><span>Caisse</span><b className="num">50 500 F</b></p></> },
+  ],
+  medium: [
+    { title: "Caisse par scan", body: <div className="oa-scan"><span className="oa-code" aria-hidden="true" /><span className="oa-laser" aria-hidden="true" /><b className="num">Riz · 15 500 F</b></div> },
+    { title: "Vendeurs et journal", body: <><p className="oa-row"><span>👤 Awa</span><b>vendeuse</b></p><p className="oa-row"><span>10:41 vente</span><b>🔒</b></p></> },
+    { title: "Alertes à distance", body: <><p className="oa-alert ok">✓ Wave 12 500 F</p><p className="oa-alert bad">Caisse − 2 000 F</p></> },
+  ],
+  avance: [
+    { title: "Chat intelligent", body: <><p className="oa-said">« 2 riz, 1 huile, big bleu »</p><p className="oa-row"><span>Panier</span><b className="num">34 000 F</b></p></> },
+    { title: "Conseiller IA", body: <p className="oa-tip">💡 Le riz part vite le samedi : prenez 5 sacs de plus.</p> },
+    { title: "Résumé du soir", body: <><p className="oa-notif"><b>Jokko · 20:00</b>Ventes 86 500 F · bénéfice 14 200 F</p><p className="oa-row"><span>2 boutiques</span><b>↔</b></p></> },
+  ],
+};
+
+const OFFERS: { plan: WantedPlan; name: string; price: string; pitch: string; features: string[]; cta: string }[] = [
+  { plan: "gratuit", name: "Gratuit", price: "0 F", pitch: "Pour commencer seul dans sa boutique.", features: ["1 boutique, 1 utilisateur", "La voix en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures WhatsApp"], cta: "Commencer gratuitement" },
+  { plan: "medium", name: "Médium", price: "3 000 F", pitch: "Pour la boutique avec des vendeurs.", features: ["Tout le Gratuit", "Vendeurs, rôles et journal non effaçable", "Caisse par scan et étiquettes", "La boutique à distance + alertes", "Relances WhatsApp, import Excel"], cta: "Choisir Médium" },
+  { plan: "avance", name: "Avancé", price: "7 500 F", pitch: "Pour le patron qui veut tout voir et grandir.", features: ["Tout le Médium", "Chat intelligent : une liste en vrac devient un panier", "Conseiller IA pour gagner plus", "Résumé du soir sur le téléphone", "Plusieurs boutiques"], cta: "Choisir Avancé" },
+];
+
+function OfferShowcase({ onChoose }: { onChoose: (plan: WantedPlan) => void }) {
+  return (
+    <section className="offers lx-offers-sec" id="offres">
+      <Reveal className="section-head">
+        <p className="eyebrow" style={at(0)}>Offres</p>
+        <h2 style={at(1)}>Choisissez <em className="accent">votre offre</em>.</h2>
+        <p className="lx-offers-lede" style={at(2)}>Toutes commencent par 14 jours d’Avancé offerts. Paiement par Wave, sans engagement.</p>
+      </Reveal>
+      <Reveal className="lx-offer-grid" threshold={0.1}>
+        {OFFERS.map((o, k) => (
+          <article key={o.plan} className={`lx-offer is-${o.plan}`} style={at(k)}>
+            {o.plan === "avance" && <span className="lx-badge">Le plus complet</span>}
+            <header>
+              <h3>{o.name}</h3>
+              <p className="lx-price num">{o.price}{o.plan !== "gratuit" && <small> / mois</small>}</p>
+              <p className="lx-pitch">{o.pitch}</p>
+            </header>
+            <div className="lx-arts">
+              {OFFER_ART[o.plan].map((a) => (
+                <figure key={a.title} className="lx-art">
+                  <div className="lx-art-body">{a.body}</div>
+                  <figcaption>{a.title}</figcaption>
+                </figure>
+              ))}
+            </div>
+            <ul className="lx-feats">{o.features.map((f) => <li key={f}>{f}</li>)}</ul>
+            <Button className={`lx-offer-btn h-12 rounded-full px-5 text-[15px] font-semibold${o.plan === "avance" ? " is-main" : ""}`} variant={o.plan === "avance" ? "default" : "outline"} onClick={() => onChoose(o.plan)}>
+              {o.cta} <span className="lx-arrow" aria-hidden="true">→</span>
+            </Button>
+          </article>
+        ))}
+      </Reveal>
+    </section>
+  );
+}
+
 export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; langs: string[] }) {
   const [reading, setReading] = useState<LegalDoc | null>(null);
+  const [listen, setListen] = useState(0);
+  const choose = (plan: WantedPlan) => {
+    rememberPlan(plan);
+    onStart("creer");
+  };
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 24);
@@ -186,12 +333,15 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           <span>Jokko</span>
         </a>
         <nav className="llinks">
-          <a href="#changer">Produit</a>
+          <a href="#voix">Écouter</a>
+          <a href="#offres">Offres</a>
           <a href="#fonctions">Fonctions</a>
           <a href="#distance">À distance</a>
-          <a href="#offres">Offres</a>
         </nav>
-        <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => onStart("entrer")}>Se connecter</Button>
+        <span className="lx-nav-actions">
+          <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => onStart("entrer")}>Se connecter</Button>
+          <Button className="lx-nav-offers h-10 rounded-full px-4" onClick={() => scrollTo("offres")}>Voir les offres</Button>
+        </span>
       </header>
 
       <section className="hero lx-hero" id="top">
@@ -219,7 +369,9 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
             <Button className="lx-cta h-12 rounded-full px-6 text-[15px] font-semibold" onClick={() => onStart("creer")}>
               Ouvrir ma boutique <span className="lx-arrow" aria-hidden="true">→</span>
             </Button>
-            <a className="textlink" href="#fonctions">Voir ce qu’elle fait</a>
+            <Button variant="outline" className="lx-listen h-12 rounded-full px-5 text-[15px] font-semibold" onClick={() => { scrollTo("voix"); setListen((n) => n + 1); }}>
+              <span className="lx-listen-dot" aria-hidden="true">▶</span> Écouter Jokko
+            </Button>
           </div>
           <ul className="langs lx-in" style={at(6)} aria-label="Langues comprises">
             {langs.map((name) => <li key={name}>{name}</li>)}
@@ -227,6 +379,10 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </div>
         <CounterScene />
       </section>
+
+      <VoiceIntro autoplay={listen} onChoose={() => scrollTo("offres")} />
+
+      <OfferShowcase onChoose={choose} />
 
       <section className="lx-phrases" aria-label="Phrases que Jokko comprend">
         <Marquee items={phrases} />
@@ -326,40 +482,14 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </Reveal>
       </section>
 
-      <section className="offers" id="offres">
-        <Reveal className="section-head">
-          <p className="eyebrow" style={at(0)}>Offres</p>
-          <h2 style={at(1)}>Tout ce qu’il faut pour la boutique.</h2>
-        </Reveal>
-        <Reveal className="offer-grid lx-offers">
-          <article style={at(0)}>
-            <h3>Gratuit</h3>
-            <p className="lx-price num">0 F</p>
-            <p>Une boutique. La voix en wolof et en français, les ventes, le stock, la caisse, les dettes et les factures.</p>
-          </article>
-          <article style={at(1)}>
-            <h3>Médium</h3>
-            <p className="lx-price num">3 000 F <small>/ mois</small></p>
-            <p>Les vendeurs et le journal, le scanner et les étiquettes, la boutique à distance avec les alertes, les relances WhatsApp.</p>
-          </article>
-          <article className="featured" style={at(2)}>
-            <span className="b-tag">Le plus complet</span>
-            <h3>Avancé</h3>
-            <p className="lx-price num">7 500 F <small>/ mois</small></p>
-            <p>Tout le Médium, plus le chat intelligent, le Conseiller IA, le résumé du soir et plusieurs boutiques.</p>
-            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={() => onStart("creer")}>Essayer 14 jours gratuits</Button>
-          </article>
-        </Reveal>
-        <p className="note center">Chaque nouvelle boutique essaie l’offre Avancé gratuitement pendant 14 jours. Paiement par Wave. Sans engagement.</p>
-      </section>
 
       <Reveal as="section" className="lx-final">
         <div className="lx-final-mark" style={at(0)}><JokkoMark size={64} /></div>
         <h2 style={at(1)}>Dites votre première vente.</h2>
         <p style={at(2)}>Deux minutes pour ouvrir votre boutique.</p>
         <div style={at(3)}>
-          <Button className="lx-cta h-12 rounded-full px-7 text-[15px] font-semibold" onClick={() => onStart("creer")}>
-            Ouvrir ma boutique <span className="lx-arrow" aria-hidden="true">→</span>
+          <Button className="lx-cta h-12 rounded-full px-7 text-[15px] font-semibold" onClick={() => scrollTo("offres")}>
+            Choisir mon offre <span className="lx-arrow" aria-hidden="true">↑</span>
           </Button>
         </div>
       </Reveal>

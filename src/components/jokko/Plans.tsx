@@ -35,11 +35,11 @@ export function Upsell({ feature, title, onPlans }: { feature: Feature; title: s
 }
 
 /** Écran « Mon offre » (patron) : offre actuelle, essai, choix d'une offre et paiement par le lien Wave de CFC. */
-export function Plans({ shop, onPlanUpdated }: { shop: Shop; onPlanUpdated: (plan: Shop["plan"]) => void }) {
+export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Shop; onPlanUpdated: (plan: Shop["plan"]) => void; initialChoice?: "medium" | "avance" | null }) {
   const current = effectivePlan(shop);
   const [info, setInfo] = useState<SubscriptionInfo | null>(null);
   const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
-  const [choice, setChoice] = useState<"medium" | "avance" | null>(null);
+  const [choice, setChoice] = useState<"medium" | "avance" | null>(initialChoice);
   const [months, setMonths] = useState(1);
   const [payer, setPayer] = useState("");
   const [pending, setPending] = useState<{ reference: string; amount: number } | null>(null);
@@ -87,6 +87,9 @@ export function Plans({ shop, onPlanUpdated }: { shop: Shop; onPlanUpdated: (pla
           {!current.trial && current.plan !== "gratuit" && current.until && <> Payée jusqu'au <b>{date(current.until)}</b>.</>}
           {current.plan === "gratuit" && <> Tu peux passer à une offre supérieure quand tu veux.</>}
         </p>
+        {initialChoice && current.trial && (
+          <p className="note">Bienvenue ! Tu as choisi l’offre <b>{PLAN_LABELS[initialChoice]}</b>. Tes 14 premiers jours sont offerts en Avancé : tu peux payer maintenant, ou plus tard avant la fin de l’essai.</p>
+        )}
       </div>
 
       <div className="plan-grid">
