@@ -51,7 +51,9 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { signInOrUp, supabase } from "@/data/supabase";
+import { acceptTerms, signIn, signUp, supabase } from "@/data/supabase";
+import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
+import { LegalSheet } from "@/components/jokko/Legal";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
 const MAX_RECORDING_MS = 30_000;
@@ -83,7 +85,7 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profile, setProfileState] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [wantsLogin, setWantsLogin] = useState(false);
+  const [wantsLogin, setWantsLogin] = useState<AuthMode | null>(null);
   const profileRef = useRef<Profile | null>(null);
 
   useEffect(() => {
@@ -126,8 +128,9 @@ export function App() {
   }, []);
 
   if (session === undefined) return null;
-  if (!session) return wantsLogin ? <Login onBack={() => setWantsLogin(false)} /> : <Landing onStart={() => setWantsLogin(true)} />;
+  if (!session) return wantsLogin ? <Login mode={wantsLogin} onBack={() => setWantsLogin(null)} /> : <Landing onStart={setWantsLogin} />;
   if (!profile) return <Splash text={loading ? "Jokko ouvre ta boutique…" : "Un instant…"} />;
+  if (profile.termsVersion === null) return <TermsGate profile={profile} onAccepted={() => setProfile({ ...profile, termsVersion: TERMS_VERSION })} />;
   if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;
   return <Desk profile={profile} setProfile={setProfile} />;
 }
@@ -150,7 +153,8 @@ function Num({ value, className = "" }: { value: number; className?: string }) {
   return <span className={`num ${className}`}>{amount(shown)}</span>;
 }
 
-function Landing({ onStart }: { onStart: () => void }) {
+function Landing({ onStart }: { onStart: (mode: AuthMode) => void }) {
+  const [reading, setReading] = useState<LegalDoc | null>(null);
   const phrases = [
     "Awa m'a payé 15 000",
     "il me reste combien de riz ?",
@@ -171,7 +175,7 @@ function Landing({ onStart }: { onStart: () => void }) {
           <a href="#fonctions">Fonctions</a>
           <a href="#offres">Offres</a>
         </nav>
-        <Button variant="ghost" className="h-10 rounded-full px-4" onClick={onStart}>Se connecter</Button>
+        <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => onStart("entrer")}>Se connecter</Button>
       </header>
 
       <section className="hero" id="top">
@@ -186,7 +190,7 @@ function Landing({ onStart }: { onStart: () => void }) {
             Jokko note les ventes, surveille le stock, relance les dettes et compte la caisse. En wolof, en français, ou les deux mélangés, comme on parle à Dakar.
           </p>
           <div className="hero-cta">
-            <Button className="h-12 rounded-full px-6 text-[15px] font-semibold" onClick={onStart}>Ouvrir ma boutique</Button>
+            <Button className="h-12 rounded-full px-6 text-[15px] font-semibold" onClick={() => onStart("creer")}>Ouvrir ma boutique</Button>
             <a className="textlink" href="#fonctions">Voir ce qu’elle fait</a>
           </div>
           <ul className="langs" aria-label="Langues comprises">
@@ -314,7 +318,7 @@ function Landing({ onStart }: { onStart: () => void }) {
             <span className="b-tag">Le plus utile</span>
             <h3>Équipe</h3>
             <p>Les achats et le bénéfice, les dettes avec relance WhatsApp, les factures à envoyer.</p>
-            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={onStart}>Commencer</Button>
+            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={() => onStart("creer")}>Commencer</Button>
           </article>
           <article>
             <h3>Maison</h3>
@@ -327,7 +331,12 @@ function Landing({ onStart }: { onStart: () => void }) {
       <footer className="lfoot">
         <span className="lbrand"><JokkoMark size={24} /><span>Jokko</span></span>
         <span>La boutique qui écoute.</span>
+        <span className="lfoot-links">
+          <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>Conditions d’utilisation</button>
+          <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>Confidentialité</button>
+        </span>
       </footer>
+      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
     </main>
   );
 }
@@ -340,19 +349,40 @@ function JokkoBars() {
   );
 }
 
-function Login({ onBack }: { onBack: () => void }) {
+type AuthMode = "creer" | "entrer";
+
+function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
+  const [mode, setMode] = useState<AuthMode>(startMode);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [code2, setCode2] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const [reading, setReading] = useState<LegalDoc | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const digits = code.replace(/\D/g, "").slice(0, 6);
+  const digits2 = code2.replace(/\D/g, "").slice(0, 6);
+  const creating = mode === "creer";
+  const phoneOk = phone.replace(/\D/g, "").length >= 9;
+  const mismatch = creating && digits2.length === 6 && digits2 !== digits;
+  const ready = phoneOk && digits.length === 6 && (!creating || (digits2 === digits && agreed));
+
+  function switchTo(next: AuthMode) {
+    setMode(next);
+    setError("");
+    setCode("");
+    setCode2("");
+  }
 
   async function enter() {
     setBusy(true);
     setError("");
-    const outcome = await signInOrUp(phone, digits);
+    const outcome = creating ? await signUp(phone, digits, TERMS_VERSION) : await signIn(phone, digits);
     setBusy(false);
-    if (!outcome.ok) setError(outcome.message);
+    if (!outcome.ok) {
+      setError(outcome.message);
+      if (outcome.reason === "exists") switchTo("entrer");
+    }
     // Si c'est bon, la session change et l'appli ouvre la boutique toute seule.
   }
 
@@ -361,15 +391,19 @@ function Login({ onBack }: { onBack: () => void }) {
       <section className="gate-copy">
         <JokkoMark size={52} />
         <p className="eyebrow">Jokko</p>
-        <h1>Bonjour. <em className="accent">Je suis Jokko.</em></h1>
+        <h1>{creating ? <>Bienvenue. <em className="accent">Crée ton compte.</em></> : <>Bonjour. <em className="accent">Content de te revoir.</em></>}</h1>
         <p className="lede">Tu parles, je travaille : ventes, stock, clients, factures.</p>
       </section>
       <section className="gate-card">
+        <div className="auth-tabs" role="tablist" aria-label="Compte">
+          <button type="button" role="tab" aria-selected={creating} className={creating ? "on" : ""} onClick={() => switchTo("creer")}>Créer mon compte</button>
+          <button type="button" role="tab" aria-selected={!creating} className={!creating ? "on" : ""} onClick={() => switchTo("entrer")}>Me connecter</button>
+        </div>
         <form
           className="fields"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!busy) void enter();
+            if (!busy && ready) void enter();
           }}
         >
           <div className="field">
@@ -377,17 +411,82 @@ function Login({ onBack }: { onBack: () => void }) {
             <Input id="phone" className="h-12 text-base" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
           </div>
           <div className="field">
-            <Label htmlFor="code">Ton code secret (6 chiffres)</Label>
-            <Input id="code" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete="current-password" value={digits} onChange={(e) => setCode(e.target.value)} placeholder="••••••" />
+            <Label htmlFor="code">{creating ? "Choisis un code secret (6 chiffres)" : "Ton code secret (6 chiffres)"}</Label>
+            <Input id="code" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete={creating ? "new-password" : "current-password"} value={digits} onChange={(e) => setCode(e.target.value)} placeholder="••••••" />
           </div>
-          <p className="note">Première fois ? Choisis un code de 6 chiffres et retiens-le bien : il protège ta boutique. Déjà inscrit ? Mets ton code habituel.</p>
+          {creating && (
+            <>
+              <div className="field">
+                <Label htmlFor="code2">Retape le même code</Label>
+                <Input id="code2" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete="new-password" aria-invalid={mismatch} value={digits2} onChange={(e) => setCode2(e.target.value)} placeholder="••••••" />
+                {mismatch && <p className="note" role="alert" data-tone="error">Les deux codes ne sont pas pareils.</p>}
+              </div>
+              <p className="note">Retiens bien ce code : il protège ta boutique. Ne le donne à personne.</p>
+              <div className="consent">
+                <Checkbox id="agree" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
+                <label htmlFor="agree">
+                  J’ai lu et j’accepte les{" "}
+                  <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>conditions d’utilisation</button> et la{" "}
+                  <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>politique de confidentialité</button>.
+                </label>
+              </div>
+            </>
+          )}
           {error && <p className="note" role="alert" data-tone="error">{error}</p>}
-          <Button type="submit" className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || phone.replace(/\D/g, "").length < 9 || digits.length !== 6}>
-            {busy ? "Un instant…" : "Entrer"}
+          <Button type="submit" className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || !ready}>
+            {busy ? "Un instant…" : creating ? "Créer mon compte" : "Entrer"}
           </Button>
+          {creating && !agreed && phoneOk && digits.length === 6 && digits2 === digits && <p className="note">Coche la case pour continuer.</p>}
           <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
         </form>
       </section>
+      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
+    </main>
+  );
+}
+
+/** Compte créé avant l'arrivée des conditions (ou nouvelle version) : on demande de les accepter une fois. */
+function TermsGate({ profile, onAccepted }: { profile: Profile; onAccepted: () => void }) {
+  const [agreed, setAgreed] = useState(false);
+  const [reading, setReading] = useState<LegalDoc | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function accept() {
+    setBusy(true);
+    setError("");
+    const ok = profile.userId ? await acceptTerms(profile.userId, profile.phone, TERMS_VERSION) : false;
+    setBusy(false);
+    if (ok) onAccepted();
+    else setError("Pas de connexion internet. Réessaie.");
+  }
+
+  return (
+    <main className="gate">
+      <section className="gate-copy">
+        <JokkoMark size={52} />
+        <p className="eyebrow">Jokko</p>
+        <h1>Une chose <em className="accent">avant d’entrer.</em></h1>
+        <p className="lede">Lis comment Jokko protège tes données, puis accepte pour continuer.</p>
+      </section>
+      <section className="gate-card">
+        <div className="fields">
+          <div className="consent">
+            <Checkbox id="agree-gate" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
+            <label htmlFor="agree-gate">
+              J’ai lu et j’accepte les{" "}
+              <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>conditions d’utilisation</button> et la{" "}
+              <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>politique de confidentialité</button>.
+            </label>
+          </div>
+          {error && <p className="note" role="alert" data-tone="error">{error}</p>}
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || !agreed} onClick={() => void accept()}>
+            {busy ? "Un instant…" : "Continuer"}
+          </Button>
+          <Button variant="ghost" className="h-10 rounded-full" onClick={() => void signOut()}>Se déconnecter</Button>
+        </div>
+      </section>
+      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
     </main>
   );
 }
@@ -1220,6 +1319,7 @@ function Cash({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
 }
 
 function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+  const [reading, setReading] = useState<LegalDoc | null>(null);
   const shop = currentShop(profile);
   const file = useMemo(() => toCsv(shop), [shop]);
   return (
@@ -1274,6 +1374,12 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
         </div>
       </div>
       <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
+      <p className="note">
+        <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>Conditions d’utilisation</button>
+        {" · "}
+        <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>Politique de confidentialité</button>
+      </p>
+      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
       <div className="row">
         <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
         <Label htmlFor="speak">Lire les réponses à voix haute</Label>

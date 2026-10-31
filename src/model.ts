@@ -108,6 +108,11 @@ export type Profile = {
   speak: boolean;
   shopId: string;
   shops: Shop[];
+  /**
+   * Version des conditions acceptée (ex. « 2026-10-31 »). null = vérifié sur le serveur : pas encore acceptée.
+   * Absent = inconnu (copie du téléphone, hors ligne) : on ne bloque pas.
+   */
+  termsVersion?: string | null;
 };
 
 export type ChatMessage = { id: string; role: "user" | "jokko"; text: string; at: string };

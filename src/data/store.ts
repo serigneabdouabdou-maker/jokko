@@ -124,6 +124,7 @@ export async function bootstrap(session: Session): Promise<Profile> {
       speak: typeof row?.speak === "boolean" ? row.speak : (mine?.speak ?? true),
       shopId,
       shops: shops.length ? shops : (mine?.shops ?? []),
+      termsVersion: typeof row?.terms_version === "string" ? row.terms_version : null,
     };
     saveProfile(profile);
     return profile;

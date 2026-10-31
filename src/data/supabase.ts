@@ -26,7 +26,7 @@ export async function api(route: "status" | "interpret" | "listen" | "live", ini
 
 export type AuthOutcome =
   | { ok: true; session: Session; created: boolean }
-  | { ok: false; reason: "wrong_code" | "invalid" | "network"; message: string };
+  | { ok: false; reason: "wrong_code" | "invalid" | "network" | "exists"; message: string };
 
 /** 77 123 45 67 → 221771234567 */
 export function normalizePhone(raw: string): string | null {
@@ -39,38 +39,58 @@ export function normalizePhone(raw: string): string | null {
 const emailOf = (phone: string) => `${phone}@tel.jokko.app`;
 const passwordOf = (code: string) => `jokko-${code}`;
 
-/** Connexion ; si le numéro est nouveau, crée le compte puis connecte. */
-export async function signInOrUp(rawPhone: string, code: string): Promise<AuthOutcome> {
+function checkInput(rawPhone: string, code: string): { phone: string } | AuthOutcome {
   const phone = normalizePhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid", message: "Numéro sénégalais invalide (ex. 77 123 45 67)." };
   if (!/^\d{6}$/.test(code)) return { ok: false, reason: "invalid", message: "Le code secret fait 6 chiffres." };
+  return { phone };
+}
 
-  const login = () => supabase.auth.signInWithPassword({ email: emailOf(phone), password: passwordOf(code) });
+/** Me connecter : numéro + code secret d'un compte qui existe déjà. */
+export async function signIn(rawPhone: string, code: string): Promise<AuthOutcome> {
+  const input = checkInput(rawPhone, code);
+  if (!("phone" in input)) return input;
   try {
-    const first = await login();
-    if (first.data.session) return { ok: true, session: first.data.session, created: false };
-
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ phone, code }),
-    });
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    if (response.status === 409 || body?.error === "exists") {
-      return { ok: false, reason: "wrong_code", message: "Ce numéro a déjà un compte, et le code n’est pas le bon." };
-    }
-    if (body?.error === "weak_code") {
-      return { ok: false, reason: "invalid", message: "Code trop facile à deviner. Choisis 6 chiffres différents." };
-    }
-    if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais. Réessaie dans une heure." };
-    if (!response.ok) return { ok: false, reason: "network", message: "Inscription impossible pour le moment. Réessaie." };
-
-    const second = await login();
-    if (second.data.session) return { ok: true, session: second.data.session, created: true };
-    return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
+    const { data } = await supabase.auth.signInWithPassword({ email: emailOf(input.phone), password: passwordOf(code) });
+    if (data.session) return { ok: true, session: data.session, created: false };
+    return { ok: false, reason: "wrong_code", message: "Numéro ou code secret incorrect. Pas encore de compte ? Touche « Créer mon compte »." };
   } catch {
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }
+}
+
+/** Créer mon compte : numéro + code secret, avec les conditions acceptées (version datée). */
+export async function signUp(rawPhone: string, code: string, termsVersion: string): Promise<AuthOutcome> {
+  const input = checkInput(rawPhone, code);
+  if (!("phone" in input)) return input;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ phone: input.phone, code, terms: termsVersion }),
+    });
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (response.status === 409 || body?.error === "exists") {
+      return { ok: false, reason: "exists", message: "Ce numéro a déjà un compte. Touche « Me connecter » et mets ton code secret." };
+    }
+    if (body?.error === "weak_code") return { ok: false, reason: "invalid", message: "Code trop facile à deviner. Choisis 6 chiffres différents." };
+    if (body?.error === "terms_required") return { ok: false, reason: "invalid", message: "Coche la case des conditions pour créer ton compte." };
+    if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais. Réessaie dans une heure." };
+    if (!response.ok) return { ok: false, reason: "network", message: "Inscription impossible pour le moment. Réessaie." };
+    const { data } = await supabase.auth.signInWithPassword({ email: emailOf(input.phone), password: passwordOf(code) });
+    if (data.session) return { ok: true, session: data.session, created: true };
+    return { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
+  } catch {
+    return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
+  }
+}
+
+/** Accepter les conditions (comptes créés avant leur arrivée, ou nouvelle version). */
+export async function acceptTerms(userId: string, phone: string, termsVersion: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ user_id: userId, phone, terms_version: termsVersion, terms_accepted_at: new Date().toISOString() }, { onConflict: "user_id" });
+  return !error;
 }
 
 export function phoneOf(session: Session | null): string {

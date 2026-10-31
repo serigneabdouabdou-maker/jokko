@@ -1,5 +1,6 @@
 // Jokko — création de compte : numéro sénégalais + code secret à 6 chiffres.
 // Le compte est créé confirmé (pas d'e-mail réel) ; l'appli se connecte ensuite elle-même.
+// Les conditions d'utilisation doivent avoir été acceptées : la version et la date sont gardées.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ALLOWED = (Deno.env.get("JOKKO_ORIGINS") ?? "https://serigneabdouabdou-maker.github.io,http://localhost:5173,http://localhost:4173")
@@ -36,14 +37,17 @@ Deno.serve(async (req) => {
 
   let phone = "";
   let code = "";
+  let terms = "";
   try {
     const body = await req.json();
     phone = String(body?.phone ?? "");
     code = String(body?.code ?? "");
+    terms = String(body?.terms ?? "");
   } catch {
     return send(req, 400, { error: "invalid_json" });
   }
   if (!/^221[37]\d{8}$/.test(phone) || !/^\d{6}$/.test(code)) return send(req, 400, { error: "invalid_request" });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(terms)) return send(req, 400, { error: "terms_required" });
   if (/^(\d)\1{5}$/.test(code) || code === "123456" || code === "654321") return send(req, 400, { error: "weak_code" });
   if (limited(req)) return send(req, 429, { error: "too_many_requests" });
 
@@ -54,7 +58,7 @@ Deno.serve(async (req) => {
     email: `${phone}@tel.jokko.app`,
     password: `jokko-${code}`,
     email_confirm: true,
-    user_metadata: { phone },
+    user_metadata: { phone, terms_version: terms },
   });
   if (error || !data.user) {
     const exists = /already|registered|exists/i.test(error?.message ?? "");
@@ -62,7 +66,7 @@ Deno.serve(async (req) => {
     return send(req, exists ? 409 : 500, { error: exists ? "exists" : "signup_failed" });
   }
 
-  const { error: profileError } = await admin.from("profiles").insert({ user_id: data.user.id, phone });
+  const { error: profileError } = await admin.from("profiles").insert({ user_id: data.user.id, phone, terms_version: terms, terms_accepted_at: new Date().toISOString() });
   if (profileError) console.warn("[jokko] profil:", profileError.message);
   return send(req, 201, { ok: true });
 });

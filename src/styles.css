@@ -1053,3 +1053,23 @@
     .bento article:hover, .offer-grid article:hover { transform: none; }
   }
 }
+
+/* Inscription, conditions et textes légaux */
+@layer components {
+  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 18px; border-radius: 999px; background: var(--j-wash); }
+  .auth-tabs button { height: 42px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--j-ink-2); transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .auth-tabs button.on { background: var(--j-ink); color: var(--j-white); }
+  .consent { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-soft-2); font-size: 14px; line-height: 1.45; }
+  .consent [data-slot="checkbox"] { margin-top: 2px; flex: none; width: 20px; height: 20px; }
+  .link { color: var(--j-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; background: none; padding: 0; border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+  .lfoot-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+  .legal-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(23, 25, 31, 0.45); display: flex; justify-content: center; align-items: flex-end; padding: 16px 16px 0; overflow-y: auto; }
+  .legal-sheet { width: 100%; max-width: 680px; max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--j-white); border-radius: 24px 24px 0 0; padding: 22px 20px 28px; box-shadow: var(--j-shadow-up); animation: rise var(--t-mid) var(--ease) both; }
+  .legal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: -22px; background: var(--j-white); padding: 6px 0 12px; }
+  .legal-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .legal-intro { color: var(--j-ink-2); margin-bottom: 8px; }
+  .legal-sheet h3 { font-size: 16px; font-weight: 700; margin: 18px 0 6px; }
+  .legal-sheet p { font-size: 15px; line-height: 1.55; margin: 0 0 8px; }
+  .legal-foot { color: var(--j-ink-3); font-size: 13px; margin: 20px 0 14px !important; }
+  @media (min-width: 720px) { .legal-scrim { align-items: center; padding: 32px; } .legal-sheet { border-radius: 24px; } }
+}
