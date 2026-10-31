@@ -15,6 +15,7 @@ import {
   type SubscriptionInfo,
   type SubscriptionRequest,
   subscriptionInfo,
+  waveLinkFor,
 } from "@/data/plans";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
@@ -58,7 +59,7 @@ export function Plans({ shop, onPlanUpdated }: { shop: Shop; onPlanUpdated: (pla
 
   useEffect(() => {
     if (!pending || !info?.wave_link) return setQr("");
-    void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(info.wave_link!, { margin: 1, width: 240 })).then(setQr, () => setQr(""));
+    void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(waveLinkFor(info.wave_link!, pending.amount), { margin: 1, width: 240 })).then(setQr, () => setQr(""));
   }, [pending, info?.wave_link]);
 
   const price = (p: "medium" | "avance") => (p === "medium" ? info?.price_medium : info?.price_avance) ?? (p === "medium" ? 3000 : 7500);
@@ -127,7 +128,7 @@ export function Plans({ shop, onPlanUpdated }: { shop: Shop; onPlanUpdated: (pla
                 <li>Dans le message du paiement, écris la référence <b className="plan-ref">{pending.reference}</b>.</li>
               </ol>
               {qr && <img className="wave-qr" src={qr} alt="QR code Wave de CFC" width={240} height={240} />}
-              <Button className="h-11 rounded-full" onClick={() => window.open(info.wave_link!, "_blank", "noopener")}>Ouvrir Wave</Button>
+              <Button className="h-11 rounded-full" onClick={() => window.open(waveLinkFor(info.wave_link!, pending.amount), "_blank", "noopener")}>Ouvrir Wave</Button>
               <p className="note">Ton offre est activée dès que CFC a vu le paiement (en général dans la journée). Tu n'as rien d'autre à faire.</p>
             </>
           ) : (

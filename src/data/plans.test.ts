@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, daysLeft, effectivePlan } from "./plans";
+import { can, daysLeft, effectivePlan, waveLinkFor } from "./plans";
 
 const NOW = new Date("2026-11-01T10:00:00Z");
 const day = (d: number) => new Date(NOW.getTime() + d * 86_400_000).toISOString();
@@ -23,5 +23,13 @@ describe("offres", () => {
     expect([can(gratuit, "vendeurs", NOW), can(gratuit, "scanner", NOW), can(gratuit, "chat", NOW)]).toEqual([false, false, false]);
     expect([can(medium, "vendeurs", NOW), can(medium, "distance", NOW), can(medium, "conseiller", NOW)]).toEqual([true, true, false]);
     expect([can(avance, "conseiller", NOW), can(avance, "boutiques", NOW), can(avance, "chat", NOW)]).toEqual([true, true, true]);
+  });
+});
+
+describe("lien Wave de CFC", () => {
+  const base = "https://pay.wave.com/m/M_sn_OPJCGonC6tjx/c/sn/";
+  it("met le montant de la demande", () => {
+    expect(waveLinkFor(base, 3000)).toBe(base + "?amount=3000");
+    expect(waveLinkFor(base + "?amount=7500", 22500)).toBe(base + "?amount=22500");
   });
 });

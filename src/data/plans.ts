@@ -47,6 +47,17 @@ export function daysLeft(iso: string | null, now = new Date()): number | null {
   return iso ? Math.max(0, Math.ceil((Date.parse(iso) - now.getTime()) / 86_400_000)) : null;
 }
 
+/** Lien Wave de CFC avec le montant à payer déjà rempli (Wave lit « ?amount= »). */
+export function waveLinkFor(link: string, amount: number): string {
+  try {
+    const url = new URL(link.trim());
+    url.searchParams.set("amount", String(Math.round(amount)));
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
 export type SubscriptionInfo = { price_medium: number; price_avance: number; wave_link: string | null; is_admin: boolean };
 
 export async function subscriptionInfo(): Promise<SubscriptionInfo | null> {
