@@ -303,25 +303,25 @@ function Landing({ onStart }: { onStart: () => void }) {
       <section className="offers" id="offres">
         <div className="section-head">
           <p className="eyebrow">Offres</p>
-          <h2>Tout est ouvert dans cette démo.</h2>
+          <h2>Tout ce qu’il faut pour la boutique.</h2>
         </div>
         <div className="offer-grid">
           <article>
             <h3>Seul</h3>
-            <p>Une boutique. La voix, les ventes, le stock et la caisse.</p>
+            <p>Une boutique. La voix en wolof et en français, les ventes, le stock, la caisse et le bilan.</p>
           </article>
           <article className="featured">
             <span className="b-tag">Le plus utile</span>
             <h3>Équipe</h3>
-            <p>Le rôle caissier, les alertes de stock et les relances clients.</p>
+            <p>Les achats et le bénéfice, les dettes avec relance WhatsApp, les factures à envoyer.</p>
             <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={onStart}>Commencer</Button>
           </article>
           <article>
             <h3>Maison</h3>
-            <p>Plusieurs boutiques, l’export, et la clé Gemini pour la voix libre.</p>
+            <p>Plusieurs boutiques, l’import du stock depuis Excel et l’export pour le comptable.</p>
           </article>
         </div>
-        <p className="note center">Démo sur cet ordinateur. Le code s’affiche à l’écran, sans SMS.</p>
+        <p className="note center">Pendant le lancement, toutes les fonctions sont ouvertes. Connexion avec ton numéro et ton code secret.</p>
       </section>
 
       <footer className="lfoot">
