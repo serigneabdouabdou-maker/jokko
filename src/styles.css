@@ -1230,3 +1230,30 @@
     .alert-list li span { grid-column: 1 / -1; }
   }
 }
+
+/* Conseiller */
+@layer components {
+  .advisor { display: grid; gap: 16px; }
+  .advisor .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .offer-tag { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--j-yellow); color: var(--j-ink); }
+  .advisor .kpis small { display: block; font-size: 12px; color: var(--j-ink-3); margin-top: 2px; }
+  .advisor .kpis small[data-tone="bad"] { color: var(--j-danger); }
+  .advisor .kpis small[data-tone="good"] { color: #10603a; }
+  .findings { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  .findings li { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--j-wash); }
+  .findings li.is-urgent { background: color-mix(in oklab, var(--j-danger) 10%, var(--j-white)); box-shadow: inset 4px 0 0 var(--j-danger); }
+  .findings li.is-important { background: color-mix(in oklab, var(--j-yellow) 16%, var(--j-white)); box-shadow: inset 4px 0 0 var(--j-yellow); }
+  .findings p { margin: 0; font-size: 14px; color: var(--j-ink-2); line-height: 1.45; }
+  .finding-level { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--j-ink-3); }
+  .finding-action { color: var(--j-ink) !important; font-weight: 600; }
+  .advisor-ask { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+  .advice { display: grid; gap: 10px; margin-top: 14px; }
+  .advice-answer { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--j-ink); color: var(--j-white); line-height: 1.5; }
+  .advice-resume { margin: 0; font-size: 15px; line-height: 1.55; }
+  .advice-actions { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+  .advice-actions li { padding-left: 4px; }
+  .advice-actions p { margin: 3px 0 0; font-size: 14px; line-height: 1.45; color: var(--j-ink-2); }
+  .advice-actions p span { font-weight: 650; color: var(--j-ink); }
+  .advice-impact { color: #10603a !important; font-weight: 600; }
+  @media (max-width: 560px) { .advisor-ask { grid-template-columns: 1fr; } }
+}

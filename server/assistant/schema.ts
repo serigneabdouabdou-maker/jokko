@@ -112,6 +112,34 @@ export function orderGuessJsonSchema(): Record<string, unknown> {
   return jsonSchema(orderGuessSchema);
 }
 
+/** Conseiller : le diagnostic (calculé par l'appli) et une question facultative du patron. */
+export const adviceRequestSchema = z.strictObject({
+  question: z.string().trim().max(400).nullable().optional(),
+  diagnostic: z.record(z.string(), z.unknown()),
+});
+
+export const adviceSchema = z.strictObject({
+  resume: z.string().trim().min(1).max(700),
+  actions: z
+    .array(
+      z.strictObject({
+        titre: z.string().trim().min(1).max(120),
+        pourquoi: z.string().trim().max(400),
+        comment: z.string().trim().max(400),
+        impact: z.string().trim().max(200),
+      }),
+    )
+    .max(5),
+  reponse: z.string().trim().max(1200).nullable(),
+});
+
+export type AdviceRequest = z.infer<typeof adviceRequestSchema>;
+export type Advice = z.infer<typeof adviceSchema>;
+
+export function adviceJsonSchema(): Record<string, unknown> {
+  return jsonSchema(adviceSchema);
+}
+
 export const liveRequestSchema = z.strictObject({
   shopContext: shopContextSchema,
 });

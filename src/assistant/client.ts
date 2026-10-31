@@ -165,3 +165,25 @@ export async function guessOrder(message: string, shopContext: ShopContext): Pro
     return null;
   }
 }
+
+export type Advice = {
+  resume: string;
+  actions: Array<{ titre: string; pourquoi: string; comment: string; impact: string }>;
+  reponse: string | null;
+};
+
+/** Conseiller IA : il lit le diagnostic calculé par l'appli (jamais les numéros des clients). */
+export async function askAdvisor(diagnostic: Record<string, unknown>, question: string | null): Promise<{ ok: true; data: Advice } | { ok: false; message: string }> {
+  try {
+    const response = await api("advice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ diagnostic, question: question?.trim().slice(0, 400) || null }),
+    });
+    const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    if (response.ok && body && typeof body.resume === "string" && Array.isArray(body.actions)) return { ok: true, data: body as unknown as Advice };
+    return { ok: false, message: typeof body?.message === "string" ? body.message : "Le conseiller ne répond pas pour le moment. Réessaie dans un instant." };
+  } catch {
+    return { ok: false, message: "Pas de connexion internet. Réessaie." };
+  }
+}

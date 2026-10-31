@@ -66,6 +66,7 @@ import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
 import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
+import { Advisor } from "@/components/jokko/Advisor";
 import { saveCashCount } from "@/data/team";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
@@ -82,7 +83,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "distance" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -92,6 +93,7 @@ const LANGS: Array<[Lang, string]> = [
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
   ["distance", "À distance"],
+  ["conseiller", "Conseiller"],
   ["scanner", "Scanner"],
   ["bilan", "Bilan"],
   ["ventes", "Ventes"],
@@ -107,7 +109,7 @@ const NAV: Array<[Screen, string]> = [
 ];
 
 /** Rubriques réservées au patron. */
-const PATRON_SCREENS: Screen[] = ["distance", "bilan", "equipe", "journal"];
+const PATRON_SCREENS: Screen[] = ["distance", "conseiller", "bilan", "equipe", "journal"];
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -1245,6 +1247,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "distance" && patron && <Remote profile={profile} />}
+          {screen === "conseiller" && patron && <Advisor shop={shop} />}
           {screen === "scanner" && <ScanCheckout shop={shop} commit={commit} role={role} />}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}

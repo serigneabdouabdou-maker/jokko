@@ -1,11 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
 import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
-import { buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
+import { ADVICE_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
   type Interpretation,
   type InterpretRequest,
+  type Advice,
+  type AdviceRequest,
+  adviceJsonSchema,
+  adviceSchema,
   type ListenRequest,
   type OrderGuess,
   type ShopContext,
@@ -121,6 +125,11 @@ export async function understandOrder(request: InterpretRequest, options: Interp
   );
   const ids = new Set(request.shopContext.products.map((p) => p.id));
   return { ...guess, items: guess.items.map((i) => (i.productId && !ids.has(i.productId) ? { ...i, productId: null } : i)) };
+}
+
+/** Conseiller : explique le diagnostic et propose des actions (modèle standard, plus réfléchi que le léger). */
+export async function advise(request: AdviceRequest, options: InterpretOptions): Promise<Advice> {
+  return run(options, adviceSchema, adviceJsonSchema(), buildAdvicePrompt(request.diagnostic, request.question), undefined, ADVICE_INSTRUCTION);
 }
 
 async function run<T extends z.ZodType>(

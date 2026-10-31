@@ -4,9 +4,9 @@
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/5684a41e6b4c364c868656c4728b32bea2e0f288/server/assistant/interpret.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/5684a41e6b4c364c868656c4728b32bea2e0f288/server/assistant/interpret.ts";
 import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/5684a41e6b4c364c868656c4728b32bea2e0f288/server/assistant/live.ts";
-import { interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/5684a41e6b4c364c868656c4728b32bea2e0f288/server/assistant/schema.ts";
+import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/5684a41e6b4c364c868656c4728b32bea2e0f288/server/assistant/schema.ts";
 
 const MAX_TEXT_BODY = 32 * 1024;
 const MAX_AUDIO_BODY = 3 * 1024 * 1024;
@@ -120,6 +120,10 @@ Deno.serve(async (req) => {
     if (route === "interpret") {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
       return b.ok ? send(req, 200, await interpret(b.data, env())) : b.res;
+    }
+    if (route === "advice") {
+      const b = await body(req, MAX_TEXT_BODY, adviceRequestSchema);
+      return b.ok ? send(req, 200, await advise(b.data, env())) : b.res;
     }
     if (route === "order") {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
