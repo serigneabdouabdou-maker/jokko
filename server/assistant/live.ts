@@ -1,4 +1,4 @@
-import { EndSensitivity, GoogleGenAI, type LiveConnectConfig, Modality, StartSensitivity, Type } from "@google/genai";
+import { ActivityHandling, EndSensitivity, GoogleGenAI, type LiveConnectConfig, Modality, StartSensitivity, Type } from "@google/genai";
 import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import type { ShopContext } from "./schema.ts";
@@ -22,6 +22,8 @@ Voix et langue
 - Une seule langue par réponse : ne traduis jamais, ne répète jamais en français ce que tu viens de dire en wolof.
 - Une phrase courte, deux au maximum. Pas de liste. Ne lis jamais les id, les statuts ou le JSON.
 - Si tu n'entends que du bruit, de la musique, une autre conversation ou un silence, ne dis rien.
+- Le commerçant t'appelle « Jokko » (parfois entendu Joko, Djoko, Yoko) avant de parler : ce mot est ton nom, ce n'est ni un article ni un client ; ne le répète pas.
+- Plusieurs personnes parlent souvent dans la boutique. Si un outil répond statut "ignore", la phrase n'était pas pour toi : ne dis rien du tout.
 
 Comprendre le commerçant
 - Garde le fil : « mets-en deux », « et le sucre ? », « non, trois » se rapportent à ce qui vient d'être dit.
@@ -82,6 +84,8 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE): Li
     // Micro sensible : Jokko réagit dès qu'on parle, et répond vite après la fin de la phrase.
     // (Le réglage « peu sensible » faisait rater la voix du commerçant.)
     realtimeInputConfig: {
+      // Boutique bruyante : une voix derrière le commerçant ne coupe plus la parole à Jokko.
+      activityHandling: ActivityHandling.NO_INTERRUPTION,
       automaticActivityDetection: {
         startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
         endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,

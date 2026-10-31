@@ -3,6 +3,8 @@ import { api } from "../data/supabase";
 import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
+import { CallGate, NoiseGate } from "./listenFilter";
+import { matchRecorded, playRecorded, prefetchRecorded, stopRecorded } from "./recorded";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
 export type LiveToolCall = { id?: string; name?: string; args?: Record<string, unknown> };
@@ -27,10 +29,22 @@ export type LiveHandle = {
   /** Ajoute une information au contexte sans faire parler Jokko (ex. nouveau client ajouté à l'écran). */
   note: (text: string) => void;
   listen: () => Promise<MediaStream>;
+  /** Bouton « maintenir pour parler » : micro grand ouvert et la phrase compte même sans « Jokko ». */
+  hold: (on: boolean) => void;
 };
 
 /** clear : chaque phrase de Jokko est lue par la voix claire de l'accueil (au lieu de la voix directe de Gemini). */
-export type LiveOptions = { microphone: boolean; greet: boolean; mute?: boolean; clear?: boolean; lang?: () => SpeechLang };
+export type LiveOptions = {
+  microphone: boolean;
+  greet: boolean;
+  mute?: boolean;
+  clear?: boolean;
+  lang?: () => SpeechLang;
+  /** Jokko n'agit que si on l'appelle « Jokko » (ou bouton maintenu), puis 20 s de suite. */
+  wake?: boolean;
+  /** Filtre anti-bruit : « normal » ou « fort » (boutique très bruyante). */
+  noise?: "normal" | "fort";
+};
 
 export class LiveStartError extends Error {
   reason: "not_configured" | "unavailable" | "microphone";
@@ -110,6 +124,7 @@ async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
  */
 export function prewarmLive(context: ShopContext) {
   genai ??= import("@google/genai");
+  void prefetchRecorded(audioContext());
   const sig = signature(context);
   if (ticket && Date.now() - ticketAt < TICKET_MS && sig === ticketSignature) return;
   ticketAt = Date.now();
@@ -153,6 +168,73 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   if (audio.state === "suspended") await audio.resume().catch(() => undefined);
   const player = new PcmPlayer(audio);
   const clear = options.clear && !options.mute ? new ClearSpeaker(player, options.lang ?? (() => "wo"), () => handlers.onPhase("parle")) : null;
+  const lang = options.lang ?? (() => "wo" as SpeechLang);
+  const noise = new NoiseGate(options.noise === "fort" ? 4.2 : 2.6, options.noise === "fort" ? 0.04 : 0.02);
+  const calls = new CallGate(options.wake ?? true);
+  let held = false;
+  if (!options.mute) void prefetchRecorded(audio);
+
+  // Le tour de Jokko en cours : on garde sa voix tant qu'on ne sait pas si on lui parlait,
+  // et on regarde s'il dit une phrase enregistrée (alors on joue la belle voix, tout de suite).
+  type Pending = { name?: string; id?: string; args?: Record<string, unknown> };
+  let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean } | null = null;
+  let userPending: string[] = [];
+  let swapTimer = 0;
+  let toolTimer = 0;
+
+  const newTurn = () => ({ decided: false, addressed: false, audio: [] as Array<[Uint8Array, number]>, text: "", tools: [] as Pending[], started: Date.now(), flushed: false });
+
+  /** Joue la voix gardée de Jokko (aucune phrase enregistrée ne correspond). */
+  const flushAudio = () => {
+    if (!turn || turn.flushed || !turn.addressed) return;
+    turn.flushed = true;
+    window.clearTimeout(swapTimer);
+    if (options.mute || clear) return;
+    for (const [bytes, rate] of turn.audio) player.push(bytes, rate);
+    if (turn.audio.length) handlers.onPhase("parle");
+    turn.audio = [];
+  };
+
+  const answerTools = (list: Pending[], addressed: boolean) => {
+    if (!live || !list.length) return;
+    live.sendToolResponse({
+      functionResponses: list.map((call) => ({
+        id: call.id,
+        name: call.name,
+        response: addressed
+          ? safeTool(handlers, { id: call.id, name: call.name, args: call.args })
+          : { statut: "ignore", message: "On ne t'a pas appelé « Jokko » : cette phrase ne t'était pas adressée. Ne dis rien." },
+      })),
+    });
+  };
+
+  /** On sait maintenant si la phrase était pour Jokko. */
+  const decide = (addressed: boolean) => {
+    if (!turn || turn.decided) return;
+    turn.decided = true;
+    turn.addressed = addressed;
+    window.clearTimeout(toolTimer);
+    if (addressed) {
+      for (const chunk of userPending) handlers.onUser(chunk);
+      userPending = [];
+      if (turn.text) {
+        handlers.onJokko(turn.text);
+        clear?.add(turn.text);
+      }
+      const tools = turn.tools;
+      turn.tools = [];
+      answerTools(tools, true);
+      // Courte attente pour voir si c'est une phrase enregistrée ; sinon la voix directe part.
+      window.clearTimeout(swapTimer);
+      swapTimer = window.setTimeout(flushAudio, Math.max(0, 260 - (Date.now() - turn.started)));
+    } else {
+      userPending = [];
+      const tools = turn.tools;
+      turn.tools = [];
+      answerTools(tools, false);
+      turn.audio = [];
+    }
+  };
   let media: MediaStream | null = await micro;
   let open = false;
   let ended = false;
@@ -166,6 +248,9 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     open = false;
     clear?.reset();
     player.stop();
+    stopRecorded();
+    window.clearTimeout(swapTimer);
+    window.clearTimeout(toolTimer);
     node?.port.close();
     node?.disconnect();
     source?.disconnect();
@@ -192,9 +277,24 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     }
     source = audio.createMediaStreamSource(stream);
     node = new AudioWorkletNode(audio, "jokko-capture");
+    // Les 280 dernières ms sont gardées : quand la porte s'ouvre, le début du mot n'est pas coupé.
+    const preroll: ArrayBuffer[] = [];
+    const silence = new Uint8Array(1280).buffer;
+    const sendPcm = (pcm: ArrayBuffer) => live?.sendRealtimeInput({ audio: { data: bytesToBase64(new Uint8Array(pcm)), mimeType: "audio/pcm;rate=16000" } });
+    let wasSending = false;
     node.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => {
       if (!open || !live) return;
-      live.sendRealtimeInput({ audio: { data: bytesToBase64(new Uint8Array(event.data.pcm)), mimeType: "audio/pcm;rate=16000" } });
+      const decision = noise.frame(event.data.rms, Date.now(), held);
+      if (decision === "send") {
+        if (!wasSending) for (const old of preroll.splice(0)) sendPcm(old);
+        wasSending = true;
+        sendPcm(event.data.pcm);
+        return;
+      }
+      wasSending = false;
+      preroll.push(event.data.pcm);
+      if (preroll.length > 7) preroll.shift();
+      if (decision === "silence") sendPcm(silence);
     };
     source.connect(node);
     node.connect(audio.destination);
@@ -202,36 +302,73 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
 
   const onmessage = (message: LiveServerMessage) => {
     const content = message.serverContent;
+    const now = Date.now();
     if (content?.interrupted) {
       clear?.reset();
       player.stop();
       handlers.onPhase("ecoute");
     }
-    for (const part of content?.modelTurn?.parts ?? []) {
-      if (part.inlineData?.data && !options.mute && !clear) {
-        player.push(base64ToBytes(part.inlineData.data), rateOf(part.inlineData.mimeType));
-        handlers.onPhase("parle");
+    if (content?.inputTranscription?.text) {
+      const chunk = content.inputTranscription.text;
+      calls.heard(chunk, now);
+      if (turn?.decided && turn.addressed) handlers.onUser(chunk);
+      else userPending.push(chunk);
+      if (turn && !turn.decided && calls.addressed(now)) decide(true);
+    }
+    const parts = content?.modelTurn?.parts ?? [];
+    const said = content?.outputTranscription?.text ?? "";
+    if (parts.length || said || message.toolCall?.functionCalls?.length) {
+      turn ??= newTurn();
+      if (!turn.decided && calls.addressed(now)) decide(true);
+    }
+    for (const part of parts) {
+      if (!part.inlineData?.data || !turn) continue;
+      if (turn.decided && !turn.addressed) continue;
+      const clip: [Uint8Array, number] = [base64ToBytes(part.inlineData.data), rateOf(part.inlineData.mimeType)];
+      if (turn.flushed) {
+        if (!options.mute && !clear) {
+          player.push(clip[0], clip[1]);
+          handlers.onPhase("parle");
+        }
+      } else turn.audio.push(clip);
+    }
+    if (said && turn) {
+      turn.text += said;
+      if (turn.decided && turn.addressed) {
+        handlers.onJokko(said);
+        clear?.add(said);
       }
     }
-    if (content?.inputTranscription?.text) handlers.onUser(content.inputTranscription.text);
-    if (content?.outputTranscription?.text) {
-      handlers.onJokko(content.outputTranscription.text);
-      clear?.add(content.outputTranscription.text);
+    if (message.toolCall?.functionCalls?.length && live && turn) {
+      const list = message.toolCall.functionCalls.map((call) => ({ id: call.id, name: call.name, args: call.args }));
+      if (turn.decided) answerTools(list, turn.addressed);
+      else {
+        turn.tools.push(...list);
+        // La transcription arrive parfois juste après : on attend un peu avant de dire « pas pour toi ».
+        window.clearTimeout(toolTimer);
+        toolTimer = window.setTimeout(() => decide(calls.addressed(Date.now())), 1200);
+      }
     }
     if (content?.turnComplete) {
-      clear?.flush();
-      handlers.onTurnEnd();
+      if (turn && !turn.decided) decide(calls.addressed(now));
+      if (turn?.addressed) {
+        // Phrase enregistrée ? Elle part avec la belle voix, à la place de la voix directe.
+        const recorded = !turn.flushed && !options.mute && !clear ? matchRecorded(turn.text) : null;
+        if (recorded && playRecorded(audio, recorded, () => handlers.onPhase("ecoute"))) {
+          window.clearTimeout(swapTimer);
+          turn.flushed = true;
+          turn.audio = [];
+          handlers.onPhase("parle");
+        } else flushAudio();
+        clear?.flush();
+        calls.answered(Date.now());
+        handlers.onTurnEnd();
+      }
+      calls.endTurn();
+      userPending = [];
+      turn = null;
     }
     if (message.toolCallCancellation?.ids?.length) handlers.onToolCancel(message.toolCallCancellation.ids);
-    if (message.toolCall?.functionCalls?.length && live) {
-      live.sendToolResponse({
-        functionResponses: message.toolCall.functionCalls.map((call) => ({
-          id: call.id,
-          name: call.name,
-          response: safeTool(handlers, { id: call.id, name: call.name, args: call.args }),
-        })),
-      });
-    }
     if (message.goAway) finish(null, true);
   };
 
@@ -255,7 +392,11 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   if (media) await listenTo(media);
   open = true;
   handlers.onPhase("ecoute");
-  if (options.greet) {
+  if (options.greet && !options.mute && lang() === "wo" && playRecorded(audio, "Asalaa maalekum ! Maa ngi lay déglu.", () => handlers.onPhase("ecoute"))) {
+    handlers.onPhase("parle");
+    calls.answered(Date.now());
+  } else if (options.greet) {
+    calls.force();
     live.sendClientContent({
       turns: [{ role: "user", parts: [{ text: "(La conversation commence. Salue le commerçant en une phrase très courte, dans la langue de la boutique, et dis que tu l'écoutes. En wolof, dis exactement : « Asalaa maalekum ! Maa ngi lay déglu. »)" }] }],
       turnComplete: true,
@@ -272,6 +413,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     stop: () => finish(null),
     tell: (text: string) => {
       if (!open || !live) return;
+      calls.force();
       clear?.reset();
       player.stop();
       live.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true });
@@ -279,6 +421,10 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     note: (text: string) => {
       if (!open || !live) return;
       live.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: false });
+    },
+    hold: (on: boolean) => {
+      held = on;
+      calls.hold(on);
     },
     listen: async () => {
       if (media) return media;

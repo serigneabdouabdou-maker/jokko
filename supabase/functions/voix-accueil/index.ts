@@ -12,7 +12,7 @@ const DIRECTION: Record<string, string> = {
   fr: "Dis en français, avec un léger accent sénégalais, clairement, d'une voix chaleureuse, souriante et rassurante :",
 };
 
-type Segment = { lang: "wo" | "fr"; text: string; pauseAfter?: number };
+type Segment = { lang: "wo" | "fr"; text: string; pauseAfter?: number; slug?: string };
 
 async function sha256(text: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -26,9 +26,9 @@ function decodeBase64(b64: string): Uint8Array {
   return out;
 }
 
-async function speak(segment: Segment, voice: string, apiKey: string): Promise<{ pcm: Int16Array; rate: number; model: string }> {
+async function speak(segment: Segment, voice: string, apiKey: string, models: string[] = MODELS): Promise<{ pcm: Int16Array; rate: number; model: string }> {
   let lastError = "";
-  for (const model of MODELS) {
+  for (const model of models) for (let attempt = 0; attempt < 3; attempt++) {
     const text = READS_DIRECTIONS_ALOUD.test(model) ? segment.text : `${DIRECTION[segment.lang]} ${segment.text}`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
@@ -40,7 +40,12 @@ async function speak(segment: Segment, voice: string, apiKey: string): Promise<{
     });
     if (!res.ok) {
       lastError = `${model}: ${res.status}`;
-      continue;
+      // Trop de demandes d'un coup : on attend un peu et on réessaie le même modèle (même voix partout).
+      if ((res.status === 429 || res.status === 503) && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      break;
     }
     const json = await res.json();
     const parts = json?.candidates?.[0]?.content?.parts ?? [];
@@ -54,7 +59,7 @@ async function speak(segment: Segment, voice: string, apiKey: string): Promise<{
     const size = chunks.reduce((n, c) => n + c.length, 0);
     if (!size) {
       lastError = `${model}: pas d'audio`;
-      continue;
+      break;
     }
     const bytes = new Uint8Array(size);
     let o = 0;
@@ -106,7 +111,36 @@ Deno.serve(async (req) => {
   const segments: Segment[] = Array.isArray(body.segments) ? body.segments : [];
   const name = typeof body.name === "string" && /^[a-z0-9-]+$/.test(body.name) ? body.name : "jokko-accueil";
   const voice = typeof body.voice === "string" ? body.voice : Deno.env.get("GEMINI_TTS_VOICE") || "Sulafat";
-  if (!segments.length || segments.length > 12) return new Response("bad_request", { status: 400 });
+  const models: string[] = Array.isArray(body.models) && body.models.every((m: unknown) => typeof m === "string") ? body.models : MODELS;
+  if (!segments.length || segments.length > 20) return new Response("bad_request", { status: 400 });
+
+  // Mode « phrases » : chaque phrase devient son propre petit fichier (voix/phrases/<slug>-<version>.mp3).
+  if (body.separate === true) {
+    const version = typeof body.version === "string" && /^v\d+$/.test(body.version) ? body.version : "v1";
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    const done: { slug: string; seconds: number; model: string }[] = [];
+    const failed: { slug: string; error: string }[] = [];
+    for (const s of segments) {
+      if (!s.slug || !/^[a-z0-9-]+$/.test(s.slug)) continue;
+      try {
+        const spoken = await speak(s, voice, apiKey, models);
+        const clean = trim(spoken.pcm, spoken.rate);
+        const pad = new Int16Array(Math.round(spoken.rate * 0.05));
+        const pcm = new Int16Array(clean.length + pad.length * 2);
+        pcm.set(pad, 0);
+        pcm.set(clean, pad.length);
+        const mp3 = toMp3(pcm, spoken.rate);
+        const { error } = await admin.storage.from("media").upload(`voix/phrases/${s.slug}-${version}.mp3`, mp3, { contentType: "audio/mpeg", upsert: true, cacheControl: "31536000" });
+        if (error) throw new Error(error.message);
+        done.push({ slug: s.slug, seconds: +(pcm.length / spoken.rate).toFixed(2), model: spoken.model });
+      } catch (error) {
+        failed.push({ slug: s.slug, error: error instanceof Error ? error.message : "erreur" });
+      }
+    }
+    const report = { ok: failed.length === 0, version, done, failed };
+    await admin.storage.from("media").upload(`voix/phrases/rapport-${version}.json`, new Blob([JSON.stringify(report)], { type: "application/json" }), { contentType: "application/json", upsert: true });
+    return Response.json(report);
+  }
 
   try {
     const pieces: Int16Array[] = [];
@@ -114,7 +148,7 @@ Deno.serve(async (req) => {
     let rate = 24000;
     let t = 0;
     for (const s of segments) {
-      const spoken = await speak(s, voice, apiKey);
+      const spoken = await speak(s, voice, apiKey, models);
       rate = spoken.rate;
       const clean = trim(spoken.pcm, rate);
       const pause = new Int16Array(Math.round(rate * (s.pauseAfter ?? 0.45)));

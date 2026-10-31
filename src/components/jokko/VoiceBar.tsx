@@ -33,6 +33,10 @@ type VoiceBarProps = {
   onText: (value: string) => void;
   onSend: (value: string) => void;
   onMic: () => void;
+  /** Maintenir pour parler (conversation en direct) : true à l'appui, false au relâchement. */
+  onHold?: (on: boolean) => void;
+  /** Mot d'appel « Jokko » actif : on le rappelle dans l'aide. */
+  wake?: boolean;
   onDismiss: () => void;
   onUndo?: () => void;
   live?: { phase: "connexion" | "ecoute" | "parle"; caption: string } | null;
@@ -40,7 +44,12 @@ type VoiceBarProps = {
 
 const LIVE_LABELS = { connexion: "Connexion", ecoute: "En direct", parle: "Jokko parle" } as const;
 
-export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, onDismiss, onUndo, live }: VoiceBarProps) {
+export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, onHold, wake = false, onDismiss, onUndo, live }: VoiceBarProps) {
+  const [holding, setHolding] = useState(false);
+  const press = (on: boolean) => {
+    setHolding(on);
+    onHold?.(on);
+  };
   const root = useRef<HTMLDivElement>(null);
   const [seconds, setSeconds] = useState(0);
   const busy = !live && (state === "transcription" || state === "comprehension");
@@ -143,7 +152,7 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
                 ))}
               </span>
               {live ? (
-                <span className="vhint vcaption">{live.caption || (live.phase === "connexion" ? "Jokko arrive…" : "Je t’écoute, parle normalement…")}</span>
+                <span className="vhint vcaption">{holding ? "Je t’écoute… relâche quand tu as fini." : live.caption || (live.phase === "connexion" ? "Jokko arrive…" : wake ? "Dis « Jokko », puis ta phrase…" : "Je t’écoute, parle normalement…")}</span>
               ) : (
                 <span className="vhint">Je vous écoute… <b className="num">{clock}</b></span>
               )}
@@ -172,9 +181,27 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
           </span>
         )}
 
-        <button type="submit" className="vsend" aria-label="Envoyer à Jokko" disabled={busy || listening || !text.trim()}>
-          <ArrowUp size={18} strokeWidth={2.4} />
-        </button>
+        {live && onHold ? (
+          <button
+            type="button"
+            className={`vhold${holding ? " is-on" : ""}`}
+            aria-label="Maintenir pour parler à Jokko"
+            aria-pressed={holding}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              press(true);
+            }}
+            onPointerUp={() => press(false)}
+            onPointerCancel={() => press(false)}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <Mic size={16} strokeWidth={2.4} /> {holding ? "Je t’écoute" : "Maintenir"}
+          </button>
+        ) : (
+          <button type="submit" className="vsend" aria-label="Envoyer à Jokko" disabled={busy || listening || !text.trim()}>
+            <ArrowUp size={18} strokeWidth={2.4} />
+          </button>
+        )}
         {state === "comprehension" && <span className="vprogress" aria-hidden="true" />}
       </form>
     </div>

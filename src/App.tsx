@@ -70,6 +70,7 @@ import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
+import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
@@ -701,7 +702,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
               if (reason) fail(reason);
             },
           },
-          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo") },
+          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo"), wake: wakePreferred(), noise: noisePreferred() },
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
@@ -1096,6 +1097,8 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
         onText={setText}
         onSend={(value) => void send(value)}
         onMic={() => void toggleMic()}
+        onHold={(on) => liveRef.current?.hold(on)}
+        wake={wakePreferred()}
         onDismiss={() => setReply(null)}
         onUndo={undoLast}
         live={live}
@@ -1397,13 +1400,26 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** Voix claire et posée (celle de l'accueil) ou voix directe de Gemini (un peu plus rapide). */
+/** Écoute en boutique : mot d'appel « Jokko », filtre anti-bruit, voix claire pour tout. */
 function ClearVoiceSetting() {
   const [on, setOn] = useState(clearVoicePreferred);
+  const [wake, setWake] = useState(wakePreferred);
+  const [noise, setNoise] = useState(noisePreferred);
   return (
-    <div className="row">
-      <Checkbox id="voix-claire" checked={on} onCheckedChange={(checked) => { setOn(checked === true); setClearVoicePreferred(checked === true); }} />
-      <Label htmlFor="voix-claire">Voix claire et posée, comme sur la page d’accueil (réponse un peu plus lente d’une seconde)</Label>
-    </div>
+    <>
+      <div className="row">
+        <Checkbox id="mot-appel" checked={wake} onCheckedChange={(checked) => { setWake(checked === true); setWakePreferred(checked === true); }} />
+        <Label htmlFor="mot-appel">Répondre seulement quand je dis « Jokko » (puis 20 secondes sans le redire)</Label>
+      </div>
+      <div className="row">
+        <Checkbox id="filtre-fort" checked={noise === "fort"} onCheckedChange={(checked) => { const level = checked === true ? "fort" : "normal"; setNoise(level); setNoisePreferred(level); }} />
+        <Label htmlFor="filtre-fort">Boutique très bruyante : filtre anti-bruit fort (parle près du téléphone)</Label>
+      </div>
+      <div className="row">
+        <Checkbox id="voix-claire" checked={on} onCheckedChange={(checked) => { setOn(checked === true); setClearVoicePreferred(checked === true); }} />
+        <Label htmlFor="voix-claire">Toutes les réponses avec la voix de l’accueil (environ 1 seconde plus lent)</Label>
+      </div>
+      <p className="note">Ces réglages comptent à partir du prochain appui sur le micro.</p>
+    </>
   );
 }

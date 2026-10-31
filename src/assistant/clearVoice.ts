@@ -8,12 +8,12 @@ export type SpeechLang = "wo" | "fr";
 
 const PREF = "jokko-voix-claire";
 
-/** Voix claire activée ? Oui par défaut. */
+/** Voix claire pour TOUTES les réponses ? Non par défaut (voix directe rapide + phrases enregistrées). */
 export function clearVoicePreferred(): boolean {
   try {
-    return localStorage.getItem(PREF) !== "non";
+    return localStorage.getItem(PREF) === "oui";
   } catch {
-    return true;
+    return false;
   }
 }
 
