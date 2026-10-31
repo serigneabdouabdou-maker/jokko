@@ -67,6 +67,7 @@ import { StockEntry } from "@/components/jokko/StockEntry";
 import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
+import { Landing } from "@/components/jokko/Landing";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -160,7 +161,7 @@ export function App() {
   }, []);
 
   if (session === undefined) return null;
-  if (!session) return wantsLogin ? <Login mode={wantsLogin} onBack={() => setWantsLogin(null)} /> : <Landing onStart={setWantsLogin} />;
+  if (!session) return wantsLogin ? <Login mode={wantsLogin} onBack={() => setWantsLogin(null)} /> : <Landing onStart={setWantsLogin} langs={LANGS.map(([, name]) => name)} />;
   if (!profile) return <Splash text={loading ? "Jokko ouvre ta boutique…" : "Un instant…"} />;
   if (profile.termsVersion === null) return <TermsGate profile={profile} onAccepted={() => setProfile({ ...profile, termsVersion: TERMS_VERSION })} />;
   if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;
@@ -183,202 +184,6 @@ const amount = (n: number) => money(n).replace(/\u202f/g, "\u00a0");
 function Num({ value, className = "" }: { value: number; className?: string }) {
   const shown = useCountUp(value);
   return <span className={`num ${className}`}>{amount(shown)}</span>;
-}
-
-function Landing({ onStart }: { onStart: (mode: AuthMode) => void }) {
-  const [reading, setReading] = useState<LegalDoc | null>(null);
-  const phrases = [
-    "Awa m'a payé 15 000",
-    "il me reste combien de riz ?",
-    "envoie la facture à Moussa",
-    "Jaay naa 2 huile",
-    "qui me doit de l'argent ?",
-    "caisse du jour",
-  ];
-  return (
-    <main className="landing">
-      <header className="lnav">
-        <a className="lbrand" href="#top" aria-label="Jokko, accueil">
-          <JokkoMark size={34} />
-          <span>Jokko</span>
-        </a>
-        <nav className="llinks">
-          <a href="#changer">Produit</a>
-          <a href="#fonctions">Fonctions</a>
-          <a href="#offres">Offres</a>
-        </nav>
-        <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => onStart("entrer")}>Se connecter</Button>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow">Gestion de boutique à la voix</p>
-          <h1>
-            Parlez.
-            <br />
-            Votre boutique <em className="accent">suit.</em>
-          </h1>
-          <p className="lede">
-            Jokko note les ventes, surveille le stock, relance les dettes et compte la caisse. En wolof, en français, ou les deux mélangés, comme on parle à Dakar.
-          </p>
-          <div className="hero-cta">
-            <Button className="h-12 rounded-full px-6 text-[15px] font-semibold" onClick={() => onStart("creer")}>Ouvrir ma boutique</Button>
-            <a className="textlink" href="#fonctions">Voir ce qu’elle fait</a>
-          </div>
-          <ul className="langs" aria-label="Langues comprises">
-            {LANGS.map(([id, name]) => <li key={id}>{name}</li>)}
-          </ul>
-        </div>
-
-        <aside className="ticket" aria-label="Exemple de journée dans Jokko">
-          <header>
-            <JokkoMark size={28} />
-            <div>
-              <b>Boutique Awa</b>
-              <span>Pikine · Alimentation</span>
-            </div>
-            <span className="ticket-day">Aujourd’hui</span>
-          </header>
-          <p className="ticket-said">« Jaay naa 2 huile »</p>
-          <p className="ticket-reply">Jaay bi dugg na. Huile, 15 000 F. Huile néew na, 1 la des.</p>
-          <dl className="ticket-figs">
-            <div className="big">
-              <dt>Caisse attendue</dt>
-              <dd className="num">50 500 F</dd>
-            </div>
-            <div>
-              <dt>Ventes</dt>
-              <dd className="num">33 000 F</dd>
-            </div>
-            <div>
-              <dt>Stock bas</dt>
-              <dd>Huile · 1</dd>
-            </div>
-          </dl>
-          <div className="ticket-voice">
-            <span className="ticket-mic"><JokkoBars /></span>
-            <span>Dites-le. C’est noté.</span>
-          </div>
-        </aside>
-      </section>
-
-      <section className="said" aria-label="Phrases que Jokko comprend">
-        {phrases.map((phrase) => <span key={phrase}>« {phrase} »</span>)}
-      </section>
-
-      <section className="change" id="changer">
-        <div className="section-head">
-          <p className="eyebrow">Le changement</p>
-          <h2>Votre commerce grandit. <em className="accent">Le suivi</em> ne reste plus dans la tête.</h2>
-        </div>
-        <div className="change-grid">
-          <article className="before">
-            <h3>Avant</h3>
-            <ul>
-              <li>Les chiffres restent dans la tête.</li>
-              <li>Les dettes s’oublient.</li>
-              <li>La rupture arrive sans prévenir.</li>
-            </ul>
-          </article>
-          <article className="after">
-            <h3>Avec Jokko</h3>
-            <ul>
-              <li>Chaque vente est notée, au franc près.</li>
-              <li>Vous voyez qui vous doit quoi.</li>
-              <li>Le stock bas parle avant la rupture.</li>
-              <li>La caisse du soir tombe juste, ou l’écart est clair.</li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
-      <section className="features" id="fonctions">
-        <div className="section-head">
-          <p className="eyebrow">Une seule voix</p>
-          <h2>Dites-le. <em className="accent">C’est noté.</em></h2>
-        </div>
-        <div className="bento">
-          <article className="b-ventes">
-            <span className="b-tag">Ventes</span>
-            <p className="b-said">« Ajoute une vente de 15 000. »</p>
-            <p className="b-figure num">+15 000 F</p>
-            <p className="b-note">Ajoutée au jour, comptée dans la caisse.</p>
-          </article>
-          <article className="b-stock">
-            <span className="b-tag">Stock</span>
-            <p className="b-said">« Il me reste combien de riz ? »</p>
-            <div className="b-levels">
-              <div><span>Riz brisé</span><i style={{ ["--w" as string]: "100%" }} /><b className="num">12</b></div>
-              <div className="low"><span>Huile</span><i style={{ ["--w" as string]: "20%" }} /><b className="num">3</b></div>
-            </div>
-          </article>
-          <article className="b-dettes">
-            <span className="b-tag">Clients et dettes</span>
-            <p className="b-said">« Qui me doit de l’argent ? »</p>
-            <p className="b-line"><span>Moussa</span><b className="num">20 000 F</b></p>
-            <p className="b-line"><span>Fatou</span><b className="num">8 500 F</b></p>
-          </article>
-          <article className="b-factures">
-            <span className="b-tag">Factures</span>
-            <p className="b-said">« Envoie la facture à Awa. »</p>
-            <p className="b-note">Préparée pour WhatsApp.</p>
-          </article>
-          <article className="b-depenses">
-            <span className="b-tag">Dépenses</span>
-            <p className="b-said">« J’ai payé le transport. »</p>
-          </article>
-          <article className="b-caisse">
-            <span className="b-tag">Caisse</span>
-            <p className="b-said">« On ferme. Combien dans le tiroir ? »</p>
-            <p className="b-figure num">50 500 F</p>
-            <p className="b-note">Fond du matin + ventes − dépenses.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="offers" id="offres">
-        <div className="section-head">
-          <p className="eyebrow">Offres</p>
-          <h2>Tout ce qu’il faut pour la boutique.</h2>
-        </div>
-        <div className="offer-grid">
-          <article>
-            <h3>Seul</h3>
-            <p>Une boutique. La voix en wolof et en français, les ventes, le stock, la caisse et le bilan.</p>
-          </article>
-          <article className="featured">
-            <span className="b-tag">Le plus utile</span>
-            <h3>Équipe</h3>
-            <p>Les achats et le bénéfice, les dettes avec relance WhatsApp, les factures à envoyer.</p>
-            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={() => onStart("creer")}>Commencer</Button>
-          </article>
-          <article>
-            <h3>Maison</h3>
-            <p>Plusieurs boutiques, l’import du stock depuis Excel et l’export pour le comptable.</p>
-          </article>
-        </div>
-        <p className="note center">Pendant le lancement, toutes les fonctions sont ouvertes. Connexion avec ton numéro et ton code secret.</p>
-      </section>
-
-      <footer className="lfoot">
-        <span className="lbrand"><JokkoMark size={24} /><span>Jokko</span></span>
-        <span>La boutique qui écoute.</span>
-        <span className="lfoot-links">
-          <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>Conditions d’utilisation</button>
-          <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>Confidentialité</button>
-        </span>
-      </footer>
-      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
-    </main>
-  );
-}
-
-function JokkoBars() {
-  return (
-    <span className="bars" aria-hidden="true">
-      <i /><i /><i /><i /><i />
-    </span>
-  );
 }
 
 type AuthMode = "creer" | "entrer";
