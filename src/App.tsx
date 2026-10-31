@@ -1273,7 +1273,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
           }}>Nouvelle boutique</Button>
         </div>
       </div>
-      <p className="note">Le micro, la compréhension et la voix passent par Gemini sur le serveur de Jokko. Aucune clé n’est gardée dans ce navigateur.</p>
+      <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
       <div className="row">
         <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
         <Label htmlFor="speak">Lire les réponses à voix haute</Label>
