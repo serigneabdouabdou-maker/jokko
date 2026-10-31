@@ -5,9 +5,9 @@
 // Les règles d'alerte et le résumé sont les mêmes que dans l'appli (fichiers du dépôt, figés sur une version).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
-import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/__SHA__/src/data/alerts.ts";
-import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/__SHA__/src/data/sync.ts";
-import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/__SHA__/src/data/summary.ts";
+import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/alerts.ts";
+import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/sync.ts";
+import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/summary.ts";
 
 type Row = Record<string, unknown>;
 type JournalRow = { id: number; shop_id: string; at: string; user_id: string | null; tbl: string; row_id: string; action: "ajout" | "modification" | "suppression"; before: Row | null; after: Row | null };
