@@ -42,3 +42,20 @@ export async function loadJournal(shopId: string, limit = 300): Promise<JournalR
   if (error) throw new Error(error.message);
   return (data ?? []) as JournalRow[];
 }
+
+/** Clôture de caisse : le comptage du tiroir est gardé sur le serveur (le patron voit l'écart à distance). */
+export async function saveCashCount(shopId: string, expected: number, counted: number, note = ""): Promise<boolean> {
+  const { error } = await supabase.from("cash_counts").insert({ shop_id: shopId, expected: Math.round(expected), counted: Math.round(counted), note: note.slice(0, 200) });
+  return !error;
+}
+
+/** Le journal en direct : appelé à chaque nouvelle ligne de cette boutique. Renvoie de quoi arrêter l'écoute. */
+export function watchJournal(shopId: string, onRow: (row: JournalRow) => void): () => void {
+  const channel = supabase
+    .channel(`journal-${shopId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "journal", filter: `shop_id=eq.${shopId}` }, (payload) => onRow(payload.new as JournalRow))
+    .subscribe();
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}

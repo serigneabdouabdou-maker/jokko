@@ -65,6 +65,8 @@ import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
 import { PriceTool } from "@/components/jokko/PriceTool";
+import { Remote } from "@/components/jokko/Remote";
+import { saveCashCount } from "@/data/team";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -79,7 +81,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "distance" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -88,6 +90,7 @@ const LANGS: Array<[Lang, string]> = [
 
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
+  ["distance", "À distance"],
   ["scanner", "Scanner"],
   ["bilan", "Bilan"],
   ["ventes", "Ventes"],
@@ -103,7 +106,7 @@ const NAV: Array<[Screen, string]> = [
 ];
 
 /** Rubriques réservées au patron. */
-const PATRON_SCREENS: Screen[] = ["bilan", "equipe", "journal"];
+const PATRON_SCREENS: Screen[] = ["distance", "bilan", "equipe", "journal"];
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -1233,6 +1236,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             </div>
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
+          {screen === "distance" && patron && <Remote profile={profile} />}
           {screen === "scanner" && <ScanCheckout shop={shop} commit={commit} role={role} />}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
@@ -1424,6 +1428,7 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
 
 function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [counted, setCounted] = useState(String(expectedCash(shop)));
+  const [closing, setClosing] = useState<"" | "envoi" | "ok" | "erreur">("");
   const expected = expectedCash(shop);
   const gap = (Number(counted) || 0) - expected;
   return (
@@ -1454,6 +1459,12 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           <Input id="counted" className="num h-14 text-2xl font-semibold" value={counted} onChange={(e) => setCounted(e.target.value)} />
         </div>
         <p className={`cash-gap${gap === 0 ? " ok" : " off"}`}>{gap === 0 ? "La caisse tombe juste." : `Écart ${amount(gap)}.`}</p>
+        <Button className="h-11 rounded-full" disabled={closing === "envoi" || !(Number(counted) >= 0)} onClick={async () => {
+          setClosing("envoi");
+          setClosing((await saveCashCount(shop.id, expected, Number(counted) || 0)) ? "ok" : "erreur");
+        }}>{closing === "envoi" ? "Envoi…" : "Clôturer la caisse"}</Button>
+        {closing === "ok" && <p className="note">✓ Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</p>}
+        {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}
       </article>
     </section>

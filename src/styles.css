@@ -1202,3 +1202,31 @@
     .price-tool-row select { grid-column: 1 / -1; }
   }
 }
+
+/* À distance (patron) */
+@layer components {
+  .remote { display: grid; gap: 16px; }
+  .remote .sheet-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .remote .sheet-head h2, .remote .sheet-head h3 { margin-right: auto; }
+  .live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; color: var(--j-ink-3); }
+  .live-dot::before { content: ""; width: 9px; height: 9px; border-radius: 999px; background: var(--j-line); }
+  .live-dot.on { color: #10603a; }
+  .live-dot.on::before { background: #16a34a; box-shadow: 0 0 0 4px color-mix(in oklab, #16a34a 20%, transparent); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 7px color-mix(in oklab, #16a34a 5%, transparent); } }
+  .remote-status { margin: 6px 0 12px; color: var(--j-ink-2); }
+  .remote-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .remote-kpis small { display: block; color: var(--j-ink-3); font-size: 12px; margin-top: 2px; }
+  .alert-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+  .alert-list li { display: grid; grid-template-columns: 90px 100px 1fr; gap: 10px; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+  .alert-list li.is-grave { background: color-mix(in oklab, var(--j-danger) 12%, var(--j-white)); box-shadow: inset 4px 0 0 var(--j-danger); }
+  .alert-list li.is-attention { background: color-mix(in oklab, var(--j-yellow) 18%, var(--j-white)); box-shadow: inset 4px 0 0 var(--j-yellow); }
+  .alert-list time { color: var(--j-ink-3); font-size: 13px; }
+  .alert-list b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .day-summary { white-space: pre-wrap; font: inherit; font-size: 14px; line-height: 1.55; margin: 8px 0 12px; padding: 12px; border-radius: 12px; background: var(--j-wash); }
+  .remote .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 640px) {
+    .remote-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .alert-list li { grid-template-columns: 1fr auto; }
+    .alert-list li span { grid-column: 1 / -1; }
+  }
+}

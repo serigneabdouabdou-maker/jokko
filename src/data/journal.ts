@@ -13,7 +13,7 @@ export type JournalRow = {
   after: Record<string, unknown> | null;
 };
 
-export type JournalKind = "vente" | "stock" | "argent" | "client" | "facture" | "equipe" | "boutique";
+export type JournalKind = "vente" | "stock" | "argent" | "client" | "facture" | "equipe" | "boutique" | "caisse";
 export type JournalLine = { text: string; kind: JournalKind; alert: boolean };
 
 const n = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0) || 0);
@@ -98,6 +98,14 @@ export function describe(row: JournalRow): JournalLine {
       if (row.action === "ajout") return { text: `A rejoint la boutique · ${role}`, kind: "equipe", alert: false };
       if (row.action === "suppression") return { text: `Retiré(e) de la boutique · ${role}`, kind: "equipe", alert: true };
       return { text: `Rôle changé · ${role}`, kind: "equipe", alert: true };
+    }
+    case "cash_counts": {
+      const gap = n(a.counted) - n(a.expected);
+      return {
+        text: `Clôture de caisse · attendu ${money(n(a.expected))} · compté ${money(n(a.counted))}${gap ? ` · écart ${gap > 0 ? "+" : "−"}${money(Math.abs(gap))}` : " · juste"}`,
+        kind: "caisse",
+        alert: gap !== 0,
+      };
     }
     case "shops": {
       if (row.action === "ajout") return { text: `Boutique créée · ${s(a.name)}`, kind: "boutique", alert: false };
