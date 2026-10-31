@@ -2,7 +2,8 @@
  * Livre de phrases de Jokko en wolof : les SEULES phrases toutes faites qu'il a le droit de dire.
  * Orthographe officielle du wolof (décret 2005-992, CLAD). Chaque phrase porte son statut :
  * "valide" = vérifiée par un locuteur natif ; "a_valider" = en attente de vérification.
- * Les 14 phrases ci-dessous ont été validées par le patron de Jokko le 31/10/2026.
+ * Les 14 premières phrases ont été validées par le patron de Jokko le 31/10/2026 ; les 4 dernières viennent
+ * de la présentation audio de la page d'accueil, validée le 31/10/2026 (« aucune faute, très naturel »).
  * Pour corriger une phrase : changer `wo`, puis passer `statut` à "valide".
  */
 export type Phrase = { situation: string; wo: string; fr: string; statut: "valide" | "a_valider" };
@@ -23,6 +24,10 @@ export const WOLOF_PHRASES: Phrase[] = [
   { situation: "j'écoute", wo: "Maa ngi lay déglu.", fr: "Je t'écoute.", statut: "valide" },
   { situation: "oui", wo: "Waaw.", fr: "Oui.", statut: "valide" },
   { situation: "non", wo: "Déedéet.", fr: "Non.", statut: "valide" },
+  { situation: "saluer", wo: "Asalaa maalekum !", fr: "Bonjour !", statut: "valide" },
+  { situation: "se présenter", wo: "Maa ngi tudd Jokko. Maay sa ndimbal ci sa bitig.", fr: "Je m'appelle Jokko. Je suis ton aide dans ta boutique.", statut: "valide" },
+  { situation: "inviter à parler", wo: "Waxal rekk, ni nga koy waxe.", fr: "Parle simplement, comme tu parles.", statut: "valide" },
+  { situation: "commencer", wo: "Kaay, ñu tàmbali !", fr: "Viens, on commence !", statut: "valide" },
 ];
 
 /** Bloc à mettre dans les consignes de Jokko. */

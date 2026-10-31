@@ -246,7 +246,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   handlers.onPhase("ecoute");
   if (options.greet) {
     live.sendClientContent({
-      turns: [{ role: "user", parts: [{ text: "(La conversation commence. Salue le commerçant en une phrase très courte, dans la langue de la boutique, et dis que tu l'écoutes.)" }] }],
+      turns: [{ role: "user", parts: [{ text: "(La conversation commence. Salue le commerçant en une phrase très courte, dans la langue de la boutique, et dis que tu l'écoutes. En wolof, dis exactement : « Asalaa maalekum ! Maa ngi lay déglu. »)" }] }],
       turnComplete: true,
     });
   }
