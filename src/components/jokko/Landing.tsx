@@ -333,21 +333,24 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </Reveal>
         <Reveal className="offer-grid lx-offers">
           <article style={at(0)}>
-            <h3>Seul</h3>
-            <p>Une boutique. La voix en wolof et en français, les ventes, le stock, la caisse et le bilan.</p>
+            <h3>Gratuit</h3>
+            <p className="lx-price num">0 F</p>
+            <p>Une boutique. La voix en wolof et en français, les ventes, le stock, la caisse, les dettes et les factures.</p>
           </article>
-          <article className="featured" style={at(1)}>
-            <span className="b-tag">Le plus utile</span>
-            <h3>Équipe</h3>
-            <p>Les achats et le bénéfice, les dettes avec relance WhatsApp, les factures à envoyer.</p>
-            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={() => onStart("creer")}>Commencer</Button>
+          <article style={at(1)}>
+            <h3>Médium</h3>
+            <p className="lx-price num">3 000 F <small>/ mois</small></p>
+            <p>Les vendeurs et le journal, le scanner et les étiquettes, la boutique à distance avec les alertes, les relances WhatsApp.</p>
           </article>
-          <article style={at(2)}>
-            <h3>Maison</h3>
-            <p>Plusieurs boutiques, l’import du stock depuis Excel et l’export pour le comptable.</p>
+          <article className="featured" style={at(2)}>
+            <span className="b-tag">Le plus complet</span>
+            <h3>Avancé</h3>
+            <p className="lx-price num">7 500 F <small>/ mois</small></p>
+            <p>Tout le Médium, plus le chat intelligent, le Conseiller IA, le résumé du soir et plusieurs boutiques.</p>
+            <Button className="mt-auto h-11 rounded-full bg-[#17191F] px-5 text-[#FFFDF7] hover:bg-[#17191F]/90" onClick={() => onStart("creer")}>Essayer 14 jours gratuits</Button>
           </article>
         </Reveal>
-        <p className="note center">Pendant le lancement, toutes les fonctions sont ouvertes. Connexion avec ton numéro et ton code secret.</p>
+        <p className="note center">Chaque nouvelle boutique essaie l’offre Avancé gratuitement pendant 14 jours. Paiement par Wave. Sans engagement.</p>
       </section>
 
       <Reveal as="section" className="lx-final">

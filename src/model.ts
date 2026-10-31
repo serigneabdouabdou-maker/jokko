@@ -44,9 +44,14 @@ export type Sale = {
   unit?: string;
   /** Moyen de paiement. Absent = espèces. Seules les espèces entrent dans le tiroir. */
   payment?: Payment;
+  /** Paiement Wave sans API : vérifié par le patron dans son appli Wave (lu sur le serveur) */
+  checked?: boolean;
 };
 
 export type Payment = "especes" | "wave" | "om" | "credit";
+
+export type PlanName = "gratuit" | "medium" | "avance";
+export type ShopPlan = { plan: PlanName; until: string | null; trialUntil: string | null };
 export const PAYMENT_LABELS: Record<Payment, string> = { especes: "Espèces", wave: "Wave", om: "Orange Money", credit: "Crédit" };
 
 /**
@@ -96,6 +101,10 @@ export type Shop = {
   /** Comment payer (ex. « Wave ou Orange Money au 77 123 45 67 ») */
   paymentInfo?: string;
   invoiceNote?: string;
+  /** Lien Wave Business de la boutique (paiement sans API, montré en QR code) */
+  waveLink?: string;
+  /** Offre de la boutique, lue sur le serveur (jamais envoyée par le téléphone) */
+  plan?: ShopPlan;
   products: Product[];
   clients: Client[];
   sales: Sale[];

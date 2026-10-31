@@ -85,6 +85,8 @@ export function Remote({ profile }: { profile: Profile }) {
   const counted = rows.find((r) => r.tbl === "cash_counts" && r.action === "ajout" && isToday(r.at));
   const shown = alerts.filter((a) => (scope === "jour" ? isToday(a.at) : Date.now() - Date.parse(a.at) < 7 * 86_400_000));
   const summary = shop ? daySummary(shop, alerts, counted) : "";
+  // Paiements Wave sans API, pas encore vérifiés par le patron (7 derniers jours)
+  const waveToCheck = shop ? shop.sales.filter((s) => s.payment === "wave" && !s.checked && Date.now() - Date.parse(s.at) < 7 * 86_400_000) : [];
   const wa = profile.phone ? whatsappLink(profile.phone, summary) : null;
 
   return (
@@ -143,6 +145,25 @@ export function Remote({ profile }: { profile: Profile }) {
         )}
         <p className="note">Jokko surveille : ventes annulées, ventes sous le prix, stock qui baisse sans vente, articles ou clients supprimés, dettes baissées, dépenses, écarts de caisse.</p>
       </div>
+
+      {shop && waveToCheck.length > 0 && (
+        <div className="sheet">
+          <h3>Paiements Wave à vérifier</h3>
+          <p className="note">Retrouve chaque paiement dans ton appli Wave Business (même montant, même heure), puis touche « Vérifié ». S'il n'y est pas, l'argent n'est pas arrivé : parle au vendeur.</p>
+          <ul className="admin-list">
+            {waveToCheck.map((s) => (
+              <li key={s.id}>
+                <span><b>{s.label}</b><br /><small>{day(s.at)}</small></span>
+                <b className="num">{amount(s.amount)}</b>
+                <Button className="h-9 rounded-full px-4" onClick={async () => {
+                  const { error } = await supabase.from("sales").update({ checked: true }).eq("id", s.id);
+                  if (!error) void refresh();
+                }}>Vérifié</Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {shop && (
         <div className="sheet">

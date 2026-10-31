@@ -8,7 +8,9 @@ import { removeWaveKeys, saveWaveKeys, waveReady, waveWebhookUrl } from "@/data/
  * Brancher Wave Business (patron). Les clés sont envoyées une seule fois au serveur et ne reviennent jamais
  * dans l'appli : même un vendeur ou quelqu'un qui prend le téléphone ne peut pas les lire.
  */
-export function WaveSettings({ shop }: { shop: Shop }) {
+export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: string | undefined) => void }) {
+  const [link, setLink] = useState(shop.waveLink ?? "");
+  const [linkNote, setLinkNote] = useState("");
   const [ready, setReady] = useState<boolean | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [secret, setSecret] = useState("");
@@ -24,6 +26,18 @@ export function WaveSettings({ shop }: { shop: Shop }) {
   return (
     <div className="install-settings wave-settings">
       <h3>Wave Business · {shop.name}</h3>
+      <p className="note"><b>Sans API (le plus simple) :</b> colle le lien de paiement de ta boutique Wave Business (dans l'appli Wave Business : « Partager mon lien » ou « Lien de paiement »). Au moment d'encaisser par Wave, Jokko montre ce lien en QR code au client. Tu cocheras ensuite chaque paiement « Vérifié » dans À distance.</p>
+      <div className="row">
+        <Input className="h-11" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://pay.wave.com/…" aria-label="Lien Wave Business de la boutique" />
+        <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => {
+          const v = link.trim();
+          if (v && !/^https:\/\//.test(v)) return setLinkNote("Le lien doit commencer par https://");
+          onLink(v || undefined);
+          setLinkNote(v ? "✓ Lien enregistré." : "Lien retiré.");
+        }}>Enregistrer le lien</Button>
+      </div>
+      {linkNote && <p className="note">{linkNote}</p>}
+      <p className="note"><b>Avec l'API Wave (automatique) :</b> si Wave t'a donné l'accès « Développeurs », branche-le ci-dessous : chaque paiement sera confirmé tout seul.</p>
       {ready ? (
         <>
           <p className="note">✓ Wave est branché. Au moment d'encaisser, choisis « Wave » : le client scanne le QR code, et la vente s'enregistre quand Wave confirme.</p>
@@ -36,9 +50,9 @@ export function WaveSettings({ shop }: { shop: Shop }) {
           </div>
         </>
       ) : (
-        <p className="note">Branche ton compte Wave Business : les paiements Wave seront confirmés automatiquement (plus de fausses captures d'écran).</p>
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setOpen(!open)}>{open ? "Fermer" : "J'ai l'accès API Wave : le brancher"}</Button>
       )}
-      {(!ready || open) && (
+      {open && (
         <>
           <ol className="install-steps">
             <li>Sur un ordinateur, ouvre <b>business.wave.com</b> et connecte-toi avec le compte <b>administrateur</b> de ta boutique.</li>

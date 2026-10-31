@@ -243,7 +243,8 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
             </select>
           </div>
         )}
-        {(payment === "om" || (payment === "wave" && !waveOn)) && <p className="note">Vérifie le message de {PAYMENT_LABELS[payment]} avant d'encaisser. Cet argent n'entre pas dans le tiroir.</p>}
+        {payment === "wave" && !waveOn && shop.waveLink && <WaveLinkQr link={shop.waveLink} total={total} />}
+        {(payment === "om" || (payment === "wave" && !waveOn)) && <p className="note">Vérifie le message de {PAYMENT_LABELS[payment]} sur le téléphone du client avant d'encaisser. Cet argent n'entre pas dans le tiroir ; le patron le cochera « Vérifié ».</p>}
 
         {waving && (
           <WavePay
@@ -328,6 +329,20 @@ function UnknownCode({ code, shop, patron, commit, onDone }: { code: string; sho
         <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => onDone(null, false)}>Plus tard</Button>
       </div>
       <p className="note">Pense à mettre son stock et son prix d'achat dans Stock.</p>
+    </div>
+  );
+}
+
+/** Paiement Wave sans API : le QR code du lien Wave Business de la boutique ; le client tape le montant. */
+function WaveLinkQr({ link, total }: { link: string; total: number }) {
+  const [qr, setQr] = useState("");
+  useEffect(() => {
+    void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(link, { margin: 1, width: 220 })).then(setQr, () => setQr(""));
+  }, [link]);
+  return (
+    <div className="wave-pay">
+      <p className="wave-step">Le client scanne avec <b>Wave</b> et paie <b>{amount(total)}</b>.</p>
+      {qr && <img className="wave-qr" src={qr} alt="QR code Wave de la boutique" width={220} height={220} />}
     </div>
   );
 }

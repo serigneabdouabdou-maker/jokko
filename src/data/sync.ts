@@ -19,6 +19,7 @@ export function shopRow(s: Shop): Row {
   return {
     id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash, last_inventory_at: opt(s.lastInventoryAt),
     address: s.address ?? "", phone: s.phone ?? "", ninea: s.ninea ?? "", payment_info: s.paymentInfo ?? "", invoice_note: s.invoiceNote ?? "",
+    wave_link: s.waveLink?.trim() ? s.waveLink.trim() : null,
   };
 }
 
@@ -142,7 +143,7 @@ export type FlushResult = { sent: number; pending: number; error: string | null;
 
 /** Refus définitif du serveur (droits) : réessayer ne servirait à rien et bloquerait toute la file. */
 export function isRefusal(error: string): boolean {
-  return /row-level security|permission denied|42501|violates check constraint/i.test(error);
+  return /row-level security|permission denied|42501|violates check constraint|offre Avancé requise/i.test(error);
 }
 
 export const QUEUE_KEY = "jokko.sync.v1";
@@ -342,6 +343,10 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(optStr(s.ninea) ? { ninea: str(s.ninea) } : {}),
     ...(optStr(s.payment_info) ? { paymentInfo: str(s.payment_info) } : {}),
     ...(optStr(s.invoice_note) ? { invoiceNote: str(s.invoice_note) } : {}),
+    ...(optStr(s.wave_link) ? { waveLink: str(s.wave_link) } : {}),
+    ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"
+      ? { plan: { plan: s.plan, until: optStr(s.plan_until) ? iso(s.plan_until) : null, trialUntil: optStr(s.trial_until) ? iso(s.trial_until) : null } }
+      : {}),
     products: rows.products.map((r) => {
       const product: Product = { id: str(r.id), name: str(r.name), unit: str(r.unit), stock: num(r.stock), min: num(r.min), price: num(r.price) };
       const cost = optNum(r.cost);
@@ -378,6 +383,7 @@ export function rowsToShop(rows: ShopRows): Shop {
         const unit = optStr(r.unit);
         if (unit) sale.unit = unit;
         if (r.payment === "wave" || r.payment === "om" || r.payment === "credit") sale.payment = r.payment;
+        if (r.checked === true) sale.checked = true;
         return sale;
       }),
     ),

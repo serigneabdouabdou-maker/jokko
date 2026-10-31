@@ -68,6 +68,9 @@ import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
+import { Plans, Upsell } from "@/components/jokko/Plans";
+import { Admin } from "@/components/jokko/Admin";
+import { can, subscriptionInfo } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -86,7 +89,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "admin" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -108,11 +111,13 @@ const NAV: Array<[Screen, string]> = [
   ["caisse", "Caisse"],
   ["equipe", "Équipe"],
   ["journal", "Journal"],
+  ["offre", "Mon offre"],
   ["reglages", "Réglages"],
+  ["admin", "Administration"],
 ];
 
 /** Rubriques réservées au patron. */
-const PATRON_SCREENS: Screen[] = ["distance", "conseiller", "bilan", "equipe", "journal"];
+const PATRON_SCREENS: Screen[] = ["offre", "distance", "conseiller", "bilan", "equipe", "journal"];
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -413,6 +418,11 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   useEffect(() => {
     void ensurePush();
   }, []);
+  // Administration de la plateforme (CFC) : visible seulement pour les administrateurs (vérifié par le serveur).
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    void subscriptionInfo().then((i) => setIsAdmin(Boolean(i?.is_admin)), () => setIsAdmin(false));
+  }, [profile.userId]);
   // Wave branché pour la boutique ouverte : les paiements Wave du chat passent par la confirmation de Wave.
   const [waveOn, setWaveOn] = useState(false);
   useEffect(() => {
@@ -806,7 +816,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
       handle.tell(input);
       return;
     }
-    if (await tryOrder(input)) return;
+    if (can(shop, "chat") && (await tryOrder(input))) return;
     setReply(null);
     setVoice("comprehension");
     let handled: boolean;
@@ -960,7 +970,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => patron || !PATRON_SCREENS.includes(id)).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && (id !== "admin" || isAdmin)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}>{label}</button>
           ))}
         </nav>
@@ -1059,9 +1069,11 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             </div>
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
-          {screen === "distance" && patron && <Remote profile={profile} />}
-          {screen === "conseiller" && patron && <Advisor shop={shop} />}
-          {screen === "scanner" && <ScanCheckout shop={shop} commit={commit} role={role} />}
+          {screen === "offre" && patron && <Plans shop={shop} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
+          {screen === "admin" && isAdmin && <Admin />}
+          {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
+          {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
+          {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
@@ -1069,8 +1081,8 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
           {screen === "caisse" && <Cash shop={shop} commit={commit} canEdit={patron} />}
-          {screen === "equipe" && patron && <Team shop={shop} />}
-          {screen === "journal" && patron && <Journal shop={shop} />}
+          {screen === "equipe" && patron && (can(shop, "vendeurs") ? <Team shop={shop} /> : <Upsell feature="vendeurs" title="Ajouter des vendeurs" onPlans={() => setScreen("offre")} />)}
+          {screen === "journal" && patron && (can(shop, "journal") ? <Journal shop={shop} /> : <Upsell feature="journal" title="Le journal de la boutique" onPlans={() => setScreen("offre")} />)}
           {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} />}
         </div>
       </main>
@@ -1122,7 +1134,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
             <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}>🎤 Ajouter en parlant</Button>
             <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}>Changer les prix</Button>
-            <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}>Étiquettes</Button>
+            {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}>Étiquettes</Button>}
           </div>
         )}
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>
@@ -1179,7 +1191,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           setName("");
         }}>Ajouter au stock</Button>
       </div>}
-      {canEdit && <StockImport shop={shop} commit={commit} />}
+      {canEdit && can(shop, "import") && <StockImport shop={shop} commit={commit} />}
     </section>
   );
 }
@@ -1302,8 +1314,8 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
   return (
     <section className="sheet settings">
       <h2>Réglages</h2>
-      <InstallSettings userId={roleIn(profile) === "patron" ? profile.userId : undefined} />
-      {roleIn(profile) === "patron" && <WaveSettings shop={shop} />}
+      <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
+      {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>
@@ -1323,7 +1335,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
             </SelectContent>
           </Select>
         </div>
-        {roleIn(profile) === "patron" && <div className="field field-end">
+        {roleIn(profile) === "patron" && can(shop, "boutiques") && <div className="field field-end">
           <Button variant="outline" className="h-11 rounded-full" onClick={() => {
             // Nouvelle boutique : mêmes articles et clients, mais avec de nouveaux identifiants (base partagée).
             const copy = {

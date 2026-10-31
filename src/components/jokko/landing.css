@@ -243,3 +243,6 @@
   .lx .jmark-j { stroke-dashoffset: 0 !important; }
   .lx .jmark-bar { transform: none !important; }
 }
+
+.lx-price { font-size: 30px !important; font-weight: 750; color: var(--j-ink) !important; margin: 0 !important; }
+.lx-price small { font-size: 14px; font-weight: 500; color: var(--j-ink-3); }

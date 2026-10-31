@@ -1273,3 +1273,30 @@
   .wave-settings code { font-size: 12px; background: var(--j-white); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
   .wave-settings .row { display: flex; gap: 8px; flex-wrap: wrap; }
 }
+
+/* Offres, abonnements, administration */
+@layer components {
+  .plans, .admin { display: grid; gap: 16px; }
+  .plans-current { margin: 8px 0 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .plan-card { display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 24px; border: 1px solid var(--j-line); background: var(--j-card); }
+  .plan-card.featured { background: var(--j-soft-2); border-color: color-mix(in oklab, var(--j-yellow) 40%, var(--j-line)); }
+  .plan-card.is-current { box-shadow: 0 0 0 3px var(--j-ink); }
+  .plan-card h3 { font-size: 22px; font-weight: 700; }
+  .plan-price { font-size: 34px; font-weight: 750; margin: 0; }
+  .plan-price small { font-size: 14px; font-weight: 500; color: var(--j-ink-3); }
+  .plan-card ul, .upsell ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--j-ink-2); font-size: 14px; }
+  .plan-order, .plan-pay { display: grid; gap: 12px; }
+  .plan-total { margin: 0; font-size: 18px; }
+  .plan-ref { font-size: 18px; padding: 2px 8px; border-radius: 8px; background: var(--j-yellow); }
+  .upsell { display: grid; gap: 12px; justify-items: start; }
+  .upsell h2 { font-size: 26px; }
+  .admin-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+  .admin-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--j-wash); font-size: 14px; }
+  .admin-list small { color: var(--j-ink-3); }
+  .admin-list .row { display: flex; gap: 6px; }
+  @media (max-width: 760px) {
+    .plan-grid { grid-template-columns: 1fr; }
+    .admin-list li { grid-template-columns: 1fr; }
+  }
+}

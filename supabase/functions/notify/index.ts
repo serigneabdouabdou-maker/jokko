@@ -89,6 +89,9 @@ async function onSummary() {
   for (const p of profiles ?? []) {
     const { data: shops } = await admin.from("shop_members").select("shop_id").eq("user_id", p.user_id).eq("role", "patron");
     for (const m of shops ?? []) {
+      // Le résumé du soir fait partie de l'offre Avancé (essai compris).
+      const { data: plan } = await admin.rpc("effective_plan", { p_shop: m.shop_id });
+      if (plan !== "avance") continue;
       const shop = await loadShop(m.shop_id as string, dayStart.toISOString());
       if (!shop) continue;
       const patrons = await patronsOf(shop.id);
