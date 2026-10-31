@@ -30,6 +30,13 @@ jobs:
         run: npx vite build
         env:
           JOKKO_BASE: /jokko/
+      - name: Vérifier l'appli installable
+        run: |
+          grep -q 'rel="manifest" href="/jokko/manifest.webmanifest"' dist/index.html
+          grep -q 'apple-touch-icon" href="/jokko/apple-touch-icon.png"' dist/index.html
+          test -f dist/sw.js && test -f dist/manifest.webmanifest && test -f dist/icon-512.png && test -f dist/icon-maskable-512.png
+          node -e "const m=require('./dist/manifest.webmanifest.json')" 2>/dev/null || node -e "JSON.parse(require('fs').readFileSync('dist/manifest.webmanifest','utf8'))"
+          echo "Appli installable : OK"
       - name: Préparer la publication
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
