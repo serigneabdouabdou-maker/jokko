@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Payment, PAYMENT_LABELS, type Role, type Shop, money } from "@/model";
+import { type Payment, PAYMENT_LABELS, type Role, type Shop, money, uid } from "@/model";
+import { WavePay } from "@/components/jokko/WavePay";
 import { groupLines, type Order, orderMissing, orderTotal, purchasePrice, purchaseTotal } from "@/assistant/order";
 import { setQty, unitName, unitPrice } from "@/data/checkout";
 
@@ -20,6 +21,7 @@ export function OrderCard({
   onChange,
   onConfirm,
   onUndo,
+  waveShopId,
 }: {
   card: OrderCardData;
   shop: Shop;
@@ -28,9 +30,12 @@ export function OrderCard({
   /** order : la carte modifiée juste avant de confirmer (client choisi ou tapé). */
   onConfirm: (payment: Payment | null, order?: Order) => void;
   onUndo: () => void;
+  /** Boutique dont Wave est branché : le paiement Wave est alors confirmé par Wave avant d'enregistrer. */
+  waveShopId?: string;
 }) {
   const { order, status } = card;
   const [credit, setCredit] = useState(false);
+  const [waving, setWaving] = useState<string | null>(null);
   const [newClient, setNewClient] = useState(order.clientName ?? "");
   const waiting = status === "attente";
   const purchase = order.intent === "achat";
@@ -107,10 +112,13 @@ export function OrderCard({
           <p className="order-ask">C'est payé comment ?</p>
           <div className="pay-modes">
             {(["especes", "wave", "om"] as Payment[]).map((m) => (
-              <button key={m} type="button" onClick={() => onConfirm(m)}>{PAYMENT_LABELS[m]}</button>
+              <button key={m} type="button" onClick={() => (m === "wave" && waveShopId ? setWaving(uid("w")) : onConfirm(m))}>{PAYMENT_LABELS[m]}</button>
             ))}
             <button type="button" className={credit ? "on" : ""} onClick={() => (order.clientId ? onConfirm("credit") : setCredit(true))}>Crédit</button>
           </div>
+          {waving && waveShopId && (
+            <WavePay shopId={waveShopId} total={orderTotal(shop, order)} reference={waving} onPaid={() => onConfirm("wave")} onCancel={() => setWaving(null)} />
+          )}
           {credit && !order.clientId && (
             <select className="h-10 rounded-md border px-2" value="" onChange={(e) => {
               const c = shop.clients.find((x) => x.id === e.target.value);

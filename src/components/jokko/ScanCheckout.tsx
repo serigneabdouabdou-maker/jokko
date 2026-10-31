@@ -6,6 +6,8 @@ import { type Payment, PAYMENT_LABELS, type Product, type Role, type Shop, money
 import { codesInUse, findByCode, normalizeCode } from "@/data/barcode";
 import { addToCart, cartTotal, type CartLine, checkout, setQty, shortages, unitName, unitPrice } from "@/data/checkout";
 import { beep, type CameraScan, startCamera } from "@/data/scanner";
+import { waveReady } from "@/data/wave";
+import { WavePay } from "@/components/jokko/WavePay";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -24,6 +26,12 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
   const [notice, setNotice] = useState<Notice | null>(null);
   const [unknown, setUnknown] = useState<string | null>(null);
   const [payment, setPayment] = useState<Payment>("especes");
+  // Wave branché (Réglages) : le paiement est confirmé par Wave avant d'enregistrer la vente.
+  const [waveOn, setWaveOn] = useState(false);
+  const [waving, setWaving] = useState<{ lines: CartLine[]; total: number; reference: string } | null>(null);
+  useEffect(() => {
+    void waveReady(shop.id).then(setWaveOn, () => setWaveOn(false));
+  }, [shop.id]);
   const [clientId, setClientId] = useState("");
   const [received, setReceived] = useState("");
   const [camera, setCamera] = useState<"off" | "starting" | "on">("off");
@@ -93,8 +101,8 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
     }
   }
 
-  function pay() {
-    const applied = checkout(shop, lines, payment, payment === "credit" ? clientId || null : null);
+  function pay(paidLines = lines, paidWith: Payment = payment) {
+    const applied = checkout(shop, paidLines, paidWith, paidWith === "credit" ? clientId || null : null);
     if (!applied) {
       setNotice({ tone: "bad", text: payment === "credit" ? "Choisis le client qui prend à crédit." : "Le panier est vide." });
       return;
@@ -235,11 +243,29 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
             </select>
           </div>
         )}
-        {(payment === "wave" || payment === "om") && <p className="note">Vérifie le message de {PAYMENT_LABELS[payment]} avant d'encaisser. Cet argent n'entre pas dans le tiroir.</p>}
+        {(payment === "om" || (payment === "wave" && !waveOn)) && <p className="note">Vérifie le message de {PAYMENT_LABELS[payment]} avant d'encaisser. Cet argent n'entre pas dans le tiroir.</p>}
 
-        <Button className="h-14 w-full rounded-full text-lg font-semibold" disabled={!lines.length || (payment === "credit" && !clientId)} onClick={pay}>
-          Encaisser {total ? amount(total) : ""}
-        </Button>
+        {waving && (
+          <WavePay
+            shopId={shop.id}
+            total={waving.total}
+            reference={waving.reference}
+            onPaid={() => {
+              pay(waving.lines, "wave");
+              window.setTimeout(() => setWaving(null), 2500);
+            }}
+            onCancel={() => setWaving(null)}
+          />
+        )}
+        {!waving && payment === "wave" && waveOn ? (
+          <Button className="h-14 w-full rounded-full text-lg font-semibold" disabled={!lines.length} onClick={() => setWaving({ lines, total, reference: uid("w") })}>
+            Encaisser par Wave {total ? amount(total) : ""}
+          </Button>
+        ) : !waving && (
+          <Button className="h-14 w-full rounded-full text-lg font-semibold" disabled={!lines.length || (payment === "credit" && !clientId)} onClick={() => pay()}>
+            Encaisser {total ? amount(total) : ""}
+          </Button>
+        )}
       </article>
     </section>
   );

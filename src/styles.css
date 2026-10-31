@@ -1257,3 +1257,19 @@
   .advice-impact { color: #10603a !important; font-weight: 600; }
   @media (max-width: 560px) { .advisor-ask { grid-template-columns: 1fr; } }
 }
+
+/* Paiement Wave */
+@layer components {
+  .wave-pay { display: grid; gap: 10px; padding: 16px; margin: 10px 0; border-radius: 18px; border: 2px solid #1dc8f2; background: color-mix(in oklab, #1dc8f2 8%, var(--j-white)); }
+  .wave-pay .sheet-head { display: flex; justify-content: space-between; align-items: center; }
+  .wave-qr { justify-self: center; width: min(260px, 70vw); height: auto; border-radius: 12px; background: #fff; padding: 8px; }
+  .wave-step { margin: 0; text-align: center; }
+  .wave-wait { margin: 0; text-align: center; }
+  .wave-pay .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .wave-ok { margin: 0; padding: 12px; border-radius: 12px; background: color-mix(in oklab, #16804a 14%, var(--j-white)); color: #10603a; font-weight: 700; text-align: center; }
+  @media (max-width: 560px) { .wave-pay .row { grid-template-columns: 1fr; } }
+}
+@layer components {
+  .wave-settings code { font-size: 12px; background: var(--j-white); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+  .wave-settings .row { display: flex; gap: 8px; flex-wrap: wrap; }
+}

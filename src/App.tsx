@@ -68,6 +68,8 @@ import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { saveCashCount } from "@/data/team";
+import { waveReady } from "@/data/wave";
+import { WaveSettings } from "@/components/jokko/WaveSettings";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -606,6 +608,11 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   useEffect(() => {
     void ensurePush();
   }, []);
+  // Wave branché pour la boutique ouverte : les paiements Wave du chat passent par la confirmation de Wave.
+  const [waveOn, setWaveOn] = useState(false);
+  useEffect(() => {
+    void waveReady(profile.shopId).then(setWaveOn, () => setWaveOn(false));
+  }, [profile.shopId]);
   const shop = currentShop(profile);
   const today = useMemo(() => buildReport(shop, periodOf("jour")), [shop]);
   const late = useMemo(() => overdueDebts(shop), [shop]);
@@ -1055,7 +1062,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     // Réponse courte à « C'est payé comment ? » pour le dernier panier en attente
     const pending = [...messages].reverse().find((m) => m.card?.status === "attente" && m.card.order.intent === "vente");
     const pay = orderPayment(input);
-    if (pending?.card && pay && input.trim().length <= 30) {
+    if (pending?.card && pay && input.trim().length <= 30 && !(pay === "wave" && waveOn)) {
       finishOrder(pending.id, pending.card.order, pay);
       return true;
     }
@@ -1072,7 +1079,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     const id = uid("m");
     const missing = orderMissing(shop, order, order.payment);
     setMessages((m) => [...m, { id, role: "jokko", text: "", at: new Date().toISOString(), card: { order, status: "attente" } }]);
-    if (!missing && (order.intent !== "vente" || order.payment)) finishOrder(id, order, order.payment);
+    if (!missing && (order.intent !== "vente" || (order.payment && !(order.payment === "wave" && waveOn)))) finishOrder(id, order, order.payment);
     else say(missing ?? "C'est payé comment ?");
     return true;
   }
@@ -1220,6 +1227,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
                         onChange={(order) => updateCard(m.id, { order, note: undefined })}
                         onConfirm={(payment, order) => finishOrder(m.id, order ?? m.card!.order, payment)}
                         onUndo={() => undoOrder(m.id, m.card?.entryId)}
+                        waveShopId={waveOn ? shop.id : undefined}
                       />
                     ) : (
                       <div key={m.id} className={`bubble ${m.role}`}>{m.text}</div>
@@ -1490,6 +1498,7 @@ function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: P
     <section className="sheet settings">
       <h2>Réglages</h2>
       <InstallSettings userId={roleIn(profile) === "patron" ? profile.userId : undefined} />
+      {roleIn(profile) === "patron" && <WaveSettings shop={shop} />}
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>
