@@ -6,6 +6,7 @@ import {
   type Profile,
   type Shop,
   currentShop,
+  dayCashSales,
   dayExpenses,
   daySales,
   debtors,
@@ -14,6 +15,7 @@ import {
   lowStock,
   money,
   newShop,
+  PAYMENT_LABELS,
   replaceShop,
   roleIn,
   toCsv,
@@ -57,6 +59,9 @@ import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/leg
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Team } from "@/components/jokko/Team";
 import { Journal } from "@/components/jokko/Journal";
+import { ScanCheckout } from "@/components/jokko/ScanCheckout";
+import { Labels } from "@/components/jokko/Labels";
+import { normalizeCode } from "@/data/barcode";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { bootstrap, firstShop, onSyncState, persist, signOut, type SyncState } from "@/data/store";
 
@@ -65,7 +70,7 @@ const TEXT_SESSION_IDLE_MS = 3 * 60_000;
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -74,6 +79,7 @@ const LANGS: Array<[Lang, string]> = [
 
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
+  ["scanner", "Scanner"],
   ["bilan", "Bilan"],
   ["ventes", "Ventes"],
   ["stock", "Stock"],
@@ -1083,7 +1089,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           <article className="stat stat-cash">
             <span>Caisse attendue</span>
             <Num value={expectedCash(shop)} className="stat-big" />
-            <small>Fond {amount(shop.openingCash)} + ventes − dépenses</small>
+            <small>Fond {amount(shop.openingCash)} + ventes en espèces − dépenses</small>
           </article>
           <article className="stat stat-sales">
             <span>Ventes du jour{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
@@ -1141,6 +1147,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
             </div>
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
+          {screen === "scanner" && <ScanCheckout shop={shop} commit={commit} role={role} />}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
@@ -1189,12 +1196,17 @@ function Stock({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => voi
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
+  const [labels, setLabels] = useState(false);
+  const codeOwner = (code: string) =>
+    shop.products.find((p) => (p.barcode && normalizeCode(p.barcode) === code) || (p.retail?.barcode && normalizeCode(p.retail.barcode) === code))?.id;
   return (
     <section className="sheet">
       <div className="sheet-head">
         <h2>Stock</h2>
+        {canEdit && <Button variant="outline" className="h-9 rounded-full px-4" onClick={() => setLabels(!labels)}>Étiquettes à imprimer</Button>}
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>
       </div>
+      {labels && canEdit && <Labels shop={shop} commit={commit} onClose={() => setLabels(false)} />}
       <div className="stock-list">
         {shop.products.map((p) => {
           const low = p.stock <= p.min;
@@ -1204,6 +1216,7 @@ function Stock({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => voi
               <ProductEditor
                 key={p.id}
                 product={p}
+                codeOwner={codeOwner}
                 onClose={() => setEditing(null)}
                 onSave={(next, stockChanged) => {
                   commit({ ...shop, products: shop.products.map((x) => (x.id === next.id ? { ...next, stock: stockChanged ? next.stock : x.stock } : x)) });
@@ -1322,9 +1335,19 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         <Num value={expected} className="cash-big" />
         <dl className="cash-calc">
           <div><dt>Fond du matin</dt><dd className="num">{amount(shop.openingCash)}</dd></div>
-          <div><dt>+ Ventes</dt><dd className="num">{amount(daySales(shop))}</dd></div>
+          <div><dt>+ Ventes en espèces</dt><dd className="num">{amount(dayCashSales(shop))}</dd></div>
           <div><dt>− Dépenses</dt><dd className="num">{amount(dayExpenses(shop))}</dd></div>
         </dl>
+        {daySales(shop) !== dayCashSales(shop) && (
+          <p className="note">
+            Hors tiroir aujourd’hui :{" "}
+            {(["wave", "om", "credit"] as const)
+              .map((m) => [m, shop.sales.filter((s) => s.payment === m && new Date(s.at).toDateString() === new Date().toDateString()).reduce((a, s) => a + s.amount, 0)] as const)
+              .filter(([, v]) => v > 0)
+              .map(([m, v]) => `${PAYMENT_LABELS[m]} ${amount(v)}`)
+              .join(" · ")}
+          </p>
+        )}
       </article>
       <article className="sheet cash-count">
         <div className="field">

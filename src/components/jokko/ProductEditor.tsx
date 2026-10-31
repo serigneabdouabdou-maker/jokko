@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type Product, money } from "@/model";
+import { normalizeCode } from "@/data/barcode";
 
 const toNum = (s: string) => {
   const n = Number(s.replace(/[\s  ]/g, "").replace(",", "."));
@@ -14,7 +15,18 @@ const toNum = (s: string) => {
  * Fiche d'un article : prix d'achat (gros), prix de vente, et vente au détail.
  * Le bénéfice par unité s'affiche en direct pendant la saisie.
  */
-export function ProductEditor({ product, onSave, onClose }: { product: Product; onSave: (p: Product, stockChanged: boolean) => void; onClose: () => void }) {
+export function ProductEditor({
+  product,
+  onSave,
+  onClose,
+  codeOwner,
+}: {
+  product: Product;
+  onSave: (p: Product, stockChanged: boolean) => void;
+  onClose: () => void;
+  /** Id de l'article qui porte déjà ce code (pour éviter deux articles avec le même code). */
+  codeOwner?: (code: string) => string | undefined;
+}) {
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit);
   const [cost, setCost] = useState(product.cost !== undefined ? String(product.cost) : "");
@@ -25,6 +37,8 @@ export function ProductEditor({ product, onSave, onClose }: { product: Product; 
   const [retailUnit, setRetailUnit] = useState(product.retail?.unit ?? "sachet");
   const [perUnit, setPerUnit] = useState(product.retail ? String(product.retail.perUnit) : "");
   const [retailPrice, setRetailPrice] = useState(product.retail ? String(product.retail.price) : "");
+  const [code, setCode] = useState(product.barcode ?? "");
+  const [retailCode, setRetailCode] = useState(product.retail?.barcode ?? "");
   const [error, setError] = useState("");
 
   const c = toNum(cost);
@@ -51,8 +65,18 @@ export function ProductEditor({ product, onSave, onClose }: { product: Product; 
       min: Math.max(0, toNum(min) || 0),
       price: Math.round(p),
     };
+    const cleanCode = (v: string) => normalizeCode(v);
+    if (code.trim() && !/^[0-9A-Za-z-]{4,32}$/.test(cleanCode(code))) return setError("Le code-barres n'est pas valable.");
+    if (retailOn && retailCode.trim() && !/^[0-9A-Za-z-]{4,32}$/.test(cleanCode(retailCode))) return setError("Le code-barres du détail n'est pas valable.");
+    const taken = (v: string) => {
+      const other = codeOwner?.(cleanCode(v));
+      return other && other !== product.id ? other : null;
+    };
+    if (code.trim() && taken(code)) return setError("Ce code-barres est déjà sur un autre article.");
+    if (retailOn && retailCode.trim() && taken(retailCode)) return setError("Ce code-barres du détail est déjà sur un autre article.");
     if (cost && Number.isFinite(c)) next.cost = Math.round(c);
-    if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp) };
+    if (code.trim()) next.barcode = cleanCode(code);
+    if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp), ...(retailCode.trim() ? { barcode: cleanCode(retailCode) } : {}) };
     // Le stock n'est remplacé que si on l'a changé ici (une vente à la voix a pu le modifier entre-temps).
     onSave(next, stock.trim() !== String(product.stock));
   }
@@ -90,6 +114,11 @@ export function ProductEditor({ product, onSave, onClose }: { product: Product; 
         </div>
       </div>
 
+      <div className="field">
+        <Label htmlFor="pe-code">Code-barres (scanne-le avec la douchette, ou tape les chiffres)</Label>
+        <Input id="pe-code" className="num h-11" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Vide : Jokko en crée un pour l'étiquette" />
+      </div>
+
       <div className="row">
         <Checkbox id="pe-retail" checked={retailOn} onCheckedChange={(v) => setRetailOn(v === true)} />
         <Label htmlFor="pe-retail">Se vend aussi au détail (sachet, kilo, pièce…)</Label>
@@ -107,6 +136,10 @@ export function ProductEditor({ product, onSave, onClose }: { product: Product; 
           <div className="field">
             <Label htmlFor="pe-rprice">Prix d'1 {retailUnit || "unité"}</Label>
             <Input id="pe-rprice" className="num h-11" inputMode="numeric" value={retailPrice} onChange={(e) => setRetailPrice(e.target.value)} placeholder="ex. 900" />
+          </div>
+          <div className="field">
+            <Label htmlFor="pe-rcode">Code-barres du détail</Label>
+            <Input id="pe-rcode" className="num h-11" inputMode="numeric" value={retailCode} onChange={(e) => setRetailCode(e.target.value)} placeholder="Facultatif" />
           </div>
         </div>
       )}

@@ -1,7 +1,8 @@
 export type Lang = "fr" | "wo" | "en" | "ff";
 
 /** Vente au détail d'un article : 1 sac = 50 sachets à 150 F. */
-export type Retail = { unit: string; perUnit: number; price: number };
+/** Vente au détail : unité (sachet, kilo…), combien dans une unité de gros, prix, et son code-barres. */
+export type Retail = { unit: string; perUnit: number; price: number; barcode?: string };
 
 export type Product = {
   id: string;
@@ -15,6 +16,8 @@ export type Product = {
   /** Prix d'achat d'une unité de gros (pour le bénéfice). */
   cost?: number;
   retail?: Retail;
+  /** Code-barres de l'unité de gros (code du fabricant, ou code Jokko imprimé sur une étiquette). */
+  barcode?: string;
 };
 
 export type Client = {
@@ -39,7 +42,12 @@ export type Sale = {
   /** Vente au détail (qty en unités de détail, ex. sachets). */
   retail?: boolean;
   unit?: string;
+  /** Moyen de paiement. Absent = espèces. Seules les espèces entrent dans le tiroir. */
+  payment?: Payment;
 };
+
+export type Payment = "especes" | "wave" | "om" | "credit";
+export const PAYMENT_LABELS: Record<Payment, string> = { especes: "Espèces", wave: "Wave", om: "Orange Money", credit: "Crédit" };
 
 /**
  * kind « perte » : marchandise perdue ou manquante à l'inventaire (au prix d'achat).
@@ -260,8 +268,13 @@ export function dayExpenses(shop: Shop): number {
   return shop.expenses.filter((s) => isToday(s.at) && s.kind !== "perte").reduce((a, s) => a + s.amount, 0);
 }
 
+/** Ventes du jour payées en espèces (Wave, Orange Money et crédit n'entrent pas dans le tiroir). */
+export function dayCashSales(shop: Shop): number {
+  return shop.sales.filter((s) => isToday(s.at) && (s.payment ?? "especes") === "especes").reduce((a, s) => a + s.amount, 0);
+}
+
 export function expectedCash(shop: Shop): number {
-  return shop.openingCash + daySales(shop) - dayExpenses(shop);
+  return shop.openingCash + dayCashSales(shop) - dayExpenses(shop);
 }
 
 export function lowStock(shop: Shop): Product[] {

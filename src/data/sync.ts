@@ -26,12 +26,13 @@ const toRow = {
   products: (p: Product, shopId: string): Row => ({
     id: p.id, shop_id: shopId, name: p.name, unit: p.unit, stock: p.stock, min: p.min, price: p.price,
     cost: opt(p.cost), retail_unit: p.retail?.unit ?? null, retail_per_unit: p.retail?.perUnit ?? null, retail_price: p.retail?.price ?? null,
+    barcode: p.barcode ?? null, retail_barcode: p.retail?.barcode ?? null,
   }),
   clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt) }),
   sales: (s: Sale, shopId: string): Row => ({
     id: s.id, shop_id: shopId, at: s.at, label: s.label, amount: s.amount,
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
-    cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit),
+    cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes",
   }),
   expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense" }),
   invoices: (i: Invoice, shopId: string): Row => ({
@@ -347,7 +348,13 @@ export function rowsToShop(rows: ShopRows): Shop {
       if (cost !== undefined) product.cost = cost;
       const perUnit = optNum(r.retail_per_unit);
       const retailUnit = optStr(r.retail_unit);
-      if (retailUnit && perUnit) product.retail = { unit: retailUnit, perUnit, price: optNum(r.retail_price) ?? 0 };
+      if (retailUnit && perUnit) {
+        product.retail = { unit: retailUnit, perUnit, price: optNum(r.retail_price) ?? 0 };
+        const retailCode = optStr(r.retail_barcode);
+        if (retailCode) product.retail.barcode = retailCode;
+      }
+      const code = optStr(r.barcode);
+      if (code) product.barcode = code;
       return product;
     }),
     clients: rows.clients.map((r) => {
@@ -370,6 +377,7 @@ export function rowsToShop(rows: ShopRows): Shop {
         if (r.retail === true) sale.retail = true;
         const unit = optStr(r.unit);
         if (unit) sale.unit = unit;
+        if (r.payment === "wave" || r.payment === "om" || r.payment === "credit") sale.payment = r.payment;
         return sale;
       }),
     ),
