@@ -20,12 +20,15 @@ export function ProductEditor({
   onSave,
   onClose,
   codeOwner,
+  onDelete,
 }: {
   product: Product;
   onSave: (p: Product, stockChanged: boolean) => void;
   onClose: () => void;
   /** Id de l'article qui porte déjà ce code (pour éviter deux articles avec le même code). */
   codeOwner?: (code: string) => string | undefined;
+  /** Supprimer l'article (patron) : demandé avec confirmation. */
+  onDelete?: () => void;
 }) {
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit);
@@ -160,6 +163,18 @@ export function ProductEditor({
       <div className="import-actions">
         <Button className="h-11 rounded-full px-5 font-semibold" onClick={save}>Enregistrer</Button>
         <Button variant="ghost" className="h-11 rounded-full px-4" onClick={onClose}>Fermer</Button>
+        {onDelete && (
+          <Button
+            variant="ghost"
+            className="product-delete h-11 rounded-full px-4"
+            onClick={() => {
+              const left = product.stock > 0 ? ` Il en reste ${product.stock} ${product.unit}.` : "";
+              if (window.confirm(`Supprimer « ${product.name} » du stock ?${left} Les ventes passées restent dans le bilan et le journal.`)) onDelete();
+            }}
+          >
+            Supprimer l'article
+          </Button>
+        )}
       </div>
     </div>
   );

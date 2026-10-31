@@ -23,7 +23,7 @@ export type Order = {
   unknown: OrderUnknown[];
 };
 
-const plain = (s: string) =>
+export const plain = (s: string) =>
   s
     .toLowerCase()
     .normalize("NFD")
@@ -39,7 +39,7 @@ const UNIT_WORDS = new Set([
   "boite", "boites", "sachet", "sachets", "piece", "pieces", "bouteille", "bouteilles", "canette", "canettes", "pot", "pots",
   "litre", "litres", "tas", "botte", "bottes", "douzaine", "douzaines", "pain", "unite", "unites", "plaquette", "plaquettes",
 ]);
-const FILLERS = new Set(["de", "d", "du", "des", "la", "le", "les", "l", "et", "ak", "avec", "plus", "encore", "aussi", "ci", "bi", "yi"]);
+export const FILLERS = new Set(["de", "d", "du", "des", "la", "le", "les", "l", "et", "ak", "avec", "plus", "encore", "aussi", "ci", "bi", "yi"]);
 /** Mots de commande, de paiement ou de politesse : ce ne sont pas des articles. */
 const COMMAND = new Set([
   "vente", "ventes", "vends", "vend", "vendu", "vendre", "jaay", "jaayna", "naa", "na", "j", "ai", "achete", "achetes", "achat", "achats", "jend",
@@ -98,10 +98,10 @@ function priceIn(segment: string): { each?: number; total?: number; rest: string
   return m[1].toLowerCase() === "pour" && !m[3] ? { total: value, rest } : { each: value, rest };
 }
 
-const isNumberWord = (w: string) => /^\d+(\.\d+)?$/.test(w) || readFrenchNumber(w) !== null || readWolofNumber(w) !== null;
+export const isNumberWord = (w: string) => /^\d+(\.\d+)?$/.test(w) || readFrenchNumber(w) !== null || readWolofNumber(w) !== null;
 
 /** Lit la quantité d'un morceau (« 2 sacs », « une caisse », « ñaari sac », « riz 3 kilos »). */
-function quantityIn(words: string[]): { qty: number | null; unit: string | null; rest: string[] } {
+export function quantityIn(words: string[]): { qty: number | null; unit: string | null; rest: string[] } {
   for (let i = 0; i < words.length; i++) {
     if (!isNumberWord(words[i])) continue;
     let j = i;
@@ -123,7 +123,7 @@ function quantityIn(words: string[]): { qty: number | null; unit: string | null;
 }
 
 /** « big bleu big bleu big bleu » → (« big bleu », 3) */
-function repeated(words: string[]): { words: string[]; times: number } {
+export function repeated(words: string[]): { words: string[]; times: number } {
   for (let size = 1; size <= words.length / 2; size++) {
     if (words.length % size) continue;
     const unit = words.slice(0, size).join(" ");

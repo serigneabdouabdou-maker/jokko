@@ -1176,3 +1176,29 @@
   .order-invoice { display: grid; gap: 8px; }
   .order-done { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 600; color: #10603a; }
 }
+
+/* Gestion du stock (patron) */
+@layer components {
+  .stock-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+  .stock-entry, .price-tool { display: grid; gap: 10px; padding: 14px; margin: 6px 0 16px; border: 1px solid var(--j-line); border-radius: 16px; background: var(--j-soft-2); }
+  .stock-entry .sheet-head, .price-tool .sheet-head { display: flex; justify-content: space-between; align-items: center; }
+  .stock-entry .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stock-entry-text { width: 100%; min-height: 84px; padding: 10px 12px; border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-white); font: inherit; font-size: 16px; resize: vertical; }
+  .stock-drafts { display: grid; gap: 6px; }
+  .stock-draft { display: grid; grid-template-columns: auto 2fr 0.8fr 1fr 1.1fr 1.1fr auto; gap: 6px; align-items: center; padding: 6px; border-radius: 12px; background: var(--j-white); }
+  .stock-draft .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .stock-draft .tag.is-new { background: var(--j-yellow); color: var(--j-ink); }
+  .stock-draft .tag.is-old { background: var(--j-wash); color: var(--j-ink-2); }
+  .price-tool-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; align-items: center; }
+  .price-tool-row .pay-modes { grid-template-columns: repeat(2, 52px); margin: 0; }
+  .price-preview { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .price-preview li { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 10px; background: var(--j-white); font-size: 14px; }
+  .product-delete { color: var(--j-danger); margin-left: auto; }
+  @media (max-width: 720px) {
+    .stock-draft { grid-template-columns: 1fr 1fr 1fr; }
+    .stock-draft .tag { grid-column: 1 / -1; justify-self: start; }
+    .stock-draft input[aria-label="Article"] { grid-column: 1 / -1; }
+    .price-tool-row { grid-template-columns: 1fr auto; }
+    .price-tool-row select { grid-column: 1 / -1; }
+  }
+}

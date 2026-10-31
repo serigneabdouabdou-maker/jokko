@@ -63,6 +63,8 @@ import { Team } from "@/components/jokko/Team";
 import { Journal } from "@/components/jokko/Journal";
 import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
+import { StockEntry } from "@/components/jokko/StockEntry";
+import { PriceTool } from "@/components/jokko/PriceTool";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -1232,7 +1234,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "scanner" && <ScanCheckout shop={shop} commit={commit} role={role} />}
-          {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} />}
+          {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
@@ -1276,21 +1278,30 @@ function MoneyList({ title, rows }: { title: string; rows: string[][] }) {
   );
 }
 
-function Stock({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
+function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean; lang: Lang }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
-  const [labels, setLabels] = useState(false);
+  const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | null>(null);
+  const toggle = (t: typeof tool) => setTool((cur) => (cur === t ? null : t));
   const codeOwner = (code: string) =>
     shop.products.find((p) => (p.barcode && normalizeCode(p.barcode) === code) || (p.retail?.barcode && normalizeCode(p.retail.barcode) === code))?.id;
   return (
     <section className="sheet">
       <div className="sheet-head">
         <h2>Stock</h2>
-        {canEdit && <Button variant="outline" className="h-9 rounded-full px-4" onClick={() => setLabels(!labels)}>Étiquettes à imprimer</Button>}
+        {canEdit && (
+          <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
+            <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}>🎤 Ajouter en parlant</Button>
+            <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}>Changer les prix</Button>
+            <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}>Étiquettes</Button>
+          </div>
+        )}
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>
       </div>
-      {labels && canEdit && <Labels shop={shop} commit={commit} onClose={() => setLabels(false)} />}
+      {canEdit && tool === "voix" && <StockEntry shop={shop} lang={lang} commit={commit} onClose={() => setTool(null)} />}
+      {canEdit && tool === "prix" && <PriceTool shop={shop} commit={commit} onClose={() => setTool(null)} />}
+      {canEdit && tool === "etiquettes" && <Labels shop={shop} commit={commit} onClose={() => setTool(null)} />}
       <div className="stock-list">
         {shop.products.map((p) => {
           const low = p.stock <= p.min;
@@ -1302,6 +1313,10 @@ function Stock({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => voi
                 product={p}
                 codeOwner={codeOwner}
                 onClose={() => setEditing(null)}
+                onDelete={() => {
+                  commit({ ...shop, products: shop.products.filter((x) => x.id !== p.id) });
+                  setEditing(null);
+                }}
                 onSave={(next, stockChanged) => {
                   commit({ ...shop, products: shop.products.map((x) => (x.id === next.id ? { ...next, stock: stockChanged ? next.stock : x.stock } : x)) });
                   setEditing(null);
