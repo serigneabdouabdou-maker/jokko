@@ -16,7 +16,7 @@ export type GateDecision = "send" | "silence" | "skip";
  * Porte de bruit. Une trame = 40 ms de micro (rms entre 0 et 1).
  * - Le « plancher » suit le bruit de fond (descend vite, monte lentement).
  * - La porte s'ouvre quand le son dépasse nettement le plancher (voix proche), reste ouverte 600 ms après,
- *   puis envoie 700 ms de silence pour que Jokko sache que la phrase est finie, puis n'envoie plus rien.
+ *   puis envoie 1,3 s de silence pour que Jokko sache que la phrase est finie, puis n'envoie plus rien.
  */
 export class NoiseGate {
   private floor = 0.008;
@@ -29,7 +29,7 @@ export class NoiseGate {
     private ratio = 3.2,
     private minLevel = 0.025,
     private holdMs = 600,
-    private tailMs = 700,
+    private tailMs = 1300,
   ) {}
 
   get threshold(): number {

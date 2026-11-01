@@ -5,7 +5,7 @@ import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from ".
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { CallGate, NoiseGate } from "./listenFilter";
 import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRecorded } from "./recorded";
-import { SPEED_NOTE, type SpeechSpeed } from "./greeting";
+import { type SpeechSpeed, speedPreferred } from "./greeting";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
 export type LiveToolCall = { id?: string; name?: string; args?: Record<string, unknown> };
@@ -108,7 +108,7 @@ async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
     response = await api("live", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shopContext: context }),
+      body: JSON.stringify({ shopContext: context, speed: speedPreferred() }),
     });
   } catch {
     throw new LiveStartError("Jokko ne joint pas le serveur. Vérifie la connexion.", "unavailable");
@@ -175,7 +175,8 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const clear = options.clear && !options.mute ? new ClearSpeaker(player, options.lang ?? (() => "wo"), () => handlers.onPhase("parle")) : null;
   const lang = options.lang ?? (() => "wo" as SpeechLang);
   const noise = new NoiseGate(options.noise === "fort" ? 4.2 : 2.6, options.noise === "fort" ? 0.04 : 0.02);
-  const calls = new CallGate(options.wake ?? true);
+  // Plus de mot d'appel : on parle à Jokko directement, il répond à tout ce qui lui est dit.
+  const calls = new CallGate(false);
   let held = false;
   let quietUntil = 0;
   if (!options.mute) void prefetchRecorded(audio);
@@ -292,7 +293,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       if (!open || !live) return;
       // Pendant que Jokko parle (et 0,4 s après), le micro n'envoie pas sa propre voix à Gemini :
       // sinon le haut-parleur revient dans le micro et brouille la conversation. Le bouton « Maintenir » passe outre.
-      if (!held && (player.playing || recordedPlaying())) quietUntil = Date.now() + 400;
+      if (!held && (player.speaking || recordedPlaying())) quietUntil = Date.now() + 400;
       if (!held && Date.now() < quietUntil) {
         wasSending = false;
         preroll.length = 0;
@@ -405,8 +406,6 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
 
   if (media) await listenTo(media);
   open = true;
-  // Vitesse de parole choisie par le commerçant (consigne silencieuse, Jokko ne répond pas).
-  live.sendClientContent({ turns: [{ role: "user", parts: [{ text: SPEED_NOTE[options.speed ?? "normal"] }] }], turnComplete: false });
   handlers.onPhase("ecoute");
   if (options.greet && !options.mute && lang() === "wo" && playRecorded(audio, "Asalaa maalekum ! Maa ngi lay déglu.", () => handlers.onPhase("ecoute"))) {
     handlers.onPhase("parle");

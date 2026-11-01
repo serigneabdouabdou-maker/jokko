@@ -39,7 +39,7 @@ describe("conversation en direct", () => {
     const names = (config.tools as Array<{ functionDeclarations: Array<{ name: string }> }>)[0].functionDeclarations.map((f) => f.name);
     expect(names).toEqual(["lire_boutique", "enregistrer", "convertir_montant", "annuler_derniere"]);
     expect(config.contextWindowCompression).toEqual({ slidingWindow: {} });
-    expect(config.realtimeInputConfig?.automaticActivityDetection?.silenceDurationMs).toBe(900);
+    expect(config.realtimeInputConfig?.automaticActivityDetection?.silenceDurationMs).toBe(800);
     expect(config.inputAudioTranscription).toEqual({});
   });
 

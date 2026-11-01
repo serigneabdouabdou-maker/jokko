@@ -74,7 +74,7 @@ import { Icon, type IconName } from "@/components/jokko/Icon";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
 import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setGreetPreferred, setSpeedPreferred, type SpeechSpeed, speedPreferred, stopGreeting } from "@/assistant/greeting";
-import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
+import { noisePreferred, setNoisePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
@@ -750,7 +750,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               if (reason) fail(reason);
             },
           },
-          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo"), wake: wakePreferred(), noise: noisePreferred(), speed: speedPreferred() },
+          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo"), noise: noisePreferred(), speed: speedPreferred() },
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
@@ -1193,7 +1193,6 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         onSend={(value) => void send(value)}
         onMic={() => void toggleMic()}
         onHold={(on) => liveRef.current?.hold(on)}
-        wake={wakePreferred()}
         onDismiss={() => setReply(null)}
         onUndo={undoLast}
         live={live}
@@ -1517,19 +1516,14 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 const SPEEDS: [SpeechSpeed, string][] = [["lent", "Lent"], ["normal", "Normal"], ["rapide", "Rapide"]];
 
-/** Écoute en boutique : mot d'appel « Jokko », filtre anti-bruit, voix claire, salutation et vitesse. */
+/** Écoute en boutique : filtre anti-bruit, voix claire, salutation et vitesse. */
 function ClearVoiceSetting() {
   const [on, setOn] = useState(clearVoicePreferred);
-  const [wake, setWake] = useState(wakePreferred);
   const [noise, setNoise] = useState(noisePreferred);
   const [greet, setGreet] = useState(greetPreferred);
   const [speed, setSpeed] = useState<SpeechSpeed>(speedPreferred);
   return (
     <>
-      <div className="row">
-        <Checkbox id="mot-appel" checked={wake} onCheckedChange={(checked) => { setWake(checked === true); setWakePreferred(checked === true); }} />
-        <Label htmlFor="mot-appel">Répondre seulement quand je dis « Jokko » (puis 20 secondes sans le redire)</Label>
-      </div>
       <div className="row">
         <Checkbox id="filtre-fort" checked={noise === "fort"} onCheckedChange={(checked) => { const level = checked === true ? "fort" : "normal"; setNoise(level); setNoisePreferred(level); }} />
         <Label htmlFor="filtre-fort">Boutique très bruyante : filtre anti-bruit fort (parle près du téléphone)</Label>

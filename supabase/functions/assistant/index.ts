@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
       const b = await body(req, MAX_TEXT_BODY, liveRequestSchema);
       if (!b.ok) return b.res;
       const e = env();
-      return send(req, 200, await createLiveSession(b.data.shopContext, { apiKey: e.apiKey, model: e.liveModel, voice: e.voice }));
+      return send(req, 200, await createLiveSession(b.data.shopContext, { apiKey: e.apiKey, model: e.liveModel, voice: e.voice, speed: b.data.speed }));
     }
     return send(req, 404, { error: "not_found" });
   } catch (error) {

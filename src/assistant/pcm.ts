@@ -46,6 +46,11 @@ export class PcmPlayer {
     return this.sources.size > 0 || this.pending.length > 0;
   }
 
+  /** Jokko parle en ce moment (d'après l'horloge audio : jamais bloqué même si un « fin » se perd). */
+  get speaking(): boolean {
+    return this.pending.length > 0 || this.at > this.context.currentTime;
+  }
+
   push(chunk: Uint8Array, rate: number) {
     let bytes = chunk;
     if (this.carry) {

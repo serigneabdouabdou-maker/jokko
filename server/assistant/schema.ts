@@ -142,6 +142,8 @@ export function adviceJsonSchema(): Record<string, unknown> {
 
 export const liveRequestSchema = z.strictObject({
   shopContext: shopContextSchema,
+  /** Vitesse de parole choisie dans Réglages. */
+  speed: z.enum(["lent", "normal", "rapide"]).optional(),
 });
 
 export const speakRequestSchema = z.strictObject({
