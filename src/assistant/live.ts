@@ -47,7 +47,7 @@ export type LiveOptions = {
 };
 
 export class LiveStartError extends Error {
-  reason: "not_configured" | "unavailable" | "microphone";
+  reason: "not_configured" | "unavailable" | "microphone" | "quota";
   constructor(message: string, reason: LiveStartError["reason"]) {
     super(message);
     this.reason = reason;
@@ -112,6 +112,8 @@ async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
   }
   const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (response.status === 503) throw new LiveStartError("Gemini n’est pas configuré sur le serveur.", "not_configured");
+  // Offre ou limite du jour : on passe en message vocal, avec l'explication du serveur.
+  if (response.status === 402) throw new LiveStartError(typeof body?.message === "string" ? body.message : "La conversation en direct n’est pas disponible.", "quota");
   if (!response.ok || typeof body?.token !== "string" || typeof body.model !== "string") {
     throw new LiveStartError(typeof body?.message === "string" ? body.message : "La conversation en direct ne démarre pas pour le moment.", "unavailable");
   }

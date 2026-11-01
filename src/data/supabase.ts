@@ -11,6 +11,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, storageKey: "jokko.auth" },
 });
 
+/** Boutique ouverte : le serveur compte les appels à Gemini pour elle (limites de l'offre). */
+let assistantShop = "";
+export function setAssistantShop(id: string) {
+  assistantShop = id;
+}
+
 /** Appel d'une route Gemini de Jokko (fonction Supabase « assistant »), avec la session du commerçant. */
 export async function api(route: "status" | "interpret" | "listen" | "live" | "order" | "advice" | "speak", init: RequestInit = {}): Promise<Response> {
   const { data } = await supabase.auth.getSession();
@@ -19,6 +25,7 @@ export async function api(route: "status" | "interpret" | "listen" | "live" | "o
   headers.set("apikey", SUPABASE_KEY);
   headers.set("Accept", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (assistantShop) headers.set("x-jokko-shop", assistantShop);
   return fetch(`${SUPABASE_URL}/functions/v1/assistant/${route}`, { ...init, headers });
 }
 
@@ -95,4 +102,10 @@ export async function acceptTerms(userId: string, phone: string, termsVersion: s
 
 export function phoneOf(session: Session | null): string {
   return session?.user.email?.split("@")[0] ?? "";
+}
+
+/** Un échange en direct avec Jokko : compté sur le serveur (la limite du jour joue à la conversation suivante). */
+export function countLiveExchange() {
+  if (!assistantShop) return;
+  void supabase.rpc("use_assistant", { p_shop: assistantShop, p_kind: "echange" }).then(() => undefined, () => undefined);
 }

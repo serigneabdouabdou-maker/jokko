@@ -265,9 +265,9 @@ const OFFER_ART: Record<WantedPlan, Art[]> = {
 };
 
 const OFFERS: { plan: WantedPlan; name: string; price: string; pitch: string; features: string[]; cta: string }[] = [
-  { plan: "gratuit", name: "Gratuit", price: "0 F", pitch: "Pour commencer seul dans sa boutique.", features: ["1 boutique, 1 utilisateur", "La voix en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures WhatsApp"], cta: "Commencer gratuitement" },
-  { plan: "medium", name: "Médium", price: "3 000 F", pitch: "Pour la boutique avec des vendeurs.", features: ["Tout le Gratuit", "Vendeurs, rôles et journal non effaçable", "Caisse par scan et étiquettes", "La boutique à distance + alertes", "Relances WhatsApp, import Excel"], cta: "Choisir Médium" },
-  { plan: "avance", name: "Avancé", price: "7 500 F", pitch: "Pour le patron qui veut tout voir et grandir.", features: ["Tout le Médium", "Chat intelligent : une liste en vrac devient un panier", "Conseiller IA pour gagner plus", "Résumé du soir sur le téléphone", "Plusieurs boutiques"], cta: "Choisir Avancé" },
+  { plan: "gratuit", name: "Gratuit", price: "0 F", pitch: "Pour commencer seul dans sa boutique.", features: ["1 boutique, 1 utilisateur", "10 messages vocaux par jour, en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures WhatsApp"], cta: "Commencer gratuitement" },
+  { plan: "medium", name: "Médium", price: "3 000 F", pitch: "Pour la boutique avec des vendeurs.", features: ["Tout le Gratuit", "40 messages vocaux par jour", "Vendeurs, rôles et journal non effaçable", "Caisse par scan et étiquettes", "La boutique à distance + alertes", "Relances WhatsApp, import Excel"], cta: "Choisir Médium" },
+  { plan: "avance", name: "Avancé", price: "7 500 F", pitch: "Pour le patron qui veut tout voir et grandir.", features: ["Tout le Médium", "Conversation en direct avec Jokko, mains libres", "Chat intelligent : une liste en vrac devient un panier", "Conseiller IA pour gagner plus", "Résumé du soir sur le téléphone", "Plusieurs boutiques"], cta: "Choisir Avancé" },
 ];
 
 function OfferShowcase({ onChoose }: { onChoose: (plan: WantedPlan) => void }) {

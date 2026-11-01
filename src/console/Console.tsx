@@ -16,6 +16,8 @@ import {
   loadAdminTeam,
   loadDashboard,
   loadShops,
+  loadUsage,
+  type Usage,
   removeAdmin,
   shopStatus,
 } from "@/data/admin";
@@ -93,18 +95,20 @@ function ConsoleDesk({ session }: { session: Session }) {
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [shops, setShops] = useState<ConsoleShop[]>([]);
+  const [usage, setUsage] = useState<Usage | null>(null);
   const [denied, setDenied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stamp, setStamp] = useState<Date | null>(null);
 
   async function refresh() {
     setLoading(true);
-    const [d, o, s] = await Promise.all([loadDashboard(), adminOverview(), loadShops()]);
+    const [d, o, s, u] = await Promise.all([loadDashboard(), adminOverview(), loadShops(), loadUsage()]);
     setLoading(false);
     if (d.denied) return setDenied(true);
     setDash(d.data);
     setOverview(o);
     setShops(s);
+    setUsage(u);
     setStamp(new Date());
   }
   useEffect(() => {
@@ -178,7 +182,7 @@ function ConsoleDesk({ session }: { session: Session }) {
           <p className="note">{loading ? "Chargement des chiffres…" : "Impossible de charger les chiffres. Vérifie la connexion puis touche Actualiser."}</p>
         ) : (
           <>
-            {tab === "apercu" && <Overview dash={dash} shops={shops} onGo={go} />}
+            {tab === "apercu" && <Overview dash={dash} shops={shops} usage={usage} onGo={go} />}
             {tab === "paiements" && <Payments overview={overview} onChanged={refresh} />}
             {tab === "boutiques" && <Shops shops={shops} onChanged={refresh} />}
             {tab === "reglages" && <Settings overview={overview} onChanged={refresh} />}
@@ -230,7 +234,7 @@ function Rank({ items }: { items: { label: string; value: number }[] }) {
   );
 }
 
-function Overview({ dash, shops, onGo }: { dash: Dashboard; shops: ConsoleShop[]; onGo: (t: Tab) => void }) {
+function Overview({ dash, shops, usage, onGo }: { dash: Dashboard; shops: ConsoleShop[]; usage: Usage | null; onGo: (t: Tab) => void }) {
   const g = growth(dash.revenue_month, dash.revenue_prev_month);
   const paying = dash.paying_medium + dash.paying_avance;
   const conversion = dash.shops_total ? Math.round((paying / dash.shops_total) * 100) : 0;
@@ -307,6 +311,29 @@ function Overview({ dash, shops, onGo }: { dash: Dashboard; shops: ConsoleShop[]
           <p className="note">Un appel avant la fin de l'essai aide beaucoup à convertir.</p>
         </section>
       </div>
+
+      {usage && (
+        <section className="cx-card">
+          <h3>Coût de l’intelligence artificielle (Gemini)</h3>
+          <div className="cx-kpis">
+            <Kpi label="Aujourd’hui" value={amount(Math.round(usage.cost_today))} hint={`${count(usage.today.echange ?? 0)} échanges en direct · ${count(usage.today.vocal ?? 0)} vocaux · ${count(usage.today.texte ?? 0)} écrits`} />
+            <Kpi label="Ce mois" value={amount(Math.round(usage.cost_month))} hint={dash.revenue_month ? `${Math.round((usage.cost_month / dash.revenue_month) * 100)} % de l’encaissé du mois` : "Rien encaissé ce mois"} tone={dash.revenue_month && usage.cost_month > dash.revenue_month * 0.5 ? "bad" : undefined} />
+            <Kpi label="30 derniers jours" value={amount(Math.round(usage.cost_30))} hint="estimation au tarif payant de Google" />
+            <Kpi label="Marge (MRR − coût 30 j)" value={amount(Math.round(dash.mrr - usage.cost_30))} tone={dash.mrr - usage.cost_30 < 0 ? "bad" : "good"} hint="avant Supabase (≈ 15 000 F/mois)" />
+          </div>
+          {usage.shops.length > 0 && (
+            <ul className="cx-list">
+              {usage.shops.slice(0, 8).map((u) => (
+                <li key={u.shop_id}>
+                  <span><b>{u.name}</b> · {u.tier}<br /><small>{count(u.echange ?? 0)} direct · {count(u.vocal ?? 0)} vocaux · {count(u.texte ?? 0)} écrits (30 j)</small></span>
+                  <b className="num">{amount(u.cost_30)}</b>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="note">Limites par jour : Gratuit 10 vocaux · Médium 40 vocaux · Avancé 40 échanges en direct + 80 vocaux · Essai 20 en direct.</p>
+        </section>
+      )}
 
       <p className="note">Total encaissé depuis le lancement : <b className="num">{amount(dash.revenue_total)}</b>.</p>
     </div>

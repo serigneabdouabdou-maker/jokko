@@ -29,7 +29,7 @@ function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   return {
     "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : ALLOWED[0],
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-jokko-shop",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   };
@@ -168,6 +168,38 @@ async function speakSentence(text: string, language: string): Promise<{ pcm: Uin
   return null;
 }
 
+// ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil" };
+type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
+
+function quotaMessage(q: Quota, kind: string): string {
+  const upsell = q.tier === "gratuit" || q.tier === "medium" ? " Tu peux passer à une offre supérieure dans « Mon offre »." : "";
+  if (kind === "direct") {
+    if (q.reason === "offre") return "La conversation en direct fait partie de l'offre Avancé. On continue en messages vocaux : parle, puis appuie de nouveau pour envoyer.";
+    return "Tu as beaucoup parlé avec Jokko aujourd'hui. Jusqu'à demain, on continue en messages vocaux : parle, puis appuie de nouveau pour envoyer.";
+  }
+  if (kind === "vocal") return `Tu as utilisé tes ${q.limit} messages vocaux d'aujourd'hui. Tu peux écrire ta phrase ; ça repart demain.${upsell}`;
+  if (kind === "conseil") return q.reason === "offre" ? "Le conseiller fait partie de l'offre Avancé." : `Le conseiller a déjà répondu ${q.limit} fois aujourd'hui. Reviens demain.`;
+  return `Tu as utilisé tes ${q.limit} demandes à Jokko d'aujourd'hui. Les boutons de l'appli marchent toujours ; ça repart demain.${upsell}`;
+}
+
+/** null = permis (et compté) ; sinon la réponse de refus à renvoyer. */
+async function allowed(req: Request, route: string): Promise<Response | null> {
+  const kind = KIND[route];
+  if (!kind) return null;
+  const shop = req.headers.get("x-jokko-shop");
+  if (!shop) return send(req, 426, { error: "update_required", message: "Mets Jokko à jour : ferme complètement l'appli, puis rouvre-la." });
+  const asUser = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: req.headers.get("authorization") ?? "" } },
+  });
+  const { data, error } = await asUser.rpc("use_assistant", { p_shop: shop, p_kind: kind });
+  if (error || !data) return send(req, 403, { error: "shop_forbidden", message: "Cette boutique n'est pas sur ton compte." });
+  const q = data as Quota;
+  if (q.ok) return null;
+  return send(req, 402, { error: "quota", reason: q.reason, tier: q.tier, kind, limit: q.limit, message: quotaMessage(q, kind) });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(req) });
   const route = new URL(req.url).pathname.split("/").filter(Boolean).pop();
@@ -178,6 +210,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return send(req, 405, { error: "method_not_allowed" }, { Allow: "POST" });
   // La voix claire lit phrase par phrase : son propre compteur, plus large.
   if (route === "speak" ? limited(`${user}:voix`, 90) : limited(user)) return send(req, 429, { error: "too_many_requests", message: "Doucement : trop de demandes. Réessaie dans une minute." }, { "Retry-After": "60" });
+
+  const refused = await allowed(req, route ?? "");
+  if (refused) return refused;
 
   try {
     if (route === "interpret") {

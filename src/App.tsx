@@ -56,7 +56,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, signIn, signUp, supabase } from "@/data/supabase";
+import { acceptTerms, countLiveExchange, setAssistantShop, signIn, signUp, supabase } from "@/data/supabase";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Team } from "@/components/jokko/Team";
@@ -517,8 +517,13 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
 
   // Préchauffage : quand Gemini est prêt et que le micro n'est pas ouvert, on garde
   // une conversation prête à démarrer (jeton renouvelé toutes les minutes).
+  // Conversation en direct : offre Avancé (et essai). Sinon, le micro envoie des messages vocaux.
+  const direct = can(shop, "direct");
   useEffect(() => {
-    if (assistant !== "ready" || live) return;
+    setAssistantShop(shop.id);
+  }, [shop.id]);
+  useEffect(() => {
+    if (assistant !== "ready" || live || !direct) return;
     const warm = () => {
       if (!liveRef.current && document.visibilityState === "visible") {
         prewarmLive(buildShopContext(currentShop(profileRef.current), profileRef.current.lang));
@@ -531,7 +536,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", warm);
     };
-  }, [assistant, live]);
+  }, [assistant, live, direct]);
 
   // Liste des clients et articles : la préparer à l'avance avec la liste à jour, et prévenir
   // une conversation déjà ouverte quand un client ou un article est ajouté ou renommé.
@@ -540,7 +545,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   useEffect(() => {
     if (namesRef.current === names) return;
     namesRef.current = names;
-    if (!liveRef.current && assistant === "ready") {
+    if (!liveRef.current && assistant === "ready" && direct) {
       prewarmLive(buildShopContext(currentShop(profileRef.current), profileRef.current.lang));
     }
     liveRef.current?.note(
@@ -623,6 +628,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     }, TEXT_SESSION_IDLE_MS);
   }
 
+  const quotaNote = useRef<string | null>(null);
   async function openLive(microphone: boolean, greet = false): Promise<LiveHandle | "microphone" | null> {
     const existing = liveRef.current;
     if (existing) {
@@ -673,6 +679,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
               }
             },
             onTurnEnd: () => {
+              countLiveExchange();
               turn.current = { userText: "", jokkoText: "" };
               if (!liveRef.current?.listening) armIdle();
             },
@@ -715,6 +722,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           return "microphone";
         }
         if (error instanceof LiveStartError && error.reason === "not_configured") setAssistant("off");
+        if (error instanceof LiveStartError && error.reason === "quota") quotaNote.current = error.message;
         return null;
       } finally {
         connecting.current = null;
@@ -914,10 +922,11 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
     }
     if (live || connecting.current) return;
     clearTimers();
-    if (liveRef.current || (await isReady())) {
+    if (liveRef.current || (direct && (await isReady()))) {
+      quotaNote.current = null;
       const handle = await openLive(true);
       if (handle) return;
-      say("La conversation en direct ne démarre pas. Je passe en message vocal : parle, puis appuie de nouveau pour envoyer.");
+      say(quotaNote.current ?? "La conversation en direct ne démarre pas. Je passe en message vocal : parle, puis appuie de nouveau pour envoyer.");
     }
     await record();
   }

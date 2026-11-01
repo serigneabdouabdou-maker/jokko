@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Shop } from "../model.ts";
 import { can, daysLeft, effectivePlan, waveLinkFor } from "./plans";
 
 const NOW = new Date("2026-11-01T10:00:00Z");
@@ -31,5 +32,16 @@ describe("lien Wave de CFC", () => {
   it("met le montant de la demande", () => {
     expect(waveLinkFor(base, 3000)).toBe(base + "?amount=3000");
     expect(waveLinkFor(base + "?amount=7500", 22500)).toBe(base + "?amount=22500");
+  });
+});
+
+describe("conversation en direct", () => {
+  it("réservée à Avancé (et à l'essai) ; Gratuit et Médium passent en messages vocaux", () => {
+    const now = new Date("2026-11-01T10:00:00Z");
+    const shop = (plan: Shop["plan"]) => ({ plan });
+    expect(can(shop({ plan: "avance", until: "2026-12-01T00:00:00Z", trialUntil: null }), "direct", now)).toBe(true);
+    expect(can(shop({ plan: "gratuit", until: null, trialUntil: "2026-11-10T00:00:00Z" }), "direct", now)).toBe(true);
+    expect(can(shop({ plan: "medium", until: "2026-12-01T00:00:00Z", trialUntil: null }), "direct", now)).toBe(false);
+    expect(can(shop({ plan: "gratuit", until: null, trialUntil: null }), "direct", now)).toBe(false);
   });
 });

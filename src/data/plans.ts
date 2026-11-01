@@ -9,7 +9,7 @@ import { supabase } from "./supabase.ts";
 export const PLAN_LABELS: Record<PlanName, string> = { gratuit: "Gratuit", medium: "Médium", avance: "Avancé" };
 const RANK: Record<PlanName, number> = { gratuit: 1, medium: 2, avance: 3 };
 
-export type Feature = "vendeurs" | "scanner" | "distance" | "journal" | "etiquettes" | "import" | "chat" | "conseiller" | "resume" | "boutiques";
+export type Feature = "vendeurs" | "scanner" | "distance" | "journal" | "etiquettes" | "import" | "chat" | "conseiller" | "resume" | "boutiques" | "direct";
 
 /** Offre minimale de chaque fonction. */
 export const FEATURE_PLAN: Record<Feature, PlanName> = {
@@ -23,12 +23,13 @@ export const FEATURE_PLAN: Record<Feature, PlanName> = {
   conseiller: "avance",
   resume: "avance",
   boutiques: "avance",
+  direct: "avance",
 };
 
 export const PLAN_FEATURES: Record<PlanName, string[]> = {
-  gratuit: ["1 boutique, 1 utilisateur", "La voix en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures"],
-  medium: ["Tout le Gratuit", "Vendeurs, rôles et journal", "Scanner et étiquettes", "À distance et alertes de sécurité", "Relances WhatsApp, import Excel, export"],
-  avance: ["Tout le Médium", "Chat intelligent (liste en vrac)", "Conseiller IA", "Résumé du soir en notification", "Plusieurs boutiques"],
+  gratuit: ["1 boutique, 1 utilisateur", "10 messages vocaux par jour (wolof et français)", "Ventes, stock, caisse et bilan", "Dettes et factures"],
+  medium: ["Tout le Gratuit", "40 messages vocaux par jour", "Vendeurs, rôles et journal", "Scanner et étiquettes", "À distance et alertes de sécurité", "Relances WhatsApp, import Excel, export"],
+  avance: ["Tout le Médium", "Conversation en direct avec Jokko (40 échanges par jour)", "Chat intelligent (liste en vrac)", "Conseiller IA", "Résumé du soir en notification", "Plusieurs boutiques"],
 };
 
 export function effectivePlan(shop: Pick<Shop, "plan">, now = new Date()): { plan: PlanName; trial: boolean; until: string | null } {

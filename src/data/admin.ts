@@ -99,3 +99,12 @@ export function growth(now: number, before: number): number | null {
   if (!before) return null;
   return Math.round(((now - before) / before) * 100);
 }
+
+export type UsageShop = { shop_id: string; name: string; tier: string; echange: number | null; vocal: number | null; texte: number | null; cost_30: number };
+export type Usage = { today: Record<string, number>; cost_today: number; cost_month: number; cost_30: number; shops: UsageShop[] };
+
+/** Usage de Gemini et coût estimé (F CFA), pour surveiller la rentabilité. */
+export async function loadUsage(): Promise<Usage | null> {
+  const { data, error } = await supabase.rpc("admin_usage");
+  return error || !data ? null : (data as Usage);
+}
