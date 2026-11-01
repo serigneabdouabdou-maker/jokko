@@ -77,7 +77,7 @@ async function onJournal(id: number) {
   if (!alert || alert.level !== "grave") return 0;
   // La personne qui a fait l'action n'est pas prévenue de sa propre action.
   const targets = patrons.filter((p) => p !== row.user_id);
-  return push(targets, { title: `⚠️ Jokko · ${shop.name}`, body: alert.text, url: "./?ecran=distance", tag: `alerte-${id}` });
+  return push(targets, { title: `Alerte Jokko · ${shop.name}`, body: alert.text, url: "./?ecran=distance", tag: `alerte-${id}` });
 }
 
 async function onSummary() {
