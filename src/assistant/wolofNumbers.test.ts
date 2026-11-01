@@ -103,9 +103,10 @@ describe("quantités en wolof", () => {
 });
 
 describe("livre de phrases verrouillé", () => {
-  it("toutes les phrases sont validées par un locuteur natif", async () => {
-    const { WOLOF_PHRASES } = await import("./wolofPhrases");
-    expect(WOLOF_PHRASES.every((p) => p.statut === "valide")).toBe(true);
+  it("seules les phrases validées par un locuteur natif vont dans les consignes de Jokko", async () => {
+    const { WOLOF_PHRASES, phrasebookInstruction } = await import("./wolofPhrases");
+    const consignes = phrasebookInstruction();
+    for (const p of WOLOF_PHRASES) expect(consignes.includes(`« ${p.wo} »`)).toBe(p.statut === "valide");
     expect(WOLOF_PHRASES.find((p) => p.situation === "faire répéter")!.wo).toBe("Baal ma, waxaat ko.");
   });
 });
