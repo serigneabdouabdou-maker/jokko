@@ -899,6 +899,16 @@
   .vbar[data-state="erreur"] .vstate { background: var(--j-ink); color: var(--j-white); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+  .demo-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+    margin: 0 0 16px; padding: 12px 16px; border-radius: 18px;
+    background: var(--j-soft-2); border: 1px dashed color-mix(in oklab, var(--j-yellow) 70%, var(--j-ink));
+  }
+  .demo-bar p { margin: 0; font-size: 14px; color: var(--j-ink-2); }
+  .demo-invite { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+  .sheet.demo-invite { background: var(--j-soft-2); border-color: color-mix(in oklab, var(--j-yellow) 40%, var(--j-line)); }
+  .demo-invite h2 { font-size: 20px; }
+  .demo-invite p { margin: 4px 0 0; max-width: 56ch; }
   .vhold {
     flex: none;
     height: 46px;

@@ -68,6 +68,7 @@ import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
+import { demoProfile, isDemoShop } from "@/data/demo";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
 import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
@@ -125,6 +126,7 @@ export function App() {
   const [profile, setProfileState] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
   const [wantsLogin, setWantsLogin] = useState<AuthMode | null>(null);
+  const [demo, setDemo] = useState<Profile | null>(null);
   const profileRef = useRef<Profile | null>(null);
 
   useEffect(() => {
@@ -171,7 +173,18 @@ export function App() {
   if (!profile) return <Splash text={loading ? "Jokko ouvre ta boutique…" : "Un instant…"} />;
   if (profile.termsVersion === null) return <TermsGate profile={profile} onAccepted={() => setProfile({ ...profile, termsVersion: TERMS_VERSION })} />;
   if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;
-  return <Desk profile={profile} setProfile={setProfile} />;
+  // Démo : une boutique exemple qui reste sur ce téléphone (jamais envoyée au serveur).
+  if (demo) {
+    return (
+      <Desk
+        key="demo"
+        profile={demo}
+        setProfile={setDemo}
+        demo={{ realShopId: profile.shopId, restart: () => setDemo(demoProfile(profile)), quit: () => setDemo(null) }}
+      />
+    );
+  }
+  return <Desk key="real" profile={profile} setProfile={setProfile} onDemo={() => setDemo(demoProfile(profile))} />;
 }
 
 function Splash({ text }: { text: string }) {
@@ -410,7 +423,11 @@ function describeChange(before: Shop, after: Shop): string | undefined {
 const LETTERS = /[A-Za-zÀ-ÿŋñ]/;
 const NOISE = /<[^>]*>/g;
 
-function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+/** Rubriques cachées en démo : elles parlent au serveur (équipe, journal, à distance, offre). */
+const DEMO_HIDDEN: Screen[] = ["offre", "distance", "equipe", "journal"];
+type DemoControls = { realShopId: string; restart: () => void; quit: () => void };
+
+function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
   // Une notification touchée ouvre le bon écran (?ecran=distance)
   // Offre choisie sur la page d'accueil avant de créer le compte : on l'ouvre tout de suite.
   const [wantedPlan] = useState(() => {
@@ -520,8 +537,9 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
   // Conversation en direct : offre Avancé (et essai). Sinon, le micro envoie des messages vocaux.
   const direct = can(shop, "direct");
   useEffect(() => {
-    setAssistantShop(shop.id);
-  }, [shop.id]);
+    // En démo, l'usage de Jokko compte pour la vraie boutique (le serveur ne connaît pas la boutique exemple).
+    setAssistantShop(demo ? demo.realShopId : shop.id);
+  }, [shop.id, demo]);
   useEffect(() => {
     if (assistant !== "ready" || live || !direct) return;
     const warm = () => {
@@ -982,7 +1000,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id))).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id))).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}>{label}</button>
           ))}
         </nav>
@@ -1000,9 +1018,19 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           </div>
           <div className="who">
             <span>{profile.owner}</span>
-            <Badge variant={sync === "ok" ? "secondary" : "outline"} title="Sauvegarde en ligne">{SYNC_LABELS[sync]}</Badge>
+            {demo ? <Badge variant="outline">Démo</Badge> : <Badge variant={sync === "ok" ? "secondary" : "outline"} title="Sauvegarde en ligne">{SYNC_LABELS[sync]}</Badge>}
           </div>
         </header>
+
+        {demo && (
+          <div className="demo-bar" role="status">
+            <p><b>Mode démo.</b> Boutique exemple avec des prix du Sénégal : essaie tout, rien n’est enregistré.</p>
+            <div className="row">
+              <Button variant="outline" className="h-9 rounded-full px-4" onClick={demo.restart}>Recommencer</Button>
+              <Button className="h-9 rounded-full px-4" onClick={demo.quit}>Quitter la démo</Button>
+            </div>
+          </div>
+        )}
 
         <section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
@@ -1027,6 +1055,15 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
         <div className="screen" key={screen}>
           {screen === "parler" && (
             <div className="work">
+              {!demo && onDemo && shop.products.length < 3 && (
+                <section className="sheet demo-invite">
+                  <div>
+                    <h2>Découvre Jokko avec une boutique exemple</h2>
+                    <p className="note">Riz, huile, sucre, clients, dettes et une semaine de ventes, avec des prix du Sénégal. Essaie tout sans risque : ta vraie boutique ne change pas.</p>
+                  </div>
+                  <Button className="h-11 rounded-full px-5" onClick={onDemo}>Essayer la démo</Button>
+                </section>
+              )}
               <section className="sheet talk">
                 <div className="sheet-head">
                   <h2>Parle à Jokko</h2>
@@ -1094,7 +1131,7 @@ function Desk({ profile, setProfile }: { profile: Profile; setProfile: (p: Profi
           {screen === "caisse" && <Cash shop={shop} commit={commit} canEdit={patron} />}
           {screen === "equipe" && patron && (can(shop, "vendeurs") ? <Team shop={shop} /> : <Upsell feature="vendeurs" title="Ajouter des vendeurs" onPlans={() => setScreen("offre")} />)}
           {screen === "journal" && patron && (can(shop, "journal") ? <Journal shop={shop} /> : <Upsell feature="journal" title="Le journal de la boutique" onPlans={() => setScreen("offre")} />)}
-          {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} />}
+          {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} onDemo={demo ? undefined : onDemo} />}
         </div>
       </main>
 
@@ -1310,7 +1347,8 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         <p className={`cash-gap${gap === 0 ? " ok" : " off"}`}>{gap === 0 ? "La caisse tombe juste." : `Écart ${amount(gap)}.`}</p>
         <Button className="h-11 rounded-full" disabled={closing === "envoi" || !(Number(counted) >= 0)} onClick={async () => {
           setClosing("envoi");
-          setClosing((await saveCashCount(shop.id, expected, Number(counted) || 0)) ? "ok" : "erreur");
+          // Démo : la clôture est seulement simulée (rien n'est envoyé).
+          setClosing(isDemoShop(shop) || (await saveCashCount(shop.id, expected, Number(counted) || 0)) ? "ok" : "erreur");
         }}>{closing === "envoi" ? "Envoi…" : "Clôturer la caisse"}</Button>
         {closing === "ok" && <p className="note">✓ Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
@@ -1320,13 +1358,22 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
   );
 }
 
-function Settings({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; onDemo?: () => void }) {
   const [reading, setReading] = useState<LegalDoc | null>(null);
   const shop = currentShop(profile);
   const file = useMemo(() => toCsv(shop), [shop]);
   return (
     <section className="sheet settings">
       <h2>Réglages</h2>
+      {onDemo && (
+        <div className="demo-invite">
+          <div>
+            <b>Démonstration</b>
+            <p className="note">Ouvre une boutique exemple remplie (produits, prix du Sénégal, clients, ventes) pour montrer Jokko ou t’entraîner. Rien n’est enregistré ; « Quitter la démo » efface tout.</p>
+          </div>
+          <Button variant="outline" className="h-11 rounded-full px-5" onClick={onDemo}>Essayer la démo</Button>
+        </div>
+      )}
       <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
       <div className="settings-grid">
