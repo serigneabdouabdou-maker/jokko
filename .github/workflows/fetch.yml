@@ -15,7 +15,7 @@ jobs:
           mkdir -p files
           while read -r url; do
             [ -z "$url" ] && continue
-            case "$url" in https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/*|https://sunubulletin.com/*|https://mbosssmartmap.com/*|https://www.mbosssmartmap.com/*) ;; *) echo "refuse $url"; continue;; esac
+            case "$url" in https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/*|https://sunubulletin.com/*|https://mbosssmartmap.com/*|https://www.mbosssmartmap.com/*|https://www.sil.org/system/files/*|https://senprof.education.sn/*) ;; *) echo "refuse $url"; continue;; esac
             name=$(echo "$url" | sed 's#^https://##; s#[^A-Za-z0-9._-]#_#g')
             curl -fsSL -m 60 -o "files/$name" "$url" && echo "ok $name" || echo "echec $url"
           done < urls.txt

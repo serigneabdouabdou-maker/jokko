@@ -1,3 +1,2 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-presentation-fr-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-ecoute-fr-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-ecoute-v1.mp3
+https://www.sil.org/system/files/reapdata/50/54/04/50540488936066935124999328167160819439/PetitDicWolof_42147.pdf
+https://senprof.education.sn/PROGRAMME%20LECTURE%20POUR%20TOUS/documentation/Terminologies/Terminologie%20wolof%20fusion.pdf
