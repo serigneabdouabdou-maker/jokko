@@ -53,7 +53,7 @@ export const WOLOF_PHRASES: Phrase[] = [
   { situation: "nouveau client", wo: "Yokk naa {client} ci sa kiliyaan yi.", fr: "J'ai ajouté {client} à tes clients.", statut: "valide" },
   { situation: "patienter", wo: "Xaaral tuuti.", fr: "Attends un peu.", statut: "valide" },
   { situation: "pas bien entendu", wo: "Dégguma bu baax.", fr: "Je n'ai pas bien entendu.", statut: "valide" },
-  { situation: "rapprocher le téléphone", wo: "Jegeel sa telefoon, dégguma bu baax.", fr: "Approche ton téléphone, je n'entends pas bien.", statut: "valide" },
+  { situation: "demander de parler plus près", wo: "Jegeel sa telefoon, dégguma bu baax.", fr: "Approche ton téléphone, je n'entends pas bien.", statut: "valide" },
   { situation: "vérifier", wo: "Noonu la ?", fr: "C'est bien ça ?", statut: "valide" },
   { situation: "remercier", wo: "Jërëjëf !", fr: "Merci !", statut: "valide" },
   { situation: "répondre à un merci", wo: "Ñoo ko bokk.", fr: "De rien (c'est partagé).", statut: "valide" },
