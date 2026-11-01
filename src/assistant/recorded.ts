@@ -89,3 +89,6 @@ export function stopRecorded() {
     // déjà fini
   }
 }
+
+/** Une phrase enregistrée est en train d'être jouée. */
+export const recordedPlaying = () => current !== null;

@@ -88,9 +88,11 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE): Li
       activityHandling: ActivityHandling.NO_INTERRUPTION,
       automaticActivityDetection: {
         startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
-        endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
-        prefixPaddingMs: 100,
-        silenceDurationMs: 500,
+        // Le commerçant marque souvent une pause au milieu d'un montant (« ñaari junni… ak juróomi téeméer ») :
+        // on attend 0,9 s de silence avant de considérer qu'il a fini, pour ne pas lui couper la parole.
+        endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
+        prefixPaddingMs: 200,
+        silenceDurationMs: 900,
       },
     },
     // Conversation longue (toute la journée) sans saturer la mémoire du modèle.

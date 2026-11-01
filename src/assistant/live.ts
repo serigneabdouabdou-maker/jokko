@@ -4,7 +4,7 @@ import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { CallGate, NoiseGate } from "./listenFilter";
-import { matchRecorded, playRecorded, prefetchRecorded, stopRecorded } from "./recorded";
+import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRecorded } from "./recorded";
 import { SPEED_NOTE, type SpeechSpeed } from "./greeting";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
@@ -177,6 +177,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const noise = new NoiseGate(options.noise === "fort" ? 4.2 : 2.6, options.noise === "fort" ? 0.04 : 0.02);
   const calls = new CallGate(options.wake ?? true);
   let held = false;
+  let quietUntil = 0;
   if (!options.mute) void prefetchRecorded(audio);
 
   // Le tour de Jokko en cours : on garde sa voix tant qu'on ne sait pas si on lui parlait,
@@ -289,6 +290,14 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     let wasSending = false;
     node.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => {
       if (!open || !live) return;
+      // Pendant que Jokko parle (et 0,4 s après), le micro n'envoie pas sa propre voix à Gemini :
+      // sinon le haut-parleur revient dans le micro et brouille la conversation. Le bouton « Maintenir » passe outre.
+      if (!held && (player.playing || recordedPlaying())) quietUntil = Date.now() + 400;
+      if (!held && Date.now() < quietUntil) {
+        wasSending = false;
+        preroll.length = 0;
+        return;
+      }
       const decision = noise.frame(event.data.rms, Date.now(), held);
       if (decision === "send") {
         if (!wasSending) for (const old of preroll.splice(0)) sendPcm(old);
