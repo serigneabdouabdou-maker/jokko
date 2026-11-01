@@ -428,7 +428,7 @@ const NOISE = /<[^>]*>/g;
 const DEMO_HIDDEN: Screen[] = ["offre", "distance", "equipe", "journal"];
 type DemoControls = { realShopId: string; restart: () => void; quit: () => void };
 
-function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
+export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
   // Une notification touchée ouvre le bon écran (?ecran=distance)
   // Offre choisie sur la page d'accueil avant de créer le compte : on l'ouvre tout de suite.
   const [wantedPlan] = useState(() => {
