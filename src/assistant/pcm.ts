@@ -31,7 +31,7 @@ export class PcmPlayer {
   private sources = new Set<AudioBufferSourceNode>();
   private at = 0;
   private carry: Uint8Array | null = null;
-  private pending: Float32Array[] = [];
+  private pending: Float32Array<ArrayBuffer>[] = [];
   private pendingRate = 24000;
   private pendingSeconds = 0;
   private wait = 0;
@@ -94,7 +94,7 @@ export class PcmPlayer {
     this.schedule(list, this.pendingRate);
   }
 
-  private schedule(list: Float32Array[], rate: number) {
+  private schedule(list: Float32Array<ArrayBuffer>[], rate: number) {
     const length = list.reduce((n, a) => n + a.length, 0);
     const buffer = this.context.createBuffer(1, length, rate);
     let o = 0;
