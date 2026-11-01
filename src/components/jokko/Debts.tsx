@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { type Lang, type Shop, money, todayStamp, uid } from "@/model";
 import { debtList, reminderMessage, setDueIn, whatsappLink } from "@/data/debts";
@@ -56,7 +56,7 @@ export function Debts({ shop, lang, commit }: { shop: Shop; lang: Lang; commit: 
                 <b className="num owes">{money(client.debt)}</b>
                 {client.phone ? (
                   <Button variant={overdue ? "default" : "outline"} className="h-9 rounded-full px-3" onClick={() => remind(client.id)}>
-                    <MessageCircle size={15} /> Relancer
+                    <Icon name="whatsapp" size="sm" /> Relancer
                   </Button>
                 ) : (
                   <small className="note">Pas de numéro</small>

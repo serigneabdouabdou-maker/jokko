@@ -1,7 +1,9 @@
 import * as React from "react"
 import { cn } from "cn"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
-import { CheckIcon } from "lucide-react"
+import { ICONS } from "@/components/jokko/Icon"
+
+const CheckIcon = ICONS.coche
 
 function Checkbox({
   className,

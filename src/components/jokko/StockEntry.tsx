@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Icon, Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Lang, type Shop, money, uid } from "@/model";
@@ -89,11 +90,11 @@ export function StockEntry({ shop, lang, commit, onClose }: { shop: Shop; lang: 
       <textarea className="stock-entry-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris ou dicte ta liste ici" />
       <div className="row">
         <Button variant={state === "ecoute" ? "default" : "outline"} className="h-11 rounded-full px-5" disabled={state === "lecture"} onClick={() => void dictate()}>
-          {state === "ecoute" ? "J'ai fini" : state === "lecture" ? "Je lis…" : "🎤 Dicter"}
+          {state === "ecoute" ? <><Icon name="stop" size="sm" />J'ai fini</> : state === "lecture" ? "Je lis…" : <><Icon name="micro" size="sm" />Dicter</>}
         </Button>
         <Button className="h-11 rounded-full px-5" disabled={!text.trim() || state !== "repos"} onClick={() => understand()}>Comprendre</Button>
       </div>
-      {note && <p className="note" role="status">{note}</p>}
+      {note && <div role="status"><Notice text={note} /></div>}
 
       {drafts && drafts.length > 0 && (
         <>
@@ -106,7 +107,7 @@ export function StockEntry({ shop, lang, commit, onClose }: { shop: Shop; lang: 
                 <Input className="h-10" aria-label="Unité" value={d.unit} disabled={Boolean(d.productId)} onChange={(e) => edit(i, { unit: e.target.value })} />
                 <Input className="num h-10" aria-label="Prix de vente" inputMode="numeric" placeholder="prix de vente" value={d.price ?? ""} onChange={(e) => edit(i, { price: e.target.value.trim() ? toNum(e.target.value) : null })} />
                 <Input className="num h-10" aria-label="Prix d'achat" inputMode="numeric" placeholder="prix d'achat" value={d.cost ?? ""} onChange={(e) => edit(i, { cost: e.target.value.trim() ? toNum(e.target.value) : null })} />
-                <Button variant="ghost" className="h-10 w-10 rounded-full p-0" aria-label="Retirer la ligne" onClick={() => setDrafts((x) => x && x.filter((_, j) => j !== i))}>×</Button>
+                <Button variant="ghost" className="h-11 w-11 rounded-full p-0" aria-label="Retirer la ligne" onClick={() => setDrafts((x) => x && x.filter((_, j) => j !== i))}><Icon name="fermer" size="sm" /></Button>
               </div>
             ))}
           </div>

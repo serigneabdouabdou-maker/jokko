@@ -70,6 +70,7 @@ import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { demoProfile, isDemoShop } from "@/data/demo";
 import { ShopLocation } from "@/components/jokko/ShopLocation";
+import { Icon, type IconName } from "@/components/jokko/Icon";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
 import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
@@ -118,6 +119,26 @@ const NAV: Array<[Screen, string]> = [
   ["offre", "Mon offre"],
   ["reglages", "Réglages"],
 ];
+
+/** Icône de chaque rubrique (bibliothèque unique : components/jokko/Icon). */
+const NAV_ICONS: Record<Screen, IconName> = {
+  parler: "micro",
+  distance: "distance",
+  conseiller: "conseil",
+  scanner: "scanner",
+  bilan: "rapport",
+  ventes: "vente",
+  stock: "stock",
+  clients: "client",
+  factures: "facture",
+  depenses: "depense",
+  dettes: "dette",
+  caisse: "caisse",
+  equipe: "equipe",
+  journal: "journal",
+  offre: "offre",
+  reglages: "reglages",
+};
 
 /** Rubriques réservées au patron. */
 const PATRON_SCREENS: Screen[] = ["offre", "distance", "conseiller", "bilan", "equipe", "journal"];
@@ -1002,7 +1023,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         </div>
         <nav className="side-nav" aria-label="Rubriques">
           {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id))).map(([id, label]) => (
-            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}>{label}</button>
+            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
         <div className="side-foot">
@@ -1019,36 +1040,36 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           </div>
           <div className="who">
             <span>{profile.owner}</span>
-            {demo ? <Badge variant="outline">Démo</Badge> : <Badge variant={sync === "ok" ? "secondary" : "outline"} title="Sauvegarde en ligne">{SYNC_LABELS[sync]}</Badge>}
+            {demo ? <Badge variant="outline">Démo</Badge> : <Badge variant={sync === "ok" ? "secondary" : "outline"} title="Sauvegarde en ligne"><Icon name={sync === "hors_ligne" ? "horsLigne" : "sauvegarde"} size="sm" />{SYNC_LABELS[sync]}</Badge>}
           </div>
         </header>
 
         {demo && (
           <div className="demo-bar" role="status">
-            <p><b>Mode démo.</b> Boutique exemple avec des prix du Sénégal : essaie tout, rien n’est enregistré.</p>
+            <p><Icon name="boutique" size="sm" /> <b>Mode démo.</b> Boutique exemple avec des prix du Sénégal : essaie tout, rien n’est enregistré.</p>
             <div className="row">
-              <Button variant="outline" className="h-9 rounded-full px-4" onClick={demo.restart}>Recommencer</Button>
-              <Button className="h-9 rounded-full px-4" onClick={demo.quit}>Quitter la démo</Button>
+              <Button variant="outline" className="h-9 rounded-full px-4" onClick={demo.restart}><Icon name="rafraichir" size="sm" />Recommencer</Button>
+              <Button className="h-9 rounded-full px-4" onClick={demo.quit}><Icon name="fermer" size="sm" />Quitter la démo</Button>
             </div>
           </div>
         )}
 
         <section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
-            <span>Caisse attendue</span>
+            <span className="stat-label"><Icon name="caisse" size="sm" />Caisse attendue</span>
             <Num value={expectedCash(shop)} className="stat-big" />
             <small>Fond {amount(shop.openingCash)} + ventes en espèces − dépenses</small>
           </article>
           <article className="stat stat-sales">
-            <span>Ventes du jour{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
+            <span className="stat-label"><Icon name="vente" size="sm" />Ventes du jour{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
             <Num value={daySales(shop)} />
           </article>
           <article className="stat">
-            <span>Dépenses</span>
+            <span className="stat-label"><Icon name="depense" size="sm" />Dépenses</span>
             <Num value={dayExpenses(shop)} />
           </article>
           <article className="stat">
-            <span>Dettes</span>
+            <span className="stat-label"><Icon name="dette" size="sm" />Dettes</span>
             <Num value={debtors(shop).reduce((a, c) => a + c.debt, 0)} />
           </article>
         </section>
@@ -1062,7 +1083,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                     <h2>Découvre Jokko avec une boutique exemple</h2>
                     <p className="note">Riz, huile, sucre, clients, dettes et une semaine de ventes, avec des prix du Sénégal. Essaie tout sans risque : ta vraie boutique ne change pas.</p>
                   </div>
-                  <Button className="h-11 rounded-full px-5" onClick={onDemo}>Essayer la démo</Button>
+                  <Button className="h-11 rounded-full px-5" onClick={onDemo}><Icon name="boutique" size="sm" />Essayer la démo</Button>
                 </section>
               )}
               <section className="sheet talk">
@@ -1095,7 +1116,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                         waveShopId={waveOn ? shop.id : undefined}
                       />
                     ) : (
-                      <div key={m.id} className={`bubble ${m.role}`}>{m.text}</div>
+                      <div key={m.id} className={`bubble ${m.role}`}><BubbleText text={m.text} /></div>
                     ),
                   )}
                 </div>
@@ -1104,15 +1125,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                 <h2>Aujourd’hui</h2>
                 <InstallBanner />
                 {inventoryDue(shop) && (
-                  <button type="button" className="banner banner-link" onClick={() => setScreen("bilan")}>Nouveau mois : fais l'inventaire du stock →</button>
+                  <button type="button" className="banner banner-link" onClick={() => setScreen("bilan")}><Icon name="stock" /><span>Nouveau mois : fais l'inventaire du stock</span><Icon name="suivant" className="banner-go" /></button>
                 )}
                 {late.length > 0 && (
                   <button type="button" className="banner banner-link" onClick={() => setScreen("dettes")}>
-                    {late.length} dette(s) en retard ({amount(late.reduce((a, d) => a + d.client.debt, 0))}) : relancer →
+                    <Icon name="dette" />
+                    <span>{late.length} dette(s) en retard ({amount(late.reduce((a, d) => a + d.client.debt, 0))}) : relancer</span>
+                    <Icon name="suivant" className="banner-go" />
                   </button>
                 )}
                 <div className="list">
-                  {lowStock(shop).map((p) => <article key={p.id} className="is-low"><span>{p.name} <em>stock bas</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
+                  {lowStock(shop).map((p) => <article key={p.id} className="is-low"><span>{p.name} <em><Icon name="stockBas" size="sm" />stock bas</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
                   {shop.sales.slice(0, 4).map((s) => <article key={s.id}><span>{s.label}</span><b className="num">{amount(s.amount)}</b></article>)}
                 </div>
               </section>
@@ -1183,9 +1206,9 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
         <h2>Stock</h2>
         {canEdit && (
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
-            <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}>🎤 Ajouter en parlant</Button>
-            <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}>Changer les prix</Button>
-            {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}>Étiquettes</Button>}
+            <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}><Icon name="micro" size="sm" />Ajouter en parlant</Button>
+            <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}><Icon name="etiquette" size="sm" />Changer les prix</Button>
+            {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
           </div>
         )}
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>
@@ -1351,7 +1374,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           // Démo : la clôture est seulement simulée (rien n'est envoyé).
           setClosing(isDemoShop(shop) || (await saveCashCount(shop.id, expected, Number(counted) || 0)) ? "ok" : "erreur");
         }}>{closing === "envoi" ? "Envoi…" : "Clôturer la caisse"}</Button>
-        {closing === "ok" && <p className="note">✓ Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</p>}
+        {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}
       </article>
@@ -1489,4 +1512,11 @@ function ClearVoiceSetting() {
       <p className="note">Ces réglages comptent à partir du prochain appui sur le micro.</p>
     </>
   );
+}
+
+/** Texte d'une bulle : « ✓ » et « ↩ » (anciens messages) deviennent des icônes. */
+function BubbleText({ text }: { text: string }) {
+  if (text.startsWith("✓ ")) return <span className="bubble-status"><Icon name="ok" size="sm" />{text.slice(2)}</span>;
+  if (text.startsWith("↩ ")) return <span className="bubble-status"><Icon name="annuler" size="sm" />{text.slice(2)}</span>;
+  return <>{text}</>;
 }

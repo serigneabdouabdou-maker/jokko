@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { type Profile, type Shop, expectedCash, money, PAYMENT_LABELS, roleIn } from "@/model";
 import { supabase } from "@/data/supabase";
@@ -131,7 +132,7 @@ export function Remote({ profile }: { profile: Profile }) {
           </div>
         </div>
         {shown.length === 0 ? (
-          <p className="note">✅ Rien d'anormal{scope === "jour" ? " aujourd'hui" : " cette semaine"}.</p>
+          <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Rien d'anormal{scope === "jour" ? " aujourd'hui" : " cette semaine"}.</span></p>
         ) : (
           <ol className="alert-list">
             {shown.map((a) => (

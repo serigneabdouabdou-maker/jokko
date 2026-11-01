@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Notice } from "./Icon";
 import { supabase } from "@/data/supabase";
 import { Button } from "@/components/ui/button";
 import { enableNotifications, notificationState, type NotifyState, setSummaryHour, useInstall } from "@/pwa";
@@ -128,7 +129,7 @@ function SummaryHour({ userId }: { userId: string }) {
         {[17, 18, 19, 20, 21, 22, 23].map((h) => <option key={h} value={String(h)}>{h} h</option>)}
         <option value="aucun">Pas de résumé</option>
       </select>
-      {note && <p className="note">{note}</p>}
+      {note && <Notice text={note} />}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type PlanName, type Shop, money } from "@/model";
@@ -147,7 +148,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
             {requests.map((r) => (
               <li key={r.id}>
                 <span>{PLAN_LABELS[r.plan]} · {r.months} mois · <b>{r.reference}</b></span>
-                <span>{amount(r.amount)} · {r.status === "en_attente" ? "en attente du paiement" : r.status === "active" ? "✓ activée" : "refusée"}</span>
+                <span>{amount(r.amount)} · {r.status === "en_attente" ? "en attente du paiement" : r.status === "active" ? "activée" : "refusée"}{r.status === "active" && <Icon name="ok" size="sm" className="jk-ok" label="Activée" />}</span>
               </li>
             ))}
           </ul>

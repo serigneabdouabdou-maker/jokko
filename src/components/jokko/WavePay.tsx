@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { money } from "@/model";
@@ -75,7 +76,7 @@ export function WavePay({ shopId, total, reference, onPaid, onCancel }: { shopId
           <p className="note">La vente sera enregistrée toute seule quand Wave aura confirmé. Ne te fie pas à une capture d'écran : attends ce message.</p>
         </>
       )}
-      {status === "succeeded" && <p className="wave-ok">✓ Wave a confirmé le paiement de {amount(total)}. Vente enregistrée.</p>}
+      {status === "succeeded" && <p className="wave-ok jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Wave a confirmé le paiement de {amount(total)}. Vente enregistrée.</span></p>}
       {(status === "expired" || status === "cancelled" || status === "failed") && (
         <p className="note" data-tone="error">
           {status === "expired" ? "Le lien a expiré (30 minutes)." : status === "cancelled" ? "Le client a annulé." : "Le paiement n'a pas abouti (montant différent ou refus)."} Rien n'est enregistré : recommence, ou choisis un autre paiement.

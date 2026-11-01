@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, MessageCircle, Plus, Share2, Trash2 } from "lucide-react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,7 +62,7 @@ export function Invoices({ shop, commit, canEditShop = true }: { shop: Shop; com
         <h2>Factures</h2>
         <div className="import-actions">
           <Button className="h-10 rounded-full px-4 font-semibold" onClick={() => { setCreating(true); setOpenId(null); }}>
-            <Plus size={16} /> Nouvelle facture
+            <Icon name="ajouter" size="sm" /> Nouvelle facture
           </Button>
           {canEditShop && <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => setSettings(!settings)}>Infos de la boutique</Button>}
         </div>
@@ -87,13 +87,13 @@ export function Invoices({ shop, commit, canEditShop = true }: { shop: Shop; com
           <InvoicePreview shop={shop} invoice={open} />
           <div className="import-actions">
             <Button className="h-11 rounded-full px-5 font-semibold" disabled={busy} onClick={() => sendWhatsApp(open)}>
-              <MessageCircle size={16} /> Envoyer sur WhatsApp
+              <Icon name="whatsapp" size="sm" /> Envoyer sur WhatsApp
             </Button>
             <Button variant="outline" className="h-11 rounded-full px-4" disabled={busy} onClick={() => void run(() => shareInvoice(doc(open)))}>
-              <Share2 size={16} /> Partager
+              <Icon name="partager" size="sm" /> Partager
             </Button>
             <Button variant="ghost" className="h-11 rounded-full px-4" disabled={busy} onClick={() => void run(() => downloadInvoice(doc(open)))}>
-              <Download size={16} /> PDF
+              <Icon name="telecharger" size="sm" /> PDF
             </Button>
             {open.status !== "payee" ? (
               <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setStatus(open, "payee")}>Marquer payée</Button>
@@ -256,13 +256,13 @@ function InvoiceForm({ shop, onCreate, onCancel }: { shop: Shop; onCreate: (invo
             <Input className="h-10" value={l.label} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, label: e.target.value, productId: undefined } : x)))} placeholder="Désignation" />
             <Input className="num h-10" inputMode="decimal" value={l.qty} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} placeholder="Qté" aria-label="Quantité" />
             <Input className="num h-10" inputMode="numeric" value={l.unitPrice} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, unitPrice: e.target.value } : x)))} placeholder="Prix" aria-label="Prix unitaire" />
-            <Button variant="ghost" className="h-10 w-10 rounded-full p-0" aria-label="Retirer la ligne" disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}>
-              <Trash2 size={15} />
+            <Button variant="ghost" className="h-11 w-11 rounded-full p-0" aria-label="Retirer la ligne" disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}>
+              <Icon name="supprimer" size="sm" />
             </Button>
           </div>
         ))}
         <Button variant="ghost" className="h-9 rounded-full px-3 justify-self-start" onClick={() => setLines([...lines, { label: "", qty: "1", unit: "", unitPrice: "" }])}>
-          <Plus size={15} /> Ajouter une ligne
+          <Icon name="ajouter" size="sm" /> Ajouter une ligne
         </Button>
       </div>
       <p className="inv-form-total">Total : <b className="num">{francs(total)}</b></p>

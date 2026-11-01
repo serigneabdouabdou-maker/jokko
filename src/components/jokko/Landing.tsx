@@ -2,6 +2,7 @@ import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 
 import { Button } from "@/components/ui/button";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
 import { LegalSheet } from "@/components/jokko/Legal";
+import { Icon } from "@/components/jokko/Icon";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc } from "@/legal";
 import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@/components/jokko/voiceIntro";
 import "./landing.css";
@@ -203,7 +204,7 @@ function VoiceIntro({ onChoose, autoplay }: { onChoose: () => void; autoplay: nu
           <p className="lx-voice-lede">Touchez le bouton : Jokko se présente lui-même, en moins d’une minute.</p>
           <button type="button" className={`lx-play${playing ? " is-on" : ""}`} onClick={() => void toggle()} aria-label={playing ? "Mettre en pause" : "Écouter Jokko"}>
             <span className="lx-play-mark"><JokkoMark size={64} listening={state === "parle"} /></span>
-            <span className="lx-play-icon" aria-hidden="true">{playing ? "❚❚" : "▶"}</span>
+            <span className="lx-play-icon" aria-hidden="true"><Icon name={playing ? "pause" : "lecture"} size="sm" /></span>
           </button>
           <div className="lx-progress" aria-hidden="true"><span style={{ width: `${Math.min(100, (t / (duration || 1)) * 100)}%` }} /></div>
           {state === "erreur" && <p className="note" data-tone="error">L’audio ne se lance pas. Vérifiez le son du téléphone et la connexion, puis réessayez.</p>}
@@ -224,7 +225,7 @@ function VoiceIntro({ onChoose, autoplay }: { onChoose: () => void; autoplay: nu
             </div>
           )}
           <div className={`lx-voice-cta${state === "fini" ? " is-shown" : ""}`}>
-            <Button className="lx-cta h-12 rounded-full px-6 text-[15px] font-semibold" onClick={onChoose}>Choisir mon offre <span className="lx-arrow" aria-hidden="true">↓</span></Button>
+            <Button className="lx-cta h-12 rounded-full px-6 text-[15px] font-semibold" onClick={onChoose}>Choisir mon offre <Icon name="descendre" size="sm" className="lx-arrow" /></Button>
           </div>
         </div>
       </Reveal>
@@ -254,13 +255,13 @@ const OFFER_ART: Record<WantedPlan, Art[]> = {
   ],
   medium: [
     { title: "Caisse par scan", body: <div className="oa-scan"><span className="oa-code" aria-hidden="true" /><span className="oa-laser" aria-hidden="true" /><b className="num">Riz · 15 500 F</b></div> },
-    { title: "Vendeurs et journal", body: <><p className="oa-row"><span>👤 Awa</span><b>vendeuse</b></p><p className="oa-row"><span>10:41 vente</span><b>🔒</b></p></> },
-    { title: "Alertes à distance", body: <><p className="oa-alert ok">✓ Wave 12 500 F</p><p className="oa-alert bad">Caisse − 2 000 F</p></> },
+    { title: "Vendeurs et journal", body: <><p className="oa-row"><span className="oa-ico"><Icon name="vendeur" size="sm" />Awa</span><b>vendeuse</b></p><p className="oa-row"><span>10:41 vente</span><b><Icon name="verrou" size="sm" label="non effaçable" /></b></p></> },
+    { title: "Alertes à distance", body: <><p className="oa-alert ok oa-ico"><Icon name="ok" size="sm" />Wave 12 500 F</p><p className="oa-alert bad">Caisse − 2 000 F</p></> },
   ],
   avance: [
     { title: "Chat intelligent", body: <><p className="oa-said">« 2 riz, 1 huile, big bleu »</p><p className="oa-row"><span>Panier</span><b className="num">34 000 F</b></p></> },
-    { title: "Conseiller IA", body: <p className="oa-tip">💡 Le riz part vite le samedi : prenez 5 sacs de plus.</p> },
-    { title: "Résumé du soir", body: <><p className="oa-notif"><b>Jokko · 20:00</b>Ventes 86 500 F · bénéfice 14 200 F</p><p className="oa-row"><span>2 boutiques</span><b>↔</b></p></> },
+    { title: "Conseiller IA", body: <p className="oa-tip oa-ico"><Icon name="conseil" size="sm" />Le riz part vite le samedi : prenez 5 sacs de plus.</p> },
+    { title: "Résumé du soir", body: <><p className="oa-notif"><b>Jokko · 20:00</b>Ventes 86 500 F · bénéfice 14 200 F</p><p className="oa-row"><span>2 boutiques</span><b><Icon name="echange" size="sm" label="deux boutiques" /></b></p></> },
   ],
 };
 
@@ -295,9 +296,9 @@ function OfferShowcase({ onChoose }: { onChoose: (plan: WantedPlan) => void }) {
                 </figure>
               ))}
             </div>
-            <ul className="lx-feats">{o.features.map((f) => <li key={f}>{f}</li>)}</ul>
+            <ul className="lx-feats">{o.features.map((f) => <li key={f}><span className="lx-check"><Icon name="coche" size="sm" /></span><span>{f}</span></li>)}</ul>
             <Button className={`lx-offer-btn h-12 rounded-full px-5 text-[15px] font-semibold${o.plan === "avance" ? " is-main" : ""}`} variant={o.plan === "avance" ? "default" : "outline"} onClick={() => onChoose(o.plan)}>
-              {o.cta} <span className="lx-arrow" aria-hidden="true">→</span>
+              {o.cta} <Icon name="suivant" size="sm" className="lx-arrow" />
             </Button>
           </article>
         ))}
@@ -367,10 +368,10 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           </p>
           <div className="hero-cta lx-in" style={at(5)}>
             <Button className="lx-cta h-12 rounded-full px-6 text-[15px] font-semibold" onClick={() => onStart("creer")}>
-              Ouvrir ma boutique <span className="lx-arrow" aria-hidden="true">→</span>
+              Ouvrir ma boutique <Icon name="suivant" size="sm" className="lx-arrow" />
             </Button>
             <Button variant="outline" className="lx-listen h-12 rounded-full px-5 text-[15px] font-semibold" onClick={() => { scrollTo("voix"); setListen((n) => n + 1); }}>
-              <span className="lx-listen-dot" aria-hidden="true">▶</span> Écouter Jokko
+              <span className="lx-listen-dot" aria-hidden="true"><Icon name="lecture" size="sm" /></span> Écouter Jokko
             </Button>
           </div>
           <ul className="langs lx-in" style={at(6)} aria-label="Langues comprises">
@@ -444,7 +445,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           <article className="b-factures" style={at(3)}>
             <span className="b-tag">Factures</span>
             <p className="b-said">« Envoie la facture à Awa. »</p>
-            <p className="b-note lx-send"><span aria-hidden="true">➤</span> Préparée pour WhatsApp.</p>
+            <p className="b-note lx-send"><Icon name="message" size="sm" /> Préparée pour WhatsApp.</p>
           </article>
           <article className="b-depenses" style={at(4)}>
             <span className="b-tag">Dépenses</span>
@@ -466,10 +467,10 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
             <h2 style={at(1)}>Votre boutique, <em className="accent">sous vos yeux</em>, où que vous soyez.</h2>
             <p style={at(2)}>Le vendeur scanne et encaisse. Vous voyez chaque vente en direct, et Jokko vous prévient au moindre problème, même téléphone fermé.</p>
             <ul className="lx-points">
-              <li style={at(3)}>Caisse par scan, à la caméra ou à la douchette</li>
-              <li style={at(4)}>Paiement Wave confirmé par Wave</li>
-              <li style={at(5)}>Journal que personne ne peut effacer</li>
-              <li style={at(6)}>Conseils pour gagner plus</li>
+              <li style={at(3)}><span className="lx-check"><Icon name="coche" size="sm" /></span><span>Caisse par scan, à la caméra ou à la douchette</span></li>
+              <li style={at(4)}><span className="lx-check"><Icon name="coche" size="sm" /></span><span>Paiement Wave confirmé par Wave</span></li>
+              <li style={at(5)}><span className="lx-check"><Icon name="coche" size="sm" /></span><span>Journal que personne ne peut effacer</span></li>
+              <li style={at(6)}><span className="lx-check"><Icon name="coche" size="sm" /></span><span>Conseils pour gagner plus</span></li>
             </ul>
           </div>
           <div className="lx-phone" aria-label="Exemple d’alertes reçues par le patron">
@@ -489,7 +490,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         <p style={at(2)}>Deux minutes pour ouvrir votre boutique.</p>
         <div style={at(3)}>
           <Button className="lx-cta h-12 rounded-full px-7 text-[15px] font-semibold" onClick={() => scrollTo("offres")}>
-            Choisir mon offre <span className="lx-arrow" aria-hidden="true">↑</span>
+            Choisir mon offre <Icon name="monter" size="sm" className="lx-arrow" />
           </Button>
         </div>
       </Reveal>

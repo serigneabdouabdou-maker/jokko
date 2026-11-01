@@ -205,7 +205,7 @@
 .lx-remote .accent { color: var(--j-yellow); background: none; box-shadow: none; text-decoration: none; }
 .lx-points { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
 .lx-points li { display: flex; gap: 10px; align-items: center; font-weight: 600; }
-.lx-points li::before { content: "✓"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--j-yellow); color: var(--j-ink); font-size: 12px; font-weight: 800; }
+.lx-points li::before { content: none; }
 .lx-phone { position: relative; z-index: 1; display: grid; gap: 8px; padding: 16px; border-radius: 26px; background: color-mix(in oklab, var(--j-white) 7%, var(--j-ink)); border: 1px solid color-mix(in oklab, var(--j-white) 14%, var(--j-ink)); }
 .lx-phone-head { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: color-mix(in oklab, var(--j-white) 80%, var(--j-ink)); }
 .lx-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 4px color-mix(in oklab, #22c55e 25%, transparent); animation: lx-blink 1.6s ease-in-out infinite; }
@@ -363,7 +363,7 @@
 
 .lx-feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14.5px; }
 .lx-feats li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; }
-.lx-feats li::before { content: "✓"; font-weight: 800; color: var(--j-ink); background: var(--j-yellow); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; margin-top: 1px; }
+.lx-feats li::before { content: none; }
 .lx-offer-btn { margin-top: auto; width: 100%; }
 .lx-offer.is-avance .lx-offer-btn.is-main { background: var(--j-yellow); color: var(--j-ink); }
 .lx-offer.is-avance .lx-offer-btn.is-main:hover { background: color-mix(in oklab, var(--j-yellow) 88%, var(--j-white)); }
@@ -386,3 +386,10 @@
   .lx-play, .lx-eq.is-on i, .oa-laser, .lx-caption { animation: none !important; }
   .lx-eq.is-on i { height: 24px; }
 }
+
+/* Coche des listes : une vraie icône (même bibliothèque que tout le site) dans une pastille jaune. */
+.lx-check { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--j-yellow); color: var(--j-ink); margin-top: 1px; }
+.lx-points li, .lx-feats li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; }
+.oa-ico { display: inline-flex; align-items: center; gap: 4px; }
+.oa-tip.oa-ico { align-items: flex-start; }
+.oa-tip .jk-icon { margin-top: 1px; }

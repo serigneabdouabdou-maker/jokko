@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon, PAYMENT_ICON } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -200,12 +201,12 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
                     <small className="num">{amount(price)} / {unitName(p, line.retail)}</small>
                   </span>
                   <span className="cart-qty">
-                    <button type="button" aria-label="Moins" onClick={() => setLines((l) => setQty(l, i, l[i].qty - 1))}>−</button>
+                    <button type="button" aria-label="Moins" onClick={() => setLines((l) => setQty(l, i, l[i].qty - 1))}><Icon name="moins" size="sm" /></button>
                     <input className="num" inputMode="decimal" aria-label={`Quantité ${p.name}`} value={String(line.qty).replace(".", ",")} onChange={(e) => {
                       const q = toNum(e.target.value);
                       if (Number.isFinite(q)) setLines((l) => setQty(l, i, q));
                     }} />
-                    <button type="button" aria-label="Plus" onClick={() => setLines((l) => setQty(l, i, l[i].qty + 1))}>+</button>
+                    <button type="button" aria-label="Plus" onClick={() => setLines((l) => setQty(l, i, l[i].qty + 1))}><Icon name="ajouter" size="sm" /></button>
                   </span>
                   <b className="cart-line num">{amount(Math.round(line.qty * price))}</b>
                 </li>
@@ -222,7 +223,7 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
 
         <div className="pay-modes" role="radiogroup" aria-label="Paiement">
           {(Object.keys(PAYMENT_LABELS) as Payment[]).map((m) => (
-            <button key={m} type="button" role="radio" aria-checked={payment === m} className={payment === m ? "on" : ""} onClick={() => setPayment(m)}>{PAYMENT_LABELS[m]}</button>
+            <button key={m} type="button" role="radio" aria-checked={payment === m} className={payment === m ? "on" : ""} onClick={() => setPayment(m)}><Icon name={PAYMENT_ICON[m]} size="sm" />{PAYMENT_LABELS[m]}</button>
           ))}
         </div>
         {payment === "especes" && (

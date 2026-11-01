@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon, Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
@@ -39,7 +40,7 @@ export function PriceTool({ shop, commit, onClose }: { shop: Shop; commit: (s: S
         <ul className="price-preview">
           {changed.slice(0, 6).map((p) => {
             const before = shop.products.find((x) => x.id === p.id)!;
-            return <li key={p.id}><span>{p.name}</span><span className="num">{amount(before.price)} → <b>{amount(p.price)}</b></span></li>;
+            return <li key={p.id}><span>{p.name}</span><span className="num">{amount(before.price)} <Icon name="suivant" size="sm" label="devient" /> <b>{amount(p.price)}</b></span></li>;
           })}
           {changed.length > 6 && <li><span>… et {changed.length - 6} autre(s)</span></li>}
         </ul>
@@ -49,7 +50,7 @@ export function PriceTool({ shop, commit, onClose }: { shop: Shop; commit: (s: S
         commit(preview);
         setNote(`✓ ${changed.length} prix changé(s). C'est noté dans le Journal.`);
       }}>Appliquer ({changed.length})</Button>
-      {note && <p className="note" role="status">{note}</p>}
+      {note && <div role="status"><Notice text={note} /></div>}
     </div>
   );
 }

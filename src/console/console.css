@@ -165,3 +165,13 @@
 @media (prefers-reduced-motion: reduce) {
   .cx-bar-fill, .cx-nav button { transition: none; }
 }
+
+/* Icônes de la console (même système que l'appli) */
+.cx-nav button { min-height: 44px; }
+.cx-nav-label { display: inline-flex; align-items: center; gap: 10px; }
+.cx-nav button .jk-icon { color: var(--cx-on-ink-2); }
+.cx-nav button:hover .jk-icon, .cx-nav button.on .jk-icon { color: var(--j-yellow); }
+.cx-link { display: inline-flex; align-items: center; gap: 4px; }
+.cx-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 44px; }
+.cx-alert:focus-visible { outline: 2px solid var(--cx-ink); outline-offset: 2px; }
+@media (max-width: 860px) { .cx-nav-label { gap: 7px; } }

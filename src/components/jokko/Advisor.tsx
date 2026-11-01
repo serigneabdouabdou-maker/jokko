@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
@@ -73,7 +74,7 @@ export function Advisor({ shop: local }: { shop: Shop }) {
                 <span className="finding-level">{LEVELS[f.level]}</span>
                 <b>{f.title}</b>
                 <p>{f.detail}</p>
-                <p className="finding-action">👉 {f.action}</p>
+                <p className="finding-action jk-notice"><Icon name="suivant" size="sm" /><span>{f.action}</span></p>
               </li>
             ))}
           </ul>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon, Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Shop } from "@/model";
@@ -36,11 +37,11 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
           setLinkNote(v ? "✓ Lien enregistré." : "Lien retiré.");
         }}>Enregistrer le lien</Button>
       </div>
-      {linkNote && <p className="note">{linkNote}</p>}
+      {linkNote && <Notice text={linkNote} />}
       <p className="note"><b>Avec l'API Wave (automatique) :</b> si Wave t'a donné l'accès « Développeurs », branche-le ci-dessous : chaque paiement sera confirmé tout seul.</p>
       {ready ? (
         <>
-          <p className="note">✓ Wave est branché. Au moment d'encaisser, choisis « Wave » : le client scanne le QR code, et la vente s'enregistre quand Wave confirme.</p>
+          <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Wave est branché. Au moment d'encaisser, choisis « Wave » : le client scanne le QR code, et la vente s'enregistre quand Wave confirme.</span></p>
           <div className="row">
             <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setOpen(!open)}>Changer les clés</Button>
             <Button variant="ghost" className="h-10 rounded-full px-4" onClick={async () => {
@@ -81,7 +82,7 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
           <p className="note">Les clés partent une seule fois vers le serveur de Jokko et ne sont plus jamais affichées. Ne les envoie à personne, ni par WhatsApp.</p>
         </>
       )}
-      {note && <p className="note" role="status">{note}</p>}
+      {note && <div role="status"><Notice text={note} tone={note.startsWith("✓") ? "ok" : "erreur"} /></div>}
     </div>
   );
 }

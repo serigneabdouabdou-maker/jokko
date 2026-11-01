@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowUp, Check, Mic, Square, Undo2, X } from "lucide-react";
+import { Icon } from "./Icon";
 import { Input } from "@/components/ui/input";
 import { JokkoMark } from "./JokkoMark";
 
@@ -109,17 +109,17 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
               <p>{reply.text}</p>
               {reply.summary && (
                 <span className="vsum">
-                  <Check size={13} strokeWidth={2.6} /> {reply.summary}
+                  <Icon name="coche" size="sm" /> {reply.summary}
                 </span>
               )}
             </div>
             {reply.undo && onUndo && (
               <button type="button" className="vundo" onClick={onUndo}>
-                <Undo2 size={15} strokeWidth={2.4} /> Annuler
+                <Icon name="annuler" size="sm" /> Annuler
               </button>
             )}
             <button type="button" className="vclose" aria-label="Fermer la réponse" onClick={onDismiss}>
-              <X size={15} />
+              <Icon name="fermer" size="sm" />
             </button>
           </div>
         )}
@@ -140,7 +140,7 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
           onClick={onMic}
         >
           <span className="vhalo" aria-hidden="true" />
-          {listening ? <Square size={16} fill="currentColor" /> : <Mic size={20} strokeWidth={2.2} />}
+          {listening ? <Icon name="stop" /> : <Icon name="micro" size="lg" />}
         </button>
 
         <div className="vmid">
@@ -175,8 +175,8 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
 
         {(live || LABELS[state]) && (
           <span className="vstate" aria-live="polite">
-            {state === "succes" && <Check size={13} strokeWidth={2.8} />}
-            {state === "erreur" && <AlertCircle size={13} strokeWidth={2.4} />}
+            {state === "succes" && <Icon name="coche" size="sm" />}
+            {state === "erreur" && <Icon name="erreur" size="sm" />}
             {live ? LIVE_LABELS[live.phase] : LABELS[state]}
           </span>
         )}
@@ -195,11 +195,11 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
             onPointerCancel={() => press(false)}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <Mic size={16} strokeWidth={2.4} /> {holding ? "Je t’écoute" : "Maintenir"}
+            <Icon name="micro" size="sm" /> {holding ? "Je t’écoute" : "Maintenir"}
           </button>
         ) : (
           <button type="submit" className="vsend" aria-label="Envoyer à Jokko" disabled={busy || listening || !text.trim()}>
-            <ArrowUp size={18} strokeWidth={2.4} />
+            <Icon name="envoyer" />
           </button>
         )}
         {state === "comprehension" && <span className="vprogress" aria-hidden="true" />}

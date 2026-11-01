@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
 import { ConsoleMap } from "./ConsoleMap";
+import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
 import { supabase, signIn, phoneOf } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
 import { adminDecide, type AdminOverview, adminOverview, adminSetPlan, adminSettings, PLAN_LABELS } from "@/data/plans";
@@ -38,6 +39,8 @@ const TABS: [Tab, string][] = [
   ["boutiques", "Boutiques"],
   ["reglages", "Réglages"],
 ];
+
+const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
 
 const STATUS_LABEL = { active: "Active", calme: "Calme", endormie: "Endormie", nouvelle: "Nouvelle" } as const;
 
@@ -196,7 +199,7 @@ function ConsoleLogin() {
   );
 }
 
-function ConsoleDesk({ session }: { session: Session }) {
+export function ConsoleDesk({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>(() => {
     const wanted = new URLSearchParams(window.location.search).get("onglet");
     return TABS.some(([id]) => id === wanted) ? (wanted as Tab) : "apercu";
@@ -263,13 +266,13 @@ function ConsoleDesk({ session }: { session: Session }) {
         <nav className="cx-nav" aria-label="Console">
           {TABS.map(([id, label]) => (
             <button key={id} className={tab === id ? "on" : ""} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>
-              {label}
+              <span className="cx-nav-label"><Icon name={TAB_ICONS[id]} />{label}</span>
               {id === "paiements" && pending > 0 && <span className="cx-dot num">{pending}</span>}
             </button>
           ))}
         </nav>
         <div className="cx-side-foot">
-          <a className="cx-link" href="../" target="_blank" rel="noopener">Ouvrir l'appli boutique ↗</a>
+          <a className="cx-link" href="../" target="_blank" rel="noopener">Ouvrir l'appli boutique <Icon name="ouvrir" size="sm" /></a>
           <span>{phone(phoneOf(session))} · CFC</span>
           <button type="button" className="cx-link" onClick={() => void supabase.auth.signOut()}>Se déconnecter</button>
         </div>
@@ -356,7 +359,7 @@ function Overview({ dash, shops, usage, onGo }: { dash: Dashboard; shops: Consol
     <div className="cx-stack">
       {dash.pending > 0 && (
         <button type="button" className="cx-alert" onClick={() => onGo("paiements")}>
-          <b>{dash.pending} paiement(s) à vérifier</b> · {amount(dash.pending_amount)} — ouvre Wave Business puis active-les ici →
+          <b>{dash.pending} paiement(s) à vérifier</b> · {amount(dash.pending_amount)} — ouvre Wave Business puis active-les ici <Icon name="suivant" size="sm" />
         </button>
       )}
 
@@ -468,7 +471,7 @@ function Payments({ overview, onChanged }: { overview: AdminOverview; onChanged:
         <button type="button" className={`cx-chip${show === "en_attente" ? " on" : ""}`} onClick={() => setShow("en_attente")}>À vérifier</button>
         <button type="button" className={`cx-chip${show === "tout" ? " on" : ""}`} onClick={() => setShow("tout")}>Tout l'historique</button>
       </div>
-      {note && <p className="note">{note}</p>}
+      {note && <Notice text={note} />}
       <section className="cx-card">
         {list.length === 0 ? <p className="note">{show === "en_attente" ? "Aucun paiement en attente." : "Aucun paiement pour l'instant."}</p> : (
           <ul className="cx-list">
@@ -527,7 +530,7 @@ function Shops({ shops, onChanged }: { shops: ConsoleShop[]; onChanged: () => Pr
           ))}
         </div>
       </div>
-      {note && <p className="note">{note}</p>}
+      {note && <Notice text={note} />}
       <section className="cx-card cx-table-card">
         <table className="cx-table cx-shops-table">
           <thead>
@@ -542,7 +545,7 @@ function Shops({ shops, onChanged }: { shops: ConsoleShop[]; onChanged: () => Pr
                   <tr className={open === s.id ? "is-open" : ""}>
                     <td><b>{s.name}</b><br /><small>{s.city || "—"} · {s.activity || "—"}</small></td>
                     <td>{s.patron_name || "—"}<br /><small className="num">{phone(s.patron_phone)}</small></td>
-                    <td><span className={`cx-tag is-${s.effective}`}>{PLAN_LABELS[s.effective]}{trial ? " · essai" : ""}</span><br /><small>{trial ? `jusqu'au ${date(s.trial_until)}` : s.plan !== "gratuit" && s.plan_until ? `payée → ${date(s.plan_until)}` : ""}</small></td>
+                    <td><span className={`cx-tag is-${s.effective}`}>{PLAN_LABELS[s.effective]}{trial ? " · essai" : ""}</span><br /><small>{trial ? `jusqu'au ${date(s.trial_until)}` : s.plan !== "gratuit" && s.plan_until ? `payée jusqu’au ${date(s.plan_until)}` : ""}</small></td>
                     <td className="r num">{count(s.sales_30)}<br /><small>{amount(s.amount_30)}</small></td>
                     <td><span className={`cx-status is-${st}`}>{STATUS_LABEL[st]}</span><br /><small>{s.last_sale_at ? `dernière vente ${short(s.last_sale_at)}` : "aucune vente"}</small></td>
                     <td className="r"><button type="button" className="cx-link" onClick={() => setOpen(open === s.id ? null : s.id)}>{open === s.id ? "Fermer" : "Gérer"}</button></td>
@@ -611,7 +614,7 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
           setNote(ok ? "✓ Réglages enregistrés." : "Le lien doit commencer par https://");
           if (ok) await onChanged();
         }}>Enregistrer</Button>
-        {note && <p className="note">{note}</p>}
+        {note && <Notice text={note} />}
       </section>
 
       <section className="cx-card">
@@ -635,7 +638,7 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
             if (!err) { setNewAdmin(""); void refreshTeam(); }
           }}>Ajouter</Button>
         </div>
-        {teamNote && <p className="note">{teamNote}</p>}
+        {teamNote && <Notice text={teamNote} tone={teamNote.startsWith("✓") ? "ok" : "erreur"} />}
       </section>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import type { Shop } from "@/model";
 import { regionFromCity, roundCoord } from "@/data/regions";
@@ -29,9 +30,9 @@ export function ShopLocation({ shop, onChange }: { shop: Shop; onChange: (locati
   return (
     <div className="shop-location">
       <div>
-        <b>Ma boutique sur la carte</b>
+        <b className="jk-title"><Icon name="position" />Ma boutique sur la carte</b>
         {shop.location ? (
-          <p className="note">📍 Boutique placée sur la carte de Jokko (à environ 1 km près){shop.location.at ? `, le ${date(shop.location.at)}` : ""}.</p>
+          <p className="note jk-notice" data-tone="ok"><Icon name="position" size="sm" /><span>Boutique placée sur la carte de Jokko (à environ 1 km près){shop.location.at ? `, le ${date(shop.location.at)}` : ""}.</span></p>
         ) : (
           <p className="note">
             Fais-le depuis ta boutique : Jokko garde seulement la position de la boutique, arrondie à environ 1 km, pour compter les boutiques par région.

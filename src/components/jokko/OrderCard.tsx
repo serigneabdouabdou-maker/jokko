@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon, PAYMENT_ICON } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Payment, PAYMENT_LABELS, type Role, type Shop, money, uid } from "@/model";
@@ -64,9 +65,9 @@ export function OrderCard({
               <span className="order-name">{p.name}</span>
               {waiting ? (
                 <span className="cart-qty">
-                  <button type="button" aria-label="Moins" onClick={() => onChange({ ...order, lines: setQty(order.lines, i, line.qty - 1) })}>−</button>
+                  <button type="button" aria-label="Moins" onClick={() => onChange({ ...order, lines: setQty(order.lines, i, line.qty - 1) })}><Icon name="moins" size="sm" /></button>
                   <span className="num">{qtyText(line.qty)}</span>
-                  <button type="button" aria-label="Plus" onClick={() => onChange({ ...order, lines: setQty(order.lines, i, line.qty + 1) })}>+</button>
+                  <button type="button" aria-label="Plus" onClick={() => onChange({ ...order, lines: setQty(order.lines, i, line.qty + 1) })}><Icon name="ajouter" size="sm" /></button>
                 </span>
               ) : (
                 <span className="num">{qtyText(line.qty)}</span>
@@ -112,9 +113,9 @@ export function OrderCard({
           <p className="order-ask">C'est payé comment ?</p>
           <div className="pay-modes">
             {(["especes", "wave", "om"] as Payment[]).map((m) => (
-              <button key={m} type="button" onClick={() => (m === "wave" && waveShopId ? setWaving(uid("w")) : onConfirm(m))}>{PAYMENT_LABELS[m]}</button>
+              <button key={m} type="button" onClick={() => (m === "wave" && waveShopId ? setWaving(uid("w")) : onConfirm(m))}><Icon name={PAYMENT_ICON[m]} size="sm" />{PAYMENT_LABELS[m]}</button>
             ))}
-            <button type="button" className={credit ? "on" : ""} onClick={() => (order.clientId ? onConfirm("credit") : setCredit(true))}>Crédit</button>
+            <button type="button" className={credit ? "on" : ""} onClick={() => (order.clientId ? onConfirm("credit") : setCredit(true))}><Icon name="credit" size="sm" />Crédit</button>
           </div>
           {waving && waveShopId && (
             <WavePay shopId={waveShopId} total={orderTotal(shop, order)} reference={waving} onPaid={() => onConfirm("wave")} onCancel={() => setWaving(null)} />
@@ -154,7 +155,7 @@ export function OrderCard({
 
       {status === "enregistre" && (
         <div className="order-done">
-          <span>✓ {card.summary}</span>
+          <span className="jk-notice" data-tone="ok"><Icon name="ok" size="sm" />{card.summary}</span>
           <Button variant="outline" className="h-9 rounded-full px-4" onClick={onUndo}>Annuler</Button>
         </div>
       )}

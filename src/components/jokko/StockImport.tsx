@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, FileSpreadsheet, ClipboardPaste } from "lucide-react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { type Shop, money } from "@/model";
 import { applyImport, type Cell, type ImportLine, parseRows, previewImport, templateCsv, textToRows } from "@/data/stockImport";
@@ -73,13 +73,13 @@ export function StockImport({ shop, commit }: { shop: Shop; commit: (s: Shop) =>
       <div className="import-actions">
         <input ref={file} type="file" accept=".xlsx,.xls,.csv,.txt" hidden onChange={(e) => void onFile(e.target.files?.[0])} />
         <Button className="h-11 rounded-full px-5 font-semibold" onClick={() => file.current?.click()}>
-          <FileSpreadsheet size={16} /> Importer un fichier Excel
+          <Icon name="tableur" size="sm" /> Importer un fichier Excel
         </Button>
         <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => setPaste(paste === null ? "" : null)}>
-          <ClipboardPaste size={16} /> Coller une liste
+          <Icon name="coller" size="sm" /> Coller une liste
         </Button>
         <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => download("jokko-modele-stock.csv", templateCsv())}>
-          <Download size={16} /> Modèle à remplir
+          <Icon name="telecharger" size="sm" /> Modèle à remplir
         </Button>
       </div>
 

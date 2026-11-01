@@ -19,6 +19,16 @@
   --t-mid: 220ms;
   --t-slow: 300ms;
   --side: 248px;
+
+  /* Icônes (bibliothèque unique Lucide, composant components/jokko/Icon) */
+  --j-icon-sm: 16px;
+  --j-icon-md: 20px;
+  --j-icon-lg: 24px;
+  --j-icon-xl: 32px;
+  --j-icon-muted: var(--j-ink-3);
+  --j-icon-strong: var(--j-ink);
+  --j-ok: oklch(0.5 0.13 150);
+  --j-tap: 44px;
 }
 
 @layer components {
@@ -1168,7 +1178,9 @@
   .cart-name small { color: var(--j-ink-3); font-size: 12px; }
   .cart-line { text-align: right; }
   .cart-qty { display: inline-flex; align-items: center; gap: 4px; }
-  .cart-qty button { width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-card); font-size: 18px; font-weight: 700; line-height: 1; }
+  .cart-qty button { width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-card); color: var(--j-ink); cursor: pointer; transition: background var(--t-fast) var(--ease); }
+  .cart-qty button:hover { background: var(--j-wash); }
+  .cart-qty button:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
   .cart-qty input { width: 52px; height: 34px; text-align: center; border: 1px solid var(--j-line); border-radius: 10px; background: var(--j-white); font-weight: 650; }
   .cart-total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 12px; padding-top: 12px; border-top: 1px solid var(--j-line); }
   .cart-total span { font-weight: 600; color: var(--j-ink-2); }
@@ -1333,4 +1345,74 @@
     .plan-grid { grid-template-columns: 1fr; }
     .admin-list li { grid-template-columns: 1fr; }
   }
+}
+
+
+/* ================= Icônes : un seul système pour tout le site ================= */
+.jk-icon { flex: none; display: inline-block; vertical-align: -0.2em; transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
+.jk-icon-sm { width: var(--j-icon-sm); height: var(--j-icon-sm); }
+.jk-icon-md { width: var(--j-icon-md); height: var(--j-icon-md); }
+.jk-icon-lg { width: var(--j-icon-lg); height: var(--j-icon-lg); }
+.jk-icon-xl { width: var(--j-icon-xl); height: var(--j-icon-xl); }
+/* Appui : l'icône se resserre un instant (transform seulement : rien ne bouge autour). */
+button:not(:disabled):active .jk-icon, a:active .jk-icon { transform: scale(0.88); }
+button:disabled .jk-icon { opacity: 0.55; }
+button, a { -webkit-tap-highlight-color: transparent; }
+
+/* Messages d'état avec icône */
+.jk-notice { display: flex; align-items: flex-start; gap: 6px; }
+.jk-notice > .jk-icon { margin-top: 0.15em; }
+.jk-notice[data-tone="ok"] > .jk-icon, .jk-ok { color: var(--j-ok); }
+.jk-notice[data-tone="erreur"] > .jk-icon, .jk-notice[data-tone="error"] > .jk-icon { color: var(--j-danger); }
+.jk-notice[data-tone="alerte"] > .jk-icon { color: var(--j-danger); }
+.jk-title { display: inline-flex; align-items: center; gap: 8px; }
+.jk-title > .jk-icon { color: var(--j-icon-muted); }
+
+/* Menu de l'appli : icône + libellé, zone tactile ≥ 44 px */
+.side-nav button { display: flex; align-items: center; gap: 12px; min-height: var(--j-tap); }
+.side-nav button .jk-icon { color: var(--j-icon-muted); }
+.side-nav button:hover .jk-icon, .side-nav button.on .jk-icon { color: var(--j-icon-strong); }
+@media (max-width: 1023px) {
+  .side-nav button { gap: 7px; padding: 8px 14px; }
+}
+
+/* Chiffres du jour */
+.stat-label { display: inline-flex; align-items: center; gap: 6px; }
+.stat-label > .jk-icon { color: var(--j-icon-muted); }
+.stat-cash .stat-label > .jk-icon { color: var(--j-icon-strong); }
+
+/* Bandeaux « Aujourd'hui » : icône, texte, flèche qui avance au survol */
+.banner.banner-link { display: flex; align-items: center; gap: 10px; min-height: var(--j-tap); cursor: pointer; transition: background var(--t-fast) var(--ease); }
+.banner.banner-link > span { flex: 1; }
+.banner.banner-link:hover { background: var(--j-soft); }
+.banner.banner-link:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
+.banner-go { transition: transform var(--t-mid) var(--ease); }
+.banner.banner-link:hover .banner-go { transform: translateX(3px); }
+.is-low em { display: inline-flex; align-items: center; gap: 4px; }
+.bubble-status { display: inline-flex; align-items: center; gap: 6px; }
+.bubble-status > .jk-icon { color: var(--j-ok); }
+
+/* Boutons de la barre du micro : zones tactiles ≥ 44 px */
+.vclose { min-width: var(--j-tap); min-height: var(--j-tap); display: inline-grid; place-items: center; }
+.vclose:hover { background: var(--j-wash); color: var(--j-ink); }
+.vclose:focus-visible, .vundo:focus-visible, .vmic:focus-visible, .vsend:focus-visible, .vhold:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
+.vundo { min-height: var(--j-tap); display: inline-flex; align-items: center; gap: 6px; }
+.vsend { width: var(--j-tap); height: var(--j-tap); }
+.stock-tools [data-slot="button"] { gap: 6px; }
+.pay-modes button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.pay-modes button:hover { background: var(--j-wash); }
+.pay-modes button:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
+.pay-modes button .jk-icon { color: var(--j-icon-muted); }
+.pay-modes button.on .jk-icon, .pay-modes button[aria-checked="true"] .jk-icon { color: currentColor; }
+
+/* Sur téléphone (doigt) : tout ce qui se touche fait au moins 44 px */
+@media (pointer: coarse) {
+  [data-slot="button"], .chips button, .pay-modes button, .cart-qty button, .link { min-height: var(--j-tap); }
+  [data-slot="button"][aria-label]:not(:has(> span)) { min-width: var(--j-tap); }
+  .cart-qty button { min-width: var(--j-tap); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jk-icon, .banner-go, .banner.banner-link { transition: none; }
+  button:not(:disabled):active .jk-icon, a:active .jk-icon, .banner.banner-link:hover .banner-go { transform: none; }
 }

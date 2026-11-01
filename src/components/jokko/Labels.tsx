@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import type { Shop } from "@/model";
 import { withCodes } from "@/data/barcode";
@@ -58,12 +59,12 @@ export function Labels({ shop, commit, onClose }: { shop: Shop; commit: (s: Shop
                 <small>{r.code ? (isMaker(r.code) ? " · code du fabricant" : " · code Jokko") : " · pas encore de code"}</small>
               </span>
               <span className="cart-qty">
-                <button type="button" aria-label="Moins" onClick={() => setCopies((c) => ({ ...c, [k]: Math.max(0, (c[k] ?? 0) - 1) }))}>−</button>
+                <button type="button" aria-label="Moins" onClick={() => setCopies((c) => ({ ...c, [k]: Math.max(0, (c[k] ?? 0) - 1) }))}><Icon name="moins" size="sm" /></button>
                 <input className="num" inputMode="numeric" aria-label={`Étiquettes ${r.product.name}`} value={copies[k] ?? 0} onChange={(e) => {
                   const n = Math.max(0, Math.min(500, Math.floor(Number(e.target.value) || 0)));
                   setCopies((c) => ({ ...c, [k]: n }));
                 }} />
-                <button type="button" aria-label="Plus" onClick={() => setCopies((c) => ({ ...c, [k]: Math.min(500, (c[k] ?? 0) + 1) }))}>+</button>
+                <button type="button" aria-label="Plus" onClick={() => setCopies((c) => ({ ...c, [k]: Math.min(500, (c[k] ?? 0) + 1) }))}><Icon name="ajouter" size="sm" /></button>
               </span>
             </li>
           );

@@ -15,13 +15,13 @@ export function daySummary(shop: Shop, alerts: Alert[], counted: JournalRow | un
   const by = (m: string) => today.filter((s) => (s.payment ?? "especes") === m).reduce((a, s) => a + s.amount, 0);
   const grave = alerts.filter((a) => a.level === "grave" && sameDay(a.at, now)).length;
   const lines = [
-    `📊 ${shop.name} · ${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`,
+    `Résumé de ${shop.name} · ${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`,
     `Ventes : ${amount(r.revenue)} (${r.salesCount} vente${r.salesCount > 1 ? "s" : ""})`,
     `  Espèces ${amount(by("especes"))} · Wave ${amount(by("wave"))} · Orange Money ${amount(by("om"))} · Crédit ${amount(by("credit"))}`,
     `Dépenses : ${amount(r.expenses)}${r.losses ? ` · Pertes : ${amount(r.losses)}` : ""}${r.purchases ? ` · Achats de stock : ${amount(r.purchases)}` : ""}`,
     `Bénéfice du jour : ${amount(r.netProfit)}`,
     counted ? `Caisse : comptée ${amount(Number(counted.after?.counted ?? 0))} pour ${amount(Number(counted.after?.expected ?? 0))} attendus` : "Caisse : pas encore clôturée",
-    grave ? `⚠️ ${grave} alerte${grave > 1 ? "s" : ""} grave${grave > 1 ? "s" : ""} à vérifier dans Jokko` : "✅ Aucune alerte grave",
+    grave ? `ATTENTION : ${grave} alerte${grave > 1 ? "s" : ""} grave${grave > 1 ? "s" : ""} à vérifier dans Jokko` : "Aucune alerte grave",
   ];
   return lines.join("\n");
 }
@@ -32,6 +32,6 @@ export function shortSummary(shop: Shop, graveAlerts: number, now = new Date()):
   const r = buildReport(shop, periodOf("jour", now));
   return {
     title: `Résumé du jour · ${shop.name}`,
-    body: `Ventes ${amount(r.revenue)} (${r.salesCount}) · Bénéfice ${amount(r.netProfit)} · ${graveAlerts ? `⚠️ ${graveAlerts} alerte${graveAlerts > 1 ? "s" : ""} grave${graveAlerts > 1 ? "s" : ""}` : "aucune alerte grave"}`,
+    body: `Ventes ${amount(r.revenue)} (${r.salesCount}) · Bénéfice ${amount(r.netProfit)} · ${graveAlerts ? `${graveAlerts} alerte${graveAlerts > 1 ? "s" : ""} grave${graveAlerts > 1 ? "s" : ""}` : "aucune alerte grave"}`,
   };
 }
