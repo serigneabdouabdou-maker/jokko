@@ -125,6 +125,9 @@
 .cx-gate-card { width: min(420px, 100%); display: grid; gap: 12px; padding: 28px; border-radius: 24px; background: var(--j-white); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6); }
 .cx-gate-card h1 { font-size: 28px; font-weight: 720; }
 .cx-gate-card .cx-brand { padding: 0; }
+.cx-mfa-form { display: grid; gap: 10px; }
+.cx-qr { justify-self: center; width: 180px; height: 180px; padding: 8px; border-radius: 16px; background: #fff; border: 1px solid var(--j-line); }
+.cx-gate-card .cx-ref { word-break: break-all; }
 
 @media (max-width: 1100px) {
   .cx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }

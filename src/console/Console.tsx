@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,114 @@ export function Console() {
 
   if (session === undefined) return <main className="cx-gate"><p className="note">Chargement…</p></main>;
   if (!session) return <ConsoleLogin />;
-  return <ConsoleDesk session={session} />;
+  return (
+    <SecondFactor session={session}>
+      <ConsoleDesk session={session} />
+    </SecondFactor>
+  );
+}
+
+/**
+ * Double vérification : après le numéro et le code secret, la console demande le code à 6 chiffres
+ * de l'application d'authentification (Google Authenticator…), qui change toutes les 30 secondes.
+ * Le serveur refuse toute action d'administration sans cette étape (niveau « aal2 »).
+ */
+function SecondFactor({ session, children }: { session: Session; children: ReactNode }) {
+  const [step, setStep] = useState<"check" | "ok" | "verify" | "enroll" | "refuse">("check");
+  const [factorId, setFactorId] = useState("");
+  const [qr, setQr] = useState("");
+  const [secret, setSecret] = useState("");
+  const [uri, setUri] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const digits = code.replace(/\D/g, "").slice(0, 6);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const { data: access } = await supabase.rpc("console_access");
+      if (!alive) return;
+      if (!(access as { team?: boolean } | null)?.team) return setStep("refuse");
+      const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (level?.currentLevel === "aal2") return setStep("ok");
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const verified = factors?.totp?.find((f) => f.status === "verified");
+      if (verified) {
+        setFactorId(verified.id);
+        return setStep("verify");
+      }
+      // Première fois : on retire un essai d'inscription non terminé, puis on prépare l'application.
+      for (const f of factors?.all ?? []) if (f.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+      const { data: enrolled, error: failed } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Console CFC", issuer: "Jokko CFC" });
+      if (!alive) return;
+      if (failed || !enrolled) {
+        setError("La double vérification ne se prépare pas. Réessaie dans un instant.");
+        return setStep("enroll");
+      }
+      setFactorId(enrolled.id);
+      setQr(enrolled.totp.qr_code);
+      setSecret(enrolled.totp.secret);
+      setUri(enrolled.totp.uri);
+      setStep("enroll");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [session.user.id]);
+
+  async function confirm() {
+    setBusy(true);
+    setError("");
+    const { error: wrong } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: digits });
+    setBusy(false);
+    if (wrong) {
+      setCode("");
+      return setError("Code incorrect ou expiré. Prends le code affiché maintenant dans l'application (il change toutes les 30 secondes).");
+    }
+    setStep("ok");
+  }
+
+  if (step === "ok" || step === "refuse") return <>{children}</>;
+  if (step === "check") return <main className="cx-gate"><p className="note" style={{ color: "#F3F1EA" }}>Vérification…</p></main>;
+
+  const form = (
+    <form className="cx-mfa-form" onSubmit={(e) => { e.preventDefault(); if (digits.length === 6 && !busy) void confirm(); }}>
+      <label className="note" htmlFor="cx-otp">Code de l’application (6 chiffres)</label>
+      <Input id="cx-otp" className="num h-12 text-lg tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" value={digits} onChange={(e) => setCode(e.target.value)} placeholder="000000" autoFocus />
+      {error && <p className="note" role="alert" data-tone="error">{error}</p>}
+      <Button type="submit" className="h-12 rounded-full font-semibold" disabled={busy || digits.length !== 6}>{busy ? "Vérification…" : "Confirmer"}</Button>
+    </form>
+  );
+
+  return (
+    <main className="cx-gate">
+      <div className="cx-gate-card">
+        <div className="cx-brand"><JokkoMark size={40} /><span>Jokko <b>Console</b></span></div>
+        {step === "verify" ? (
+          <>
+            <h1>Double vérification</h1>
+            <p className="note">Ouvre ton application d’authentification et tape le code à 6 chiffres de « Jokko CFC ».</p>
+            {form}
+          </>
+        ) : (
+          <>
+            <h1>Protège ta console</h1>
+            <p className="note">Une seule fois : relie la console à une application de codes sur ton téléphone. Ensuite, à chaque connexion, elle te demandera le code du moment en plus de ton code secret.</p>
+            <ol className="cx-steps">
+              <li>Installe <b>Google Authenticator</b> (gratuit, Play Store ou App Store).</li>
+              <li>{uri ? <>Touche <a className="cx-link" href={uri}>Ajouter à l’application</a>, ou scanne ce code avec l’application :</> : "Prépare l’application…"}</li>
+            </ol>
+            {qr && <img className="cx-qr" src={qr} alt="QR code à scanner avec l’application d’authentification" width={180} height={180} />}
+            {secret && <p className="note">Sinon, dans l’application : « Saisir une clé », nom « Jokko CFC », clé : <b className="cx-ref">{secret}</b></p>}
+            <p className="note"><b>3.</b> Tape le code à 6 chiffres que l’application affiche :</p>
+            {form}
+          </>
+        )}
+        <button type="button" className="cx-link" onClick={() => void supabase.auth.signOut()}>Se déconnecter</button>
+      </div>
+    </main>
+  );
 }
 
 function ConsoleLogin() {
