@@ -129,6 +129,21 @@
 .cx-qr { justify-self: center; width: 180px; height: 180px; padding: 8px; border-radius: 16px; background: #fff; border: 1px solid var(--j-line); }
 .cx-gate-card .cx-ref { word-break: break-all; }
 
+.cx-map-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.cx-region-table th, .cx-region-table td { padding-left: 10px; padding-right: 10px; }
+.cx-map { width: 100%; height: auto; max-height: 520px; display: block; }
+.cx-region path { stroke: var(--j-white); stroke-width: 0.012; cursor: pointer; transition: opacity var(--t-fast) var(--ease); }
+.cx-region:hover path { opacity: 0.85; }
+.cx-region.on path { stroke: var(--cx-ink); stroke-width: 0.03; }
+.cx-dot { stroke: var(--j-white); stroke-width: 0.015; }
+.cx-dot.is-avance, .cx-dot-key.is-avance { fill: var(--cx-ink); background: var(--cx-ink); }
+.cx-dot.is-medium, .cx-dot-key.is-medium { fill: oklch(0.55 0.13 70); background: oklch(0.55 0.13 70); }
+.cx-dot.is-gratuit, .cx-dot-key.is-gratuit { fill: var(--j-ink-3); background: var(--j-ink-3); }
+.cx-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--j-ink-2); }
+.cx-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cx-dot-key { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.cx-table tbody tr { cursor: pointer; }
+
 @media (max-width: 1100px) {
   .cx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -142,9 +157,10 @@
   .cx-side-foot { margin: 0 0 0 auto; display: flex; gap: 12px; }
   .cx-side-foot > span, .cx-side-foot > a { display: none; }
   .cx-main { padding: 20px 16px 48px; }
-  .cx-grid { grid-template-columns: 1fr; }
+  .cx-grid, .cx-map-grid { grid-template-columns: 1fr; }
   .cx-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .cx-table th:nth-child(2), .cx-table td:nth-child(2), .cx-table th:nth-child(5), .cx-table td:nth-child(5) { display: none; }
+  .cx-shops-table th:nth-child(2), .cx-shops-table td:nth-child(2), .cx-shops-table th:nth-child(5), .cx-shops-table td:nth-child(5) { display: none; }
+  .cx-region-table th:nth-child(5), .cx-region-table td:nth-child(5) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cx-bar-fill, .cx-nav button { transition: none; }

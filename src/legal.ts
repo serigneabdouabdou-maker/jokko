@@ -4,8 +4,8 @@
  * Changer TERMS_VERSION oblige chaque commerçant à accepter de nouveau.
  */
 
-export const TERMS_VERSION = "2026-10-31";
-export const LEGAL_DATE = "31 octobre 2026";
+export const TERMS_VERSION = "2026-11-01";
+export const LEGAL_DATE = "1er novembre 2026";
 export const COMPANY = "CFC – Cisse Family Company";
 export const CONTACT_EMAIL = "cfallou26@gmail.com";
 
@@ -96,12 +96,15 @@ export const CONFIDENTIALITE: LegalDoc = {
         "Ton prénom, la langue choisie, le nom et les informations de ta boutique.",
         "Ce que tu enregistres : ventes, achats, stock, dépenses, caisse, dettes, factures, et les noms et numéros des clients que tu ajoutes.",
         "Ta voix, seulement quand le micro est ouvert : elle est transformée en texte pour comprendre ta phrase. Jokko ne garde pas l’enregistrement de ta voix.",
+        "La position de ta boutique, seulement si tu choisis de la placer sur la carte : elle est arrondie à environ 1 km. Jokko ne suit jamais ta position quand tu te déplaces. Tu peux la retirer à tout moment dans Réglages.",
+        "Le nombre de fois où tu utilises l’assistant vocal chaque jour, pour appliquer les limites de ton offre.",
       ],
     },
     {
       title: "3. Pourquoi",
       text: [
         "Pour faire marcher Jokko : noter, calculer, sauvegarder ta boutique et la retrouver sur un autre téléphone, et protéger ton compte.",
+        "Compter les boutiques par région et suivre l’usage du service, pour l’améliorer et l’ouvrir dans de nouvelles régions.",
         "Pas de publicité. Tes données ne sont jamais vendues.",
       ],
     },
@@ -109,6 +112,7 @@ export const CONFIDENTIALITE: LegalDoc = {
       title: "4. Qui les traite",
       text: [
         "Toi, et seulement toi : chaque boutique ne voit que ses propres données.",
+        "L’équipe de CFC, pour gérer les comptes et les abonnements : elle voit le nom et la ville de la boutique, le numéro du patron, l’offre, le nombre de ventes et leur total, et la région de la boutique. Ces accès sont protégés par une double vérification.",
         "Nos prestataires techniques, uniquement pour faire marcher le service : Supabase (sauvegarde de tes données, serveurs à Paris, en France) et Google Gemini (compréhension de la voix et des phrases).",
         "WhatsApp, seulement quand tu choisis d’envoyer une facture ou une relance.",
       ],

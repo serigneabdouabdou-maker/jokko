@@ -69,6 +69,7 @@ import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { demoProfile, isDemoShop } from "@/data/demo";
+import { ShopLocation } from "@/components/jokko/ShopLocation";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
 import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
@@ -1376,6 +1377,16 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
       )}
       <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
+      {roleIn(profile) === "patron" && !isDemoShop(shop) && (
+        <ShopLocation
+          shop={shop}
+          onChange={(location) => {
+            const { location: _old, ...rest } = shop;
+            void _old;
+            setProfile(replaceShop(profile, location ? { ...rest, location } : rest));
+          }}
+        />
+      )}
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>

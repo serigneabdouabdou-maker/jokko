@@ -46,6 +46,9 @@ export type ConsoleShop = {
   amount_30: number;
   last_sale_at: string | null;
   products: number;
+  lat?: number | null;
+  lng?: number | null;
+  located_at?: string | null;
 };
 
 export type AdminMember = { user_id: string; phone: string; name: string | null; me: boolean };

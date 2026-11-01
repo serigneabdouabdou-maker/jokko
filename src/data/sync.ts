@@ -20,6 +20,9 @@ export function shopRow(s: Shop): Row {
     id: s.id, name: s.name, city: s.city, activity: s.activity, opening_cash: s.openingCash, last_inventory_at: opt(s.lastInventoryAt),
     address: s.address ?? "", phone: s.phone ?? "", ninea: s.ninea ?? "", payment_info: s.paymentInfo ?? "", invoice_note: s.invoiceNote ?? "",
     wave_link: s.waveLink?.trim() ? s.waveLink.trim() : null,
+    lat: s.location ? Math.round(s.location.lat * 100) / 100 : null,
+    lng: s.location ? Math.round(s.location.lng * 100) / 100 : null,
+    located_at: s.location?.at ?? null,
   };
 }
 
@@ -344,6 +347,7 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(optStr(s.payment_info) ? { paymentInfo: str(s.payment_info) } : {}),
     ...(optStr(s.invoice_note) ? { invoiceNote: str(s.invoice_note) } : {}),
     ...(optStr(s.wave_link) ? { waveLink: str(s.wave_link) } : {}),
+    ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"
       ? { plan: { plan: s.plan, until: optStr(s.plan_until) ? iso(s.plan_until) : null, trialUntil: optStr(s.trial_until) ? iso(s.trial_until) : null } }
       : {}),

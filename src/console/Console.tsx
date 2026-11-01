@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
+import { ConsoleMap } from "./ConsoleMap";
 import { supabase, signIn, phoneOf } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
 import { adminDecide, type AdminOverview, adminOverview, adminSetPlan, adminSettings, PLAN_LABELS } from "@/data/plans";
@@ -29,9 +30,10 @@ const short = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: 
 const monthName = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { month: "short" });
 const phone = (p: string) => p.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
-type Tab = "apercu" | "paiements" | "boutiques" | "reglages";
+type Tab = "apercu" | "carte" | "paiements" | "boutiques" | "reglages";
 const TABS: [Tab, string][] = [
   ["apercu", "Vue d'ensemble"],
+  ["carte", "Carte"],
   ["paiements", "Paiements"],
   ["boutiques", "Boutiques"],
   ["reglages", "Réglages"],
@@ -290,6 +292,7 @@ function ConsoleDesk({ session }: { session: Session }) {
         ) : (
           <>
             {tab === "apercu" && <Overview dash={dash} shops={shops} usage={usage} onGo={go} />}
+            {tab === "carte" && <ConsoleMap shops={shops} />}
             {tab === "paiements" && <Payments overview={overview} onChanged={refresh} />}
             {tab === "boutiques" && <Shops shops={shops} onChanged={refresh} />}
             {tab === "reglages" && <Settings overview={overview} onChanged={refresh} />}
@@ -526,7 +529,7 @@ function Shops({ shops, onChanged }: { shops: ConsoleShop[]; onChanged: () => Pr
       </div>
       {note && <p className="note">{note}</p>}
       <section className="cx-card cx-table-card">
-        <table className="cx-table">
+        <table className="cx-table cx-shops-table">
           <thead>
             <tr><th>Boutique</th><th>Patron</th><th>Offre</th><th className="r">Ventes 30 j</th><th>Activité</th><th /></tr>
           </thead>

@@ -103,6 +103,8 @@ export type Shop = {
   invoiceNote?: string;
   /** Lien Wave Business de la boutique (paiement sans API, montré en QR code) */
   waveLink?: string;
+  /** Position de la boutique (donnée par le patron, arrondie à environ 1 km) pour la carte de CFC. */
+  location?: { lat: number; lng: number; at: string };
   /** Offre de la boutique, lue sur le serveur (jamais envoyée par le téléphone) */
   plan?: ShopPlan;
   products: Product[];
