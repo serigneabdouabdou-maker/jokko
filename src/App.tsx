@@ -73,6 +73,7 @@ import { ShopLocation } from "@/components/jokko/ShopLocation";
 import { Icon, type IconName } from "@/components/jokko/Icon";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
 import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVoice";
+import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setGreetPreferred, setSpeedPreferred, type SpeechSpeed, speedPreferred, stopGreeting } from "@/assistant/greeting";
 import { noisePreferred, setNoisePreferred, setWakePreferred, wakePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can } from "@/data/plans";
@@ -749,7 +750,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               if (reason) fail(reason);
             },
           },
-          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo"), wake: wakePreferred(), noise: noisePreferred() },
+          { microphone, greet, mute: !profileRef.current.speak, clear: clearVoicePreferred(), lang: () => (profileRef.current.lang === "fr" ? "fr" : "wo"), wake: wakePreferred(), noise: noisePreferred(), speed: speedPreferred() },
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
@@ -950,7 +951,30 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     return true;
   }
 
+  /**
+   * Salutation automatique : la toute première fois Jokko se présente, puis il salue au premier micro de la journée.
+   * Un nouvel appui pendant la salutation la coupe et ouvre le micro tout de suite.
+   */
+  const greeting = useRef(false);
+  async function greetFirst() {
+    const kind = greetingDue();
+    if (!kind) return;
+    markGreeted();
+    const lang = profileRef.current.lang === "fr" ? "fr" : "wo";
+    say(GREETINGS[kind][lang].text);
+    if (!profileRef.current.speak) return;
+    greeting.current = true;
+    setVoice("confirmation");
+    setWave((w) => w + 1);
+    await playGreeting(kind, lang);
+    greeting.current = false;
+  }
+
   async function toggleMic() {
+    if (greeting.current) {
+      stopGreeting();
+      return;
+    }
     if (liveRef.current?.listening) {
       liveRef.current.stop();
       return;
@@ -962,6 +986,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     }
     if (live || connecting.current) return;
     clearTimers();
+    await greetFirst();
     if (liveRef.current || (direct && (await isReady()))) {
       quotaNote.current = null;
       const handle = await openLive(true);
@@ -1490,11 +1515,15 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** Écoute en boutique : mot d'appel « Jokko », filtre anti-bruit, voix claire pour tout. */
+const SPEEDS: [SpeechSpeed, string][] = [["lent", "Lent"], ["normal", "Normal"], ["rapide", "Rapide"]];
+
+/** Écoute en boutique : mot d'appel « Jokko », filtre anti-bruit, voix claire, salutation et vitesse. */
 function ClearVoiceSetting() {
   const [on, setOn] = useState(clearVoicePreferred);
   const [wake, setWake] = useState(wakePreferred);
   const [noise, setNoise] = useState(noisePreferred);
+  const [greet, setGreet] = useState(greetPreferred);
+  const [speed, setSpeed] = useState<SpeechSpeed>(speedPreferred);
   return (
     <>
       <div className="row">
@@ -1508,6 +1537,18 @@ function ClearVoiceSetting() {
       <div className="row">
         <Checkbox id="voix-claire" checked={on} onCheckedChange={(checked) => { setOn(checked === true); setClearVoicePreferred(checked === true); }} />
         <Label htmlFor="voix-claire">Toutes les réponses avec la voix de l’accueil (environ 1 seconde plus lent)</Label>
+      </div>
+      <div className="row">
+        <Checkbox id="salutation" checked={greet} onCheckedChange={(checked) => { setGreet(checked === true); setGreetPreferred(checked === true); }} />
+        <Label htmlFor="salutation">Jokko me salue au premier micro de la journée (« Asalaa maalekum ! »)</Label>
+      </div>
+      <div className="voice-speed">
+        <span>Vitesse de la voix de Jokko</span>
+        <div className="pay-modes" role="radiogroup" aria-label="Vitesse de la voix de Jokko">
+          {SPEEDS.map(([value, label]) => (
+            <button key={value} type="button" role="radio" aria-checked={speed === value} className={speed === value ? "on" : ""} onClick={() => { setSpeed(value); setSpeedPreferred(value); }}>{label}</button>
+          ))}
+        </div>
       </div>
       <p className="note">Ces réglages comptent à partir du prochain appui sur le micro.</p>
     </>

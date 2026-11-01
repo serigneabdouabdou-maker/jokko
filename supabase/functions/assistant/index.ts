@@ -111,8 +111,8 @@ function failure(req: Request, error: unknown): Response {
 const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-lite-tts"];
 const READS_DIRECTIONS_ALOUD = /^gemini-3\.8/;
 const DIRECTION: Record<string, string> = {
-  wo: "Dis en wolof de Dakar, clairement et posément, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui t'aide au comptoir :",
-  fr: "Dis en français, avec un léger accent sénégalais, clairement et posément, d'une voix chaleureuse, souriante et rassurante :",
+  wo: "Dis en wolof de Dakar, clairement, à un rythme naturel et vif, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui t'aide au comptoir :",
+  fr: "Dis en français, avec un léger accent sénégalais, clairement, à un rythme naturel et vif, d'une voix chaleureuse, souriante et rassurante :",
 };
 const spoken = new Map<string, { pcm: Uint8Array; rate: number }>();
 

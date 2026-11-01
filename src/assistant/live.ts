@@ -5,6 +5,7 @@ import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from ".
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { CallGate, NoiseGate } from "./listenFilter";
 import { matchRecorded, playRecorded, prefetchRecorded, stopRecorded } from "./recorded";
+import { SPEED_NOTE, type SpeechSpeed } from "./greeting";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
 export type LiveToolCall = { id?: string; name?: string; args?: Record<string, unknown> };
@@ -44,6 +45,8 @@ export type LiveOptions = {
   wake?: boolean;
   /** Filtre anti-bruit : « normal » ou « fort » (boutique très bruyante). */
   noise?: "normal" | "fort";
+  /** Vitesse de parole choisie dans Réglages. */
+  speed?: SpeechSpeed;
 };
 
 export class LiveStartError extends Error {
@@ -393,6 +396,8 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
 
   if (media) await listenTo(media);
   open = true;
+  // Vitesse de parole choisie par le commerçant (consigne silencieuse, Jokko ne répond pas).
+  live.sendClientContent({ turns: [{ role: "user", parts: [{ text: SPEED_NOTE[options.speed ?? "normal"] }] }], turnComplete: false });
   handlers.onPhase("ecoute");
   if (options.greet && !options.mute && lang() === "wo" && playRecorded(audio, "Asalaa maalekum ! Maa ngi lay déglu.", () => handlers.onPhase("ecoute"))) {
     handlers.onPhase("parle");

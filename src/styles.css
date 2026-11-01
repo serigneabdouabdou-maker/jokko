@@ -1416,3 +1416,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .jk-icon, .banner-go, .banner.banner-link { transition: none; }
   button:not(:disabled):active .jk-icon, a:active .jk-icon, .banner.banner-link:hover .banner-go { transform: none; }
 }
+
+/* Réglage : vitesse de la voix de Jokko */
+.voice-speed { display: grid; gap: 8px; margin: 6px 0 4px; }
+.voice-speed > span { font-size: 14px; font-weight: 600; color: var(--j-ink); }
+.voice-speed .pay-modes { grid-template-columns: repeat(3, 1fr); margin-bottom: 0; }
