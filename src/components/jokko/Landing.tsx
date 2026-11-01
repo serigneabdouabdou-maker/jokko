@@ -1,6 +1,7 @@
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
+import { CFC_LOGO, CfcSection, cfcWhatsappLink } from "@/components/jokko/Cfc";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Icon } from "@/components/jokko/Icon";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc } from "@/legal";
@@ -338,6 +339,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           <a href="#offres">Offres</a>
           <a href="#fonctions">Fonctions</a>
           <a href="#distance">À distance</a>
+          <a href="#cfc">Qui sommes-nous</a>
         </nav>
         <span className="lx-nav-actions">
           <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => onStart("entrer")}>Se connecter</Button>
@@ -377,6 +379,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           <ul className="langs lx-in" style={at(6)} aria-label="Langues comprises">
             {langs.map((name) => <li key={name}>{name}</li>)}
           </ul>
+          <a className="lx-by lx-in" style={at(7)} href="#cfc">Une solution <b>CFC – Cissé Family Company</b></a>
         </div>
         <CounterScene />
       </section>
@@ -484,6 +487,8 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
       </section>
 
 
+      <CfcSection />
+
       <Reveal as="section" className="lx-final">
         <div className="lx-final-mark" style={at(0)}><JokkoMark size={64} /></div>
         <h2 style={at(1)}>Dites votre première vente.</h2>
@@ -497,8 +502,9 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
 
       <footer className="lfoot">
         <span className="lbrand"><JokkoMark size={24} /><span>Jokko</span></span>
-        <span>La boutique qui écoute.</span>
+        <a className="lfoot-cfc" href="#cfc"><img src={CFC_LOGO} alt="" width={56} height={32} loading="lazy" /><span>Une solution CFC – Cissé Family Company</span></a>
         <span className="lfoot-links">
+          <a className="link" href={cfcWhatsappLink()} target="_blank" rel="noopener">WhatsApp</a>
           <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>Conditions d’utilisation</button>
           <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>Confidentialité</button>
         </span>

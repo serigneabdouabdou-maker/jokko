@@ -11,6 +11,14 @@
  */
 import type { CSSProperties, SVGProps } from "react";
 import {
+  Wrench,
+  Sparkles,
+  School,
+  MapPinned,
+  Mail,
+  Headphones,
+  ExternalLink,
+  CodeXml,
   AlertCircle,
   ArrowDown,
   ArrowLeftRight,
@@ -98,6 +106,15 @@ export const ICONS = {
   reglages: Settings,
   langue: Languages,
   position: MapPin,
+  // CFC (page d'accueil)
+  numerique: CodeXml,
+  ia: Sparkles,
+  reparation: Wrench,
+  accessoire: Headphones,
+  ecole: School,
+  carte: MapPinned,
+  lien: ExternalLink,
+  email: Mail,
   // Voix
   micro: Mic,
   voix: AudioLines,

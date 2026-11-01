@@ -393,3 +393,80 @@
 .oa-ico { display: inline-flex; align-items: center; gap: 4px; }
 .oa-tip.oa-ico { align-items: flex-start; }
 .oa-tip .jk-icon { margin-top: 1px; }
+
+/* Signature « par CFC » sous les boutons du héros */
+.lx-by { display: inline-flex; align-items: center; min-height: var(--j-tap); margin-top: 6px; font-size: 13px; color: var(--j-ink-3); text-decoration: none; }
+.lx-by b { color: var(--j-ink-2); font-weight: 600; margin-left: 4px; }
+.lx-by:hover b { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Qui est derrière Jokko (CFC) */
+.cfc { max-width: 1180px; margin: 0 auto; padding-top: clamp(64px, 9vw, 112px); }
+.cfc-intro { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(20px, 4vw, 48px); align-items: center; }
+.cfc-logo { margin: 0; border-radius: 28px; overflow: hidden; background: #ece9e8; box-shadow: var(--j-shadow-up); aspect-ratio: 640 / 365; }
+.cfc-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cfc-lede { font-size: 18px; line-height: 1.55; color: var(--j-ink-2); margin: 0; }
+.cfc-lede b { color: var(--j-ink); }
+.cfc-founder { display: flex; gap: 12px; align-items: center; margin: 18px 0 0; padding: 12px 14px; border-radius: 18px; background: var(--j-soft-2); color: var(--j-ink-2); font-size: 15px; line-height: 1.45; }
+.cfc-founder b { color: var(--j-ink); }
+.cfc-founder-mark { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--j-ink); color: var(--j-yellow); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
+.cfc-trades { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 12px; }
+.cfc-trades li { display: flex; gap: 12px; align-items: flex-start; }
+.cfc-trades li::before { content: none; }
+.cfc-trades b { display: block; color: var(--j-ink); font-size: 15px; }
+.cfc-trades small { display: block; color: var(--j-ink-3); font-size: 14px; line-height: 1.45; }
+.cfc-trade-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--j-card); border: 1px solid var(--j-line); color: var(--j-icon-strong); }
+
+.cfc-sub { margin: clamp(36px, 5vw, 56px) 0 16px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 700; color: var(--j-ink); }
+.cfc-projects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.cfc-project { display: flex; flex-direction: column; border-radius: 24px; background: var(--j-card); border: 1px solid var(--j-line); box-shadow: var(--j-shadow); overflow: hidden; color: inherit; text-decoration: none; transition: transform var(--lx-quick) var(--lx-ease), box-shadow var(--lx-quick) var(--lx-ease); }
+a.cfc-project:hover { transform: translateY(-3px); box-shadow: var(--j-shadow-up); }
+a.cfc-project:active { transform: scale(0.98); }
+a.cfc-project:focus-visible { outline: 3px solid var(--j-yellow); outline-offset: 3px; }
+.cfc-visual { aspect-ratio: 1200 / 630; display: grid; place-items: center; background: color-mix(in oklab, var(--c) 10%, #ffffff); border-bottom: 1px solid var(--j-line); }
+.cfc-visual.is-logo img { max-width: 62%; max-height: 72%; object-fit: contain; }
+.cfc-visual.is-banner img { width: 100%; height: 100%; object-fit: cover; }
+.cfc-initials { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 20px; background: var(--c); color: #fff; font-weight: 700; font-size: 26px; }
+.cfc-project-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 18px; flex: 1; }
+.cfc-project-name { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; font-weight: 700; color: var(--j-ink); }
+.cfc-project-text { margin: 0; color: var(--j-ink-2); font-size: 15px; line-height: 1.5; }
+.cfc-tags { list-style: none; padding: 0; margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cfc-tags li { padding: 3px 10px; border-radius: 999px; background: var(--j-wash); border: 1px solid var(--j-line); font-size: 12px; font-weight: 600; color: var(--j-ink-2); }
+.cfc-tags li::before { content: none; }
+.cfc-project-link { margin-top: auto; padding-top: 6px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; color: var(--j-ink); }
+.cfc-next { padding: 20px; gap: 10px; background: var(--j-ink); color: var(--j-white); border-color: var(--j-ink); }
+.cfc-next .cfc-project-name { color: var(--j-white); font-size: 20px; }
+.cfc-next .cfc-project-text { color: color-mix(in oklab, var(--j-white) 75%, var(--j-ink)); }
+.cfc-next .cfc-trade-icon { background: color-mix(in oklab, var(--j-white) 10%, var(--j-ink)); border-color: transparent; color: var(--j-yellow); }
+.cfc-next .cfc-wa { margin-top: auto; }
+
+.cfc-wa, .cfc-mail { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--j-tap); padding: 0 18px; border-radius: 999px; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform var(--lx-quick) var(--lx-ease), background var(--lx-quick) var(--lx-ease); }
+.cfc-wa { background: var(--j-yellow); color: var(--j-ink); }
+.cfc-wa:hover { background: color-mix(in oklab, var(--j-yellow) 85%, var(--j-white)); }
+.cfc-mail { background: var(--j-card); color: var(--j-ink); border: 1px solid var(--j-line); }
+.cfc-wa:active, .cfc-mail:active { transform: scale(0.97); }
+.cfc-wa:focus-visible, .cfc-mail:focus-visible { outline: 3px solid var(--j-ink); outline-offset: 2px; }
+.cfc-contact { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 18px 20px; border-radius: 24px; background: var(--j-soft-2); }
+.cfc-contact p { margin: 0; color: var(--j-ink-2); }
+.cfc-contact b { color: var(--j-ink); }
+.cfc-contact-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Pied de page : logo CFC */
+.lfoot-cfc { display: inline-flex; align-items: center; gap: 10px; color: var(--j-ink-3); text-decoration: none; min-height: var(--j-tap); }
+.lfoot-cfc img { width: 56px; height: 32px; object-fit: cover; border-radius: 8px; }
+.lfoot-cfc:hover span { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .cfc-intro { grid-template-columns: 1fr; }
+  .cfc-projects { grid-template-columns: 1fr; }
+  .cfc-contact { flex-direction: column; align-items: stretch; }
+  .cfc-contact-actions { flex-direction: column; }
+  .cfc-mail { word-break: break-all; }
+}
+@media (min-width: 640px) and (max-width: 900px) {
+  .cfc-projects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cfc-next { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cfc-project, .cfc-wa, .cfc-mail { transition: none; }
+  a.cfc-project:hover, a.cfc-project:active { transform: none; }
+}
