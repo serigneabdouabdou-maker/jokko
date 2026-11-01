@@ -1,3 +1,3 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/pub-a-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/pub-b-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/jokko-accueil-v2.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-presentation-fr-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-ecoute-fr-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/salut-ecoute-v1.mp3
