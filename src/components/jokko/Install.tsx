@@ -96,7 +96,46 @@ export function InstallSettings({ userId }: { userId?: string }) {
           </Button>
         </div>
       )}
+      {userId && notify === "acceptees" && <ActivityChoice userId={userId} />}
       {userId && notify === "acceptees" && <SummaryHour userId={userId} />}
+    </div>
+  );
+}
+
+const ACTIVITY: Array<[string, string]> = [
+  ["employes", "Ce que font mes employés (ventes, dépenses, factures, dettes payées)"],
+  ["toutes", "Tout, même ce que je fais moi-même"],
+  ["aucune", "Rien (seulement les alertes graves)"],
+];
+
+/** Patron : être prévenu de chaque vente, dépense, facture ou dette payée, même appli fermée. */
+function ActivityChoice({ userId }: { userId: string }) {
+  const [pref, setPref] = useState<string>("employes");
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    void supabase
+      .from("profiles")
+      .select("notify_activity")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }) => data?.notify_activity && setPref(String(data.notify_activity)));
+  }, [userId]);
+  return (
+    <div className="field">
+      <label htmlFor="notify-activity" className="text-sm font-medium">Me prévenir par notification quand la boutique vend ou note quelque chose</label>
+      <select
+        id="notify-activity"
+        className="h-11 rounded-md border px-3"
+        value={pref}
+        onChange={async (e) => {
+          setPref(e.target.value);
+          const { error } = await supabase.from("profiles").update({ notify_activity: e.target.value }).eq("user_id", userId);
+          setNote(error ? "Pas de connexion internet. Réessaie." : "✓ Enregistré.");
+        }}
+      >
+        {ACTIVITY.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+      </select>
+      {note && <Notice text={note} />}
     </div>
   );
 }
