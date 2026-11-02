@@ -1,6 +1,7 @@
 # Vérification automatique : à chaque envoi de code, GitHub installe le projet,
 # lance les tests, vérifie les types et construit l'appli.
-# Sur la branche main, si tout est bon, l'appli est publiée sur GitHub Pages.
+# L'appli est publiée par Cloudflare sur https://jokkoapp.com (à chaque envoi sur main).
+# GitHub Pages ne garde qu'une page qui renvoie l'ancienne adresse vers jokkoapp.com.
 name: Verification
 
 on:
@@ -28,21 +29,19 @@ jobs:
         run: npm run typecheck
       - name: Construction de l'appli
         run: npx vite build
-        env:
-          JOKKO_BASE: /jokko/
       - name: Vérifier l'appli installable
         run: |
-          grep -q 'rel="manifest" href="/jokko/manifest.webmanifest"' dist/index.html
-          grep -q 'apple-touch-icon" href="/jokko/apple-touch-icon.png"' dist/index.html
+          grep -q 'rel="manifest" href="/manifest.webmanifest"' dist/index.html
+          grep -q 'apple-touch-icon" href="/apple-touch-icon.png"' dist/index.html
           test -f dist/sw.js && test -f dist/manifest.webmanifest && test -f dist/icon-512.png && test -f dist/icon-maskable-512.png
           test -f dist/console/index.html && grep -q 'noindex' dist/console/index.html
           node -e "const m=require('./dist/manifest.webmanifest.json')" 2>/dev/null || node -e "JSON.parse(require('fs').readFileSync('dist/manifest.webmanifest','utf8'))"
           echo "Appli installable : OK"
-      - name: Préparer la publication
+      - name: Préparer la page de déménagement (ancienne adresse → jokkoapp.com)
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: pages-redirect
 
   publication:
     needs: verification
@@ -59,6 +58,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deploiement.outputs.page_url }}
     steps:
-      - name: Publier sur GitHub Pages
+      - name: Publier la page de déménagement
         id: deploiement
         uses: actions/deploy-pages@v4

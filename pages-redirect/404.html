@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Jokko a déménagé — jokkoapp.com</title>
+<link rel="canonical" href="https://jokkoapp.com/">
+<script>
+  // Jokko a déménagé : on garde la suite de l'adresse (?wave=ok, console…) et on part sur jokkoapp.com.
+  var rest = location.pathname.replace(/^\/jokko\/?/, "") + location.search + location.hash;
+  location.replace("https://jokkoapp.com/" + rest);
+</script>
+<style>body{font-family:system-ui,sans-serif;background:#fbf7ef;color:#1d1b16;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;text-align:center}a{color:#0b6b4f;font-weight:700}</style>
+</head>
+<body>
+<p>Jokko a une nouvelle adresse :<br><a href="https://jokkoapp.com/">jokkoapp.com</a></p>
+</body>
+</html>
