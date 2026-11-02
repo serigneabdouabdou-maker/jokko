@@ -110,3 +110,20 @@ describe("livre de phrases verrouillé", () => {
     expect(WOLOF_PHRASES.find((p) => p.situation === "faire répéter")!.wo).toBe("Baal ma, waxaat ko.");
   });
 });
+
+describe("tous les montants, aller-retour", () => {
+  it("chaque montant de 5 F à 1 000 000 F se dit en wolof et se relit au franc près", async () => {
+    const { francsToWolof, spokenAmountToFrancs } = await import("./wolofNumbers");
+    const faux: string[] = [];
+    for (let f = 5; f <= 1_000_000; f += 5) {
+      const w = francsToWolof(f);
+      if (spokenAmountToFrancs(w)?.francs !== f && faux.length < 5) faux.push(`${f} → ${w}`);
+    }
+    expect(faux).toEqual([]);
+  });
+
+  it("45 250 F = juróom-ñeenti junni ak juróom-fukk (9 050 dërëm)", async () => {
+    const { francsToWolof } = await import("./wolofNumbers");
+    expect(francsToWolof(45250)).toBe("juróom-ñeenti junni ak juróom-fukk");
+  });
+});
