@@ -266,3 +266,23 @@ describe("LiveDesk : enregistrement automatique", () => {
     expect(desk.handle({ name: "supprimer_tout" })).toEqual({ statut: "outil_inconnu" });
   });
 });
+
+describe("totaux faits par le code", () => {
+  it("total des dettes de 10 clients, au franc près, en francs et en wolof", async () => {
+    const { debtTotals } = await import("./liveDesk");
+    const clients = [12500, 8500, 20000, 3750, 45250, 1000, 600, 15000, 2250, 7400].map((debt, i) => ({ name: `Client ${i + 1}`, debt }));
+    const t = debtTotals([...clients, { name: "Sans dette", debt: 0 }]);
+    expect(t.nombre_clients).toBe(10);
+    expect(t.total_francs).toBe(116250);
+    expect(t.total_en_francs).toBe("116 250 F");
+    expect(t.total_en_wolof).toBe("ñaar-fukk ak ñetti junni ak ñaari téeméer ak juróom-fukk");
+    expect(t.liste[0]).toMatchObject({ client: "Client 5", francs: 45250, en_wolof: "juróom-ñeenti junni ak juróom-fukk" });
+  });
+
+  it("calculer : somme et différence", async () => {
+    const { calculate } = await import("./liveDesk");
+    expect(calculate({ operation: "somme", montants: [20000, 8500] })).toMatchObject({ resultat_francs: 28500, en_wolof: "juróomi junni ak juróom-ñaari téeméer" });
+    expect(calculate({ operation: "difference", montants: [50000, 45250] })).toMatchObject({ resultat_francs: 4750, en_francs: "4 750 F" });
+    expect(calculate({ montants: ["abc"] })).toMatchObject({ statut: "pas_compris" });
+  });
+});

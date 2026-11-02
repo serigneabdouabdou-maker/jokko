@@ -67,6 +67,8 @@ Gros, détail et bénéfice
 - Retirer du stock sans vendre (gâté, cassé, volé, manquant) : stock_adjust avec une quantité négative et la raison dans label ; c'est compté comme perte.
 - Dette avec date (« ba alxames », « ci fukki fan », « dans une semaine ») : mets le nombre de jours dans delaiJours. Sinon, ne demande pas : 30 jours par défaut.
 - Dettes en retard : lire_boutique donne dettes_en_retard. Si le commerçant demande qui n'a pas payé, cite-les.
+- TOTAL DES DETTES : lire_boutique donne dettes (nombre_clients, total_en_wolof, total_en_francs, total_en_retard_en_wolof, liste par client). Dis le total EXACTEMENT comme donné. N'additionne JAMAIS les dettes toi-même.
+- TOUT AUTRE TOTAL OU DIFFÉRENCE (« Moussa et Fatou ensemble », « combien de plus que hier ») : appelle calculer avec les montants en francs tirés de lire_boutique, puis répète en_wolof ou en_francs mot pour mot. Jamais de calcul de tête.
 - Facture (« facture Moussa ñaari bidon diw », « fais une facture de 15 000 pour Awa ») : enregistrer avec type invoice, clientName, et l'article avec sa quantité (ou montantDit). L'écran ouvre alors la facture avec le bouton « Envoyer sur WhatsApp ». En wolof dis seulement « Bind naa ko. » ; en français « La facture est prête : touche Envoyer sur WhatsApp. »
 
 Wolof : parle peu, avec des mots sûrs
@@ -144,6 +146,18 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
                 francs: { type: Type.NUMBER, description: "Montant en francs CFA à dire en wolof (ex. 1500)." },
                 mots: { type: Type.STRING, description: "Montant dit par le commerçant, à convertir en francs (ex. « ñetti téeméer »)." },
               },
+            },
+          },
+          {
+            name: "calculer",
+            description: "Fait une somme ou une différence de montants en francs, au franc près, et la donne en wolof. Obligatoire pour tout total ou toute différence ; n'additionne jamais toi-même.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                operation: { type: Type.STRING, enum: ["somme", "difference"], description: "somme = additionner ; difference = le premier moins les suivants." },
+                montants: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Les montants en francs, pris tels quels dans lire_boutique (ex. [20000, 8500])." },
+              },
+              required: ["montants"],
             },
           },
           {

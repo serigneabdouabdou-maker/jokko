@@ -37,7 +37,7 @@ describe("conversation en direct", () => {
     expect(instruction).toContain("WOLOF ET FRANÇAIS, RIEN D'AUTRE");
     expect(instruction).toContain("p-huile");
     const names = (config.tools as Array<{ functionDeclarations: Array<{ name: string }> }>)[0].functionDeclarations.map((f) => f.name);
-    expect(names).toEqual(["lire_boutique", "enregistrer", "convertir_montant", "annuler_derniere"]);
+    expect(names).toEqual(["lire_boutique", "enregistrer", "convertir_montant", "calculer", "annuler_derniere"]);
     expect(config.contextWindowCompression).toEqual({ slidingWindow: {} });
     expect(config.realtimeInputConfig?.automaticActivityDetection?.silenceDurationMs).toBe(800);
     expect(config.inputAudioTranscription).toEqual({});

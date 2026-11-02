@@ -9,6 +9,11 @@ function wolofAmounts(context: ShopContext): string {
     `dépenses du jour = ${francsToWolof(context.figures.dayExpenses)}`,
     `caisse attendue = ${francsToWolof(context.figures.expectedCash)}`,
     ...context.clients.filter((c) => c.debt > 0).map((c) => `dette de ${c.name} = ${francsToWolof(c.debt)}`),
+    ...(() => {
+      const owing = context.clients.filter((c) => c.debt > 0);
+      const total = owing.reduce((a, c) => a + c.debt, 0);
+      return owing.length ? [`TOTAL des dettes de ${owing.length} client(s) = ${francsToWolof(total)} (${total} F) — dis ce total tel quel, ne l'additionne jamais toi-même`] : [];
+    })(),
     ...context.products.map((p) => `prix ${p.name} = ${francsToWolof(p.price)}`),
     ...context.products.map((p) => `stock ${p.name} = ${p.stock > 0 ? `${wolofNumber(p.stock)} ${p.unit}` : "amul (stock fini)"}`),
   ];

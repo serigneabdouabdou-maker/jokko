@@ -152,6 +152,8 @@ export class LiveDesk {
         bilan_aujourdhui: vendeur ? { ventes: day.revenue, en_wolof: { ventes: francsToWolof(day.revenue) } } : summary(day),
         bilan_du_mois: vendeur ? undefined : summary(month),
         dettes_en_retard: overdueDebts(shop).map((d) => ({ client: d.client.name, montant: d.client.debt, en_wolof: francsToWolof(d.client.debt), jours_de_retard: -(d.daysLeft ?? 0) })),
+        // Le TOTAL est calculé ici, au franc près : Jokko ne fait jamais l'addition lui-même.
+        dettes: debtTotals(shop.clients, overdueDebts(shop).map((d) => d.client)),
         montants_en_wolof: {
           ventes_du_jour: francsToWolof(context.figures.daySales),
           depenses_du_jour: francsToWolof(context.figures.dayExpenses),
@@ -196,6 +198,10 @@ export class LiveDesk {
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
       };
+    }
+
+    if (call.name === "calculer") {
+      return calculate(args);
     }
 
     if (call.name === "convertir_montant") {
@@ -404,3 +410,41 @@ function missing(action: DraftAction): string {
   if (action.type === "cash_count") return "le comptage de caisse, qui se fait dans l'écran Caisse";
   return "le nom du client et le montant";
 }
+
+type Debtor = { name: string; debt: number };
+const fr = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
+
+/** Total des dettes (et des dettes en retard), en francs et en wolof, calculé par le code. */
+export function debtTotals(clients: Debtor[], late: Debtor[] = []) {
+  const owing = clients.filter((c) => c.debt > 0).sort((a, b) => b.debt - a.debt);
+  const total = owing.reduce((a, c) => a + c.debt, 0);
+  const lateTotal = late.reduce((a, c) => a + (c.debt > 0 ? c.debt : 0), 0);
+  return {
+    nombre_clients: owing.length,
+    total_francs: total,
+    total_en_francs: fr(total),
+    total_en_wolof: total > 0 ? francsToWolof(total) : "dara",
+    total_en_retard_francs: lateTotal,
+    total_en_retard_en_wolof: lateTotal > 0 ? francsToWolof(lateTotal) : "dara",
+    liste: owing.map((c) => ({ client: c.name, francs: c.debt, en_francs: fr(c.debt), en_wolof: francsToWolof(c.debt) })),
+    consigne: "Pour le total, dis total_en_wolof (ou total_en_francs) mot pour mot. N'additionne jamais toi-même.",
+  };
+}
+
+/** Somme ou différence de montants, faite par le code (jamais de tête par le modèle). */
+export function calculate(args: Record<string, unknown>): Record<string, unknown> {
+  const raw = Array.isArray(args.montants) ? args.montants : [];
+  const values = raw.map((v) => (typeof v === "number" ? v : typeof v === "string" ? Number(v.replace(/[\s\u202f\u00a0F]/gi, "")) : NaN));
+  if (!values.length || values.some((v) => !Number.isFinite(v))) return NOT_UNDERSTOOD;
+  const op = args.operation === "difference" ? "difference" : "somme";
+  const result = op === "difference" ? values.slice(1).reduce((a, v) => a - v, values[0]) : values.reduce((a, v) => a + v, 0);
+  const abs = Math.abs(Math.round(result));
+  return {
+    operation: op,
+    resultat_francs: Math.round(result),
+    en_francs: `${result < 0 ? "moins " : ""}${fr(abs)}`,
+    en_wolof: abs === 0 ? "dara" : `${result < 0 ? "moins " : ""}${francsToWolof(abs)}`,
+    consigne: "Répète en_wolof (ou en_francs) mot pour mot. Ne change aucun chiffre.",
+  };
+}
+
