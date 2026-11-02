@@ -286,3 +286,47 @@ describe("totaux faits par le code", () => {
     expect(calculate({ montants: ["abc"] })).toMatchObject({ statut: "pas_compris" });
   });
 });
+
+describe("panier de plusieurs articles (récapitulé avant d'enregistrer)", () => {
+  const add = (articles: Array<Record<string, unknown>>) => ({ name: "panier", args: { action: "ajouter", articles } });
+
+  it("ajoute, récapitule, se fait corriger, puis enregistre tout d'un coup après « waaw »", () => {
+    const { desk, saved, shop } = setup();
+    const stockRiz = shop().products.find((p) => p.name === "Riz brisé")!.stock;
+    const r1 = desk.handle(add([{ article: "riz", quantite: 2 }, { article: "huile", quantite: 2 }, { article: "sucre", quantite: 3, unite: "kg" }, { article: "lait", quantite: 4 }]));
+    expect(r1).toMatchObject({ statut: "a_confirmer", nombre_articles: 4, total_francs: 56700 });
+    expect(saved.length).toBe(0);
+
+    // Valider sans le « oui » du commerçant : refusé, il faut récapituler et attendre
+    expect(desk.handle({ name: "panier", args: { action: "valider", paiement: "especes" } })).toMatchObject({ statut: "a_confirmer", total_francs: 56700 });
+    expect(saved.length).toBe(0);
+
+    // « Non, un seul sac de riz » : le panier change, nouveau récapitulatif
+    expect(desk.handle({ name: "panier", args: { action: "changer", articles: [{ article: "riz", quantite: 1 }] } })).toMatchObject({ statut: "a_confirmer", total_francs: 38700 });
+    expect(saved.length).toBe(0);
+
+    // Récapitulatif donné, « waaw » : tout part
+    const done = desk.handle({ name: "panier", args: { action: "valider", paiement: "especes", confirmation: "waaw, noonu la" } });
+    expect(done).toMatchObject({ statut: "enregistre", nombre_articles: 4, total_francs: 38700, total_en_francs: "38 700 F" });
+    expect(saved.length).toBe(1);
+    expect(shop().products.find((p) => p.name === "Riz brisé")!.stock).toBe(stockRiz - 1);
+    expect(desk.basket.empty).toBe(true);
+  });
+
+  it("demande le paiement sans refaire le récapitulatif, et refuse un article inconnu", () => {
+    const { desk, saved } = setup();
+    desk.handle(add([{ article: "riz", quantite: 1 }, { article: "huile", quantite: 2 }, { article: "sucre", quantite: 3 }]));
+    expect(desk.handle({ name: "panier", args: { action: "valider", confirmation: "oui" } })).toMatchObject({ statut: "incomplet", besoin: "C'est payé comment ?" });
+    expect(desk.handle({ name: "panier", args: { action: "valider", paiement: "wave", confirmation: "waaw, Wave" } })).toMatchObject({ statut: "enregistre", total_francs: 35100 });
+    expect(saved.length).toBe(1);
+    expect(desk.handle(add([{ article: "trottinette", quantite: 1 }]))).toMatchObject({ statut: "article_inconnu" });
+  });
+
+  it("plus de 10 articles d'un coup", () => {
+    const { desk } = setup();
+    const many = Array.from({ length: 12 }, (_, i) => ({ article: ["riz", "huile", "sucre", "lait"][i % 4], quantite: 1 }));
+    const r = desk.handle(add(many));
+    expect(r).toMatchObject({ statut: "a_confirmer", nombre_articles: 4 });
+    expect((r.lignes as Array<{ quantite: number }>).map((l) => l.quantite)).toEqual([3, 3, 3, 3]);
+  });
+});

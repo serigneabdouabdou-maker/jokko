@@ -56,7 +56,12 @@ Enregistrer (vente, dépense, achat de marchandise, réapprovisionnement, dette,
 2. Quand l'outil répond statut "enregistre", dis-le en quelques mots dans sa langue, avec le montant. En wolof, dis EXACTEMENT montant_en_wolof renvoyé par l'outil (« Bind naa ko : ñaari bidon diw, ñetti junni. ») ; en français, dis montant_francs (« C'est noté : 2 bidons d'huile, 15 000 F. »). Signale si stock_bas n'est pas vide.
 3. Si l'outil répond "incomplet", ou s'il manque l'article, la quantité, le montant ou le client, pose une seule question courte (« Ñaata ? », « Ban produit ? », « Combien ? ») puis enregistre quand tu as la réponse.
 4. Si le commerçant dit que ce que tu viens d'enregistrer est faux ou veut l'annuler (déedéet, du dëgg, baal ma, dindi ko, annule, non c'est pas ça, efface), appelle annuler_derniere, dis que c'est annulé, puis enregistre la bonne version s'il l'a donnée. Un « non » ou « déedéet » qui répond à une question que tu viens de poser n'est PAS une annulation.
-5. Une phrase avec plusieurs écritures (« deux huiles et un sac de riz ») : appelle enregistrer une fois par écriture.
+5. PLUSIEURS ARTICLES dans une même vente, un même achat ou une même facture (« deux savons, deux sacs de riz, deux bidons d'huile et de l'eau ») : n'utilise PAS enregistrer, utilise l'outil panier.
+   a. Appelle panier « ajouter » avec TOUS les articles entendus (article, quantite, unite), même plus de 10. Le code calcule chaque ligne et le total.
+   b. RÉCAPITULE au commerçant ce que l'outil renvoie : chaque ligne (quantité et article), puis le total EXACTEMENT comme total_en_wolof (ou total_en_francs), puis demande « Noonu la ? » (« C'est bien ça ? »). En wolof si le commerçant parle wolof, en français s'il parle français.
+   c. S'il corrige (« déedéet, benn saku rekk », « ajoute le savon », « enlève l'eau ») : panier « changer », « ajouter » ou « retirer », puis récapitule de nouveau.
+   d. Seulement quand il dit « waaw », « oui », « dëgg la » : panier « valider », avec ses mots exacts dans confirmation (et le paiement s'il l'a dit). Si l'outil demande le paiement ou le client, pose la question puis revalide.
+   e. Jamais de total de tête : dis toujours les totaux de l'outil.
 6. Si l'outil répond statut "refuse" (un vendeur demande un achat ou une correction de stock), n'enregistre rien et dis en une phrase que seul le patron peut le faire. Si lire_boutique contient note_role, ne donne jamais le bénéfice ni les prix d'achat.
 7. Tu n'as jamais le droit de dire « bind naa ko », « c'est noté » ou « enregistré » sans que l'outil ait répondu "enregistre". Sans outil, rien n'existe dans la boutique.
 - Si l'écran t'informe que le commerçant a annulé avec le bouton, ne rappelle pas l'outil : dis-le simplement.
@@ -149,6 +154,36 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
                 francs: { type: Type.NUMBER, description: "Montant en francs CFA à dire en wolof (ex. 1500)." },
                 mots: { type: Type.STRING, description: "Montant dit par le commerçant, à convertir en francs (ex. « ñetti téeméer »)." },
               },
+            },
+          },
+          {
+            name: "panier",
+            description: "Panier de plusieurs articles (vente, achat ou facture) : ajouter, changer, retirer, voir, valider ou vider. Le code calcule chaque ligne et le total. Récapitule avant de valider ; valider seulement après le oui du commerçant.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING, enum: ["ajouter", "changer", "retirer", "voir", "valider", "vider"], description: "ajouter des articles, changer une quantité, retirer un article, voir le récapitulatif, valider (après le oui), vider." },
+                articles: {
+                  type: Type.ARRAY,
+                  description: "Les articles entendus, un par entrée.",
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      article: { type: Type.STRING, description: "Nom ou id de l'article du contexte (« riz », « p-huile »)." },
+                      quantite: { type: Type.NUMBER, description: "Quantité (pour changer : la nouvelle quantité ; 0 = retirer)." },
+                      unite: { type: Type.STRING, description: "Unité dite (sac, kg, bidon, pièce…), si dite." },
+                      prixUnitaireDit: { type: Type.STRING, description: "Prix d'UN article s'il est dit (« 20 000 », « ñeenti junni »), sinon vide." },
+                    },
+                    required: ["article"],
+                  },
+                },
+                type: { type: Type.STRING, enum: ["vente", "achat", "facture"], description: "vente (par défaut), achat pour le stock, ou facture pour un client." },
+                paiement: { type: Type.STRING, enum: ["especes", "wave", "om", "credit"], description: "Moyen de paiement, s'il est dit." },
+                client: { type: Type.STRING, description: "Nom du client (facture ou crédit)." },
+                confirmation: { type: Type.STRING, description: "Pour valider : les mots exacts du commerçant qui dit oui (« waaw », « oui c'est ça »)." },
+                heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },
+              },
+              required: ["action"],
             },
           },
           {

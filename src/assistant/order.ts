@@ -134,7 +134,7 @@ export function repeated(words: string[]): { words: string[]; times: number } {
   return { words, times: 1 };
 }
 
-function isRetail(product: Product, unit: string | null): boolean {
+export function isRetail(product: Product, unit: string | null): boolean {
   return Boolean(unit && product.retail && unitKey(unit) === unitKey(product.retail.unit));
 }
 

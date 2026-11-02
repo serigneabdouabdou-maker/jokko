@@ -5,6 +5,7 @@ import { applyDraft, roundQty, unitKind } from "./apply";
 import { extractSpokenAmount, francsToWolof, settleAmounts, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
+import { Basket } from "./basket";
 
 const TYPES: DraftActionType[] = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment", "purchase"];
 const HISTORY = 20;
@@ -46,6 +47,8 @@ export const PATRON_ONLY_MESSAGE = "réservé au patron : les achats et les corr
  */
 export class LiveDesk {
   history: Entry[] = [];
+  /** Panier de plusieurs articles, récapitulé avant d'être enregistré. */
+  basket = new Basket();
   private deps: DeskDeps;
 
   constructor(deps: DeskDeps) {
@@ -198,6 +201,14 @@ export class LiveDesk {
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
       };
+    }
+
+    if (call.name === "panier") {
+      const before = this.deps.getShop();
+      const heard = typeof args.heard === "string" ? args.heard.trim() : "";
+      return this.basket.handle(before, args, (applied) => {
+        this.commit(before, applied.shop, applied.summary, heard, { callId: call.id, amount: applied.amount ?? undefined });
+      }, this.deps.role?.() !== "vendeur");
     }
 
     if (call.name === "calculer") {
