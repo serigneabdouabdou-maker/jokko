@@ -56,7 +56,8 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, supabase, TRIAL_OVER_EVENT } from "@/data/supabase";
+import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
+import { playQuotaClip, QUOTA_MESSAGES, quotaVariant, type QuotaVariant } from "@/assistant/quotaVoice";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Team } from "@/components/jokko/Team";
@@ -227,6 +228,9 @@ function Num({ value, className = "" }: { value: number; className?: string }) {
   const shown = useCountUp(value);
   return <span className={`num ${className}`}>{amount(shown)}</span>;
 }
+
+/** Jour (heure de Dakar = UTC) : sert à ne refuser le direct qu'une fois par jour. */
+const todayKey = () => new Date().toISOString().slice(0, 10);
 
 /** Pendant l'essai gratuit, une conversation en direct est coupée au bout de 5 minutes. */
 const TRIAL_LIVE_MS = 5 * 60_000;
@@ -593,16 +597,42 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const liveRef = useRef<LiveHandle | null>(null);
-  // Essai gratuit : enveloppe voix/IA épuisée → on coupe la conversation et on propose les offres.
-  const [trialOver, setTrialOver] = useState(false);
+  // Forfait épuisé (essai, limite du jour) : Jokko le dit avec une voix enregistrée, l'écrit,
+  // puis ouvre « Mon offre ». Sinon le commerçant croit que l'appli est en panne.
+  const [quotaBanner, setQuotaBanner] = useState<QuotaVariant | null>(null);
+  const lastTap = useRef(0);
+  const patronRef = useRef(false);
+  const quotaSpokenAt = useRef<Partial<Record<QuotaVariant, number>>>({});
   useEffect(() => {
-    const over = () => {
-      setTrialOver(true);
-      liveRef.current?.stop();
+    const onQuota = (event: Event) => {
+      const detail = (event as CustomEvent<QuotaDetail>).detail ?? {};
+      const variant = quotaVariant(detail, patronRef.current);
+      if (!variant) return;
+      setQuotaBanner(variant);
+      if (detail.reason === "essai") liveRef.current?.stop();
+      // Seulement si le commerçant vient d'appuyer (pas pour un préchargement en arrière-plan), et une fois par 10 min.
+      const now = Date.now();
+      if (now - lastTap.current > 20_000) return;
+      if (now - (quotaSpokenAt.current[variant] ?? 0) < 10 * 60_000) return;
+      quotaSpokenAt.current[variant] = now;
+      void announceQuota(variant);
     };
-    window.addEventListener(TRIAL_OVER_EVENT, over);
-    return () => window.removeEventListener(TRIAL_OVER_EVENT, over);
-  }, []);
+    window.addEventListener(QUOTA_EVENT, onQuota);
+    return () => window.removeEventListener(QUOTA_EVENT, onQuota);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function announceQuota(variant: QuotaVariant) {
+    const lang = profileRef.current.lang === "fr" ? "fr" : "wo";
+    const message = QUOTA_MESSAGES[variant];
+    setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: message[lang], at: new Date().toISOString() }]);
+    if (profileRef.current.speak) {
+      setVoice("confirmation");
+      setWave((w) => w + 1);
+      await playQuotaClip(variant, lang);
+      setVoice("repos");
+    }
+    if (message.offers && patronRef.current) setScreen("offre");
+  }
   const connecting = useRef<Promise<LiveHandle | "microphone" | null> | null>(null);
   const idle = useRef<number | null>(null);
   const replies = useRef(0);
@@ -777,6 +807,9 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   }
 
   const quotaNote = useRef<string | null>(null);
+  const quotaReason = useRef<string | undefined>(undefined);
+  /** Jour où le direct a été refusé pour forfait : ensuite on passe directement en message vocal. */
+  const liveRefused = useRef<string | null>(null);
   async function openLive(microphone: boolean, greet = false): Promise<LiveHandle | "microphone" | null> {
     const existing = liveRef.current;
     if (existing) {
@@ -878,7 +911,10 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           return "microphone";
         }
         if (error instanceof LiveStartError && error.reason === "not_configured") setAssistant("off");
-        if (error instanceof LiveStartError && error.reason === "quota") quotaNote.current = error.message;
+        if (error instanceof LiveStartError && error.reason === "quota") {
+          quotaNote.current = error.message;
+          quotaReason.current = error.quota;
+        }
         return null;
       } finally {
         connecting.current = null;
@@ -969,6 +1005,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   }
 
   async function send(input: string) {
+    lastTap.current = Date.now();
     clearTimers();
     const id = uid("m");
     setMessages((m) => [...m, { id, role: "user", text: input, at: new Date().toISOString() }]);
@@ -1100,12 +1137,19 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       return;
     }
     if (live || connecting.current) return;
+    lastTap.current = Date.now();
     clearTimers();
     await greetFirst();
-    if (liveRef.current || (direct && (await isReady()))) {
+    if (liveRef.current || (direct && liveRefused.current !== todayKey() && (await isReady()))) {
       quotaNote.current = null;
+      quotaReason.current = undefined;
       const handle = await openLive(true);
       if (handle) return;
+      // Forfait du direct épuisé : Jokko vient de le dire (voix enregistrée). Au prochain appui : message vocal.
+      if (quotaReason.current === "echanges" || quotaReason.current === "essai") {
+        liveRefused.current = todayKey();
+        return;
+      }
       say(quotaNote.current ?? "La conversation en direct ne démarre pas. Je passe en message vocal : parle, puis appuie de nouveau pour envoyer.");
     }
     await record();
@@ -1149,6 +1193,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const busy = voice === "transcription" || voice === "comprehension";
   const role = roleIn(profile);
   const patron = role === "patron";
+  patronRef.current = patron;
   // Un vendeur ne reste jamais sur une rubrique du patron (ex. après un changement de boutique).
   useEffect(() => {
     if (!patron && PATRON_SCREENS.includes(screen)) setScreen("parler");
@@ -1263,15 +1308,11 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               </section>
               <section className="sheet today">
                 <h2>Aujourd’hui</h2>
-                {trialOver && (
-                  <button type="button" className="banner banner-link" onClick={() => (patron ? setScreen("offre") : undefined)}>
+                {quotaBanner && (
+                  <button type="button" className="banner banner-link" onClick={() => (patron && QUOTA_MESSAGES[quotaBanner].offers ? setScreen("offre") : undefined)}>
                     <Icon name={NAV_ICONS.offre} />
-                    <span>
-                      {patron
-                        ? "Ton essai de la voix et de l’IA est terminé. Pour continuer à parler à Jokko, choisis l’offre Médium ou Avancé."
-                        : "L’essai de la voix est terminé. Demande au patron de choisir une offre. Les boutons marchent toujours."}
-                    </span>
-                    {patron && <Icon name="suivant" className="banner-go" />}
+                    <span>{QUOTA_MESSAGES[quotaBanner].fr}</span>
+                    {patron && QUOTA_MESSAGES[quotaBanner].offers && <Icon name="suivant" className="banner-go" />}
                   </button>
                 )}
                 <InstallBanner />

@@ -28,15 +28,16 @@ export async function api(route: "status" | "interpret" | "listen" | "live" | "o
   if (assistantShop) headers.set("x-jokko-shop", assistantShop);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/assistant/${route}`, { ...init, headers });
   if (response.status === 402) {
-    void response.clone().json().then((b: { reason?: string } | null) => b?.reason === "essai" && announceTrialOver(), () => undefined);
+    void response.clone().json().then((b: { reason?: string; tier?: string; kind?: string } | null) => announceQuota({ reason: b?.reason, tier: b?.tier, kind: b?.kind, route }), () => undefined);
   }
   return response;
 }
 
-/** L'enveloppe de l'essai gratuit (voix et IA) est épuisée : l'appli propose les offres. */
-export const TRIAL_OVER_EVENT = "jokko:essai-fini";
-function announceTrialOver() {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(TRIAL_OVER_EVENT));
+/** Le serveur a refusé un appel à Jokko (forfait) : l'appli le dit à voix haute et propose les offres. */
+export const QUOTA_EVENT = "jokko:forfait";
+export type QuotaDetail = { reason?: string; tier?: string; kind?: string; route?: string };
+function announceQuota(detail: QuotaDetail) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<QuotaDetail>(QUOTA_EVENT, { detail }));
 }
 
 /** Ce qu'il reste de l'essai gratuit, par type (null hors essai). */
@@ -218,7 +219,8 @@ export function countLiveExchange() {
   if (!assistantShop) return;
   void supabase.rpc("use_assistant", { p_shop: assistantShop, p_kind: "echange" }).then(
     ({ data }) => {
-      if ((data as { ok?: boolean; reason?: string } | null)?.ok === false && (data as { reason?: string }).reason === "essai") announceTrialOver();
+      const q = data as { ok?: boolean; reason?: string; tier?: string } | null;
+      if (q?.ok === false && q.reason === "essai") announceQuota({ reason: "essai", tier: q.tier, kind: "echange", route: "echange" });
     },
     () => undefined,
   );
