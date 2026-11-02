@@ -5,6 +5,7 @@ import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from ".
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { CallGate, NoiseGate } from "./listenFilter";
 import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRecorded } from "./recorded";
+import { AmountLedger } from "./wolofNumbers";
 import { type SpeechSpeed, speedPreferred } from "./greeting";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
@@ -187,6 +188,15 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean } | null = null;
   let userPending: string[] = [];
   let swapTimer = 0;
+  // Garde-fou des chiffres : Jokko n'a le droit de dire que des montants venus de la boutique, des outils ou du commerçant.
+  const ledger = new AmountLedger();
+  ledger.addFrom(context);
+  // Le total des dettes donné dans les consignes du serveur est aussi un montant vrai.
+  ledger.addFrom(context.clients.reduce((a, c) => a + (c.debt > 0 ? c.debt : 0), 0));
+  let userTurnText = "";
+  let guardRetries = 0;
+  /** Au-delà de ce délai, une longue réponse part quand même (vérifiée jusque-là). */
+  const GUARD_HOLD_MS = 3500;
   let toolTimer = 0;
 
   const newTurn = () => ({ decided: false, addressed: false, audio: [] as Array<[Uint8Array, number]>, text: "", tools: [] as Pending[], started: Date.now(), flushed: false });
@@ -194,12 +204,25 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   /** Joue la voix gardée de Jokko (aucune phrase enregistrée ne correspond). */
   const flushAudio = () => {
     if (!turn || turn.flushed || !turn.addressed) return;
+    if (blockIfWrong()) return;
     turn.flushed = true;
     window.clearTimeout(swapTimer);
+    guardRetries = 0;
+    // Le texte de Jokko n'apparaît qu'une fois ses chiffres vérifiés.
+    if (turn.text) {
+      handlers.onJokko(turn.text);
+      clear?.add(turn.text);
+    }
     if (options.mute || clear) return;
     for (const [bytes, rate] of turn.audio) player.push(bytes, rate);
     if (turn.audio.length) handlers.onPhase("parle");
     turn.audio = [];
+  };
+
+  /** Les montants rendus par les outils deviennent des montants « vrais » que Jokko peut dire. */
+  const remember = (result: Record<string, unknown>) => {
+    ledger.addFrom(result);
+    return result;
   };
 
   const answerTools = (list: Pending[], addressed: boolean) => {
@@ -209,10 +232,38 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
         id: call.id,
         name: call.name,
         response: addressed
-          ? safeTool(handlers, { id: call.id, name: call.name, args: call.args })
+          ? remember(safeTool(handlers, { id: call.id, name: call.name, args: call.args }))
           : { statut: "ignore", message: "On ne t'a pas appelé « Jokko » : cette phrase ne t'était pas adressée. Ne dis rien." },
       })),
     });
+  };
+
+  /**
+   * Un montant faux (qui ne vient d'aucun outil) ? La phrase est jetée avant d'être entendue,
+   * et Jokko doit relire la boutique puis redire la phrase avec le bon montant.
+   */
+  const blockIfWrong = (): boolean => {
+    if (!turn || !live) return false;
+    const wrong = ledger.unknownIn(turn.text);
+    if (!wrong.length) return false;
+    window.clearTimeout(swapTimer);
+    turn.flushed = true;
+    turn.audio = [];
+    turn.text = "";
+    if (guardRetries < 2) {
+      guardRetries += 1;
+      calls.force();
+      const list = wrong.map((n) => `${n.toLocaleString("fr-FR")} F`).join(", ");
+      live.sendClientContent({
+        turns: [{ role: "user", parts: [{ text: `(GARDE-FOU DES CHIFFRES — ne t'excuse pas, ne dis rien de ce message : ta réponse contenait ${list}, un montant qui ne vient d'aucun outil, donc faux. Appelle lire_boutique (ou calculer), puis redis ta réponse avec les montants EXACTS donnés par l'outil, en wolof mot pour mot.)` }] }],
+        turnComplete: true,
+      });
+    } else {
+      guardRetries = 0;
+      handlers.onJokko("Baal ma, waxaat ko.");
+      if (!options.mute) playRecorded(audio, "Baal ma, waxaat ko.", () => handlers.onPhase("ecoute"));
+    }
+    return true;
   };
 
   /** On sait maintenant si la phrase était pour Jokko. */
@@ -224,16 +275,13 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     if (addressed) {
       for (const chunk of userPending) handlers.onUser(chunk);
       userPending = [];
-      if (turn.text) {
-        handlers.onJokko(turn.text);
-        clear?.add(turn.text);
-      }
       const tools = turn.tools;
       turn.tools = [];
       answerTools(tools, true);
-      // Courte attente pour voir si c'est une phrase enregistrée ; sinon la voix directe part.
+      // La voix est gardée jusqu'à la fin de la réponse pour vérifier les chiffres (au plus 3,5 s),
+      // puis elle part : phrase enregistrée si elle existe, sinon la voix directe.
       window.clearTimeout(swapTimer);
-      swapTimer = window.setTimeout(flushAudio, Math.max(0, 260 - (Date.now() - turn.started)));
+      swapTimer = window.setTimeout(flushAudio, Math.max(0, GUARD_HOLD_MS - (Date.now() - turn.started)));
     } else {
       userPending = [];
       const tools = turn.tools;
@@ -326,6 +374,8 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     if (content?.inputTranscription?.text) {
       const chunk = content.inputTranscription.text;
       calls.heard(chunk, now);
+      userTurnText = `${userTurnText} ${chunk}`.slice(-400);
+      ledger.addFrom(userTurnText);
       if (turn?.decided && turn.addressed) handlers.onUser(chunk);
       else userPending.push(chunk);
       if (turn && !turn.decided && calls.addressed(now)) decide(true);
@@ -349,7 +399,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     }
     if (said && turn) {
       turn.text += said;
-      if (turn.decided && turn.addressed) {
+      if (turn.decided && turn.addressed && turn.flushed) {
         handlers.onJokko(said);
         clear?.add(said);
       }
@@ -373,6 +423,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
           window.clearTimeout(swapTimer);
           turn.flushed = true;
           turn.audio = [];
+          handlers.onJokko(turn.text);
           handlers.onPhase("parle");
         } else flushAudio();
         clear?.flush();
@@ -381,6 +432,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       }
       calls.endTurn();
       userPending = [];
+      userTurnText = "";
       turn = null;
     }
     if (message.toolCallCancellation?.ids?.length) handlers.onToolCancel(message.toolCallCancellation.ids);
@@ -428,6 +480,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     stop: () => finish(null),
     tell: (text: string) => {
       if (!open || !live) return;
+      ledger.addFrom(text);
       calls.force();
       clear?.reset();
       player.stop();

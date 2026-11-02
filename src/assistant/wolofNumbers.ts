@@ -404,3 +404,74 @@ export function settleAmounts(action: Priced, words: { total?: string; each?: st
   if (action.unitPrice && qty > 0) action.amount = null;
   return true;
 }
+
+/**
+ * TOUS les montants d'argent dits dans une phrase (en francs), pour le garde-fou des chiffres.
+ * Mêmes règles qu'extractSpokenAmount : un nombre wolof n'est de l'argent que s'il contient
+ * téeméer/junni/milyoŋ, ou s'il est suivi de « dërëm » / « francs » ; « ñaari bidon » est une quantité.
+ */
+export function moneyAmountsSaid(text: string): number[] {
+  const found: number[] = [];
+  for (const run of frenchRuns(frTokens(text))) {
+    if (QUANTITY_UNITS.has(run.next) || run.value <= 0) continue;
+    if (/^d[e]r[e]m|^dorom|^deurem/.test(run.next)) found.push(Math.round(run.value * 5));
+    else if (MONEY_WORDS.has(run.next) || run.value >= 1000) found.push(Math.round(run.value));
+  }
+  // La ponctuation sépare deux nombres : « Ñoom ñaar, juróomi junni » = 2 personnes puis 25 000 F.
+  for (const segment of text.split(/[,;:.!?«»()]/)) scanWolof(clean(segment), found);
+  return found;
+}
+
+function scanWolof(words: string[], found: number[]) {
+  for (let i = 0; i < words.length; i++) {
+    if (!base(words[i]) || base(words[i]) === "derem") continue;
+    let j = i;
+    const run: string[] = [];
+    while (j < words.length && ((base(words[j]) && base(words[j]) !== "derem") || (words[j] === "ak" && j + 1 < words.length && base(words[j + 1]) && base(words[j + 1]) !== "derem"))) {
+      run.push(words[j]);
+      j++;
+    }
+    const next = words[j] ?? "";
+    const hasMultiplier = run.some((w) => ["teemeer", "junni", "milyon", "miliyaar"].includes(base(w) ?? ""));
+    if (QUANTITY_UNITS.has(next) && !hasMultiplier) {
+      i = j;
+      continue;
+    }
+    if (hasMultiplier || MONEY_WORDS.has(next)) {
+      const amount = spokenAmountToFrancs(`${run.join(" ")}${next === "derem" || next === "dorom" || next === "deurem" ? " derem" : ""}`);
+      if (amount) found.push(amount.francs);
+    }
+    i = j;
+  }
+}
+
+/**
+ * Registre des montants VRAIS d'une conversation : ceux de la boutique, des outils et du commerçant.
+ * Jokko n'a le droit de dire que ces montants-là.
+ */
+export class AmountLedger {
+  private known = new Set<number>();
+
+  /** Ajoute tous les nombres (et montants écrits en wolof) trouvés dans un objet : contexte, réponse d'outil… */
+  addFrom(value: unknown, depth = 0) {
+    if (depth > 6 || value == null) return;
+    if (typeof value === "number") {
+      if (Number.isFinite(value) && value > 0) this.known.add(Math.round(value));
+      return;
+    }
+    if (typeof value === "string") {
+      for (const n of moneyAmountsSaid(value)) this.known.add(n);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const v of value) this.addFrom(v, depth + 1);
+      return;
+    }
+    if (typeof value === "object") for (const v of Object.values(value as Record<string, unknown>)) this.addFrom(v, depth + 1);
+  }
+
+  /** Les montants de la phrase de Jokko qui ne viennent de nulle part (vide = tout est juste). */
+  unknownIn(said: string): number[] {
+    return moneyAmountsSaid(said).filter((n) => !this.known.has(n));
+  }
+}

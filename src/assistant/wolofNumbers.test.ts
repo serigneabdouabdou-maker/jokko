@@ -136,3 +136,26 @@ describe("millions en francs", () => {
     }
   });
 });
+
+describe("garde-fou des chiffres", () => {
+  it("trouve tous les montants d'une phrase, en wolof ou en francs, mais pas les quantités", async () => {
+    const { moneyAmountsSaid } = await import("./wolofNumbers");
+    expect(moneyAmountsSaid("Moussa Diop dafa la bor ñeenti junni.")).toEqual([20000]);
+    expect(moneyAmountsSaid("Moussa dafa la bor ñeenti junni, Fatou juróom-benn junni ak juróom-ñeenti téeméer.")).toEqual([20000, 34500]);
+    expect(moneyAmountsSaid("Bind naa ko : ñaari bidon diw, ñetti junni.")).toEqual([15000]);
+    expect(moneyAmountsSaid("C'est noté : 2 bidons d'huile, 15 000 F.")).toEqual([15000]);
+    expect(moneyAmountsSaid("Ceeb bi, fukk ak ñaar la des.")).toEqual([]);
+    expect(moneyAmountsSaid("benn milyoŋ")).toEqual([1_000_000]);
+  });
+
+  it("bloque un montant inventé (« juróom-ñeenti junni » au lieu de « ñeenti junni »)", async () => {
+    const { AmountLedger } = await import("./wolofNumbers");
+    const ledger = new AmountLedger();
+    ledger.addFrom({ clients: [{ name: "Moussa Diop", debt: 20000 }], figures: { daySales: 46500 } });
+    expect(ledger.unknownIn("Moussa Diop dafa la bor ñeenti junni.")).toEqual([]);
+    expect(ledger.unknownIn("Moussa Diop dafa la bor juróom-ñeenti junni.")).toEqual([45000]);
+    expect(ledger.unknownIn("Tey, jaay nga juróom-ñeenti junni ak ñetti téeméer.")).toEqual([]);
+    ledger.addFrom({ resultat_francs: 28500, en_wolof: "juróomi junni ak juróom-ñaari téeméer" });
+    expect(ledger.unknownIn("Ñoom ñaar, juróomi junni ak juróom-ñaari téeméer la.")).toEqual([]);
+  });
+});
