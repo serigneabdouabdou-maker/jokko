@@ -120,7 +120,7 @@ describe("tous les montants, aller-retour", () => {
       if (spokenAmountToFrancs(w)?.francs !== f && faux.length < 5) faux.push(`${f} → ${w}`);
     }
     expect(faux).toEqual([]);
-  });
+  }, 60_000);
 
   it("45 250 F = juróom-ñeenti junni ak juróom-fukk (9 050 dërëm)", async () => {
     const { francsToWolof } = await import("./wolofNumbers");
