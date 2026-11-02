@@ -26,7 +26,24 @@ export async function api(route: "status" | "interpret" | "listen" | "live" | "o
   headers.set("Accept", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (assistantShop) headers.set("x-jokko-shop", assistantShop);
-  return fetch(`${SUPABASE_URL}/functions/v1/assistant/${route}`, { ...init, headers });
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/assistant/${route}`, { ...init, headers });
+  if (response.status === 402) {
+    void response.clone().json().then((b: { reason?: string } | null) => b?.reason === "essai" && announceTrialOver(), () => undefined);
+  }
+  return response;
+}
+
+/** L'enveloppe de l'essai gratuit (voix et IA) est épuisée : l'appli propose les offres. */
+export const TRIAL_OVER_EVENT = "jokko:essai-fini";
+function announceTrialOver() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(TRIAL_OVER_EVENT));
+}
+
+/** Ce qu'il reste de l'essai gratuit, par type (null hors essai). */
+export type TrialLeft = Record<"echange" | "vocal" | "texte" | "conseil", { total: number; reste: number }>;
+export async function trialLeft(shopId: string): Promise<TrialLeft | null> {
+  const { data, error } = await supabase.rpc("trial_left", { p_shop: shopId });
+  return error || !data ? null : (data as TrialLeft);
 }
 
 // ---------- Connexion : numéro de téléphone + code secret à 6 chiffres ----------
@@ -199,5 +216,10 @@ export function phoneOf(session: Session | null): string {
 /** Un échange en direct avec Jokko : compté sur le serveur (la limite du jour joue à la conversation suivante). */
 export function countLiveExchange() {
   if (!assistantShop) return;
-  void supabase.rpc("use_assistant", { p_shop: assistantShop, p_kind: "echange" }).then(() => undefined, () => undefined);
+  void supabase.rpc("use_assistant", { p_shop: assistantShop, p_kind: "echange" }).then(
+    ({ data }) => {
+      if ((data as { ok?: boolean; reason?: string } | null)?.ok === false && (data as { reason?: string }).reason === "essai") announceTrialOver();
+    },
+    () => undefined,
+  );
 }

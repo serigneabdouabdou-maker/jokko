@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trialLeft, type TrialLeft } from "@/data/supabase";
 import { type PlanName, type Shop, money } from "@/model";
 import {
   daysLeft,
@@ -47,6 +48,11 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   const [qr, setQr] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [left, setLeft] = useState<TrialLeft | null>(null);
+
+  useEffect(() => {
+    if (current.trial) void trialLeft(shop.id).then(setLeft);
+  }, [shop.id, current.trial]);
 
   async function refresh() {
     const [i, r, p] = await Promise.all([subscriptionInfo(), myRequests(shop.id), freshPlan(shop.id)]);
@@ -88,6 +94,20 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
           {!current.trial && current.plan !== "gratuit" && current.until && <> Payée jusqu'au <b>{date(current.until)}</b>.</>}
           {current.plan === "gratuit" && <> Tu peux passer à une offre supérieure quand tu veux.</>}
         </p>
+        {current.trial && left && (
+          <div className="trial-left">
+            <p className="note">
+              L’essai comprend un nombre limité d’utilisations de la voix et de l’IA. Il te reste :
+            </p>
+            <ul>
+              <li><b className="num">{left.echange.reste}</b> / {left.echange.total} échanges en direct avec Jokko</li>
+              <li><b className="num">{left.vocal.reste}</b> / {left.vocal.total} messages vocaux</li>
+              <li><b className="num">{left.texte.reste}</b> / {left.texte.total} demandes écrites</li>
+              <li><b className="num">{left.conseil.reste}</b> / {left.conseil.total} conseils de l’IA</li>
+            </ul>
+            <p className="note">Quand c’est fini, la voix s’arrête jusqu’au choix d’une offre. Les boutons de l’appli (ventes, stock, dettes, factures) marchent toujours.</p>
+          </div>
+        )}
         {initialChoice && current.trial && (
           <p className="note">Bienvenue ! Tu as choisi l’offre <b>{PLAN_LABELS[initialChoice]}</b>. Tes 14 premiers jours sont offerts en Avancé : tu peux payer maintenant, ou plus tard avant la fin de l’essai.</p>
         )}

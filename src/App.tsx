@@ -56,7 +56,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, supabase } from "@/data/supabase";
+import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, supabase, TRIAL_OVER_EVENT } from "@/data/supabase";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Team } from "@/components/jokko/Team";
@@ -76,7 +76,7 @@ import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVo
 import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setGreetPreferred, setSpeedPreferred, type SpeechSpeed, speedPreferred, stopGreeting } from "@/assistant/greeting";
 import { noisePreferred, setNoisePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
-import { can } from "@/data/plans";
+import { can, effectivePlan } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -227,6 +227,9 @@ function Num({ value, className = "" }: { value: number; className?: string }) {
   const shown = useCountUp(value);
   return <span className={`num ${className}`}>{amount(shown)}</span>;
 }
+
+/** Pendant l'essai gratuit, une conversation en direct est coupée au bout de 5 minutes. */
+const TRIAL_LIVE_MS = 5 * 60_000;
 
 type AuthMode = "creer" | "entrer" | "oubli";
 
@@ -590,6 +593,16 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const liveRef = useRef<LiveHandle | null>(null);
+  // Essai gratuit : enveloppe voix/IA épuisée → on coupe la conversation et on propose les offres.
+  const [trialOver, setTrialOver] = useState(false);
+  useEffect(() => {
+    const over = () => {
+      setTrialOver(true);
+      liveRef.current?.stop();
+    };
+    window.addEventListener(TRIAL_OVER_EVENT, over);
+    return () => window.removeEventListener(TRIAL_OVER_EVENT, over);
+  }, []);
   const connecting = useRef<Promise<LiveHandle | "microphone" | null> | null>(null);
   const idle = useRef<number | null>(null);
   const replies = useRef(0);
@@ -848,6 +861,14 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
+        // Essai : une conversation en direct dure au plus 5 minutes (on peut en recommencer une).
+        if (effectivePlan(currentShop(profileRef.current)).trial) {
+          window.setTimeout(() => {
+            if (liveRef.current !== handle) return;
+            handle.stop();
+            fail("Pendant l’essai, une conversation dure 5 minutes au plus. Touche le micro pour en commencer une autre.");
+          }, TRIAL_LIVE_MS);
+        }
         return handle;
       } catch (error) {
         setLive(null);
@@ -1242,6 +1263,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               </section>
               <section className="sheet today">
                 <h2>Aujourd’hui</h2>
+                {trialOver && (
+                  <button type="button" className="banner banner-link" onClick={() => (patron ? setScreen("offre") : undefined)}>
+                    <Icon name={NAV_ICONS.offre} />
+                    <span>
+                      {patron
+                        ? "Ton essai de la voix et de l’IA est terminé. Pour continuer à parler à Jokko, choisis l’offre Médium ou Avancé."
+                        : "L’essai de la voix est terminé. Demande au patron de choisir une offre. Les boutons marchent toujours."}
+                    </span>
+                    {patron && <Icon name="suivant" className="banner-go" />}
+                  </button>
+                )}
                 <InstallBanner />
                 {inventoryDue(shop) && (
                   <button type="button" className="banner banner-link" onClick={() => setScreen("bilan")}><Icon name="stock" /><span>Nouveau mois : fais l'inventaire du stock</span><Icon name="suivant" className="banner-go" /></button>

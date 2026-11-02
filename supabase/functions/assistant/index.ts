@@ -175,6 +175,10 @@ const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpre
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
+  // Essai gratuit : l'enveloppe totale de voix et d'IA est épuisée.
+  if (q.reason === "essai") {
+    return "Ton essai gratuit de la voix et de l'IA est terminé. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
+  }
   const upsell = q.tier === "gratuit" || q.tier === "medium" ? " Tu peux passer à une offre supérieure dans « Mon offre »." : "";
   if (kind === "direct") {
     if (q.reason === "offre") return "La conversation en direct fait partie de l'offre Avancé. On continue en messages vocaux : parle, puis appuie de nouveau pour envoyer.";
@@ -248,6 +252,7 @@ Deno.serve(async (req) => {
     }
     return send(req, 404, { error: "not_found" });
   } catch (error) {
+    console.warn("[jokko] failure:", error instanceof Error ? error.message : "");
     return failure(req, error);
   }
 });
