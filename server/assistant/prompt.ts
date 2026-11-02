@@ -2,22 +2,32 @@ import { francsToWolof, wolofNumber } from "../../src/assistant/wolofNumbers.ts"
 import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import type { ShopContext } from "./schema.ts";
 
-/** Les montants du contexte déjà dits en wolof (dërëm), calculés ici et non par le modèle. */
-function wolofAmounts(context: ShopContext): string {
+const F = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
+const W = (n: number) => `${francsToWolof(n)} (${F(n)})`;
+
+/**
+ * Les montants du contexte déjà dits en wolof (dërëm, millions en francs), calculés ici et non par le modèle.
+ * Chaque montant est donné avec sa valeur en francs, pour que Jokko ne convertisse jamais lui-même.
+ */
+export function contextAmountsInWolof(context: ShopContext): string {
   const lines = [
-    `ventes du jour = ${francsToWolof(context.figures.daySales)}`,
-    `dépenses du jour = ${francsToWolof(context.figures.dayExpenses)}`,
-    `caisse attendue = ${francsToWolof(context.figures.expectedCash)}`,
-    ...context.clients.filter((c) => c.debt > 0).map((c) => `dette de ${c.name} = ${francsToWolof(c.debt)}`),
+    `ventes du jour = ${W(context.figures.daySales)}`,
+    `dépenses du jour = ${W(context.figures.dayExpenses)}`,
+    `caisse attendue = ${W(context.figures.expectedCash)}`,
+    ...context.clients.filter((c) => c.debt > 0).map((c) => `dette de ${c.name} = ${W(c.debt)}`),
     ...(() => {
       const owing = context.clients.filter((c) => c.debt > 0);
       const total = owing.reduce((a, c) => a + c.debt, 0);
       return owing.length ? [`TOTAL des dettes de ${owing.length} client(s) = ${francsToWolof(total)} (${total} F) — dis ce total tel quel, ne l'additionne jamais toi-même`] : [];
     })(),
-    ...context.products.map((p) => `prix ${p.name} = ${francsToWolof(p.price)}`),
+    ...context.products.map((p) => `prix ${p.name} = ${W(p.price)}`),
     ...context.products.map((p) => `stock ${p.name} = ${p.stock > 0 ? `${wolofNumber(p.stock)} ${p.unit}` : "amul (stock fini)"}`),
   ];
-  return `Montants et quantités du contexte à dire tels quels en wolof (argent en dërëm, déjà calculé) : ${lines.join(" ; ")}. Ne recalcule jamais un nombre toi-même.\n${phrasebookInstruction()}`;
+  return `MONTANTS DÉJÀ TRADUITS EN WOLOF PAR LE CODE (à dire MOT POUR MOT ; ne convertis JAMAIS un chiffre en wolof toi-même) : ${lines.join(" ; ")}.`;
+}
+
+function wolofAmounts(context: ShopContext): string {
+  return `${contextAmountsInWolof(context)}\n${phrasebookInstruction()}`;
 }
 
 export const SYSTEM_INSTRUCTION = `Tu es Jokko, l'assistante d'une boutique au Sénégal (quartier, marché, banlieue de Dakar).

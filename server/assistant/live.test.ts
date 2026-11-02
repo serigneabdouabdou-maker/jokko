@@ -43,6 +43,13 @@ describe("conversation en direct", () => {
     expect(config.inputAudioTranscription).toEqual({});
   });
 
+  it("chaque dette est déjà traduite en wolof par le code, avec sa valeur en francs", () => {
+    const ctx = { ...shopContext, clients: [{ ...shopContext.clients[0], name: "Moussa Diop", debt: 20000 }] };
+    const instruction = String(liveConfig(ctx).systemInstruction);
+    expect(instruction).toContain("dette de Moussa Diop = ñeenti junni (20 000 F)");
+    expect(instruction).toContain("MONTANTS DÉJÀ TRADUITS EN WOLOF PAR LE CODE");
+  });
+
   it("sans clé Gemini : pas de jeton", async () => {
     const createToken = vi.fn<CreateToken>();
     await expect(createLiveSession(shopContext, { apiKey: "", createToken })).rejects.toBeInstanceOf(GeminiNotConfiguredError);
