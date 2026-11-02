@@ -20,6 +20,16 @@ export const RECORDED: { slug: string; text: string; lang: "wo" | "fr" }[] = [
   { slug: "oui", text: "Waaw.", lang: "wo" },
   { slug: "non", text: "Déedéet.", lang: "wo" },
   { slug: "on-commence", text: "Kaay, ñu tàmbali !", lang: "wo" },
+  // Enregistrées le 02/11/2026 (phrases du commerce validées par le patron)
+  { slug: "caisse-juste", text: "Caisse bi jub na.", lang: "wo" },
+  { slug: "entends-mal", text: "Dégguma bu baax.", lang: "wo" },
+  { slug: "patiente", text: "Xaaral tuuti.", lang: "wo" },
+  { slug: "verifie", text: "Noonu la ?", lang: "wo" },
+  { slug: "merci", text: "Jërëjëf !", lang: "wo" },
+  { slug: "patron-seul", text: "Patron bi rekk a ko mën a def.", lang: "wo" },
+  { slug: "rapproche", text: "Jegeel sa telefoon, dégguma bu baax.", lang: "wo" },
+  { slug: "hors-ligne", text: "Amul réseau, waaye bind naa ko.", lang: "wo" },
+  { slug: "rappel-whatsapp", text: "Fàttali naa ko ci WhatsApp.", lang: "wo" },
 ];
 
 export const recordedUrl = (slug: string) => `${BASE}${slug}-${RECORDED_VERSION}.mp3`;
