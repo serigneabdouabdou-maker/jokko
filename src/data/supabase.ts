@@ -96,25 +96,89 @@ export function lockedMessage(minutes: number): string {
 }
 
 /** Créer mon compte : numéro + code secret, avec les conditions acceptées (version datée). */
-export async function signUp(rawPhone: string, code: string, termsVersion: string): Promise<AuthOutcome> {
+export async function signUp(rawPhone: string, code: string, termsVersion: string, otp = ""): Promise<AuthOutcome> {
   const input = checkInput(rawPhone, code);
   if (!("phone" in input)) return input;
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ phone: input.phone, code, terms: termsVersion }),
+      body: JSON.stringify({ phone: input.phone, code, terms: termsVersion, ...(otp ? { otp } : {}) }),
     });
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     if (response.status === 409 || body?.error === "exists") {
       return { ok: false, reason: "exists", message: "Ce numéro a déjà un compte. Touche « Me connecter » et mets ton code secret." };
     }
     if (body?.error === "weak_code") return { ok: false, reason: "invalid", message: "Code trop facile à deviner. Choisis 6 chiffres différents." };
+    if (body?.error?.startsWith("otp_")) return { ok: false, reason: "invalid", message: otpMessage(body.error) };
     if (body?.error === "terms_required") return { ok: false, reason: "invalid", message: "Coche la case des conditions pour créer ton compte." };
     if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais. Réessaie dans une heure." };
     if (!response.ok) return { ok: false, reason: "network", message: "Inscription impossible pour le moment. Réessaie." };
     const entered = await login(input.phone, code, true);
     return entered.ok ? entered : { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
+  } catch {
+    return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
+  }
+}
+
+// ---------- Codes reçus par SMS : vérifier le numéro à l'inscription, code oublié ----------
+
+async function otpCall(payload: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> | null }> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify(payload),
+  });
+  return { status: response.status, body: (await response.json().catch(() => null)) as Record<string, unknown> | null };
+}
+
+/** L'envoi de codes par SMS est-il branché ? (sinon : inscription sans vérification, code oublié par WhatsApp) */
+export async function smsAvailable(): Promise<boolean> {
+  try {
+    return (await otpCall({ action: "status" })).body?.sms === true;
+  } catch {
+    return false;
+  }
+}
+
+function otpMessage(error: unknown): string {
+  switch (error) {
+    case "otp_expire": return "Ce code SMS a expiré. Touche « Renvoyer le code ».";
+    case "otp_trop": return "Trop d’erreurs sur le code SMS. Touche « Renvoyer le code ».";
+    case "otp_absent": return "Demande d’abord un code par SMS.";
+    case "otp_required": return "Mets le code reçu par SMS.";
+    default: return "Code SMS incorrect. Vérifie le message reçu.";
+  }
+}
+
+export type OtpPurpose = "inscription" | "oubli";
+
+/** Envoie un code à 6 chiffres par SMS. Renvoie null si c'est parti, sinon le message à afficher. */
+export async function sendOtp(rawPhone: string, purpose: OtpPurpose): Promise<string | null> {
+  const phone = normalizePhone(rawPhone);
+  if (!phone) return "Numéro sénégalais invalide (ex. 77 123 45 67).";
+  try {
+    const { status, body } = await otpCall({ action: "send", phone, purpose });
+    if (status === 200) return null;
+    if (status === 409) return "Ce numéro a déjà un compte. Touche « Me connecter ».";
+    if (body?.error === "daily") return `Trop de codes envoyés aujourd’hui à ce numéro. Réessaie demain, ou écris sur WhatsApp au ${SUPPORT_PHONE}.`;
+    if (status === 429) return `Attends ${Number(body?.seconds ?? 60)} secondes avant de redemander un code.`;
+    return `Le SMS n’a pas pu partir. Réessaie dans un instant, ou écris sur WhatsApp au ${SUPPORT_PHONE}.`;
+  } catch {
+    return "Pas de connexion internet. Réessaie.";
+  }
+}
+
+/** Code oublié : code reçu par SMS + nouveau code secret, puis connexion. */
+export async function resetCode(rawPhone: string, otp: string, code: string): Promise<AuthOutcome> {
+  const input = checkInput(rawPhone, code);
+  if (!("phone" in input)) return input;
+  try {
+    const { status, body } = await otpCall({ action: "reset", phone: input.phone, otp, code });
+    if (status === 200) return login(input.phone, code, false);
+    if (body?.error === "weak_code") return { ok: false, reason: "invalid", message: "Code trop facile à deviner. Choisis 6 chiffres différents." };
+    if (typeof body?.error === "string" && body.error.startsWith("otp_")) return { ok: false, reason: "invalid", message: otpMessage(body.error) };
+    return { ok: false, reason: "network", message: "Impossible pour le moment. Réessaie." };
   } catch {
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }

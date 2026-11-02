@@ -56,7 +56,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, countLiveExchange, setAssistantShop, signIn, signUp, supabase } from "@/data/supabase";
+import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, supabase } from "@/data/supabase";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
 import { Team } from "@/components/jokko/Team";
@@ -228,35 +228,75 @@ function Num({ value, className = "" }: { value: number; className?: string }) {
   return <span className={`num ${className}`}>{amount(shown)}</span>;
 }
 
-type AuthMode = "creer" | "entrer";
+type AuthMode = "creer" | "entrer" | "oubli";
 
 function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
   const [mode, setMode] = useState<AuthMode>(startMode);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [code2, setCode2] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sms, setSms] = useState<boolean | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [reading, setReading] = useState<LegalDoc | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const digits = code.replace(/\D/g, "").slice(0, 6);
   const digits2 = code2.replace(/\D/g, "").slice(0, 6);
+  const otpDigits = otp.replace(/\D/g, "").slice(0, 6);
   const creating = mode === "creer";
+  const forgot = mode === "oubli";
+  const newCode = creating || forgot;
   const phoneOk = phone.replace(/\D/g, "").length >= 9;
-  const mismatch = creating && digits2.length === 6 && digits2 !== digits;
-  const ready = phoneOk && digits.length === 6 && (!creating || (digits2 === digits && agreed));
+  const mismatch = newCode && digits2.length === 6 && digits2 !== digits;
+  const codesOk = digits.length === 6 && (!newCode || digits2 === digits);
+  // Avec les SMS branchés, l'inscription et le code oublié passent par un code reçu par SMS.
+  const needsOtp = (creating && sms === true) || forgot;
+  const askingOtp = needsOtp && !otpSent;
+  const ready = forgot
+    ? sms === true && phoneOk && (askingOtp || (otpDigits.length === 6 && codesOk))
+    : phoneOk && codesOk && (!creating || agreed) && (askingOtp || !needsOtp || otpDigits.length === 6);
+
+  useEffect(() => {
+    void smsAvailable().then(setSms);
+  }, []);
 
   function switchTo(next: AuthMode) {
     setMode(next);
     setError("");
+    setInfo("");
     setCode("");
     setCode2("");
+    setOtp("");
+    setOtpSent(false);
+  }
+
+  async function requestOtp() {
+    const failed = await sendOtp(phone, forgot ? "oubli" : "inscription");
+    if (failed) {
+      setError(failed);
+      return;
+    }
+    setOtpSent(true);
+    setOtp("");
+    setInfo(`Code envoyé par SMS au ${phone.trim()}. Il arrive en moins d’une minute.`);
   }
 
   async function enter() {
     setBusy(true);
     setError("");
-    const outcome = creating ? await signUp(phone, digits, TERMS_VERSION) : await signIn(phone, digits);
+    if (askingOtp) {
+      await requestOtp();
+      setBusy(false);
+      return;
+    }
+    const outcome = forgot
+      ? await resetCode(phone, otpDigits, digits)
+      : creating
+        ? await signUp(phone, digits, TERMS_VERSION, needsOtp ? otpDigits : "")
+        : await signIn(phone, digits);
     setBusy(false);
     if (!outcome.ok) {
       setError(outcome.message);
@@ -265,19 +305,53 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
     // Si c'est bon, la session change et l'appli ouvre la boutique toute seule.
   }
 
+  const otpField = needsOtp && otpSent && (
+    <div className="field">
+      <Label htmlFor="otp">Code reçu par SMS</Label>
+      <Input id="otp" className="num h-12 text-lg tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" value={otpDigits} onChange={(e) => setOtp(e.target.value)} placeholder="123456" />
+      <button
+        type="button"
+        className="link"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError("");
+          await requestOtp();
+          setBusy(false);
+        }}
+      >
+        Pas reçu ? Renvoyer le code
+      </button>
+    </div>
+  );
+
+  const label = busy
+    ? "Un instant…"
+    : askingOtp
+      ? "Recevoir le code par SMS"
+      : forgot
+        ? "Changer mon code"
+        : creating
+          ? "Créer mon compte"
+          : "Entrer";
+
   return (
     <main className="gate">
       <section className="gate-copy">
         <JokkoMark size={52} />
         <p className="eyebrow">Jokko</p>
-        <h1>{creating ? <>Bienvenue. <em className="accent">Crée ton compte.</em></> : <>Bonjour. <em className="accent">Content de te revoir.</em></>}</h1>
+        <h1>
+          {forgot ? <>Code oublié ? <em className="accent">On le change.</em></> : creating ? <>Bienvenue. <em className="accent">Crée ton compte.</em></> : <>Bonjour. <em className="accent">Content de te revoir.</em></>}
+        </h1>
         <p className="lede">Tu parles, je travaille : ventes, stock, clients, factures.</p>
       </section>
       <section className="gate-card">
-        <div className="auth-tabs" role="tablist" aria-label="Compte">
-          <button type="button" role="tab" aria-selected={creating} className={creating ? "on" : ""} onClick={() => switchTo("creer")}>Créer mon compte</button>
-          <button type="button" role="tab" aria-selected={!creating} className={!creating ? "on" : ""} onClick={() => switchTo("entrer")}>Me connecter</button>
-        </div>
+        {!forgot && (
+          <div className="auth-tabs" role="tablist" aria-label="Compte">
+            <button type="button" role="tab" aria-selected={creating} className={creating ? "on" : ""} onClick={() => switchTo("creer")}>Créer mon compte</button>
+            <button type="button" role="tab" aria-selected={!creating} className={!creating ? "on" : ""} onClick={() => switchTo("entrer")}>Me connecter</button>
+          </div>
+        )}
         <form
           className="fields"
           onSubmit={(e) => {
@@ -287,13 +361,20 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
         >
           <div className="field">
             <Label htmlFor="phone">Ton numéro de téléphone</Label>
-            <Input id="phone" className="h-12 text-base" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
+            <Input id="phone" className="h-12 text-base" inputMode="tel" autoComplete="tel" value={phone} readOnly={otpSent} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
           </div>
-          <div className="field">
-            <Label htmlFor="code">{creating ? "Choisis un code secret (6 chiffres)" : "Ton code secret (6 chiffres)"}</Label>
-            <Input id="code" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete={creating ? "new-password" : "current-password"} value={digits} onChange={(e) => setCode(e.target.value)} placeholder="••••••" />
-          </div>
-          {creating && (
+          {forgot && sms === false && (
+            <p className="note">Pour changer ton code, écris sur WhatsApp au {SUPPORT_PHONE} depuis ce numéro : on t’aide tout de suite.</p>
+          )}
+          {forgot && sms === true && !otpSent && <p className="note">On t’envoie un code par SMS sur ce numéro pour prouver que c’est bien toi.</p>}
+          {forgot && otpField}
+          {(!forgot || otpSent) && (
+            <div className="field">
+              <Label htmlFor="code">{forgot ? "Choisis un nouveau code secret (6 chiffres)" : creating ? "Choisis un code secret (6 chiffres)" : "Ton code secret (6 chiffres)"}</Label>
+              <Input id="code" className="num h-12 text-lg tracking-[0.3em]" type="password" inputMode="numeric" autoComplete={newCode ? "new-password" : "current-password"} value={digits} onChange={(e) => setCode(e.target.value)} placeholder="••••••" />
+            </div>
+          )}
+          {newCode && (!forgot || otpSent) && (
             <>
               <div className="field">
                 <Label htmlFor="code2">Retape le même code</Label>
@@ -301,22 +382,35 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
                 {mismatch && <p className="note" role="alert" data-tone="error">Les deux codes ne sont pas pareils.</p>}
               </div>
               <p className="note">Retiens bien ce code : il protège ta boutique. Ne le donne à personne.</p>
-              <div className="consent">
-                <Checkbox id="agree" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
-                <label htmlFor="agree">
-                  J’ai lu et j’accepte les{" "}
-                  <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>conditions d’utilisation</button> et la{" "}
-                  <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>politique de confidentialité</button>.
-                </label>
-              </div>
             </>
           )}
+          {creating && (
+            <div className="consent">
+              <Checkbox id="agree" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
+              <label htmlFor="agree">
+                J’ai lu et j’accepte les{" "}
+                <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>conditions d’utilisation</button> et la{" "}
+                <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>politique de confidentialité</button>.
+              </label>
+            </div>
+          )}
+          {creating && otpField}
+          {info && !error && <p className="note">{info}</p>}
           {error && <p className="note" role="alert" data-tone="error">{error}</p>}
-          <Button type="submit" className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || !ready}>
-            {busy ? "Un instant…" : creating ? "Créer mon compte" : "Entrer"}
-          </Button>
-          {creating && !agreed && phoneOk && digits.length === 6 && digits2 === digits && <p className="note">Coche la case pour continuer.</p>}
-          <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
+          {!(forgot && sms === false) && (
+            <Button type="submit" className="h-12 rounded-full text-[15px] font-semibold" disabled={busy || !ready}>
+              {label}
+            </Button>
+          )}
+          {creating && !agreed && phoneOk && codesOk && <p className="note">Coche la case pour continuer.</p>}
+          {mode === "entrer" && (
+            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={() => switchTo("oubli")}>Code oublié ?</Button>
+          )}
+          {forgot ? (
+            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={() => switchTo("entrer")}>Retour à la connexion</Button>
+          ) : (
+            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
+          )}
         </form>
       </section>
       {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}

@@ -1,5 +1,6 @@
 // Jokko — création de compte : numéro sénégalais + code secret à 6 chiffres.
 // Le compte est créé confirmé (pas d'e-mail réel) ; l'appli se connecte ensuite elle-même.
+// Quand l'envoi de SMS est branché, le numéro doit d'abord être prouvé par un code reçu par SMS (fonction « otp »).
 // Les conditions d'utilisation doivent avoir été acceptées : la version et la date sont gardées.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -12,16 +13,19 @@ const hits = new Map<string, number[]>();
 let pepper: string | null = null;
 
 /** Même calcul que la fonction « login » : le vrai mot de passe dépend d'un secret serveur. */
-async function passwordOf(admin: ReturnType<typeof createClient>, phone: string, code: string): Promise<string> {
+async function hmac(admin: ReturnType<typeof createClient>, message: string): Promise<string> {
   if (!pepper) {
     const { data, error } = await admin.rpc("login_pepper");
     if (error || typeof data !== "string" || !data) throw new Error("secret de connexion manquant");
     pepper = data;
   }
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pepper), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${phone}:${code}`));
-  return `jk1-${[...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+const passwordOf = async (admin: ReturnType<typeof createClient>, phone: string, code: string) => `jk1-${await hmac(admin, `${phone}:${code}`)}`;
+/** L'envoi de SMS est branché (clés Orange posées) : le numéro doit alors être vérifié par code SMS. */
+const smsReady = () => Boolean(Deno.env.get("ORANGE_CLIENT_ID")?.trim() && Deno.env.get("ORANGE_CLIENT_SECRET")?.trim());
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
@@ -53,11 +57,13 @@ Deno.serve(async (req) => {
   let phone = "";
   let code = "";
   let terms = "";
+  let otp = "";
   try {
     const body = await req.json();
     phone = String(body?.phone ?? "");
     code = String(body?.code ?? "");
     terms = String(body?.terms ?? "");
+    otp = String(body?.otp ?? "");
   } catch {
     return send(req, 400, { error: "invalid_json" });
   }
@@ -74,6 +80,12 @@ Deno.serve(async (req) => {
     password = await passwordOf(admin, phone, code);
   } catch {
     return send(req, 503, { error: "signup_failed" });
+  }
+  // Vérification du numéro par le code reçu par SMS (si l'envoi de SMS est branché).
+  if (smsReady()) {
+    if (!/^\d{6}$/.test(otp)) return send(req, 400, { error: "otp_required" });
+    const { data: check } = await admin.rpc("otp_consume", { p_phone: phone, p_purpose: "inscription", p_hash: await hmac(admin, `otp:${phone}:inscription:${otp}`) });
+    if (check !== "ok") return send(req, 400, { error: `otp_${check ?? "faux"}` });
   }
   const { data, error } = await admin.auth.admin.createUser({
     email: `${phone}@tel.jokko.app`,
