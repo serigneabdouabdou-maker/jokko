@@ -6,7 +6,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const WAVE = "https://api.wave.com";
-const APP_URL = Deno.env.get("JOKKO_APP_URL") ?? "https://serigneabdouabdou-maker.github.io/jokko/";
+// Adresse de l'appli où Wave renvoie le client après paiement.
+const APP_URL = "https://jokkoapp.com/";
 // Adresses autorisées à appeler la fonction : jokkoapp.com (Cloudflare), l'ancienne adresse GitHub, et le poste de dev.
 const DEFAULT_ORIGINS = ["https://jokkoapp.com", "https://www.jokkoapp.com", "https://jokko.serigneabdouabdou.workers.dev", "https://serigneabdouabdou-maker.github.io", "http://localhost:5173", "http://localhost:4173"];
 const ALLOWED = ([...new Set([...DEFAULT_ORIGINS, ...(Deno.env.get("JOKKO_ORIGINS") ?? "").split(",")])].filter(Boolean).join(",")).split(",").map((o) => o.trim());

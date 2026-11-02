@@ -6,7 +6,7 @@ import type { Shop } from "@/model";
 import { whatsappLink } from "@/data/debts";
 import { cancelInvite, type Invite, inviteSeller, loadTeam, type Member, removeMember } from "@/data/team";
 
-const APP_URL = "https://serigneabdouabdou-maker.github.io/jokko/";
+const APP_URL = "https://jokkoapp.com/";
 const show = (phone: string) => phone.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
 /** Message WhatsApp pour prévenir le vendeur : il crée son compte avec ce numéro et retrouve la boutique. */
