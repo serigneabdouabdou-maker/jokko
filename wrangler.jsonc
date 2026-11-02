@@ -1,0 +1,10 @@
+// Hébergement de Jokko sur Cloudflare (jokkoapp.com) : uniquement les fichiers de l'appli (dossier dist).
+// Le « cerveau » (comptes, ventes, IA) reste sur Supabase.
+{
+  "name": "jokko",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
