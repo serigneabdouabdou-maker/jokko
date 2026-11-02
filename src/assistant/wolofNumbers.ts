@@ -3,6 +3,8 @@
  *
  * Règle : quand on compte l'argent avec des nombres wolof, on compte en dërëm (1 dërëm = 5 F),
  * même sans dire « dërëm ». « benn junni » = 1 000 dërëm = 5 000 F ; « ñaari junni » = 10 000 F.
+ * SAUF les millions et milliards, qui se disent en FRANCS (validé par le patron le 02/11/2026) :
+ * « benn milyoŋ » = 1 000 000 F ; « ñaari milyoŋ ak téeméeri junni » = 2 000 000 F + 500 000 F.
  * Avec des nombres français ou des chiffres (« 10 000 », « deux mille », « ñaari mil »), ce sont des francs.
  */
 
@@ -206,6 +208,20 @@ export function readWolofNumber(text: string): number | null {
 
 export type SpokenAmount = { francs: number; derem: number | null; unit: "derem" | "francs" };
 
+/** Sépare la partie « milyoŋ / miliyaar » (en francs) du reste (en dërëm). null s'il n'y a pas de million. */
+function splitBig(text: string): { big: number; rest: number } | null {
+  const words = clean(text);
+  let last = -1;
+  words.forEach((w, i) => {
+    const b = base(w);
+    if (b === "milyon" || b === "miliyaar") last = i;
+  });
+  if (last < 0) return null;
+  const big = readWolofNumber(words.slice(0, last + 1).join(" ")) ?? 0;
+  const rest = readWolofNumber(words.slice(last + 1).join(" ")) ?? 0;
+  return { big, rest };
+}
+
 /**
  * Montant dit par le commerçant → francs CFA.
  * Nombres wolof : dërëm (×5). Chiffres ou mots français : francs.
@@ -215,6 +231,12 @@ export function spokenAmountToFrancs(text: string): SpokenAmount | null {
   const explicitDerem = /d[eë]r[eë]m|dorom/.test(t);
   const wolof = readWolofNumber(t);
   if (wolof !== null && (explicitDerem || !FRENCH_MONEY.test(t))) {
+    // Millions et milliards en francs, le reste en dërëm : « ñaari milyoŋ ak téeméeri junni » = 2 500 000 F.
+    const big = explicitDerem ? null : splitBig(t);
+    if (big) {
+      const francs = Math.round(big.big + big.rest * 5);
+      return { francs, derem: null, unit: "francs" };
+    }
     return { francs: Math.round(wolof * 5), derem: wolof, unit: "derem" };
   }
   const french = readFrenchNumber(t);
@@ -278,8 +300,16 @@ export function wolofNumber(n: number): string {
 export function francsToWolof(francs: number): string {
   const f = Math.round(francs);
   if (f <= 0) return "dara";
-  if (f % 5 !== 0) return `${f.toLocaleString("fr-FR")} F`;
-  return wolofNumber(f / 5);
+  if (f < 1_000_000) return f % 5 !== 0 ? `${f.toLocaleString("fr-FR")} F` : wolofNumber(f / 5);
+  // Millions et milliards : en francs. Le reste (moins d'un million) : en dërëm.
+  const parts: string[] = [];
+  const billions = Math.floor(f / 1_000_000_000);
+  const millions = Math.floor((f % 1_000_000_000) / 1_000_000);
+  const rest = f % 1_000_000;
+  if (billions) parts.push(billions === 1 ? "benn miliyaar" : `${linked(wolofNumber(billions))} miliyaar`);
+  if (millions) parts.push(millions === 1 ? "benn milyoŋ" : `${linked(wolofNumber(millions))} milyoŋ`);
+  if (rest) parts.push(rest % 5 === 0 ? wolofNumber(rest / 5) : `${rest.toLocaleString("fr-FR")} F`);
+  return parts.join(" ak ");
 }
 
 const QUANTITY_UNITS = new Set([

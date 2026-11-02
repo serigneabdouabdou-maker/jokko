@@ -4,7 +4,7 @@ import { buildReport, periodOf } from "../data/report";
 import { applyDraft, times } from "./apply";
 import type { DraftAction } from "./client";
 import { type Entry, LiveDesk } from "./liveDesk";
-import { extractSpokenAmount, saysUnitPrice, settleAmounts, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, saysUnitPrice, settleAmounts, spokenAmountToFrancs, wolofNumber } from "./wolofNumbers";
 
 const blank: DraftAction = { type: "sale", productId: null, productName: null, quantity: null, amount: null, clientId: null, clientName: null, label: null };
 
@@ -48,8 +48,13 @@ describe("grands montants", () => {
     expect(spokenAmountToFrancs("20k")?.francs).toBe(20_000);
   });
 
-  it("wolof : milyoŋ et miliyaar en dërëm, « million » français en francs", () => {
-    expect(spokenAmountToFrancs("benn milyoŋ")?.francs).toBe(5_000_000);
+  it("wolof : milyoŋ et miliyaar en FRANCS (le reste en dërëm)", () => {
+    expect(spokenAmountToFrancs("benn milyoŋ")?.francs).toBe(1_000_000);
+    expect(spokenAmountToFrancs("ñaari milyoŋ ak téeméeri junni")?.francs).toBe(2_500_000);
+    expect(spokenAmountToFrancs("benn miliyaar")?.francs).toBe(1_000_000_000);
+    expect(francsToWolof(1_000_000)).toBe("benn milyoŋ");
+    expect(francsToWolof(2_500_000)).toBe("ñaari milyoŋ ak téeméeri junni");
+    expect(francsToWolof(12_045_250)).toBe("fukk ak ñaari milyoŋ ak juróom-ñeenti junni ak juróom-fukk");
     expect(spokenAmountToFrancs("ñaari million")?.francs).toBe(2_000_000);
     expect(spokenAmountToFrancs("ñaari mil")?.francs).toBe(2_000);
     expect(wolofNumber(2_500_000)).toBe("ñaari milyoŋ ak juróomi téeméeri junni");

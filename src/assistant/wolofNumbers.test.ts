@@ -112,10 +112,10 @@ describe("livre de phrases verrouillé", () => {
 });
 
 describe("tous les montants, aller-retour", () => {
-  it("chaque montant de 5 F à 1 000 000 F se dit en wolof et se relit au franc près", async () => {
+  it("chaque montant de 5 F à 999 995 F se dit en wolof et se relit au franc près", async () => {
     const { francsToWolof, spokenAmountToFrancs } = await import("./wolofNumbers");
     const faux: string[] = [];
-    for (let f = 5; f <= 1_000_000; f += 5) {
+    for (let f = 5; f < 1_000_000; f += 5) {
       const w = francsToWolof(f);
       if (spokenAmountToFrancs(w)?.francs !== f && faux.length < 5) faux.push(`${f} → ${w}`);
     }
@@ -125,5 +125,14 @@ describe("tous les montants, aller-retour", () => {
   it("45 250 F = juróom-ñeenti junni ak juróom-fukk (9 050 dërëm)", async () => {
     const { francsToWolof } = await import("./wolofNumbers");
     expect(francsToWolof(45250)).toBe("juróom-ñeenti junni ak juróom-fukk");
+  });
+});
+
+describe("millions en francs", () => {
+  it("benn milyoŋ = 1 000 000 F, et l'aller-retour marche pour les grands montants", async () => {
+    const { francsToWolof, spokenAmountToFrancs } = await import("./wolofNumbers");
+    for (const f of [1_000_000, 1_000_005, 1_500_000, 2_045_250, 10_000_000, 12_345_675, 999_999_995, 1_000_000_000, 2_750_000_000]) {
+      expect(spokenAmountToFrancs(francsToWolof(f))?.francs).toBe(f);
+    }
   });
 });
