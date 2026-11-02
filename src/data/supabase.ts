@@ -33,7 +33,7 @@ export async function api(route: "status" | "interpret" | "listen" | "live" | "o
 
 export type AuthOutcome =
   | { ok: true; session: Session; created: boolean }
-  | { ok: false; reason: "wrong_code" | "invalid" | "network" | "exists"; message: string };
+  | { ok: false; reason: "wrong_code" | "locked" | "invalid" | "network" | "exists"; message: string };
 
 /** 77 123 45 67 → 221771234567 */
 export function normalizePhone(raw: string): string | null {
@@ -43,8 +43,8 @@ export function normalizePhone(raw: string): string | null {
   return /^221[37]\d{8}$/.test(digits) ? digits : null;
 }
 
-const emailOf = (phone: string) => `${phone}@tel.jokko.app`;
-const passwordOf = (code: string) => `jokko-${code}`;
+/** Numéro WhatsApp de l'assistance Jokko (code oublié, compte bloqué). */
+export const SUPPORT_PHONE = "77 567 47 25";
 
 function checkInput(rawPhone: string, code: string): { phone: string } | AuthOutcome {
   const phone = normalizePhone(rawPhone);
@@ -53,17 +53,46 @@ function checkInput(rawPhone: string, code: string): { phone: string } | AuthOut
   return { phone };
 }
 
-/** Me connecter : numéro + code secret d'un compte qui existe déjà. */
+/**
+ * Me connecter : numéro + code secret. Passe par la fonction serveur « login », qui bloque le numéro
+ * après 5 codes faux (15 min), 10 (1 h), 15 (24 h).
+ */
 export async function signIn(rawPhone: string, code: string): Promise<AuthOutcome> {
   const input = checkInput(rawPhone, code);
   if (!("phone" in input)) return input;
+  return login(input.phone, code, false);
+}
+
+async function login(phone: string, code: string, created: boolean): Promise<AuthOutcome> {
   try {
-    const { data } = await supabase.auth.signInWithPassword({ email: emailOf(input.phone), password: passwordOf(code) });
-    if (data.session) return { ok: true, session: data.session, created: false };
-    return { ok: false, reason: "wrong_code", message: "Numéro ou code secret incorrect. Pas encore de compte ? Touche « Créer mon compte »." };
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ phone, code }),
+    });
+    const body = (await response.json().catch(() => null)) as { access_token?: string; refresh_token?: string; error?: string; left?: number; minutes?: number } | null;
+    if (response.ok && body?.access_token && body.refresh_token) {
+      const { data, error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
+      if (data.session && !error) return { ok: true, session: data.session, created };
+      return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
+    }
+    if (response.status === 423 || body?.error === "locked") return { ok: false, reason: "locked", message: lockedMessage(body?.minutes ?? 15) };
+    if (response.status === 401) {
+      const left = body?.left ?? 0;
+      const warn = left > 0 && left <= 3 ? ` Attention : encore ${left} essai${left > 1 ? "s" : ""}, puis le compte est bloqué un moment.` : "";
+      return { ok: false, reason: "wrong_code", message: `Numéro ou code secret incorrect.${warn} Pas encore de compte ? Touche « Créer mon compte ».` };
+    }
+    if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais depuis ce réseau. Réessaie dans 10 minutes." };
+    return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
   } catch {
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }
+}
+
+/** Compte bloqué après trop de codes faux. */
+export function lockedMessage(minutes: number): string {
+  const wait = minutes >= 120 ? `${Math.round(minutes / 60)} heures` : minutes >= 60 ? "1 heure" : `${minutes} minutes`;
+  return `Trop de codes faux : par sécurité, ce compte est bloqué pendant ${wait}. Code oublié ? Écris sur WhatsApp au ${SUPPORT_PHONE}.`;
 }
 
 /** Créer mon compte : numéro + code secret, avec les conditions acceptées (version datée). */
@@ -84,9 +113,8 @@ export async function signUp(rawPhone: string, code: string, termsVersion: strin
     if (body?.error === "terms_required") return { ok: false, reason: "invalid", message: "Coche la case des conditions pour créer ton compte." };
     if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais. Réessaie dans une heure." };
     if (!response.ok) return { ok: false, reason: "network", message: "Inscription impossible pour le moment. Réessaie." };
-    const { data } = await supabase.auth.signInWithPassword({ email: emailOf(input.phone), password: passwordOf(code) });
-    if (data.session) return { ok: true, session: data.session, created: true };
-    return { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
+    const entered = await login(input.phone, code, true);
+    return entered.ok ? entered : { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
   } catch {
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }

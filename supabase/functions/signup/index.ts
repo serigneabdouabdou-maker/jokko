@@ -9,6 +9,19 @@ const ALLOWED = ([...new Set([...DEFAULT_ORIGINS, ...(Deno.env.get("JOKKO_ORIGIN
   .split(",")
   .map((o) => o.trim());
 const hits = new Map<string, number[]>();
+let pepper: string | null = null;
+
+/** Même calcul que la fonction « login » : le vrai mot de passe dépend d'un secret serveur. */
+async function passwordOf(admin: ReturnType<typeof createClient>, phone: string, code: string): Promise<string> {
+  if (!pepper) {
+    const { data, error } = await admin.rpc("login_pepper");
+    if (error || typeof data !== "string" || !data) throw new Error("secret de connexion manquant");
+    pepper = data;
+  }
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pepper), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${phone}:${code}`));
+  return `jk1-${[...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
@@ -56,9 +69,15 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  let password: string;
+  try {
+    password = await passwordOf(admin, phone, code);
+  } catch {
+    return send(req, 503, { error: "signup_failed" });
+  }
   const { data, error } = await admin.auth.admin.createUser({
     email: `${phone}@tel.jokko.app`,
-    password: `jokko-${code}`,
+    password,
     email_confirm: true,
     user_metadata: { phone, terms_version: terms },
   });
