@@ -1,6 +1,7 @@
 // Jokko — notifications envoyées même quand l'appli est fermée (Web Push).
 // Appelée par la base de données seulement (en-tête secret) :
-//  - { kind: "journal", id } : une action dans une boutique ; si c'est une alerte GRAVE, le patron est prévenu.
+//  - { kind: "journal", id } : une action dans une boutique ; le patron est prévenu des alertes GRAVES,
+//    et (selon son choix) des ventes, dépenses, factures et dettes payées — un panier = une seule notification.
 //  - { kind: "summary" } : chaque heure ; résumé du jour à ceux qui l'ont demandé à cette heure (heure de Dakar).
 // Les règles d'alerte et le résumé sont les mêmes que dans l'appli (fichiers du dépôt, figés sur une version).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -8,6 +9,7 @@ import webpush from "npm:web-push@3.6.7";
 import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/alerts.ts";
 import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/sync.ts";
 import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/summary.ts";
+import { activityNotice, activityTargets, type ActivityPref } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/a15d9575a1e3c6ae465afd684774cea89a64fc2d/src/data/activity.ts";
 
 type Row = Record<string, unknown>;
 type JournalRow = { id: number; shop_id: string; at: string; user_id: string | null; tbl: string; row_id: string; action: "ajout" | "modification" | "suppression"; before: Row | null; after: Row | null };
@@ -64,8 +66,9 @@ async function push(userIds: string[], payload: { title: string; body: string; u
 }
 
 async function onJournal(id: number) {
-  // On laisse arriver la vente qui accompagne une baisse de stock (elles sont envoyées l'une après l'autre).
-  await new Promise((r) => setTimeout(r, 8000));
+  // On laisse arriver la vente qui accompagne une baisse de stock, et les autres articles du même panier
+  // (au-delà de BASKET_GAP_MS = 20 s, c'est une autre vente).
+  await new Promise((r) => setTimeout(r, 21_000));
   const { data: row } = await admin.from("journal").select("*").eq("id", id).maybeSingle();
   if (!row) return 0;
   const from = new Date(Date.parse(row.at) - 10 * 60_000).toISOString();
@@ -73,11 +76,30 @@ async function onJournal(id: number) {
   const { data: around } = await admin.from("journal").select("*").eq("shop_id", row.shop_id).gte("at", from).lte("at", to).limit(500);
   const [shop, patrons] = await Promise.all([loadShop(row.shop_id, new Date().toISOString()), patronsOf(row.shop_id)]);
   if (!shop) return 0;
+  let sent = 0;
   const alert = detectAlerts((around ?? []) as JournalRow[], shop.products, new Set(patrons)).find((a) => a.id === String(id));
-  if (!alert || alert.level !== "grave") return 0;
-  // La personne qui a fait l'action n'est pas prévenue de sa propre action.
-  const targets = patrons.filter((p) => p !== row.user_id);
-  return push(targets, { title: `Alerte Jokko · ${shop.name}`, body: alert.text, url: "./?ecran=distance", tag: `alerte-${id}` });
+  if (alert && alert.level === "grave") {
+    // La personne qui a fait l'action n'est pas prévenue de sa propre action.
+    const targets = patrons.filter((p) => p !== row.user_id);
+    sent += await push(targets, { title: `Alerte Jokko · ${shop.name}`, body: alert.text, url: "./?ecran=distance", tag: `alerte-${id}` });
+  }
+  sent += await activity(row as JournalRow, (around ?? []) as JournalRow[], shop.name, patrons);
+  return sent;
+}
+
+/** « Votre boutique a vendu… » : au patron, selon son choix (employés seulement, tout, ou rien). */
+async function activity(row: JournalRow, around: JournalRow[], shopName: string, patrons: string[]) {
+  if (!patrons.length) return 0;
+  const { data: prefs } = await admin.from("profiles").select("user_id, notify_activity, owner").in("user_id", [...new Set([...patrons, ...(row.user_id ? [row.user_id] : [])])]);
+  const prefOf = new Map((prefs ?? []).map((p) => [p.user_id as string, p]));
+  const targets = activityTargets(patrons.map((p) => ({ user_id: p, pref: (prefOf.get(p)?.notify_activity ?? null) as ActivityPref | null })), row.user_id);
+  if (!targets.length) return 0;
+  // Qui a fait l'action : rien si c'est le patron, sinon le nom de l'employé.
+  const actorIsPatron = row.user_id !== null && patrons.includes(row.user_id);
+  const who = actorIsPatron ? "" : String(prefOf.get(row.user_id ?? "")?.owner ?? "").trim() || "un employé";
+  const notice = activityNotice(row, shopName, around, who);
+  if (!notice) return 0;
+  return push(targets, { ...notice, url: "./?ecran=distance" });
 }
 
 async function onSummary() {
@@ -115,7 +137,13 @@ Deno.serve(async (req) => {
   if (req.headers.get("x-jokko-notify") !== cfg.notify_secret) return new Response("forbidden", { status: 403 });
   const body = await req.json().catch(() => ({}));
   try {
-    const sent = body.kind === "journal" && Number.isFinite(body.id) ? await onJournal(Number(body.id)) : body.kind === "summary" ? await onSummary() : 0;
+    if (body.kind === "journal" && Number.isFinite(body.id)) {
+      // Réponse tout de suite à la base ; le travail (attente du panier + envoi) continue en arrière-plan.
+      const work = onJournal(Number(body.id)).catch((error) => console.warn("[jokko] notify:", error instanceof Error ? error.message : "erreur"));
+      (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(work);
+      return Response.json({ accepted: true }, { status: 202 });
+    }
+    const sent = body.kind === "summary" ? await onSummary() : 0;
     return Response.json({ sent });
   } catch (error) {
     console.warn("[jokko] notify:", error instanceof Error ? error.message : "erreur");
