@@ -53,8 +53,8 @@ function IosSteps() {
   );
 }
 
-/** Dernière version de l'application Android (page de GitHub, toujours la plus récente). */
-const ANDROID_APK = "https://github.com/serigneabdouabdou-maker/jokko/releases/latest/download/Jokko.apk";
+/** Page de téléchargement de l'application Android (sur jokkoapp.com). */
+const ANDROID_APK = "/android/";
 
 const NOTIFY_TEXT: Record<NotifyState, string> = {
   non_dispo: "Ce navigateur ne sait pas afficher de notifications. Installe Jokko, ou ouvre-le avec Chrome.",

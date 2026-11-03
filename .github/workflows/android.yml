@@ -107,6 +107,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/download-artifact@v4
         with:
           name: apk
@@ -117,4 +120,11 @@ jobs:
           V="1.0.${{ github.run_number }}"
           gh release create "android-v$V" Jokko.apk --repo "${{ github.repository }}" --latest \
             --title "Jokko pour Android $V" \
-            --notes "Application Android de Jokko (CFC – Cissé Family Company). Télécharger Jokko.apk, l'ouvrir, puis autoriser l'installation."
+            --notes "Téléchargement : https://jokkoapp.com/android — Application Android de Jokko (CFC – Cissé Family Company). Télécharger Jokko.apk, l'ouvrir, puis autoriser l'installation."
+      - name: Mettre l'APK sur jokkoapp.com/Jokko.apk
+        run: |
+          cp Jokko.apk public/Jokko.apk
+          git add public/Jokko.apk
+          git -c user.name=jokko-ci -c user.email=ci@jokkoapp.com commit -qm "Application Android 1.0.${{ github.run_number }} sur jokkoapp.com" || exit 0
+          git pull -q --rebase origin main
+          git push -q origin HEAD:main
