@@ -69,7 +69,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
     void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(waveLinkFor(info.wave_link!, pending.amount), { margin: 1, width: 240 })).then(setQr, () => setQr(""));
   }, [pending, info?.wave_link]);
 
-  const price = (p: "medium" | "avance") => (p === "medium" ? info?.price_medium : info?.price_avance) ?? (p === "medium" ? 3000 : 7500);
+  const price = (p: "medium" | "avance") => (p === "medium" ? info?.price_medium : info?.price_avance) ?? (p === "medium" ? 4000 : 8000);
 
   async function order() {
     if (!choice) return;
