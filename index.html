@@ -22,6 +22,38 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Téléphone trop ancien (moteur web d'avant 2023) : Jokko s'afficherait cassé. On explique comment mettre à jour. -->
+    <div id="vieux-moteur" hidden style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:9999;background:#FFFDF7;color:#17191F;font-family:system-ui,Roboto,sans-serif;overflow:auto">
+      <div style="max-width:420px;margin:0 auto;padding:40px 20px;text-align:center">
+        <img src="%BASE_URL%icon-192.png" alt="" width="72" height="72" style="border-radius:18px" />
+        <h1 style="font-size:22px;margin:18px 0 8px">Mets ton téléphone à jour pour utiliser Jokko</h1>
+        <p style="margin:0 0 6px;line-height:1.45;color:#4a4d55">Le moteur web de ce téléphone est trop ancien : Jokko ne peut pas bien s’afficher.</p>
+        <p lang="wo" style="margin:0 0 18px;line-height:1.45;color:#4a4d55"><b>Sa téléphone dafa wara yeesal.</b></p>
+        <a id="vm-maj" href="https://play.google.com/store/apps/details?id=com.google.android.webview" style="display:block;padding:15px 20px;border-radius:999px;background:#F6B800;color:#17191F;font-weight:700;text-decoration:none">Mettre à jour (Play Store)</a>
+        <p id="vm-aide" style="font-size:14px;color:#4a4d55;line-height:1.5;margin:16px 0">Dans le Play Store, touche <b>Mettre à jour</b> sur « Android System WebView » et sur « Google Chrome », puis rouvre Jokko.</p>
+        <a href="https://wa.me/221775674725?text=Bonjour%20CFC%2C%20Jokko%20me%20demande%20une%20mise%20%C3%A0%20jour." style="color:#0A1F44;font-weight:650">Besoin d’aide ? WhatsApp CFC</a>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var ok = false;
+        try {
+          ok = !!(window.CSS && CSS.supports && CSS.supports("color", "color-mix(in srgb, red, blue)") && CSS.supports("selector(:where(a))"));
+        } catch (e) {}
+        if (ok) return;
+        var box = document.getElementById("vieux-moteur");
+        box.hidden = false;
+        document.getElementById("root").style.display = "none";
+        var android = /Android/i.test(navigator.userAgent);
+        var inApp = /JokkoApp\//.test(navigator.userAgent);
+        if (!android) {
+          document.getElementById("vm-maj").style.display = "none";
+          document.getElementById("vm-aide").textContent = "Mets à jour ton navigateur (Chrome, Safari, Edge ou Firefox), puis rouvre jokkoapp.com.";
+        } else if (!inApp) {
+          document.getElementById("vm-maj").href = "https://play.google.com/store/apps/details?id=com.android.chrome";
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
