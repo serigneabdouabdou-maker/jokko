@@ -111,7 +111,10 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" capture-android-${{ matrix.api }}
 
   release:
-    needs: test
+    needs: [build, test]
+    # Publie dès que l'APK est construit et signé, même si un téléphone virtuel s'est bloqué chez GitHub
+    # (les captures d'écran des tests sont vérifiées à chaque version).
+    if: ${{ always() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
