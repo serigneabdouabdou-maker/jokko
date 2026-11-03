@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trialLeft, type TrialLeft } from "@/data/supabase";
+import { isNativeApp } from "@/native";
 import { type PlanName, type Shop, money } from "@/model";
 import {
   daysLeft,
@@ -10,7 +11,9 @@ import {
   type Feature,
   FEATURE_PLAN,
   freshPlan,
+  checkSubscriptionWave,
   myRequests,
+  paySubscriptionWave,
   PLAN_FEATURES,
   PLAN_LABELS,
   requestSubscription,
@@ -44,7 +47,8 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   const [choice, setChoice] = useState<"medium" | "avance" | null>(initialChoice);
   const [months, setMonths] = useState(1);
   const [payer, setPayer] = useState("");
-  const [pending, setPending] = useState<{ reference: string; amount: number } | null>(null);
+  const [pending, setPending] = useState<{ id: string; reference: string; amount: number } | null>(null);
+  const [activated, setActivated] = useState<string | null>(null);
   const [qr, setQr] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,6 +68,39 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
     void refresh();
   }, [shop.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Retour de Wave (ou paiement en cours) : on demande l'état quelques fois ; l'offre s'active dès que Wave confirme.
+  const waiting = requests.filter((r) => r.status === "en_attente").map((r) => r.id).join(",");
+  useEffect(() => {
+    if (!info?.wave_auto || !waiting) return;
+    let tries = 0;
+    let stop = false;
+    const tick = async () => {
+      for (const id of waiting.split(",")) {
+        if (stop) return;
+        if ((await checkSubscriptionWave(id)) === "active") {
+          setActivated(id);
+          setPending(null);
+          void refresh();
+          return;
+        }
+      }
+      if (++tries < 40 && !stop) window.setTimeout(() => void tick(), tries < 10 ? 3000 : 15000);
+    };
+    void tick();
+    return () => {
+      stop = true;
+    };
+  }, [info?.wave_auto, waiting]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function payWave(id: string) {
+    setBusy(true);
+    setNote("");
+    const r = await paySubscriptionWave(id);
+    setBusy(false);
+    if (!r.ok) return setNote(r.message);
+    window.location.href = r.url;
+  }
+
   useEffect(() => {
     if (!pending || !info?.wave_link) return setQr("");
     void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(waveLinkFor(info.wave_link!, pending.amount), { margin: 1, width: 240 })).then(setQr, () => setQr(""));
@@ -78,8 +115,10 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
     const r = await requestSubscription(shop.id, choice, months, payer);
     setBusy(false);
     if (!r.ok) return setNote(r.message);
-    setPending({ reference: r.reference, amount: r.amount });
+    setPending({ id: r.id, reference: r.reference, amount: r.amount });
     void refresh();
+    // Paiement automatique : on ouvre Wave tout de suite.
+    if (info?.wave_auto) await payWave(r.id);
   }
 
   const plans: PlanName[] = ["gratuit", "medium", "avance"];
@@ -141,7 +180,23 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
         </div>
       )}
 
-      {pending && (
+      {activated && (
+        <div className="sheet plan-pay" role="status">
+          <h3><Icon name="ok" size="sm" className="jk-ok" /> Paiement reçu, offre activée</h3>
+          <p className="note">Merci ! Wave a confirmé le paiement et ton offre est active tout de suite. Ton reçu est dans « Mes paiements » ci-dessous.</p>
+        </div>
+      )}
+
+      {pending && info?.wave_auto && (
+        <div className="sheet plan-pay">
+          <h3>Paiement Wave · {amount(pending.amount)}</h3>
+          <p className="note">Wave va s’ouvrir : confirme le paiement de <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>. Ton offre s’active toute seule dès que Wave confirme, de jour comme de nuit.</p>
+          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void payWave(pending.id)}>{busy ? "Ouverture de Wave…" : "Ouvrir Wave"}</Button>
+          {note && <p className="note" data-tone="error">{note}</p>}
+        </div>
+      )}
+
+      {pending && !info?.wave_auto && (
         <div className="sheet plan-pay">
           <h3>Paiement Wave · {amount(pending.amount)}</h3>
           {info?.wave_link ? (
@@ -163,12 +218,17 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
 
       {requests.length > 0 && (
         <div className="sheet">
-          <h3>Mes demandes</h3>
+          <h3>Mes paiements</h3>
           <ul className="price-preview">
             {requests.map((r) => (
               <li key={r.id}>
-                <span>{PLAN_LABELS[r.plan]} · {r.months} mois · <b>{r.reference}</b></span>
-                <span>{amount(r.amount)} · {r.status === "en_attente" ? "en attente du paiement" : r.status === "active" ? "activée" : "refusée"}{r.status === "active" && <Icon name="ok" size="sm" className="jk-ok" label="Activée" />}</span>
+                <span>{PLAN_LABELS[r.plan]} · {r.months} mois · <b>{r.reference}</b>{r.paid_at && <><br /><small>Payé par Wave le {date(r.paid_at)}{r.transaction_id ? ` · n° ${r.transaction_id}` : ""}</small></>}</span>
+                <span>
+                  {amount(r.amount)} · {r.status === "en_attente" ? "en attente du paiement" : r.status === "active" ? "activée" : "refusée"}
+                  {r.status === "active" && <Icon name="ok" size="sm" className="jk-ok" label="Activée" />}
+                  {r.status === "active" && <> · <button type="button" className="link" onClick={() => printReceipt(shop.name, r)}>Reçu</button></>}
+                  {r.status === "en_attente" && info?.wave_auto && <> · <button type="button" className="link" disabled={busy} onClick={() => void payWave(r.id)}>Payer</button></>}
+                </span>
               </li>
             ))}
           </ul>
@@ -176,4 +236,30 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
       )}
     </section>
   );
+}
+
+/** Reçu de paiement (CFC) : s'ouvre pour être imprimé ou enregistré en PDF. */
+function printReceipt(shopName: string, r: SubscriptionRequest) {
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const paid = r.paid_at ?? r.created_at;
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reçu ${esc(r.reference)}</title>
+<style>body{font-family:system-ui,Roboto,sans-serif;color:#17191F;max-width:560px;margin:24px auto;padding:0 16px}h1{font-size:22px;margin:0}table{width:100%;border-collapse:collapse;margin:18px 0}td{padding:8px 0;border-bottom:1px solid #eee}td:last-child{text-align:right;font-weight:600}.tot td{font-size:18px;border:0}small{color:#666}button{margin-top:16px;padding:12px 20px;border-radius:999px;border:0;background:#F6B800;font-weight:700}@media print{button{display:none}}</style></head><body>
+<h1>Reçu de paiement</h1><small>CFC – Cissé Family Company · Jokko · jokkoapp.com</small>
+<table><tr><td>Reçu n°</td><td>${esc(r.reference)}</td></tr><tr><td>Date</td><td>${new Date(paid).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
+<tr><td>Boutique</td><td>${esc(shopName)}</td></tr><tr><td>Offre</td><td>Jokko ${esc(PLAN_LABELS[r.plan])} · ${r.months} mois</td></tr>
+<tr><td>Moyen de paiement</td><td>${r.paid_via === "wave" ? "Wave" : "Wave (vérifié par CFC)"}</td></tr>${r.transaction_id ? `<tr><td>Transaction Wave</td><td>${esc(r.transaction_id)}</td></tr>` : ""}
+<tr class="tot"><td>Total payé</td><td>${r.amount.toLocaleString("fr-FR")} F CFA</td></tr></table>
+<small>Merci pour votre confiance. Contact : WhatsApp 77 567 47 25.</small><br><button onclick="print()">Imprimer ou enregistrer en PDF</button></body></html>`;
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  // Dans l'application Android : le reçu est partagé (WhatsApp, impression…) ; sur le site : nouvel onglet.
+  if (isNativeApp()) a.download = `Recu-Jokko-${r.reference}.html`;
+  else {
+    a.target = "_blank";
+    a.rel = "noopener";
+  }
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

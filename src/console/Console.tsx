@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
 import { ConsoleMap } from "./ConsoleMap";
 import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
-import { supabase, signIn, phoneOf } from "@/data/supabase";
+import { supabase, signIn, phoneOf, SUPABASE_URL } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
 import { errorRate } from "@/data/quality";
 import { adminDecide, type AdminOverview, adminOverview, adminSetPlan, adminSettings, PLAN_LABELS } from "@/data/plans";
@@ -614,6 +614,7 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
   return (
     <div className="cx-stack">
       <LaunchCard />
+      <CfcWaveCard />
       <section className="cx-card">
         <h3>Prix et lien de paiement</h3>
         <p className="note">Le lien Wave Business de CFC. Le montant est ajouté tout seul pour chaque demande (1, 3, 6 ou 12 mois).</p>
@@ -886,6 +887,55 @@ function QualityTab() {
         <p className="note">Chaque semaine : on corrige les phrases qui reviennent le plus (mot wolof inconnu, deux articles qui se ressemblent, nombre mal compris), puis on coche « Corrigé ».</p>
       </section>
     </div>
+  );
+}
+
+/**
+ * Paiement automatique des abonnements : clés Wave Business de CFC (collées par l'administrateur, jamais réaffichées).
+ * Wave confirme chaque paiement au serveur (signé) et l'offre s'active toute seule.
+ */
+function CfcWaveCard() {
+  const [on, setOn] = useState<boolean | null>(null);
+  const [key, setKey] = useState("");
+  const [secret, setSecret] = useState("");
+  const [note, setNote] = useState("");
+  const webhook = `${SUPABASE_URL}/functions/v1/wave/webhook/cfc`;
+  async function refresh() {
+    const { data } = await supabase.rpc("subscription_info");
+    setOn(Boolean((data as { wave_auto?: boolean } | null)?.wave_auto));
+  }
+  useEffect(() => {
+    void refresh();
+  }, []);
+  async function save(clear = false) {
+    setNote("");
+    const { error } = await supabase.rpc("admin_set_cfc_wave", { p_api_key: clear ? "" : key.trim(), p_webhook_secret: clear ? "" : secret.trim() });
+    if (error) return setNote(/invalide/.test(error.message) ? `✗ ${error.message}` : "✗ Enregistrement impossible (connexion ou droits).");
+    setKey("");
+    setSecret("");
+    setNote(clear ? "✓ Paiement automatique arrêté : retour au paiement vérifié à la main." : "✓ Clés enregistrées : les abonnements s'activent maintenant tout seuls.");
+    void refresh();
+  }
+  return (
+    <section className="cx-card">
+      <h3>Paiement automatique Wave (abonnements)</h3>
+      <p className="note">
+        {on === null ? "…" : on ? "✅ Activé : chaque paiement Wave est confirmé par Wave au serveur, et l’offre du client s’active toute seule, jour et nuit." : "Pas encore activé : les paiements sont vérifiés à la main dans « Paiements »."}
+      </p>
+      <ol className="note">
+        <li>Dans le portail <b>Wave Business</b> de CFC → <b>Développeurs</b> : crée une <b>clé API</b> (Checkout) et copie-la.</li>
+        <li>Toujours là, ajoute un <b>webhook</b> avec cette adresse, puis copie son <b>secret</b> :<br /><code className="cx-code">{webhook}</code></li>
+        <li>Colle la clé et le secret ci-dessous, puis Enregistrer. Ils ne sont plus jamais affichés.</li>
+      </ol>
+      <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { void navigator.clipboard?.writeText(webhook); setNote("✓ Adresse du webhook copiée."); }}>Copier l’adresse du webhook</Button>
+      <Input className="h-11" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Clé API Wave (wave_sn_prod_…)" aria-label="Clé API Wave Business de CFC" />
+      <Input className="h-11" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Secret du webhook" aria-label="Secret du webhook Wave" />
+      <div className="row">
+        <Button className="h-11 rounded-full px-5" disabled={!key.trim() || !secret.trim()} onClick={() => void save()}>Enregistrer</Button>
+        {on && <Button variant="ghost" className="h-11 rounded-full px-5" onClick={() => { if (window.confirm("Arrêter le paiement automatique ?")) void save(true); }}>Arrêter</Button>}
+      </div>
+      {note && <Notice text={note} tone={note.startsWith("✓") ? "ok" : note.startsWith("✗") ? "erreur" : undefined} />}
+    </section>
   );
 }
 

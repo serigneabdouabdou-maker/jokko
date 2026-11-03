@@ -2,6 +2,9 @@
 //  POST /wave/checkout   (commerçant connecté, membre de la boutique) : crée un lien de paiement pour un montant.
 //  POST /wave/check      (commerçant connecté) : redemande à Wave l'état d'un paiement (si le webhook tarde).
 //  POST /wave/webhook/<boutique> (Wave) : confirmation signée du paiement → le paiement passe à « succeeded ».
+//  POST /wave/abonnement        (patron connecté) : paiement Wave de son abonnement Jokko, sur le compte Wave Business de CFC.
+//  POST /wave/abonnement-check  (patron connecté) : redemande l'état à Wave (si la confirmation tarde) ; active si payé.
+//  POST /wave/webhook/cfc       (Wave) : confirmation signée → l'offre s'active toute seule, sans intervention de CFC.
 // Les clés Wave de la boutique restent sur le serveur ; le téléphone ne peut jamais marquer un paiement « payé ».
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -129,6 +132,105 @@ async function check(req: Request) {
   return send(req, 200, { status });
 }
 
+// ---------- Abonnements Jokko payés à CFC (activation automatique) ----------
+
+async function cfcKeys(): Promise<{ api_key: string; webhook_secret: string } | null> {
+  const { data } = await admin.rpc("cfc_wave_keys");
+  return data && typeof data.api_key === "string" ? data : null;
+}
+
+async function isPatron(shopId: string, userId: string): Promise<boolean> {
+  const { data } = await admin.from("shop_members").select("role").eq("shop_id", shopId).eq("user_id", userId).maybeSingle();
+  return data?.role === "patron";
+}
+
+/** Prévient l'équipe CFC (notification) qu'un abonnement vient d'être payé et activé. */
+async function tellCfc(result: { shop?: string; plan?: string; months?: number; amount?: number }) {
+  try {
+    const { data: cfg } = await admin.rpc("notify_config");
+    const { data: shop } = await admin.from("shops").select("name").eq("id", result.shop ?? "").maybeSingle();
+    if (!cfg?.notify_secret) return;
+    const label = result.plan === "avance" ? "Avancé" : "Médium";
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-jokko-notify": cfg.notify_secret },
+      body: JSON.stringify({ kind: "cfc", title: "Paiement Wave reçu ✓", body: `${shop?.name ?? "Une boutique"} : ${label} ${result.months} mois, ${result.amount} F. Offre activée.` }),
+    });
+  } catch {
+    // la notification n'est qu'un confort : l'offre est déjà activée
+  }
+}
+
+async function activate(sessionId: string, amount: number, transaction: string) {
+  const { data } = await admin.rpc("activate_paid_subscription", { p_session: sessionId, p_amount: amount, p_transaction: transaction });
+  if (data?.ok && !data.already) await tellCfc(data);
+  return data as { ok: boolean; reason?: string } | null;
+}
+
+async function subscriptionCheckout(req: Request) {
+  const user = await userOf(req);
+  if (!user) return send(req, 401, { error: "not_signed_in" });
+  const body = await req.json().catch(() => null);
+  const { data: r } = await admin.from("subscription_requests").select("*").eq("id", String(body?.requestId ?? "")).maybeSingle();
+  if (!r || !(await isPatron(r.shop_id, user))) return send(req, 404, { error: "not_found" });
+  if (r.status !== "en_attente") return send(req, 409, { error: "already", status: r.status });
+  const keys = await cfcKeys();
+  if (!keys) return send(req, 409, { error: "wave_not_configured" });
+  const phone = String(r.payer_phone ?? "").replace(/\D/g, "");
+  const local = phone.startsWith("221") ? phone.slice(3) : phone;
+  const mobile = /^[37]\d{8}$/.test(local) ? `+221${local}` : undefined;
+  const response = await fetch(`${WAVE}/v1/checkout/sessions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${keys.api_key}`, "Content-Type": "application/json", "Idempotency-Key": `abo-${r.id}-${Math.floor(Date.now() / 600_000)}` },
+    body: JSON.stringify({
+      amount: String(r.amount),
+      currency: "XOF",
+      success_url: `${APP_URL}?ecran=offre&abonnement=ok`,
+      error_url: `${APP_URL}?ecran=offre&abonnement=erreur`,
+      client_reference: `abo:${r.id}`,
+      ...(mobile ? { restrict_payer_mobile: mobile } : {}),
+    }),
+  });
+  const session = await response.json().catch(() => null);
+  if (!response.ok || !session?.id || !session?.wave_launch_url) {
+    console.warn("[jokko] wave abonnement", response.status, session?.code ?? "");
+    return send(req, 502, { error: "wave_error", message: "Wave ne répond pas pour le moment. Réessaie dans un instant." });
+  }
+  await admin.from("subscription_requests").update({ wave_session: session.id, wave_url: session.wave_launch_url }).eq("id", r.id);
+  return send(req, 200, { url: session.wave_launch_url, id: session.id });
+}
+
+async function subscriptionCheck(req: Request) {
+  const user = await userOf(req);
+  if (!user) return send(req, 401, { error: "not_signed_in" });
+  const body = await req.json().catch(() => null);
+  const { data: r } = await admin.from("subscription_requests").select("*").eq("id", String(body?.requestId ?? "")).maybeSingle();
+  if (!r || !(await isPatron(r.shop_id, user))) return send(req, 404, { error: "not_found" });
+  if (r.status !== "en_attente" || !r.wave_session) return send(req, 200, { status: r.status });
+  const keys = await cfcKeys();
+  if (!keys) return send(req, 200, { status: r.status });
+  const response = await fetch(`${WAVE}/v1/checkout/sessions/${encodeURIComponent(r.wave_session)}`, { headers: { Authorization: `Bearer ${keys.api_key}` } });
+  const session = await response.json().catch(() => null);
+  if (response.ok && session?.payment_status === "succeeded") {
+    const done = await activate(session.id, Math.round(Number(session.amount)), String(session.transaction_id ?? ""));
+    return send(req, 200, { status: done?.ok ? "active" : "en_attente", reason: done?.reason });
+  }
+  return send(req, 200, { status: "en_attente" });
+}
+
+async function cfcWebhook(req: Request) {
+  const raw = await req.text();
+  const keys = await cfcKeys();
+  if (!keys) return new Response("not configured", { status: 404 });
+  if (!(await validSignature(req.headers.get("wave-signature") ?? "", raw, keys.webhook_secret))) return new Response("bad signature", { status: 401 });
+  const event = JSON.parse(raw);
+  const data = event?.data ?? {};
+  if (event?.type === "checkout.session.completed" && data.id && (data.payment_status ?? "succeeded") === "succeeded") {
+    await activate(String(data.id), Math.round(Number(data.amount)), String(data.transaction_id ?? ""));
+  }
+  return new Response("ok");
+}
+
 async function webhook(req: Request, shopId: string) {
   const raw = await req.text();
   const keys = await keysOf(shopId);
@@ -157,6 +259,9 @@ Deno.serve(async (req) => {
   try {
     if (route === "checkout") return await checkout(req);
     if (route === "check") return await check(req);
+    if (route === "abonnement") return await subscriptionCheckout(req);
+    if (route === "abonnement-check") return await subscriptionCheck(req);
+    if (route === "webhook" && parts[i + 2] === "cfc") return await cfcWebhook(req);
     if (route === "webhook" && parts[i + 2]) return await webhook(req, decodeURIComponent(parts[i + 2]));
     return send(req, 404, { error: "not_found" });
   } catch (error) {

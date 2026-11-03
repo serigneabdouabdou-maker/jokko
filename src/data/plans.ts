@@ -1,5 +1,5 @@
 import type { PlanName, Shop } from "../model.ts";
-import { supabase } from "./supabase.ts";
+import { supabase, SUPABASE_KEY, SUPABASE_URL } from "./supabase.ts";
 
 /**
  * Offres Jokko : Gratuit, Médium, Avancé. L'offre active est calculée comme sur le serveur :
@@ -59,23 +59,54 @@ export function waveLinkFor(link: string, amount: number): string {
   }
 }
 
-export type SubscriptionInfo = { price_medium: number; price_avance: number; wave_link: string | null; is_admin: boolean };
+export type SubscriptionInfo = { price_medium: number; price_avance: number; wave_link: string | null; wave_auto?: boolean; is_admin: boolean };
 
 export async function subscriptionInfo(): Promise<SubscriptionInfo | null> {
   const { data, error } = await supabase.rpc("subscription_info");
   return error || !data ? null : (data as SubscriptionInfo);
 }
 
-export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string };
+export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string; paid_at?: string | null; paid_via?: string | null; transaction_id?: string | null };
 
-export async function requestSubscription(shopId: string, plan: "medium" | "avance", months: number, payer: string): Promise<{ ok: true; reference: string; amount: number } | { ok: false; message: string }> {
+export async function requestSubscription(shopId: string, plan: "medium" | "avance", months: number, payer: string): Promise<{ ok: true; id: string; reference: string; amount: number } | { ok: false; message: string }> {
   const { data, error } = await supabase.rpc("request_subscription", { p_shop: shopId, p_plan: plan, p_months: months, p_payer: payer });
   if (error || !data) return { ok: false, message: /patron/.test(error?.message ?? "") ? "Seul le patron peut choisir l'offre." : "Demande impossible pour le moment. Vérifie la connexion." };
-  return { ok: true, reference: data.reference, amount: data.amount };
+  return { ok: true, id: data.id, reference: data.reference, amount: data.amount };
+}
+
+async function waveCall(route: "abonnement" | "abonnement-check", body: unknown): Promise<{ ok: boolean; data: Record<string, unknown> | null }> {
+  const { data } = await supabase.auth.getSession();
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/wave/${route}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify(body),
+  });
+  return { ok: response.ok, data: (await response.json().catch(() => null)) as Record<string, unknown> | null };
+}
+
+/** Paiement Wave de l'abonnement (compte Wave Business de CFC) : renvoie le lien qui ouvre Wave. */
+export async function paySubscriptionWave(requestId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  try {
+    const { ok, data } = await waveCall("abonnement", { requestId });
+    if (ok && typeof data?.url === "string") return { ok: true, url: data.url };
+    return { ok: false, message: typeof data?.message === "string" ? data.message : "Wave ne répond pas pour le moment. Réessaie." };
+  } catch {
+    return { ok: false, message: "Pas de connexion internet. Réessaie." };
+  }
+}
+
+/** Après le paiement : demande à Wave si c'est payé (l'offre s'active alors toute seule). */
+export async function checkSubscriptionWave(requestId: string): Promise<"active" | "en_attente" | "refusee"> {
+  try {
+    const { data } = await waveCall("abonnement-check", { requestId });
+    return data?.status === "active" ? "active" : data?.status === "refusee" ? "refusee" : "en_attente";
+  } catch {
+    return "en_attente";
+  }
 }
 
 export async function myRequests(shopId: string): Promise<SubscriptionRequest[]> {
-  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
+  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, paid_at, paid_via, transaction_id").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
   return (data ?? []) as SubscriptionRequest[];
 }
 

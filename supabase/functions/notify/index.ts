@@ -243,6 +243,12 @@ Deno.serve(async (req) => {
         return Response.json({ configured: true, project: sa.project_id, google: "refus" });
       }
     }
+    if (body.kind === "cfc" && typeof body.title === "string" && typeof body.body === "string") {
+      // Équipe CFC (administrateurs) : paiements reçus, etc.
+      const { data: ids } = await admin.rpc("platform_admin_ids");
+      const sent = await push(((ids ?? []) as string[]).filter(Boolean), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url: "/console/", tag: "cfc" });
+      return Response.json({ sent });
+    }
     if (body.kind === "test" && typeof body.user === "string") {
       const sent = await push([body.user], { title: "Jokko", body: "Les notifications marchent ✓ Jokko te préviendra ici, même appli fermée.", url: "/", tag: "test" });
       return Response.json({ sent });
