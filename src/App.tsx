@@ -81,6 +81,7 @@ import { can, effectivePlan } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
+import { ShopManager } from "@/components/jokko/ShopManager";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -1590,6 +1591,7 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
         </div>
       )}
       <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
+      {roleIn(profile) === "patron" && !isDemoShop(shop) && <ShopManager profile={profile} setProfile={setProfile} canAdd={can(shop, "boutiques")} />}
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
         <ShopLocation
@@ -1611,33 +1613,17 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
             </SelectContent>
           </Select>
         </div>
-        <div className="field">
-          <Label>Boutique active</Label>
-          <Select value={profile.shopId} onValueChange={(value) => setProfile({ ...profile, shopId: value })}>
-            <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {profile.shops.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        {roleIn(profile) === "patron" && can(shop, "boutiques") && <div className="field field-end">
-          <Button variant="outline" className="h-11 rounded-full" onClick={() => {
-            // Nouvelle boutique : mêmes articles et clients, mais avec de nouveaux identifiants (base partagée).
-            const copy = {
-              ...shop,
-              id: uid("shop"),
-              name: `${shop.name} 2`,
-              products: shop.products.map((p) => ({ ...p, id: uid("p") })),
-              clients: shop.clients.map((c) => ({ ...c, id: uid("c"), debt: 0 })),
-              shortcuts: shop.shortcuts.map((k) => ({ ...k, id: uid("k") })),
-              sales: [],
-              expenses: [],
-              invoices: [],
-              reminders: [],
-            };
-            setProfile({ ...profile, shops: [...profile.shops, copy], shopId: copy.id });
-          }}>Nouvelle boutique</Button>
-        </div>}
+        {roleIn(profile) !== "patron" && profile.shops.length > 1 && (
+          <div className="field">
+            <Label>Boutique active</Label>
+            <Select value={profile.shopId} onValueChange={(value) => setProfile({ ...profile, shopId: value })}>
+              <SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {profile.shops.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
       <p className="note">
