@@ -7,6 +7,7 @@ import { Icon } from "@/components/jokko/Icon";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc } from "@/legal";
 import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@/components/jokko/voiceIntro";
 import "./landing.css";
+import { AppPrompt } from "@/components/jokko/Install";
 
 /**
  * Page d'accueil animée. Légère : uniquement CSS + quelques lignes de JavaScript (pas de bibliothèque).
@@ -510,6 +511,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </span>
       </footer>
       {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
+      <AppPrompt />
     </main>
   );
 }

@@ -20,7 +20,8 @@ export function InstallBanner() {
   const { installed, canPrompt, ios, install } = useInstall();
   const [gone, setGone] = useState(hidden);
   const [help, setHelp] = useState(false);
-  if (installed || gone || (!canPrompt && !ios)) return null;
+  const android = isAndroidWeb();
+  if (gone || (!android && (installed || (!canPrompt && !ios)))) return null;
 
   function hide() {
     try {
@@ -29,6 +30,18 @@ export function InstallBanner() {
       /* rien : la bannière reviendra simplement */
     }
     setGone(true);
+  }
+
+  if (android) {
+    return (
+      <div className="install-banner">
+        <p><b>Télécharge l’application Jokko pour Android</b> : les vraies notifications (ventes, dettes, alertes), en plein écran, même sans Chrome.</p>
+        <div className="row">
+          <a className="app-dl" href={ANDROID_APK}>Télécharger l’application</a>
+          <Button variant="ghost" className="h-10 rounded-full px-4" onClick={hide}>Plus tard</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -50,6 +63,55 @@ function IosSteps() {
       <li>Descends et touche <b>Sur l’écran d’accueil</b>.</li>
       <li>Touche <b>Ajouter</b>, en haut à droite.</li>
     </ol>
+  );
+}
+
+/** Android dans un navigateur (pas dans l'application) : on propose la vraie application. */
+export function isAndroidWeb(): boolean {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent) && !isNativeApp();
+}
+
+const PROMPT_KEY = "jokko.appli.proposee";
+
+/**
+ * Page d'accueil (nouveau visiteur) : en bas de l'écran, la bonne façon d'avoir Jokko sur ce téléphone.
+ * Android → l'application Jokko (vraies notifications). iPhone → « Sur l'écran d'accueil » (Safari).
+ */
+export function AppPrompt() {
+  const { installed, ios } = useInstall();
+  const [gone, setGone] = useState(() => {
+    try {
+      return localStorage.getItem(PROMPT_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [steps, setSteps] = useState(false);
+  const android = isAndroidWeb();
+  if (gone || (!android && !(ios && !installed))) return null;
+  function close() {
+    try {
+      localStorage.setItem(PROMPT_KEY, "1");
+    } catch {
+      /* rien */
+    }
+    setGone(true);
+  }
+  return (
+    <aside className="app-prompt" aria-label="Avoir Jokko sur ce téléphone">
+      <img src="/icon-192.png" alt="" width={44} height={44} />
+      <div className="app-prompt-text">
+        <b>{android ? "Jokko pour Android" : "Jokko sur ton iPhone"}</b>
+        <span>{android ? "L’application, avec les vraies notifications." : "Ajoute Jokko à l’écran d’accueil, comme une application."}</span>
+        {steps && <IosSteps />}
+      </div>
+      {android ? (
+        <a className="app-prompt-go" href={ANDROID_APK}>Télécharger</a>
+      ) : (
+        !steps && <button type="button" className="app-prompt-go" onClick={() => setSteps(true)}>Comment ?</button>
+      )}
+      <button type="button" className="app-prompt-x" aria-label="Fermer" onClick={close}>×</button>
+    </aside>
   );
 }
 
