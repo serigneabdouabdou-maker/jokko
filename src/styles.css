@@ -1459,3 +1459,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .all-debts li small { color: var(--j-ink-3); }
 .transfer { margin-top: 14px; }
 .transfer .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Même prix dans toutes mes boutiques */
+.price-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0 12px; }
+.price-sync > span:first-of-type { flex: 1 1 220px; }
+.price-sync-actions { display: inline-flex; gap: 6px; }

@@ -57,3 +57,21 @@ describe("Toutes mes boutiques", () => {
     ]);
   });
 });
+
+import { priceChanges } from "./multiShop";
+
+describe("même prix dans toutes mes boutiques", () => {
+  it("un prix augmenté dans une boutique : proposer les autres boutiques qui ont un autre prix", () => {
+    const after = { ...medina, products: medina.products.map((p) => (p.id === "p1" ? { ...p, price: 19000 } : p)) };
+    const changes = priceChanges(medina, after, [medina, pikine]);
+    expect(changes).toEqual([{ productId: "p1", name: "Riz", unit: "sac", oldPrice: 18000, newPrice: 19000, shops: [{ id: "s2", name: "Pikine", price: 18000 }] }]);
+  });
+  it("rien à proposer si le prix ne change pas, ou si l'autre boutique a déjà ce prix", () => {
+    expect(priceChanges(medina, { ...medina }, [pikine])).toEqual([]);
+    const after = { ...medina, products: medina.products.map((p) => (p.id === "p1" ? { ...p, stock: 5 } : p)) };
+    expect(priceChanges(medina, after, [pikine])).toEqual([]);
+    const pikine19 = { ...pikine, products: pikine.products.map((p) => (p.id === "q1" ? { ...p, price: 19000 } : p)) };
+    const up = { ...medina, products: medina.products.map((p) => (p.id === "p1" ? { ...p, price: 19000 } : p)) };
+    expect(priceChanges(medina, up, [pikine19])).toEqual([]);
+  });
+});

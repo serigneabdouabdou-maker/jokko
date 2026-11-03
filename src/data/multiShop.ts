@@ -87,3 +87,37 @@ export function allDebts(shops: Shop[], now = new Date()): DebtLine[] {
   }
   return lines.sort((a, b) => Number(b.late) - Number(a.late) || b.debt - a.debt);
 }
+
+export type PriceChange = {
+  productId: string;
+  name: string;
+  unit: string;
+  oldPrice: number;
+  newPrice: number;
+  /** Les autres boutiques qui vendent ce même article à un autre prix. */
+  shops: { id: string; name: string; price: number }[];
+};
+
+const samePrices = (a: Shop["products"][number], b: Shop["products"][number]) =>
+  a.price === b.price && a.cost === b.cost && (a.retail?.price ?? null) === (b.retail?.price ?? null);
+
+/**
+ * Prix changés dans une boutique (avant → après) qui diffèrent dans les autres boutiques du patron :
+ * Jokko propose alors d'appliquer le nouveau prix partout.
+ */
+export function priceChanges(before: Shop, after: Shop, others: Shop[]): PriceChange[] {
+  if (before.id !== after.id) return [];
+  const changes: PriceChange[] = [];
+  for (const p of after.products) {
+    const old = before.products.find((x) => x.id === p.id);
+    if (!old || samePrices(old, p)) continue;
+    const key = productKey(p.name, p.unit);
+    const shops = others
+      .filter((s) => s.id !== after.id)
+      .map((s) => ({ shop: s, twin: s.products.find((x) => productKey(x.name, x.unit) === key) }))
+      .filter((x): x is { shop: Shop; twin: Shop["products"][number] } => Boolean(x.twin) && !samePrices(x.twin!, p))
+      .map(({ shop, twin }) => ({ id: shop.id, name: shop.name, price: twin.price }));
+    if (shops.length) changes.push({ productId: p.id, name: p.name, unit: p.unit, oldPrice: old.price, newPrice: p.price, shops });
+  }
+  return changes;
+}

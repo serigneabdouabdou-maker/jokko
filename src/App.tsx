@@ -83,6 +83,8 @@ import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
 import { ShopManager } from "@/components/jokko/ShopManager";
 import { AllShops } from "@/components/jokko/AllShops";
+import { PriceSyncBanner } from "@/components/jokko/PriceSync";
+import { priceChanges, type PriceChange } from "@/data/multiShop";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -580,8 +582,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const today = useMemo(() => buildReport(shop, periodOf("jour")), [shop]);
   const late = useMemo(() => overdueDebts(shop), [shop]);
   function commit(next: Shop) {
+    // Patron avec plusieurs boutiques : un prix changé ici peut être mis partout (proposé, jamais automatique).
+    const before = profile.shops.find((s) => s.id === next.id);
+    if (before && roleIn(profile, next.id) === "patron" && can(next, "boutiques")) {
+      const others = profile.shops.filter((s) => s.id !== next.id && roleIn(profile, s.id) === "patron");
+      const changes = others.length ? priceChanges(before, next, others) : [];
+      if (changes.length) setPriceSync({ shopId: next.id, changes });
+    }
     setProfile(replaceShop(profile, next));
   }
+  const [priceSync, setPriceSync] = useState<{ shopId: string; changes: PriceChange[] } | null>(null);
+  const [priceNote, setPriceNote] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<LogMessage[]>(() => [
     { id: "hello", role: "jokko", at: new Date().toISOString(), text: profile.lang === "wo" ? "Nanga def ? Wax ma sa jaay, sa stock, walla ku la ame." : "Dis-moi une vente, un stock, ou qui te doit de l’argent." },
@@ -1339,6 +1350,20 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "offre" && patron && <Plans shop={shop} initialChoice={wantedPlan} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
+          {priceSync && (
+            <PriceSyncBanner
+              shopId={priceSync.shopId}
+              changes={priceSync.changes}
+              profile={profile}
+              setProfile={setProfile}
+              onDone={(message) => {
+                setPriceSync(null);
+                setPriceNote(message);
+                if (message) window.setTimeout(() => setPriceNote(null), 6000);
+              }}
+            />
+          )}
+          {priceNote && <p className="banner" role="status">{priceNote}</p>}
           {screen === "boutiques" && patron && (can(shop, "boutiques") ? <AllShops profile={profile} setProfile={setProfile} /> : <Upsell feature="boutiques" title="Toutes mes boutiques" onPlans={() => setScreen("offre")} />)}
           {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
