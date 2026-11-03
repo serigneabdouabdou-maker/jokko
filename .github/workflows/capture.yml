@@ -1,0 +1,41 @@
+name: Capture
+on:
+  push:
+    branches: [capture]
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx vite build
+      - run: npx playwright install --with-deps chromium
+      - name: Captures
+        run: |
+          (npx vite preview --port 4173 --strictPort > preview.log 2>&1 &)
+          sleep 6
+          cat > shot.mjs <<'JS'
+          import { chromium } from "playwright";
+          const b = await chromium.launch();
+          for (const [name, w, h, mobile] of [["telephone", 390, 844, true], ["ordinateur", 1366, 768, false]]) {
+            const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: mobile, deviceScaleFactor: 2 });
+            const logs = [];
+            p.on("console", (m) => logs.push(`${m.type()}: ${m.text()}`));
+            p.on("pageerror", (e) => logs.push(`ERREUR: ${e.message}`));
+            await p.goto("http://localhost:4173/", { waitUntil: "networkidle", timeout: 30000 }).catch((e) => logs.push("goto " + e.message));
+            await p.waitForTimeout(4000);
+            await p.screenshot({ path: `${name}.png` });
+            console.log(name, "\n" + logs.join("\n"));
+          }
+          await b.close();
+          JS
+          node shot.mjs | tee shots.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: captures
+          path: |
+            *.png
+            shots.log
+            preview.log
