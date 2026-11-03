@@ -83,6 +83,8 @@ import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
 import { ShopManager } from "@/components/jokko/ShopManager";
 import { AllShops } from "@/components/jokko/AllShops";
+import { ComingSoon } from "@/components/jokko/ComingSoon";
+import { cachedLaunchState, claimAccessFromUrl, hasAccess, launchState, type LaunchState } from "@/data/launch";
 import { PriceSyncBanner } from "@/components/jokko/PriceSync";
 import { priceChanges, type PriceChange } from "@/data/multiShop";
 import { normalizeCode } from "@/data/barcode";
@@ -158,6 +160,13 @@ export function App() {
   const [wantsLogin, setWantsLogin] = useState<AuthMode | null>(null);
   const [demo, setDemo] = useState<Profile | null>(null);
   const profileRef = useRef<Profile | null>(null);
+  // Avant le lancement : « Bientôt disponible » pour les visiteurs (sauf appareils ouverts avec le lien d'accès).
+  const [launch, setLaunch] = useState<LaunchState>(cachedLaunchState);
+  const [access, setAccess] = useState(hasAccess);
+  useEffect(() => {
+    void claimAccessFromUrl().then(setAccess);
+    void launchState().then(setLaunch);
+  }, []);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -199,7 +208,17 @@ export function App() {
   }, []);
 
   if (session === undefined) return null;
-  if (!session) return wantsLogin ? <Login mode={wantsLogin} onBack={() => setWantsLogin(null)} /> : <Landing onStart={setWantsLogin} langs={LANGS.map(([, name]) => name)} />;
+  if (!session) {
+    if (launch !== "ouvert" && !access) {
+      return (
+        <>
+          <Landing onStart={() => undefined} langs={LANGS.map(([, name]) => name)} />
+          <ComingSoon />
+        </>
+      );
+    }
+    return wantsLogin ? <Login mode={wantsLogin} onBack={() => setWantsLogin(null)} /> : <Landing onStart={setWantsLogin} langs={LANGS.map(([, name]) => name)} />;
+  }
   if (!profile) return <Splash text={loading ? "Jokko ouvre ta boutique…" : "Un instant…"} />;
   if (profile.termsVersion === null) return <TermsGate profile={profile} onAccepted={() => setProfile({ ...profile, termsVersion: TERMS_VERSION })} />;
   if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;

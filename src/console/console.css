@@ -180,3 +180,4 @@
 .cx-table-wrap { overflow-x: auto; }
 .cx-inline { display: inline-flex; gap: 6px; align-items: center; }
 .cx-rank li .cx-link { white-space: nowrap; font-size: 13px; }
+.cx-code { display: block; padding: 10px 12px; border-radius: 10px; background: var(--j-wash); font-size: 14px; word-break: break-all; }

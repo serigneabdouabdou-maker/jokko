@@ -607,6 +607,7 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
 
   return (
     <div className="cx-stack">
+      <LaunchCard />
       <section className="cx-card">
         <h3>Prix et lien de paiement</h3>
         <p className="note">Le lien Wave Business de CFC. Le montant est ajouté tout seul pour chaque demande (1, 3, 6 ou 12 mois).</p>
@@ -786,5 +787,46 @@ function GeminiTab() {
         <p className="note">Ces chiffres valent aussi avec Gemini payant : ils montrent qui utilise vraiment la voix et le wolof.</p>
       </section>
     </div>
+  );
+}
+
+
+/** Lancement : « Bientôt disponible » sur jokkoapp.com, et le lien d'accès secret pour l'équipe et les boutiques pilotes. */
+function LaunchCard() {
+  const [info, setInfo] = useState<{ state: "bientot" | "ouvert"; code: string } | null>(null);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    void supabase.rpc("admin_launch").then(({ data }) => data && setInfo(data as { state: "bientot" | "ouvert"; code: string }));
+  }, []);
+  async function set(state: "bientot" | "ouvert", newCode = false) {
+    const { data, error } = await supabase.rpc("admin_set_launch", { p_state: state, p_new_code: newCode });
+    if (error || !data) return setNote("Pas de connexion. Réessaie.");
+    setInfo(data as { state: "bientot" | "ouvert"; code: string });
+    setNote(newCode ? "✓ Nouveau lien créé : l'ancien ne marche plus pour les nouveaux appareils." : state === "ouvert" ? "✓ Jokko est ouvert à tout le monde." : "✓ « Bientôt disponible » est affiché.");
+  }
+  if (!info) return null;
+  const link = `https://jokkoapp.com/?acces=${info.code}`;
+  return (
+    <section className="cx-card">
+      <h3>Lancement de Jokko</h3>
+      <p className="note">
+        {info.state === "bientot"
+          ? "Pour l'instant, les visiteurs de jokkoapp.com voient « Bientôt disponible » par-dessus le site. Seuls les appareils ouverts une fois avec le lien d'accès (et les comptes déjà connectés) peuvent entrer."
+          : "Jokko est ouvert : tout le monde peut créer un compte sur jokkoapp.com."}
+      </p>
+      <div className="row">
+        {info.state === "bientot"
+          ? <Button className="h-11 rounded-full px-5" onClick={() => { if (window.confirm("Ouvrir Jokko à tout le monde ?")) void set("ouvert"); }}>Lancer Jokko (ouvrir à tous)</Button>
+          : <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => void set("bientot")}>Remettre « Bientôt disponible »</Button>}
+      </div>
+      <p className="note"><b>Lien d'accès</b> (pour toi, ton équipe et les boutiques pilotes ; à ouvrir une fois sur chaque téléphone ou ordinateur) :</p>
+      <code className="cx-code">{link}</code>
+      <div className="row">
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { void navigator.clipboard?.writeText(link); setNote("✓ Lien copié."); }}>Copier le lien</Button>
+        <a className="cx-link" href={`https://wa.me/?text=${encodeURIComponent(`Ton accès à Jokko : ${link}`)}`} target="_blank" rel="noreferrer">Envoyer sur WhatsApp</a>
+        <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => { if (window.confirm("Créer un nouveau lien ? L'ancien ne marchera plus sur les nouveaux appareils.")) void set(info.state, true); }}>Nouveau lien</Button>
+      </div>
+      {note && <Notice text={note} />}
+    </section>
   );
 }
