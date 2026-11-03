@@ -53,7 +53,8 @@ export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
     language: toAssistantLanguage(lang),
     products: shop.products.slice(0, 300).map((p) => ({
       id: p.id,
-      name: p.name,
+      // Les autres noms (wolof, surnoms) aident Gemini à choisir le bon article.
+      name: (p.aliases?.length ? `${p.name} (aussi : ${p.aliases.join(", ")})` : p.name).slice(0, 80),
       unit: p.unit,
       stock: p.stock,
       min: p.min,

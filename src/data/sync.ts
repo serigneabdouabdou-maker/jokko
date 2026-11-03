@@ -31,6 +31,7 @@ const toRow = {
     id: p.id, shop_id: shopId, name: p.name, unit: p.unit, stock: p.stock, min: p.min, price: p.price,
     cost: opt(p.cost), retail_unit: p.retail?.unit ?? null, retail_per_unit: p.retail?.perUnit ?? null, retail_price: p.retail?.price ?? null,
     barcode: p.barcode ?? null, retail_barcode: p.retail?.barcode ?? null,
+    aliases: p.aliases?.length ? p.aliases : null,
   }),
   clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt) }),
   sales: (s: Sale, shopId: string): Row => ({
@@ -364,6 +365,10 @@ export function rowsToShop(rows: ShopRows): Shop {
       }
       const code = optStr(r.barcode);
       if (code) product.barcode = code;
+      if (Array.isArray(r.aliases)) {
+        const aliases = (r.aliases as unknown[]).map((a) => String(a ?? "").trim()).filter(Boolean);
+        if (aliases.length) product.aliases = aliases;
+      }
       return product;
     }),
     clients: rows.clients.map((r) => {

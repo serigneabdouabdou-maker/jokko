@@ -18,6 +18,8 @@ export type Product = {
   retail?: Retail;
   /** Code-barres de l'unité de gros (code du fabricant, ou code Jokko imprimé sur une étiquette). */
   barcode?: string;
+  /** Autres noms (wolof, surnoms) : « diwu oto » pour l'huile moteur. Aident Jokko à reconnaître l'article. */
+  aliases?: string[];
 };
 
 export type Client = {

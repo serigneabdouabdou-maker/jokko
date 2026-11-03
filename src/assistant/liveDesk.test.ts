@@ -330,3 +330,28 @@ describe("panier de plusieurs articles (récapitulé avant d'enregistrer)", () =
     expect((r.lignes as Array<{ quantite: number }>).map((l) => l.quantite)).toEqual([3, 3, 3, 3]);
   });
 });
+
+describe("deux articles qui se ressemblent : huile moteur et huile de cuisine", () => {
+  const items = [
+    { id: "moteur", name: "Huile moteur" },
+    { id: "cuisine", name: "Huile de cuisine" },
+  ];
+  it("le mot qui distingue suffit, en français comme en wolof", () => {
+    expect(pickByName(items, "huile moteur").item?.id).toBe("moteur");
+    expect(pickByName(items, "diwu oto").item?.id).toBe("moteur");
+    expect(pickByName(items, "ñaari bidon diwu togg").item?.id).toBe("cuisine");
+    expect(pickByName(items, "huile de cuisine").item?.id).toBe("cuisine");
+  });
+  it("sans mot qui distingue (« diw », « huile »), Jokko demande au lieu de deviner", () => {
+    expect(pickByName(items, "diw").ambiguous.map((x) => x.id).sort()).toEqual(["cuisine", "moteur"]);
+    expect(pickByName(items, "huile").ambiguous).toHaveLength(2);
+  });
+  it("les autres noms donnés par le patron (wolof, surnoms) sont reconnus", () => {
+    const named = [
+      { id: "moteur", name: "Huile moteur", aliases: ["Total Quartz"] },
+      { id: "cuisine", name: "Huile de cuisine", aliases: ["diwlin Niinal"] },
+    ];
+    expect(pickByName(named, "total quartz").item?.id).toBe("moteur");
+    expect(pickByName(named, "niinal").item?.id).toBe("cuisine");
+  });
+});
