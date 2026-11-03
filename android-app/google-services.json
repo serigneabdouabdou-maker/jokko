@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "226808462110",
+    "project_id": "jokko-f673f",
+    "storage_bucket": "jokko-f673f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226808462110:android:1a8890ac823caedcdae70f",
+        "android_client_info": {
+          "package_name": "sn.cfc.jokko"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPON8xkTkbEvZeDKl-1FneEAManlcsonk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
