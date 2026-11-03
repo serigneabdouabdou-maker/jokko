@@ -44,6 +44,19 @@ function send(req: Request, status: number, body: unknown, headers: Record<strin
   });
 }
 
+/** Journal des appels réels à Google Gemini (tableau de bord CFC). Ne bloque jamais la réponse. */
+const logger = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?: number) {
+  const shop = req.headers.get("x-jokko-shop");
+  void logger
+    .from("gemini_calls")
+    .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null) })
+    .then(() => undefined, () => undefined);
+}
+const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix" };
+
 /** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
 const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -223,24 +236,37 @@ Deno.serve(async (req) => {
   try {
     if (route === "interpret") {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
-      return b.ok ? send(req, 200, await interpret(b.data, env())) : b.res;
+      if (!b.ok) return b.res;
+      const result = await interpret(b.data, env());
+      logCall(req, "texte", result.language ?? b.data.shopContext.language, true);
+      return send(req, 200, result);
     }
     if (route === "advice") {
       const b = await body(req, MAX_TEXT_BODY, adviceRequestSchema);
-      return b.ok ? send(req, 200, await advise(b.data, env())) : b.res;
+      if (!b.ok) return b.res;
+      const result = await advise(b.data, env());
+      logCall(req, "conseil", (b.data as { shopContext?: { language?: string } }).shopContext?.language, true);
+      return send(req, 200, result);
     }
     if (route === "order") {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
-      return b.ok ? send(req, 200, await understandOrder(b.data, env())) : b.res;
+      if (!b.ok) return b.res;
+      const result = await understandOrder(b.data, env());
+      logCall(req, "texte", b.data.shopContext.language, true);
+      return send(req, 200, result);
     }
     if (route === "listen") {
       const b = await body(req, MAX_AUDIO_BODY, listenRequestSchema);
-      return b.ok ? send(req, 200, await listen(b.data, env())) : b.res;
+      if (!b.ok) return b.res;
+      const result = await listen(b.data, env());
+      logCall(req, "vocal", result.interpretation?.language ?? b.data.shopContext.language, true);
+      return send(req, 200, result);
     }
     if (route === "speak") {
       const b = await body(req, MAX_TEXT_BODY, speakRequestSchema);
       if (!b.ok) return b.res;
       const clip = await speakSentence(b.data.text, b.data.language);
+      logCall(req, "voix", b.data.language, Boolean(clip), clip ? 200 : 502);
       if (!clip) return send(req, 502, { error: "voice_unavailable", message: "La voix ne répond pas pour le moment." });
       return new Response(clip.pcm, { status: 200, headers: { "Content-Type": `audio/l16;rate=${clip.rate}`, "Cache-Control": "no-store", ...cors(req) } });
     }
@@ -248,11 +274,15 @@ Deno.serve(async (req) => {
       const b = await body(req, MAX_TEXT_BODY, liveRequestSchema);
       if (!b.ok) return b.res;
       const e = env();
-      return send(req, 200, await createLiveSession(b.data.shopContext, { apiKey: e.apiKey, model: e.liveModel, voice: e.voice, speed: b.data.speed }));
+      const session = await createLiveSession(b.data.shopContext, { apiKey: e.apiKey, model: e.liveModel, voice: e.voice, speed: b.data.speed });
+      logCall(req, "direct", b.data.shopContext.language, true);
+      return send(req, 200, session);
     }
     return send(req, 404, { error: "not_found" });
   } catch (error) {
     console.warn("[jokko] failure:", error instanceof Error ? error.message : "");
+    const status = error instanceof AssistantUpstreamError || error instanceof LiveUnavailableError ? error.status : undefined;
+    if (route && LOG_KIND[route]) logCall(req, LOG_KIND[route], null, false, status ?? 500);
     return failure(req, error);
   }
 });

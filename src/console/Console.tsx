@@ -17,6 +17,10 @@ import {
   growth,
   loadAdminTeam,
   loadDashboard,
+  loadGemini,
+  type GeminiBoard,
+  type GeminiKind,
+  setGeminiLimit,
   loadShops,
   loadUsage,
   type Usage,
@@ -31,16 +35,17 @@ const short = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: 
 const monthName = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { month: "short" });
 const phone = (p: string) => p.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
-type Tab = "apercu" | "carte" | "paiements" | "boutiques" | "reglages";
+type Tab = "apercu" | "gemini" | "carte" | "paiements" | "boutiques" | "reglages";
 const TABS: [Tab, string][] = [
   ["apercu", "Vue d'ensemble"],
+  ["gemini", "Gemini et wolof"],
   ["carte", "Carte"],
   ["paiements", "Paiements"],
   ["boutiques", "Boutiques"],
   ["reglages", "Réglages"],
 ];
 
-const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
+const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", gemini: "ia", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
 
 const STATUS_LABEL = { active: "Active", calme: "Calme", endormie: "Endormie", nouvelle: "Nouvelle" } as const;
 
@@ -295,6 +300,7 @@ export function ConsoleDesk({ session }: { session: Session }) {
         ) : (
           <>
             {tab === "apercu" && <Overview dash={dash} shops={shops} usage={usage} onGo={go} />}
+            {tab === "gemini" && <GeminiTab />}
             {tab === "carte" && <ConsoleMap shops={shops} />}
             {tab === "paiements" && <Payments overview={overview} onChanged={refresh} />}
             {tab === "boutiques" && <Shops shops={shops} onChanged={refresh} />}
@@ -639,6 +645,144 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
           }}>Ajouter</Button>
         </div>
         {teamNote && <Notice text={teamNote} tone={teamNote.startsWith("✓") ? "ok" : "erreur"} />}
+      </section>
+    </div>
+  );
+}
+
+
+const KIND_LABEL: Record<GeminiKind, string> = {
+  direct: "Ouvertures du direct",
+  vocal: "Messages vocaux",
+  texte: "Demandes écrites",
+  conseil: "Conseils de l’IA",
+  voix: "Lectures à voix haute",
+};
+const LANG_LABEL: Record<string, string> = { wo: "Wolof", fr: "Français", en: "Anglais", fuc: "Pulaar", "?": "Inconnue" };
+const hour = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+/** Gemini : ce qu'on consomme du quota de Google, et comment les clients utilisent la voix et le wolof. */
+function GeminiTab() {
+  const [board, setBoard] = useState<GeminiBoard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<GeminiKind | null>(null);
+  const [value, setValue] = useState("");
+
+  async function refresh() {
+    setLoading(true);
+    setBoard(await loadGemini());
+    setLoading(false);
+  }
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (!board) return <p className="note">{loading ? "Chargement…" : "Impossible de charger les chiffres de Gemini."}</p>;
+
+  const kinds: GeminiKind[] = ["direct", "vocal", "texte", "conseil", "voix"];
+  const refusToday = kinds.reduce((n, k) => n + (board.today[k]?.refus ?? 0), 0);
+  const callsToday = kinds.reduce((n, k) => n + (board.today[k]?.ok ?? 0), 0);
+  const langTotal = Object.values(board.langs).reduce((a, b) => a + b, 0);
+  const wolofShare = langTotal ? Math.round(((board.langs.wo ?? 0) / langTotal) * 100) : 0;
+
+  return (
+    <div className="cx-stack">
+      {refusToday > 0 && (
+        <p className="cx-alert">
+          <b>Google a refusé {refusToday} appel(s) aujourd’hui (« quota atteint »).</b> Le quota gratuit se recharge à {hour(board.google_day_end)} (heure de Dakar).
+        </p>
+      )}
+
+      <section className="cx-kpis">
+        <Kpi label="Appels à Gemini (journée Google)" value={count(callsToday)} hint={`depuis ${hour(board.google_day_start)} · recharge à ${hour(board.google_day_end)}`} />
+        <Kpi label="Échanges en direct aujourd’hui" value={count(board.echanges_today)} hint="questions-réponses au micro" />
+        <Kpi label="Refus « quota atteint »" value={count(refusToday)} tone={refusToday ? "bad" : "good"} hint={refusToday ? "les clients ont été bloqués" : "aucun blocage aujourd’hui"} />
+        <Kpi label="Part du wolof (30 j)" value={`${wolofShare} %`} hint={`${count(board.langs.wo ?? 0)} demandes en wolof sur ${count(langTotal)}`} tone="good" />
+      </section>
+
+      <section className="cx-card">
+        <h3>Quota gratuit de Google : utilisé aujourd’hui</h3>
+        <ul className="cx-rank">
+          {kinds.map((k) => {
+            const used = board.today[k]?.ok ?? 0;
+            const limit = board.limits[k];
+            const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+            return (
+              <li key={k}>
+                <span>{KIND_LABEL[k]}</span>
+                <span className="cx-rank-track" title={limit ? `${pct} %` : "limite non réglée"}><span style={{ width: `${limit ? pct : 0}%`, background: pct >= 90 ? "var(--cx-bad, #c0392b)" : undefined }} /></span>
+                <b className="num">
+                  {count(used)}
+                  {limit ? ` / ${count(limit)}` : ""}
+                  {(board.today[k]?.refus ?? 0) > 0 ? ` · ${board.today[k]?.refus} refus` : ""}
+                </b>
+                {editing === k ? (
+                  <span className="cx-inline">
+                    <Input className="h-9 w-24" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} placeholder="par jour" />
+                    <Button size="sm" onClick={async () => { await setGeminiLimit(k, Number(value) || null); setEditing(null); void refresh(); }}>OK</Button>
+                  </span>
+                ) : (
+                  <button type="button" className="cx-link" onClick={() => { setEditing(k); setValue(limit ? String(limit) : ""); }}>{limit ? "Changer" : "Régler la limite"}</button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <p className="note">
+          Google ne donne pas son quota gratuit à l’appli : notez ici les limites par jour que montre Google AI Studio (rubrique « Rate limit » / « Usage » de votre clé). Jokko compte chaque appel et chaque refus « quota atteint ».
+          La journée de Google commence à minuit en Californie, soit {hour(board.google_day_start)} à Dakar.
+        </p>
+        <a className="cx-link" href="https://aistudio.google.com/" target="_blank" rel="noreferrer">Ouvrir Google AI Studio</a>
+      </section>
+
+      <div className="cx-grid">
+        <section className="cx-card">
+          <h3>Appels à Gemini par jour (14 jours)</h3>
+          <Bars items={board.days.map((d) => ({ label: short(d.day), value: d.appels + d.echanges }))} format={String} />
+          <p className="note">Appels + échanges en direct. Jours avec refus « quota atteint » : {board.days.filter((d) => d.refus > 0).length}.</p>
+        </section>
+        <section className="cx-card">
+          <h3>Langue parlée par les clients (30 j)</h3>
+          <Rank items={Object.entries(board.langs).sort((a, b) => b[1] - a[1]).map(([l, n]) => ({ label: LANG_LABEL[l] ?? l, value: n }))} />
+          <p className="note">Langue détectée par Gemini dans les messages vocaux et écrits (et langue choisie pour le direct).</p>
+        </section>
+      </div>
+
+      <section className="cx-card">
+        <h3>Ce que les clients utilisent (30 j)</h3>
+        <Rank items={Object.entries(board.kinds).sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ label: KIND_LABEL[k as GeminiKind] ?? k, value: n }))} />
+      </section>
+
+      <section className="cx-card">
+        <h3>Usage par boutique (30 j)</h3>
+        {board.shops.length === 0 ? <p className="note">Pas encore d’usage enregistré.</p> : (
+          <div className="cx-table-wrap">
+            <table className="cx-table">
+              <thead>
+                <tr><th>Boutique</th><th>Offre</th><th>Direct</th><th>Vocaux</th><th>Écrits</th><th>Wolof</th><th>Dernier</th></tr>
+              </thead>
+              <tbody>
+                {board.shops.map((s) => {
+                  const said = s.wolof + s.francais;
+                  return (
+                    <tr key={s.id}>
+                      <td><b>{s.name}</b><br /><small>{s.city || "—"}</small></td>
+                      <td>{PLAN_LABELS[s.plan as PlanName] ?? s.plan}</td>
+                      <td className="num">{count(s.echanges)}</td>
+                      <td className="num">{count(s.vocaux)}</td>
+                      <td className="num">{count(s.ecrits)}</td>
+                      <td className="num">{said ? `${Math.round((s.wolof / said) * 100)} %` : "—"}</td>
+                      <td>{s.dernier ? date(s.dernier) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="note">Ces chiffres valent aussi avec Gemini payant : ils montrent qui utilise vraiment la voix et le wolof.</p>
       </section>
     </div>
   );

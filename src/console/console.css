@@ -175,3 +175,8 @@
 .cx-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 44px; }
 .cx-alert:focus-visible { outline: 2px solid var(--cx-ink); outline-offset: 2px; }
 @media (max-width: 860px) { .cx-nav-label { gap: 7px; } }
+
+/* Onglet Gemini */
+.cx-table-wrap { overflow-x: auto; }
+.cx-inline { display: inline-flex; gap: 6px; align-items: center; }
+.cx-rank li .cx-link { white-space: nowrap; font-size: 13px; }

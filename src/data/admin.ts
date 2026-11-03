@@ -111,3 +111,30 @@ export async function loadUsage(): Promise<Usage | null> {
   const { data, error } = await supabase.rpc("admin_usage");
   return error || !data ? null : (data as Usage);
 }
+
+
+// ---------- Gemini : quota de Google et usage des clients (console CFC) ----------
+
+export type GeminiKind = "direct" | "vocal" | "texte" | "conseil" | "voix";
+export type GeminiShop = { id: string; name: string; city: string; plan: string; total: number; echanges: number; vocaux: number; ecrits: number; wolof: number; francais: number; dernier: string | null };
+export type GeminiBoard = {
+  google_day_start: string;
+  google_day_end: string;
+  today: Partial<Record<GeminiKind, { ok: number; refus: number }>>;
+  echanges_today: number;
+  limits: Partial<Record<GeminiKind, number>>;
+  days: { day: string; appels: number; refus: number; echanges: number }[];
+  langs: Record<string, number>;
+  kinds: Record<string, number>;
+  shops: GeminiShop[];
+};
+
+export async function loadGemini(): Promise<GeminiBoard | null> {
+  const { data, error } = await supabase.rpc("admin_gemini");
+  return error || !data ? null : (data as GeminiBoard);
+}
+
+export async function setGeminiLimit(kind: GeminiKind, limit: number | null): Promise<boolean> {
+  const { error } = await supabase.rpc("admin_set_gemini_limit", { p_kind: kind, p_limit: limit ?? 0 });
+  return !error;
+}
