@@ -1437,3 +1437,25 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .shop-list li small { color: var(--j-ink-3); font-size: 12.5px; }
 .shop-manager .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .shop-delete .note[data-tone="error"] { color: #9b1c1c; }
+
+/* Toutes mes boutiques */
+.all-shops .seg { margin: 12px 0; }
+.all-total { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+@media (min-width: 720px) { .all-total { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.all-total > div { display: grid; gap: 2px; padding: 12px; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-white); }
+.all-total span { font-size: 13px; color: var(--j-ink-3); }
+.all-total b { font-size: 20px; }
+.all-total small { color: var(--j-ink-3); }
+.all-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.all-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.all-table th { text-align: left; font-size: 12px; color: var(--j-ink-3); padding: 8px 10px; border-bottom: 1px solid var(--j-line); white-space: nowrap; }
+.all-table td { padding: 10px; border-top: 1px solid var(--j-line); vertical-align: top; white-space: nowrap; }
+.all-table td small { color: var(--j-ink-3); }
+.all-table td[data-tone="warn"] { color: #b45309; font-weight: 700; }
+.all-table tr[data-low] td:first-child b::after { content: " · bas"; color: #b45309; font-weight: 600; font-size: 12px; }
+.all-debts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.all-debts li { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-white); flex-wrap: wrap; }
+.all-debts li[data-late] { border-color: #f1b8b8; }
+.all-debts li small { color: var(--j-ink-3); }
+.transfer { margin-top: 14px; }
+.transfer .row { display: flex; gap: 8px; flex-wrap: wrap; }

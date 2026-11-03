@@ -82,6 +82,7 @@ import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
 import { ShopManager } from "@/components/jokko/ShopManager";
+import { AllShops } from "@/components/jokko/AllShops";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
@@ -97,7 +98,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -107,6 +108,7 @@ const LANGS: Array<[Lang, string]> = [
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
   ["distance", "À distance"],
+  ["boutiques", "Mes boutiques"],
   ["conseiller", "Conseiller"],
   ["scanner", "Scanner"],
   ["bilan", "Bilan"],
@@ -127,6 +129,7 @@ const NAV: Array<[Screen, string]> = [
 const NAV_ICONS: Record<Screen, IconName> = {
   parler: "micro",
   distance: "distance",
+  boutiques: "boutique",
   conseiller: "conseil",
   scanner: "scanner",
   bilan: "rapport",
@@ -144,7 +147,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
 };
 
 /** Rubriques réservées au patron. */
-const PATRON_SCREENS: Screen[] = ["offre", "distance", "conseiller", "bilan", "equipe", "journal"];
+const PATRON_SCREENS: Screen[] = ["offre", "distance", "boutiques", "conseiller", "bilan", "equipe", "journal"];
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -549,7 +552,7 @@ const LETTERS = /[A-Za-zÀ-ÿŋñ]/;
 const NOISE = /<[^>]*>/g;
 
 /** Rubriques cachées en démo : elles parlent au serveur (équipe, journal, à distance, offre). */
-const DEMO_HIDDEN: Screen[] = ["offre", "distance", "equipe", "journal"];
+const DEMO_HIDDEN: Screen[] = ["offre", "distance", "boutiques", "equipe", "journal"];
 type DemoControls = { realShopId: string; restart: () => void; quit: () => void };
 
 export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
@@ -1208,7 +1211,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id))).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
@@ -1336,6 +1339,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           )}
           {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "offre" && patron && <Plans shop={shop} initialChoice={wantedPlan} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
+          {screen === "boutiques" && patron && (can(shop, "boutiques") ? <AllShops profile={profile} setProfile={setProfile} /> : <Upsell feature="boutiques" title="Toutes mes boutiques" onPlans={() => setScreen("offre")} />)}
           {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
