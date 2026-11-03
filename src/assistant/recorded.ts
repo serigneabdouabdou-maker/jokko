@@ -30,6 +30,11 @@ export const RECORDED: { slug: string; text: string; lang: "wo" | "fr" }[] = [
   { slug: "rapproche", text: "Jegeel sa telefoon, dégguma bu baax.", lang: "wo" },
   { slug: "hors-ligne", text: "Amul réseau, waaye bind naa ko.", lang: "wo" },
   { slug: "rappel-whatsapp", text: "Fàttali naa ko ci WhatsApp.", lang: "wo" },
+  // Enregistrées le 03/11/2026
+  { slug: "de-rien", text: "Ñoo ko bokk.", lang: "wo" },
+  { slug: "a-demain", text: "Ba ëllëg !", lang: "wo" },
+  { slug: "bonne-nuit", text: "Fanaanal ak jàmm.", lang: "wo" },
+  { slug: "ventes-bonnes", text: "Tey, jaay bi baax na.", lang: "wo" },
 ];
 
 export const recordedUrl = (slug: string) => `${BASE}${slug}-${RECORDED_VERSION}.mp3`;
