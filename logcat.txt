@@ -1,0 +1,106 @@
+11-03 18:31:04.083   284   284 D AndroidRuntime: >>>>>> START com.android.internal.os.ZygoteInit uid 0 <<<<<<
+11-03 18:31:04.156   284   284 I AndroidRuntime: Using default boot image
+11-03 18:31:04.156   284   284 I AndroidRuntime: Leaving lock profiling enabled
+11-03 18:31:04.631   285   285 D AndroidRuntime: >>>>>> START com.android.internal.os.ZygoteInit uid 0 <<<<<<
+11-03 18:31:04.694   285   285 I AndroidRuntime: Using default boot image
+11-03 18:31:04.694   285   285 I AndroidRuntime: Leaving lock profiling enabled
+11-03 18:31:12.241   846   846 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-03 18:31:12.299   858   858 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-03 18:31:17.693  1676  1676 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+11-03 18:31:17.717  1676  1676 I AndroidRuntime: Using default boot image
+11-03 18:31:17.717  1676  1676 I AndroidRuntime: Leaving lock profiling enabled
+11-03 18:31:19.055  1676  1676 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+11-03 18:31:19.602  1676  1676 D AndroidRuntime: Shutting down VM
+11-03 18:31:22.686   493   533 I ActivityManager: Start proc 2676:com.google.android.webview:webview_service/u0a145 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-03 18:31:23.762   493   551 I PackageDexOptimizer: Running dexopt (dexoptNeeded=1) on: /data/app/~~h3O58N0nQ9kSRux_XbkfZg==/sn.cfc.jokko-MhNRoB4JbEnR_F397JWi2w==/base.apk pkg=sn.cfc.jokko isa=x86_64 dexoptFlags=boot_complete,profile_guided,public,enable_hidden_api_checks targetFilter=speed-profile oatDir=/data/app/~~h3O58N0nQ9kSRux_XbkfZg==/sn.cfc.jokko-MhNRoB4JbEnR_F397JWi2w==/oat classLoaderContext=PCL[]{}
+11-03 18:31:23.763   421   567 V installd: DexInv: --- BEGIN '/data/app/~~h3O58N0nQ9kSRux_XbkfZg==/sn.cfc.jokko-MhNRoB4JbEnR_F397JWi2w==/base.apk' ---
+11-03 18:31:24.523  2764  2764 I dex2oat32: /apex/com.android.art/bin/dex2oat32 --input-vdex-fd=-1 --output-vdex-fd=9 --updatable-bcp-packages-file=/system/etc/updatable-bcp-packages.txt --resolve-startup-const-strings=true --max-image-block-size=524288 --compiler-filter=speed-profile --classpath-dir=/data/app/~~h3O58N0nQ9kSRux_XbkfZg==/sn.cfc.jokko-MhNRoB4JbEnR_F397JWi2w== --class-loader-context=PCL[]{} --generate-mini-debug-info --compact-dex-level=none --compilation-reason=install
+11-03 18:31:29.375  1126  2204 I anhw    : Scheduling Phenotype for a PhenotypeSyncImmediately(6, org.chromium.net.cronet) one off with window [1, 2] in seconds [CONTEXT service_id=51 ]
+11-03 18:31:35.650   421   567 V installd: DexInv: --- END '/data/app/~~h3O58N0nQ9kSRux_XbkfZg==/sn.cfc.jokko-MhNRoB4JbEnR_F397JWi2w==/base.apk' (success) ---
+11-03 18:31:35.665   493   551 V BackupManagerService: [UserID:0] restoreAtInstall pkg=sn.cfc.jokko token=1 restoreSet=0
+11-03 18:31:36.118   493  1644 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=sn.cfc.jokko/.MainActivity} from uid 2000
+11-03 18:31:36.185  1548  1548 I MediaProvider: Invalidating LocalCallingIdentity cache for package sn.cfc.jokko. Reason: package android.intent.action.PACKAGE_ADDED
+11-03 18:31:36.186  1567  1567 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) }
+11-03 18:31:36.201   692   692 D AvrcpMediaPlayerList: Name of package changed: sn.cfc.jokko
+11-03 18:31:36.282   493   533 I ActivityManager: Start proc 3976:sn.cfc.jokko/u0a167 for pre-top-activity {sn.cfc.jokko/sn.cfc.jokko.MainActivity}
+11-03 18:31:36.287  3976  3976 W sn.cfc.jokko: Unexpected CPU variant for X86 using defaults: x86_64
+11-03 18:31:36.550  3976  3976 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:31:36.553  3976  3976 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:31:36.664  3976  3976 I TetheringManager: registerTetheringEventCallback:sn.cfc.jokko
+11-03 18:31:36.668   493   533 I ActivityManager: Start proc 4043:com.google.android.webview:webview_service/u0a145 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-03 18:31:36.724   493   533 I ActivityManager: Start proc 4067:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0ai9000 for  {sn.cfc.jokko/org.chromium.content.app.SandboxedProcessService0:0}
+11-03 18:31:36.733  3976  3976 E chromium: [ERROR:filesystem_posix.cc(62)] mkdir /data/user/0/sn.cfc.jokko/cache/WebView/Crashpad: No such file or directory (2)
+11-03 18:31:36.932   493  1639 D ConnectivityService: requestNetwork for uid/pid:10167/3976 NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ]
+11-03 18:31:36.932   493   640 D WifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:36.933   493   640 D UntrustedWifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:36.933  1030  1030 D PhoneSwitcherNetworkRequstListener: got request NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:36.948  3976  3976 D Capacitor: Starting BridgeActivity
+11-03 18:31:37.491   493   526 W ActivityTaskManager: Activity top resumed state loss timeout for ActivityRecord{b87765e u0 sn.cfc.jokko/.MainActivity t9}
+11-03 18:31:37.491   493   526 W ActivityTaskManager: Activity pause timeout for ActivityRecord{b87765e u0 sn.cfc.jokko/.MainActivity t9}
+11-03 18:31:38.203  1126  4113 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+11-03 18:31:38.205  1126  2143 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+11-03 18:31:38.696  1449  2483 I ChromeSync: [Sync,SyncIntentOperation] Handling the intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 cmp=com.google.android.gms/.chimera.GmsIntentOperationService (has extras) }.
+11-03 18:31:38.718  1449  2483 I ChromeSync: [Persistence,AffiliationManager] One of affiliation or grouping data for android://zvEJGZpDM2XsZE4-QDwDWGjaee9-pUXFLml4aiwPFNnzY-5KwFgkrGM0k8s2deisx8N5ZnGOaNjMitjYRfXcqw==@sn.cfc.jokko/ was not found. Marking affiliation data as stale...
+11-03 18:31:40.361   493   533 I ActivityManager: Start proc 4461:com.android.chrome/u0a131 for service {com.android.chrome/org.chromium.chrome.browser.customtabs.CustomTabsConnectionService}
+11-03 18:31:42.985  3976  4942 D ProfileInstaller: Installing profile for sn.cfc.jokko
+11-03 18:31:43.170   422  3969 I iorapd  : Perfetto TraceBuffer saved to file: /data/misc/iorapd/sn.cfc.jokko/9/sn.cfc.jokko.MainActivity/raw_traces/1793730703166853466.perfetto_trace.pb
+11-03 18:31:46.051   493  2056 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.packageinstaller/com.android.packageinstaller.PackageInstalledReceiver
+11-03 18:31:46.053   493   532 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.gms/.games.chimera.GamesSystemBroadcastReceiverProxy
+11-03 18:31:46.053   493   532 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.gms/.gass.chimera.PackageChangeBroadcastReceiver
+11-03 18:31:46.053   493   532 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.gms/.chimera.GmsIntentOperationService$PersistentTrustedReceiver
+11-03 18:31:46.053   493   532 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.googlequicksearchbox/com.google.android.apps.gsa.googlequicksearchbox.GelStubAppWatcher
+11-03 18:31:46.053   493   532 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:sn.cfc.jokko flg=0x4000010 (has extras) } to com.google.android.ims/.receivers.RcsAutoStartReceiver
+11-03 18:31:57.923   493  1578 I ActivityManager: Force stopping sn.cfc.jokko appid=10167 user=0: from pid 5687
+11-03 18:31:58.004   493  1578 I ActivityManager: Killing 3976:sn.cfc.jokko/u0a167 (adj 101): stop sn.cfc.jokko due to from pid 5687
+11-03 18:31:58.010   493  1578 W ActivityTaskManager: Force removing ActivityRecord{b87765e u0 sn.cfc.jokko/.MainActivity t9 f}}: app died, no saved state
+11-03 18:31:58.040   493  2049 D ConnectivityService: ConnectivityService NetworkRequestInfo binderDied(NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ], android.os.BinderProxy@ee945dd)
+11-03 18:31:58.040   493  2049 D ConnectivityService: ConnectivityService NetworkRequestInfo binderDied(NetworkRequest [ LISTEN id=31, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&FOREGROUND Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ], android.os.BinderProxy@28a4552)
+11-03 18:31:58.041   493   644 D ConnectivityService: releasing NetworkRequest [ TRACK_DEFAULT id=30, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] (release request)
+11-03 18:31:58.071   493   587 W InputDispatcher: channel 'c39097d sn.cfc.jokko/sn.cfc.jokko.MainActivity (server)' ~ Consumer closed input channel or an error occurred.  events=0x9
+11-03 18:31:58.084   493   587 E InputDispatcher: channel 'c39097d sn.cfc.jokko/sn.cfc.jokko.MainActivity (server)' ~ Channel is unrecoverably broken and will be disposed!
+11-03 18:31:58.126   493  1578 W WindowManager: Failed to deliver inset state change to w=Window{c39097d u0 sn.cfc.jokko/sn.cfc.jokko.MainActivity}
+11-03 18:31:58.138   493   826 I WindowManager: WIN DEATH: Window{c39097d u0 sn.cfc.jokko/sn.cfc.jokko.MainActivity}
+11-03 18:31:58.138   493   826 W InputDispatcher: Attempted to unregister already unregistered input channel 'c39097d sn.cfc.jokko/sn.cfc.jokko.MainActivity (server)'
+11-03 18:31:58.154   493  1578 I ActivityManager: Killing 4067:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a167i0 (adj 0): isolated not needed
+11-03 18:31:58.155   493  1578 I WindowManager:   Force finishing activity ActivityRecord{b87765e u0 sn.cfc.jokko/.MainActivity t9 f} isExiting}
+11-03 18:31:58.155   493  1578 W ActivityTaskManager: Duplicate finish request for r=ActivityRecord{b87765e u0 sn.cfc.jokko/.MainActivity t9 f} isExiting}
+11-03 18:31:58.219   493  2039 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=sn.cfc.jokko/.MainActivity} from uid 2000
+11-03 18:31:58.334   493   533 I ActivityManager: Start proc 5702:sn.cfc.jokko/u0a167 for pre-top-activity {sn.cfc.jokko/sn.cfc.jokko.MainActivity}
+11-03 18:31:58.372  5702  5702 W sn.cfc.jokko: Unexpected CPU variant for X86 using defaults: x86_64
+11-03 18:31:58.655  5702  5702 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:31:58.657  5702  5702 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:31:58.703  5702  5702 I TetheringManager: registerTetheringEventCallback:sn.cfc.jokko
+11-03 18:31:58.737   493   533 I ActivityManager: Start proc 5746:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {sn.cfc.jokko/org.chromium.content.app.SandboxedProcessService0:0}
+11-03 18:31:58.781   493  2648 D ConnectivityService: requestNetwork for uid/pid:10167/5702 NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ]
+11-03 18:31:58.781   493   640 D WifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:58.781   493   640 D UntrustedWifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:58.781  1030  1030 D PhoneSwitcherNetworkRequstListener: got request NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 60 and providerId 3
+11-03 18:31:58.795  5702  5702 D Capacitor: Starting BridgeActivity
+11-03 18:31:59.157   493   531 D ArtManagerInternalImpl: /data/misc/iorapd/sn.cfc.jokko/9/sn.cfc.jokko.MainActivity/compiled_traces/compiled_trace.pb doesn't exist
+11-03 18:31:59.169   493   531 I ActivityTaskManager: Displayed sn.cfc.jokko/.MainActivity: +898ms
+11-03 18:32:03.423   422  5709 I iorapd  : Perfetto TraceBuffer saved to file: /data/misc/iorapd/sn.cfc.jokko/9/sn.cfc.jokko.MainActivity/raw_traces/1793730723421821502.perfetto_trace.pb
+11-03 18:32:04.266  5702  5807 D ProfileInstaller: Skipping profile installation for sn.cfc.jokko
+11-03 18:32:24.528   493   798 I ActivityManager: Force stopping sn.cfc.jokko appid=10167 user=0: from pid 6033
+11-03 18:32:24.528   493   798 I ActivityManager: Killing 5702:sn.cfc.jokko/u0a167 (adj 0): stop sn.cfc.jokko due to from pid 6033
+11-03 18:32:24.535   493   798 W ActivityTaskManager: Force removing ActivityRecord{932145a u0 sn.cfc.jokko/.MainActivity t10 f}}: app died, no saved state
+11-03 18:32:24.541   493   798 I ActivityManager: Killing 5746:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a167i1 (adj 0): isolated not needed
+11-03 18:32:24.544   493  1079 D ConnectivityService: ConnectivityService NetworkRequestInfo binderDied(NetworkRequest [ LISTEN id=42, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&FOREGROUND Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ], android.os.BinderProxy@7e466d2)
+11-03 18:32:24.545   493   799 D ConnectivityService: ConnectivityService NetworkRequestInfo binderDied(NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ], android.os.BinderProxy@bfff3a3)
+11-03 18:32:24.545   493   644 D ConnectivityService: releasing NetworkRequest [ TRACK_DEFAULT id=41, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] (release request)
+11-03 18:32:24.636   493   815 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=sn.cfc.jokko/.MainActivity} from uid 2000
+11-03 18:32:24.680   493   533 I ActivityManager: Start proc 6067:sn.cfc.jokko/u0a167 for pre-top-activity {sn.cfc.jokko/sn.cfc.jokko.MainActivity}
+11-03 18:32:24.687  6067  6067 W sn.cfc.jokko: Unexpected CPU variant for X86 using defaults: x86_64
+11-03 18:32:24.825  6067  6067 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:32:24.826  6067  6067 I sn.cfc.jokko: The ClassLoaderContext is a special shared library.
+11-03 18:32:24.857  6067  6067 I TetheringManager: registerTetheringEventCallback:sn.cfc.jokko
+11-03 18:32:24.928  6067  6123 W chromium: [WARNING:dns_config_service_posix.cc(341)] Failed to read DnsConfig.
+11-03 18:32:24.930   493   533 I ActivityManager: Start proc 6111:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i2 for  {sn.cfc.jokko/org.chromium.content.app.SandboxedProcessService0:0}
+11-03 18:32:24.952   493  2503 D ConnectivityService: requestNetwork for uid/pid:10167/6067 NetworkRequest [ TRACK_DEFAULT id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ]
+11-03 18:32:24.953   493   640 D WifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 0 and providerId 0
+11-03 18:32:24.953   493   640 D UntrustedWifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 0 and providerId 0
+11-03 18:32:24.953  1030  1030 D PhoneSwitcherNetworkRequstListener: got request NetworkRequest [ TRACK_DEFAULT id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10167 AdministratorUids: [] RequestorUid: 10167 RequestorPackageName: sn.cfc.jokko] ] with score 0 and providerId 0
+11-03 18:32:24.962  6067  6067 D Capacitor: Starting BridgeActivity
+11-03 18:32:25.266   493   531 D ArtManagerInternalImpl: /data/misc/iorapd/sn.cfc.jokko/9/sn.cfc.jokko.MainActivity/compiled_traces/compiled_trace.pb doesn't exist
+11-03 18:32:25.309   493   531 I ActivityTaskManager: Displayed sn.cfc.jokko/.MainActivity: +629ms
+11-03 18:32:30.039  6067  6183 D ProfileInstaller: Skipping profile installation for sn.cfc.jokko
+11-03 18:32:34.267  4836  5240 W YouTube : 	at org.chromium.net.impl.CronetUrlRequest.onError(PG:61)
