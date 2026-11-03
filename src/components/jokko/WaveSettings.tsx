@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Shop } from "@/model";
 import { removeWaveKeys, saveWaveKeys, waveReady, waveWebhookUrl } from "@/data/wave";
+import { SUPPORT_PHONE } from "@/data/supabase";
 
 /**
  * Brancher Wave Business (patron). Les clés sont envoyées une seule fois au serveur et ne reviennent jamais
@@ -19,6 +20,7 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
   const hook = waveWebhookUrl(shop.id);
+  const showApi = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("wave") === "api";
 
   useEffect(() => {
     void waveReady(shop.id).then(setReady, () => setReady(false));
@@ -38,8 +40,12 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
         }}>Enregistrer le lien</Button>
       </div>
       {linkNote && <Notice text={linkNote} />}
-      {/* Option avancée (rare) : repliée par défaut pour ne pas embrouiller le commerçant. */}
-      <details className="wave-advanced" open={Boolean(ready) || open}>
+      {/* API Wave (rare) : cachée aux commerçants. CFC l'affiche en ouvrant Réglages avec ?wave=api,
+          le jour où une boutique en a besoin ; le commerçant colle alors ses clés lui-même. */}
+      {!ready && !showApi ? (
+        <p className="note">Confirmation automatique des paiements Wave : demande-la à CFC sur WhatsApp au {SUPPORT_PHONE}.</p>
+      ) : (
+      <details className="wave-advanced" open={Boolean(ready) || open || showApi}>
       <summary>Option avancée : confirmation automatique (API Wave)</summary>
       <p className="note">Seulement si Wave t'a donné l'accès « Développeurs » : chaque paiement sera confirmé tout seul.</p>
       {ready ? (
@@ -87,6 +93,7 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
       )}
       {note && <div role="status"><Notice text={note} tone={note.startsWith("✓") ? "ok" : "erreur"} /></div>}
       </details>
+      )}
     </div>
   );
 }
