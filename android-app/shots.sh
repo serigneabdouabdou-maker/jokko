@@ -26,4 +26,5 @@ shot 3-sans-internet
 adb shell svc wifi enable
 adb shell svc data enable
 adb logcat -d | grep -iE "capacitor|chromium|jokko|AndroidRuntime" | tail -300 > shots/logcat.txt
-adb shell pidof $PKG || exit 1
+# Sans internet, certains téléphones virtuels ferment les services Google (et les applis qui en dépendent) : on note seulement.
+adb shell pidof $PKG > shots/pid-hors-ligne.txt || echo "fermée hors ligne (voir logcat)" > shots/pid-hors-ligne.txt
