@@ -50,3 +50,17 @@ describe("stock en parlant ou en écrivant", () => {
     expect(adjustPrices(shop(), "tous", { kind: "pourcent", value: -10 }).products[0].price).toBe(16200);
   });
 });
+
+describe("photo de facture : lignes recopiées par Gemini", () => {
+  it("chaque ligne « QUANTITÉ UNITÉ NOM, acheté PRIX » devient un article avec son prix d'achat", () => {
+    const text = "10 sac Riz parfumé, acheté 16500\n5 bidon Huile, acheté 6500, vendu 7500\n24 paquet Sucre en morceaux, acheté 650";
+    const drafts = parseStockList(text, shop());
+    const sucre = drafts.find((d) => /sucre/i.test(d.name))!;
+    expect(sucre).toMatchObject({ productId: null, qty: 24, unit: "paquet", cost: 650 });
+    const huile = drafts.find((d) => d.productId === "huile")!;
+    expect(huile).toMatchObject({ qty: 5, cost: 6500, price: 7500 });
+    const riz = drafts.find((d) => /parfum/i.test(d.name) || d.productId === "riz")!;
+    expect(riz.qty).toBe(10);
+    expect(riz.cost).toBe(16500);
+  });
+});
