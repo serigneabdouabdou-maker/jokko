@@ -55,7 +55,7 @@ let fcmAccount: ServiceAccount | null | undefined;
 let fcmToken: { value: string; until: number } | null = null;
 
 function serviceAccount(): ServiceAccount | null {
-  if (fcmAccount !== undefined) return fcmAccount;
+  if (fcmAccount) return fcmAccount; // une clé absente est relue la fois suivante (secret ajouté entre-temps)
   try {
     const raw = Deno.env.get("FCM_SERVICE_ACCOUNT");
     const parsed = raw ? JSON.parse(raw) : null;
@@ -231,6 +231,17 @@ Deno.serve(async (req) => {
       const work = onJournal(Number(body.id)).catch((error) => console.warn("[jokko] notify:", error instanceof Error ? error.message : "erreur"));
       (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(work);
       return Response.json({ accepted: true }, { status: 202 });
+    }
+    if (body.kind === "fcm_check") {
+      // Diagnostic (sans rien montrer de la clé) : la clé est-elle là, et Google l'accepte-t-il ?
+      const sa = serviceAccount();
+      if (!sa) return Response.json({ configured: false });
+      try {
+        await fcmAccess(sa);
+        return Response.json({ configured: true, project: sa.project_id, google: "ok" });
+      } catch {
+        return Response.json({ configured: true, project: sa.project_id, google: "refus" });
+      }
     }
     if (body.kind === "test" && typeof body.user === "string") {
       const sent = await push([body.user], { title: "Jokko", body: "Les notifications marchent ✓ Jokko te préviendra ici, même appli fermée.", url: "/", tag: "test" });
