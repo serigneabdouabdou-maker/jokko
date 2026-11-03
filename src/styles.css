@@ -1465,3 +1465,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .price-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0 12px; }
 .price-sync > span:first-of-type { flex: 1 1 220px; }
 .price-sync-actions { display: inline-flex; gap: 6px; }
+
+/* Ordinateur : barre de défilement VISIBLE pour la liste des rubriques, et rubriques plus serrées sur les écrans bas */
+@media (min-width: 1024px) {
+  .side { box-sizing: border-box; }
+  .side-nav { scrollbar-width: thin; scrollbar-color: #CFC7B3 transparent; }
+  .side-nav::-webkit-scrollbar { width: 8px; }
+  .side-nav::-webkit-scrollbar-thumb { background: #CFC7B3; border-radius: 8px; }
+  .side-nav::-webkit-scrollbar-track { background: transparent; }
+}
+@media (min-width: 1024px) and (max-height: 860px) {
+  .side { gap: 12px; padding-top: 14px; padding-bottom: 14px; }
+  .side-nav button { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+}
