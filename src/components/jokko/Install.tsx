@@ -103,9 +103,9 @@ export function InstallSettings({ userId }: { userId?: string }) {
 }
 
 const ACTIVITY: Array<[string, string]> = [
-  ["employes", "Ce que font mes employés (ventes, dépenses, factures, dettes payées)"],
-  ["toutes", "Tout, même ce que je fais moi-même"],
-  ["aucune", "Rien (seulement les alertes graves)"],
+  ["employes", "Ce que font mes employés"],
+  ["toutes", "Tout, même ce que je fais"],
+  ["aucune", "Rien (alertes graves seulement)"],
 ];
 
 /** Patron : être prévenu de chaque vente, dépense, facture ou dette payée, même appli fermée. */
@@ -122,7 +122,7 @@ function ActivityChoice({ userId }: { userId: string }) {
   }, [userId]);
   return (
     <div className="field">
-      <label htmlFor="notify-activity" className="text-sm font-medium">Me prévenir par notification quand la boutique vend ou note quelque chose</label>
+      <label htmlFor="notify-activity" className="text-sm font-medium">Me prévenir à chaque vente, dépense, facture ou dette payée</label>
       <select
         id="notify-activity"
         className="h-11 rounded-md border px-3"

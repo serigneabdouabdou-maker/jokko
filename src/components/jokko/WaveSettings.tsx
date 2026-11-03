@@ -26,8 +26,8 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
 
   return (
     <div className="install-settings wave-settings">
-      <h3>Wave Business · {shop.name}</h3>
-      <p className="note"><b>Sans API (le plus simple) :</b> colle le lien de paiement de ta boutique Wave Business (dans l'appli Wave Business : « Partager mon lien » ou « Lien de paiement »). Au moment d'encaisser par Wave, Jokko montre ce lien en QR code au client. Tu cocheras ensuite chaque paiement « Vérifié » dans À distance.</p>
+      <h3>Recevoir les paiements Wave de tes clients</h3>
+      <p className="note">Si ta boutique a un compte <b>Wave Business</b>, colle ici ton lien de paiement (appli Wave Business : « Partager mon lien »). Quand un client paie par Wave, Jokko lui montre ce lien en QR code. Pas de compte Wave Business ? Laisse vide : rien ne change.</p>
       <div className="row">
         <Input className="h-11" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://pay.wave.com/…" aria-label="Lien Wave Business de la boutique" />
         <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => {
@@ -38,7 +38,10 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
         }}>Enregistrer le lien</Button>
       </div>
       {linkNote && <Notice text={linkNote} />}
-      <p className="note"><b>Avec l'API Wave (automatique) :</b> si Wave t'a donné l'accès « Développeurs », branche-le ci-dessous : chaque paiement sera confirmé tout seul.</p>
+      {/* Option avancée (rare) : repliée par défaut pour ne pas embrouiller le commerçant. */}
+      <details className="wave-advanced" open={Boolean(ready) || open}>
+      <summary>Option avancée : confirmation automatique (API Wave)</summary>
+      <p className="note">Seulement si Wave t'a donné l'accès « Développeurs » : chaque paiement sera confirmé tout seul.</p>
       {ready ? (
         <>
           <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Wave est branché. Au moment d'encaisser, choisis « Wave » : le client scanne le QR code, et la vente s'enregistre quand Wave confirme.</span></p>
@@ -83,6 +86,7 @@ export function WaveSettings({ shop, onLink }: { shop: Shop; onLink: (link: stri
         </>
       )}
       {note && <div role="status"><Notice text={note} tone={note.startsWith("✓") ? "ok" : "erreur"} /></div>}
+      </details>
     </div>
   );
 }

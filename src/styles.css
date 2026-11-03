@@ -1421,3 +1421,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .voice-speed { display: grid; gap: 8px; margin: 6px 0 4px; }
 .voice-speed > span { font-size: 14px; font-weight: 600; color: var(--j-ink); }
 .voice-speed .pay-modes { grid-template-columns: repeat(3, 1fr); margin-bottom: 0; }
+
+/* Réglages : rien ne dépasse de la carte sur téléphone */
+.install-settings { min-width: 0; max-width: 100%; }
+.install-settings select, .install-settings input { min-width: 0; max-width: 100%; width: 100%; text-overflow: ellipsis; }
+.wave-advanced { display: grid; gap: 10px; }
+.wave-advanced > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--j-ink-3); padding: 6px 0; }
+.wave-advanced[open] > summary { margin-bottom: 4px; }
