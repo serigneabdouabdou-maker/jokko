@@ -11,8 +11,10 @@ import {
   type Feature,
   FEATURE_PLAN,
   freshPlan,
+  checkOnline,
   checkSubscriptionWave,
   myRequests,
+  payOnline,
   paySubscriptionWave,
   PLAN_FEATURES,
   PLAN_LABELS,
@@ -53,6 +55,8 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState<TrialLeft | null>(null);
+  // Paiement automatique : l'agrégateur (tous les moyens) d'abord, sinon Wave Business de CFC, sinon vérification à la main.
+  const online = info?.paydunya ? "paydunya" : info?.wave_auto ? "wave" : null;
 
   useEffect(() => {
     if (current.trial) void trialLeft(shop.id).then(setLeft);
@@ -71,13 +75,13 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   // Retour de Wave (ou paiement en cours) : on demande l'état quelques fois ; l'offre s'active dès que Wave confirme.
   const waiting = requests.filter((r) => r.status === "en_attente").map((r) => r.id).join(",");
   useEffect(() => {
-    if (!info?.wave_auto || !waiting) return;
+    if (!online || !waiting) return;
     let tries = 0;
     let stop = false;
     const tick = async () => {
       for (const id of waiting.split(",")) {
         if (stop) return;
-        if ((await checkSubscriptionWave(id)) === "active") {
+        if ((await (online === "paydunya" ? checkOnline(id) : checkSubscriptionWave(id))) === "active") {
           setActivated(id);
           setPending(null);
           void refresh();
@@ -90,12 +94,12 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
     return () => {
       stop = true;
     };
-  }, [info?.wave_auto, waiting]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [online, waiting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function payWave(id: string) {
     setBusy(true);
     setNote("");
-    const r = await paySubscriptionWave(id);
+    const r = online === "paydunya" ? await payOnline(id) : await paySubscriptionWave(id);
     setBusy(false);
     if (!r.ok) return setNote(r.message);
     window.location.href = r.url;
@@ -118,7 +122,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
     setPending({ id: r.id, reference: r.reference, amount: r.amount });
     void refresh();
     // Paiement automatique : on ouvre Wave tout de suite.
-    if (info?.wave_auto) await payWave(r.id);
+    if (online) await payWave(r.id);
   }
 
   const plans: PlanName[] = ["gratuit", "medium", "avance"];
@@ -175,7 +179,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
           </div>
           <Input className="h-11" inputMode="tel" value={payer} onChange={(e) => setPayer(e.target.value)} placeholder="Numéro Wave qui va payer (facultatif)" />
           <p className="plan-total">Total : <b className="num">{amount(price(choice) * months)}</b></p>
-          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void order()}>{busy ? "Un instant…" : "Payer avec Wave"}</Button>
+          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void order()}>{busy ? "Un instant…" : online === "paydunya" ? "Payer : Wave, Orange Money, carte…" : "Payer avec Wave"}</Button>
           {note && <p className="note" data-tone="error">{note}</p>}
         </div>
       )}
@@ -187,16 +191,22 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
         </div>
       )}
 
-      {pending && info?.wave_auto && (
+      {pending && online && (
         <div className="sheet plan-pay">
-          <h3>Paiement Wave · {amount(pending.amount)}</h3>
-          <p className="note">Wave va s’ouvrir : confirme le paiement de <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>. Ton offre s’active toute seule dès que Wave confirme, de jour comme de nuit.</p>
-          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void payWave(pending.id)}>{busy ? "Ouverture de Wave…" : "Ouvrir Wave"}</Button>
+          <h3>Paiement · {amount(pending.amount)}</h3>
+          <p className="note">
+            {online === "paydunya"
+              ? <>La page de paiement s’ouvre : choisis <b>Wave, Orange Money, Free Money ou ta carte</b>, et paie <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>
+              : <>Wave va s’ouvrir : confirme le paiement de <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>}{" "}
+            Ton offre s’active toute seule dès que le paiement est confirmé, de jour comme de nuit.
+          </p>
+          {info?.paydunya_mode === "test" && online === "paydunya" && <p className="note" data-tone="error">Mode test : aucun vrai argent n’est prélevé.</p>}
+          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void payWave(pending.id)}>{busy ? "Ouverture…" : online === "paydunya" ? "Ouvrir la page de paiement" : "Ouvrir Wave"}</Button>
           {note && <p className="note" data-tone="error">{note}</p>}
         </div>
       )}
 
-      {pending && !info?.wave_auto && (
+      {pending && !online && (
         <div className="sheet plan-pay">
           <h3>Paiement Wave · {amount(pending.amount)}</h3>
           {info?.wave_link ? (
@@ -222,12 +232,12 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
           <ul className="price-preview">
             {requests.map((r) => (
               <li key={r.id}>
-                <span>{PLAN_LABELS[r.plan]} · {r.months} mois · <b>{r.reference}</b>{r.paid_at && <><br /><small>Payé par Wave le {date(r.paid_at)}{r.transaction_id ? ` · n° ${r.transaction_id}` : ""}</small></>}</span>
+                <span>{PLAN_LABELS[r.plan]} · {r.months} mois · <b>{r.reference}</b>{r.paid_at && <><br /><small>Payé {r.paid_via === "paydunya" ? "en ligne" : "par Wave"} le {date(r.paid_at)}{r.transaction_id ? ` · n° ${r.transaction_id}` : ""}</small></>}</span>
                 <span>
                   {amount(r.amount)} · {r.status === "en_attente" ? "en attente du paiement" : r.status === "active" ? "activée" : "refusée"}
                   {r.status === "active" && <Icon name="ok" size="sm" className="jk-ok" label="Activée" />}
                   {r.status === "active" && <> · <button type="button" className="link" onClick={() => printReceipt(shop.name, r)}>Reçu</button></>}
-                  {r.status === "en_attente" && info?.wave_auto && <> · <button type="button" className="link" disabled={busy} onClick={() => void payWave(r.id)}>Payer</button></>}
+                  {r.status === "en_attente" && online && <> · <button type="button" className="link" disabled={busy} onClick={() => void payWave(r.id)}>Payer</button></>}
                 </span>
               </li>
             ))}
@@ -247,7 +257,7 @@ function printReceipt(shopName: string, r: SubscriptionRequest) {
 <h1>Reçu de paiement</h1><small>CFC – Cissé Family Company · Jokko · jokkoapp.com</small>
 <table><tr><td>Reçu n°</td><td>${esc(r.reference)}</td></tr><tr><td>Date</td><td>${new Date(paid).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
 <tr><td>Boutique</td><td>${esc(shopName)}</td></tr><tr><td>Offre</td><td>Jokko ${esc(PLAN_LABELS[r.plan])} · ${r.months} mois</td></tr>
-<tr><td>Moyen de paiement</td><td>${r.paid_via === "wave" ? "Wave" : "Wave (vérifié par CFC)"}</td></tr>${r.transaction_id ? `<tr><td>Transaction Wave</td><td>${esc(r.transaction_id)}</td></tr>` : ""}
+<tr><td>Moyen de paiement</td><td>${r.paid_via === "paydunya" ? "Paiement en ligne (PayDunya)" : r.paid_via === "wave" ? "Wave" : "Wave (vérifié par CFC)"}</td></tr>${r.transaction_id ? `<tr><td>N° de transaction</td><td>${esc(r.transaction_id)}</td></tr>` : ""}
 <tr class="tot"><td>Total payé</td><td>${r.amount.toLocaleString("fr-FR")} F CFA</td></tr></table>
 <small>Merci pour votre confiance. Contact : WhatsApp 77 567 47 25.</small><br><button onclick="print()">Imprimer ou enregistrer en PDF</button></body></html>`;
   const blob = new Blob([html], { type: "text/html" });

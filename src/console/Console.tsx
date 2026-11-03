@@ -614,6 +614,7 @@ function Settings({ overview, onChanged }: { overview: AdminOverview; onChanged:
   return (
     <div className="cx-stack">
       <LaunchCard />
+      <PaydunyaCard />
       <CfcWaveCard />
       <section className="cx-card">
         <h3>Prix et lien de paiement</h3>
@@ -887,6 +888,64 @@ function QualityTab() {
         <p className="note">Chaque semaine : on corrige les phrases qui reviennent le plus (mot wolof inconnu, deux articles qui se ressemblent, nombre mal compris), puis on coche « Corrigé ».</p>
       </section>
     </div>
+  );
+}
+
+/**
+ * Agrégateur PayDunya (Wave, Orange Money, Free Money, carte) : clés de CFC collées par l'administrateur, jamais réaffichées.
+ * Prioritaire sur Wave seul. Le serveur revérifie chaque paiement auprès de PayDunya avant d'activer une offre.
+ */
+function PaydunyaCard() {
+  const [state, setState] = useState<{ on: boolean; mode: string | null } | null>(null);
+  const [master, setMaster] = useState("");
+  const [priv, setPriv] = useState("");
+  const [token, setToken] = useState("");
+  const [mode, setMode] = useState<"test" | "live">("test");
+  const [note, setNote] = useState("");
+  const ipn = `${SUPABASE_URL}/functions/v1/paiement/paydunya/ipn`;
+  async function refresh() {
+    const { data } = await supabase.rpc("subscription_info");
+    const d = data as { paydunya?: boolean; paydunya_mode?: string | null } | null;
+    setState({ on: Boolean(d?.paydunya), mode: d?.paydunya_mode ?? null });
+  }
+  useEffect(() => {
+    void refresh();
+  }, []);
+  async function save(clear = false) {
+    setNote("");
+    const { error } = await supabase.rpc("admin_set_paydunya", { p_master: clear ? "" : master.trim(), p_private: clear ? "" : priv.trim(), p_token: clear ? "" : token.trim(), p_mode: mode });
+    if (error) return setNote(/invalide/.test(error.message) ? `✗ ${error.message}` : "✗ Enregistrement impossible (connexion ou droits).");
+    setMaster("");
+    setPriv("");
+    setToken("");
+    setNote(clear ? "✓ PayDunya arrêté." : mode === "live" ? "✓ Clés enregistrées : paiements EN VRAI activés." : "✓ Clés de test enregistrées : fais un paiement d'essai dans « Mon offre ».");
+    void refresh();
+  }
+  return (
+    <section className="cx-card">
+      <h3>Paiement en ligne PayDunya (Wave, Orange Money, Free Money, carte)</h3>
+      <p className="note">
+        {state === null ? "…" : state.on ? (state.mode === "live" ? "✅ Activé EN VRAI : les clients paient en ligne, l’offre s’active toute seule." : "🧪 Activé en MODE TEST : aucun vrai argent. Passe en « Vrai argent » quand le compte PayDunya est validé.") : "Pas encore activé."}
+      </p>
+      <ol className="note">
+        <li>Sur <b>paydunya.com</b> → <b>Intégration API</b> → <b>Configurer une nouvelle application</b> (mode test d’abord).</li>
+        <li>Si PayDunya demande une adresse de notification (IPN), mets :<br /><code className="cx-code">{ipn}</code></li>
+        <li>Copie la <b>clé principale</b> (master key), la <b>clé privée</b> et le <b>token</b>, colle-les ci-dessous, puis Enregistrer.</li>
+      </ol>
+      <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { void navigator.clipboard?.writeText(ipn); setNote("✓ Adresse IPN copiée."); }}>Copier l’adresse IPN</Button>
+      <Input className="h-11" type="password" autoComplete="off" value={master} onChange={(e) => setMaster(e.target.value)} placeholder="Clé principale (master key)" aria-label="Clé principale PayDunya" />
+      <Input className="h-11" type="password" autoComplete="off" value={priv} onChange={(e) => setPriv(e.target.value)} placeholder="Clé privée (test_private_… ou live_private_…)" aria-label="Clé privée PayDunya" />
+      <Input className="h-11" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token" aria-label="Token PayDunya" />
+      <div className="seg" role="radiogroup">
+        <button type="button" className={mode === "test" ? "on" : ""} onClick={() => setMode("test")}>Mode test</button>
+        <button type="button" className={mode === "live" ? "on" : ""} onClick={() => setMode("live")}>Vrai argent</button>
+      </div>
+      <div className="row">
+        <Button className="h-11 rounded-full px-5" disabled={!master.trim() || !priv.trim() || !token.trim()} onClick={() => { if (mode === "live" && !window.confirm("Activer les paiements en VRAI argent ?")) return; void save(); }}>Enregistrer</Button>
+        {state?.on && <Button variant="ghost" className="h-11 rounded-full px-5" onClick={() => { if (window.confirm("Arrêter PayDunya ?")) void save(true); }}>Arrêter</Button>}
+      </div>
+      {note && <Notice text={note} tone={note.startsWith("✓") ? "ok" : note.startsWith("✗") ? "erreur" : undefined} />}
+    </section>
   );
 }
 

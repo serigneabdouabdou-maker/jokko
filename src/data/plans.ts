@@ -59,14 +59,14 @@ export function waveLinkFor(link: string, amount: number): string {
   }
 }
 
-export type SubscriptionInfo = { price_medium: number; price_avance: number; wave_link: string | null; wave_auto?: boolean; is_admin: boolean };
+export type SubscriptionInfo = { price_medium: number; price_avance: number; wave_link: string | null; wave_auto?: boolean; paydunya?: boolean; paydunya_mode?: "test" | "live" | null; is_admin: boolean };
 
 export async function subscriptionInfo(): Promise<SubscriptionInfo | null> {
   const { data, error } = await supabase.rpc("subscription_info");
   return error || !data ? null : (data as SubscriptionInfo);
 }
 
-export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string; paid_at?: string | null; paid_via?: string | null; transaction_id?: string | null };
+export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string; paid_at?: string | null; paid_via?: string | null; transaction_id?: string | null; receipt_url?: string | null };
 
 export async function requestSubscription(shopId: string, plan: "medium" | "avance", months: number, payer: string): Promise<{ ok: true; id: string; reference: string; amount: number } | { ok: false; message: string }> {
   const { data, error } = await supabase.rpc("request_subscription", { p_shop: shopId, p_plan: plan, p_months: months, p_payer: payer });
@@ -95,6 +95,36 @@ export async function paySubscriptionWave(requestId: string): Promise<{ ok: true
   }
 }
 
+async function onlineCall(action: "creer" | "verifier", body: unknown): Promise<{ ok: boolean; data: Record<string, unknown> | null }> {
+  const { data } = await supabase.auth.getSession();
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/paiement/paydunya/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify(body),
+  });
+  return { ok: response.ok, data: (await response.json().catch(() => null)) as Record<string, unknown> | null };
+}
+
+/** Paiement en ligne (PayDunya : Wave, Orange Money, Free Money, carte) : renvoie la page de paiement. */
+export async function payOnline(requestId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  try {
+    const { ok, data } = await onlineCall("creer", { requestId });
+    if (ok && typeof data?.url === "string") return { ok: true, url: data.url };
+    return { ok: false, message: typeof data?.message === "string" ? data.message : "Le paiement en ligne ne répond pas pour le moment. Réessaie." };
+  } catch {
+    return { ok: false, message: "Pas de connexion internet. Réessaie." };
+  }
+}
+
+export async function checkOnline(requestId: string): Promise<"active" | "en_attente" | "refusee"> {
+  try {
+    const { data } = await onlineCall("verifier", { requestId });
+    return data?.status === "active" ? "active" : data?.status === "refusee" ? "refusee" : "en_attente";
+  } catch {
+    return "en_attente";
+  }
+}
+
 /** Après le paiement : demande à Wave si c'est payé (l'offre s'active alors toute seule). */
 export async function checkSubscriptionWave(requestId: string): Promise<"active" | "en_attente" | "refusee"> {
   try {
@@ -106,7 +136,7 @@ export async function checkSubscriptionWave(requestId: string): Promise<"active"
 }
 
 export async function myRequests(shopId: string): Promise<SubscriptionRequest[]> {
-  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, paid_at, paid_via, transaction_id").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
+  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, paid_at, paid_via, transaction_id, receipt_url").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
   return (data ?? []) as SubscriptionRequest[];
 }
 
