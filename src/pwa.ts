@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./data/supabase";
+import { isNativeApp, nativePushState, registerNativePush } from "./native";
 
 /**
  * Jokko comme une vraie appli : installation sur l'écran d'accueil, ouverture sans internet, notifications.
@@ -76,6 +77,7 @@ export function useInstall(): InstallState {
 export type NotifyState = "non_dispo" | "a_demander" | "acceptees" | "refusees";
 
 export function notificationState(): NotifyState {
+  if (isNativeApp()) return nativePushState();
   if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return "non_dispo";
   if (Notification.permission === "granted") return "acceptees";
   if (Notification.permission === "denied") return "refusees";
@@ -84,6 +86,11 @@ export function notificationState(): NotifyState {
 
 /** Demande l'autorisation (au toucher d'un bouton, jamais toute seule) et envoie une notification d'essai. */
 export async function enableNotifications(): Promise<NotifyState> {
+  if (isNativeApp()) {
+    const state = await registerNativePush(saveFcmToken, true);
+    if (state === "acceptees") await supabase.rpc("push_test");
+    return state;
+  }
   if (notificationState() === "non_dispo") return "non_dispo";
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return permission === "denied" ? "refusees" : "a_demander";
@@ -93,6 +100,7 @@ export async function enableNotifications(): Promise<NotifyState> {
 }
 
 export async function showNotification(title: string, body: string): Promise<void> {
+  if (isNativeApp()) return;
   if (notificationState() !== "acceptees") return;
   const registration = await navigator.serviceWorker.getRegistration();
   const icon = `${import.meta.env.BASE_URL}icon-192.png`;
@@ -116,6 +124,7 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
  * Sans effet si les notifications ne sont pas autorisées. Ne lance jamais d'exception.
  */
 export async function ensurePush(): Promise<boolean> {
+  if (isNativeApp()) return nativePushState() === "acceptees" && (await registerNativePush(saveFcmToken, false)) === "acceptees";
   try {
     if (notificationState() !== "acceptees" || !("PushManager" in window)) return false;
     const registration = await navigator.serviceWorker.ready;
@@ -134,5 +143,11 @@ export async function ensurePush(): Promise<boolean> {
 /** Heure du résumé du soir (heure de Dakar), ou null pour ne pas en recevoir. */
 export async function setSummaryHour(userId: string, hour: number | null): Promise<boolean> {
   const { error } = await supabase.from("profiles").update({ summary_hour: hour }).eq("user_id", userId);
+  return !error;
+}
+
+/** Application Android : le jeton Firebase de ce téléphone, pour recevoir les notifications. */
+async function saveFcmToken(token: string): Promise<boolean> {
+  const { error } = await supabase.rpc("save_fcm_token", { p_token: token });
   return !error;
 }

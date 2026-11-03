@@ -1,4 +1,4 @@
-// Jokko — notifications envoyées même quand l'appli est fermée (Web Push).
+// Jokko — notifications envoyées même quand l'appli est fermée (Web Push dans le navigateur, Firebase dans l'application Android).
 // Appelée par la base de données seulement (en-tête secret) :
 //  - { kind: "journal", id } : une action dans une boutique ; le patron est prévenu des alertes GRAVES,
 //    et (selon son choix) des ventes, dépenses, factures et dettes payées — un panier = une seule notification.
@@ -6,6 +6,7 @@
 // Les règles d'alerte et le résumé sont les mêmes que dans l'appli (fichiers du dépôt, figés sur une version).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { importPKCS8, SignJWT } from "npm:jose@5.9.6";
 import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/alerts.ts";
 import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/sync.ts";
 import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/summary.ts";
@@ -47,9 +48,97 @@ async function patronsOf(shopId: string): Promise<string[]> {
   return (data ?? []).map((m) => m.user_id as string);
 }
 
-/** Envoie à tous les téléphones de ces personnes ; les abonnements morts sont effacés. */
+// ---------- Firebase (application Android) ----------
+// Clé du compte de service Firebase : secret FCM_SERVICE_ACCOUNT (le JSON complet), mis par le patron dans Supabase.
+type ServiceAccount = { project_id: string; client_email: string; private_key: string };
+let fcmAccount: ServiceAccount | null | undefined;
+let fcmToken: { value: string; until: number } | null = null;
+
+function serviceAccount(): ServiceAccount | null {
+  if (fcmAccount !== undefined) return fcmAccount;
+  try {
+    const raw = Deno.env.get("FCM_SERVICE_ACCOUNT");
+    const parsed = raw ? JSON.parse(raw) : null;
+    fcmAccount = parsed?.private_key && parsed?.client_email && parsed?.project_id ? parsed : null;
+  } catch {
+    fcmAccount = null;
+  }
+  return fcmAccount;
+}
+
+async function fcmAccess(sa: ServiceAccount): Promise<string> {
+  if (fcmToken && fcmToken.until > Date.now() + 60_000) return fcmToken.value;
+  const key = await importPKCS8(sa.private_key, "RS256");
+  const now = Math.floor(Date.now() / 1000);
+  const assertion = await new SignJWT({ scope: "https://www.googleapis.com/auth/firebase.messaging" })
+    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+    .setIssuer(sa.client_email)
+    .setAudience("https://oauth2.googleapis.com/token")
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(key);
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) throw new Error("firebase: jeton refusé");
+  fcmToken = { value: data.access_token, until: Date.now() + (Number(data.expires_in) || 3600) * 1000 };
+  return fcmToken.value;
+}
+
+/** Application Android : envoie par Firebase ; les jetons morts (appli désinstallée) sont effacés. */
+async function pushFcm(userIds: string[], payload: { title: string; body: string; url?: string; tag?: string }) {
+  const sa = serviceAccount();
+  if (!sa) return 0;
+  const { data: rows } = await admin.from("push_fcm_tokens").select("token").in("user_id", userIds);
+  if (!rows?.length) return 0;
+  let access: string;
+  try {
+    access = await fcmAccess(sa);
+  } catch (error) {
+    console.warn("[jokko] firebase:", error instanceof Error ? error.message : "erreur");
+    return 0;
+  }
+  let sent = 0;
+  for (const { token } of rows) {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: {
+          token,
+          notification: { title: payload.title, body: payload.body },
+          data: { url: payload.url ?? "/", tag: payload.tag ?? "" },
+          android: {
+            priority: "HIGH",
+            ttl: "21600s",
+            notification: { channel_id: "jokko", icon: "ic_stat_jokko", color: "#F6B800", tag: payload.tag || undefined, default_sound: true },
+          },
+        },
+      }),
+    }).catch(() => null);
+    if (res?.ok) {
+      sent++;
+      continue;
+    }
+    const text = res ? await res.text().catch(() => "") : "";
+    if (res && (res.status === 404 || /UNREGISTERED/.test(text))) {
+      await admin.from("push_fcm_tokens").delete().eq("token", token);
+    } else console.warn("[jokko] firebase envoi échoué", res?.status ?? "réseau");
+  }
+  return sent;
+}
+
+/** Envoie à tous les téléphones de ces personnes (navigateur + application Android) ; les abonnements morts sont effacés. */
 async function push(userIds: string[], payload: { title: string; body: string; url?: string; tag?: string }) {
   if (!userIds.length) return 0;
+  const viaApp = await pushFcm(userIds, payload).catch(() => 0);
+  return viaApp + (await pushWeb(userIds, payload));
+}
+
+async function pushWeb(userIds: string[], payload: { title: string; body: string; url?: string; tag?: string }) {
   const { data: subs } = await admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").in("user_id", userIds);
   let sent = 0;
   for (const s of subs ?? []) {
@@ -142,6 +231,10 @@ Deno.serve(async (req) => {
       const work = onJournal(Number(body.id)).catch((error) => console.warn("[jokko] notify:", error instanceof Error ? error.message : "erreur"));
       (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(work);
       return Response.json({ accepted: true }, { status: 202 });
+    }
+    if (body.kind === "test" && typeof body.user === "string") {
+      const sent = await push([body.user], { title: "Jokko", body: "Les notifications marchent ✓ Jokko te préviendra ici, même appli fermée.", url: "/", tag: "test" });
+      return Response.json({ sent });
     }
     const sent = body.kind === "summary" ? await onSummary() : 0;
     return Response.json({ sent });

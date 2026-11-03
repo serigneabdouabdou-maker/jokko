@@ -35,6 +35,8 @@ jobs:
         run: |
           npm init -y > /dev/null
           npm i --no-audit --no-fund @capacitor/core@6.2.0 @capacitor/cli@6.2.0 @capacitor/android@6.2.0 @capacitor/filesystem@6.0.2 @capacitor/share@6.0.3 @capacitor/app@6.0.2
+          # Notifications : seulement avec la configuration Firebase (sinon l'appli fermerait à l'inscription).
+          if [ -f google-services.json ]; then npm i --no-audit --no-fund "@capacitor/push-notifications@^6.0.0"; fi
           npx cap add android
           python3 patch.py
           npx cap sync android

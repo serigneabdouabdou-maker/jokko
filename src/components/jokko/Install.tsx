@@ -106,8 +106,30 @@ export function InstallSettings({ userId }: { userId?: string }) {
           </Button>
         </div>
       )}
+      {userId && notify === "acceptees" && <PushTest />}
       {userId && notify === "acceptees" && <ActivityChoice userId={userId} />}
       {userId && notify === "acceptees" && <SummaryHour userId={userId} />}
+    </div>
+  );
+}
+
+/** Bouton d'essai : le serveur envoie une vraie notification à ce compte (tous ses téléphones). */
+function PushTest() {
+  const [note, setNote] = useState("");
+  return (
+    <div className="row">
+      <Button
+        variant="outline"
+        className="h-11 rounded-full px-5"
+        onClick={async () => {
+          setNote("");
+          const { data, error } = await supabase.rpc("push_test");
+          setNote(error ? "Pas de connexion internet. Réessaie." : data ? "✓ Envoyée : regarde en haut de ton écran dans quelques secondes." : "Attends 30 secondes avant un nouvel essai.");
+        }}
+      >
+        Envoyer une notification d’essai
+      </Button>
+      {note && <Notice text={note} tone={note.startsWith("✓") ? "ok" : "erreur"} />}
     </div>
   );
 }

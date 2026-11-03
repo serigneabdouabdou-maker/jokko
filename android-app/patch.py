@@ -26,6 +26,13 @@ lines += [
     '    <uses-feature android:name="android.hardware.location" android:required="false" />',
 ]
 manifest = manifest.replace("</manifest>", "\n".join(lines) + "\n</manifest>")
+# Notifications Firebase : petite icône blanche « J », couleur jaune Jokko, canal « jokko ».
+meta = """
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_jokko" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/jokko_jaune" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="jokko" />
+"""
+manifest = manifest.replace("</application>", meta + "    </application>", 1)
 open(manifest_path, "w", encoding="utf-8").write(manifest)
 
 # 2. Icônes et écran de démarrage.
@@ -40,6 +47,16 @@ bg = os.path.join(MAIN, "res", "values", "ic_launcher_background.xml")
 open(bg, "w", encoding="utf-8").write(
     '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0A1F44</color>\n</resources>\n'
 )
+
+open(os.path.join(MAIN, "res", "values", "jokko_colors.xml"), "w", encoding="utf-8").write(
+    '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="jokko_jaune">#F6B800</color>\n</resources>\n'
+)
+
+# Firebase (notifications) : le fichier de configuration du projet, s'il est là.
+services = os.path.join(HERE, "google-services.json")
+if os.path.exists(services):
+    shutil.copyfile(services, os.path.join(APP, "google-services.json"))
+    print("google-services.json ajouté")
 
 # 3. MainActivity (demande des autorisations, son sans geste, police stable).
 java_dir = os.path.join(MAIN, "java", "sn", "cfc", "jokko")
