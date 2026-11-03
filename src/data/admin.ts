@@ -138,3 +138,22 @@ export async function setGeminiLimit(kind: GeminiKind, limit: number | null): Pr
   const { error } = await supabase.rpc("admin_set_gemini_limit", { p_kind: kind, p_limit: limit ?? 0 });
   return !error;
 }
+
+// ---------- Cahier des erreurs de Jokko ----------
+
+export type QualityBoard = {
+  days: number;
+  langs: { lang: "wo" | "fr"; actions: number; annule: number; signale: number }[];
+  byDay: { day: string; actions: number; annule: number; signale: number }[];
+  errors: { id: number; at: string; lang: "wo" | "fr"; kind: "annule" | "signale"; said: string; understood: string; fixed: boolean; shop: string }[];
+};
+
+export async function loadQuality(days: number): Promise<QualityBoard | null> {
+  const { data, error } = await supabase.rpc("admin_quality", { p_days: days });
+  return error || !data ? null : (data as QualityBoard);
+}
+
+export async function setErrorFixed(id: number, fixed: boolean): Promise<boolean> {
+  const { error } = await supabase.rpc("admin_error_fixed", { p_id: id, p_fixed: fixed });
+  return !error;
+}

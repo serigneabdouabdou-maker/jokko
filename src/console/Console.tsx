@@ -7,6 +7,7 @@ import { ConsoleMap } from "./ConsoleMap";
 import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
 import { supabase, signIn, phoneOf } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
+import { errorRate } from "@/data/quality";
 import { adminDecide, type AdminOverview, adminOverview, adminSetPlan, adminSettings, PLAN_LABELS } from "@/data/plans";
 import {
   addAdmin,
@@ -18,6 +19,9 @@ import {
   loadAdminTeam,
   loadDashboard,
   loadGemini,
+  loadQuality,
+  type QualityBoard,
+  setErrorFixed,
   type GeminiBoard,
   type GeminiKind,
   setGeminiLimit,
@@ -35,17 +39,18 @@ const short = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: 
 const monthName = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { month: "short" });
 const phone = (p: string) => p.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
-type Tab = "apercu" | "gemini" | "carte" | "paiements" | "boutiques" | "reglages";
+type Tab = "apercu" | "gemini" | "erreurs" | "carte" | "paiements" | "boutiques" | "reglages";
 const TABS: [Tab, string][] = [
   ["apercu", "Vue d'ensemble"],
   ["gemini", "Gemini et wolof"],
+  ["erreurs", "Erreurs de Jokko"],
   ["carte", "Carte"],
   ["paiements", "Paiements"],
   ["boutiques", "Boutiques"],
   ["reglages", "Réglages"],
 ];
 
-const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", gemini: "ia", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
+const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", gemini: "ia", erreurs: "alerte", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
 
 const STATUS_LABEL = { active: "Active", calme: "Calme", endormie: "Endormie", nouvelle: "Nouvelle" } as const;
 
@@ -301,6 +306,7 @@ export function ConsoleDesk({ session }: { session: Session }) {
           <>
             {tab === "apercu" && <Overview dash={dash} shops={shops} usage={usage} onGo={go} />}
             {tab === "gemini" && <GeminiTab />}
+            {tab === "erreurs" && <QualityTab />}
             {tab === "carte" && <ConsoleMap shops={shops} />}
             {tab === "paiements" && <Payments overview={overview} onChanged={refresh} />}
             {tab === "boutiques" && <Shops shops={shops} onChanged={refresh} />}
@@ -790,6 +796,98 @@ function GeminiTab() {
   );
 }
 
+/**
+ * Cahier des erreurs : taux d'erreur de Jokko (annulations + « Jokko s'est trompé ») sur les actions enregistrées,
+ * wolof et français séparés, et la liste des phrases mal comprises à corriger chaque semaine.
+ */
+function QualityTab() {
+  const [days, setDays] = useState(7);
+  const [board, setBoard] = useState<QualityBoard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [show, setShow] = useState<"a-faire" | "tout">("a-faire");
+
+  async function refresh(d = days) {
+    setLoading(true);
+    setBoard(await loadQuality(d));
+    setLoading(false);
+  }
+  useEffect(() => {
+    void refresh(days);
+  }, [days]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!board) return <p className="note">{loading ? "Chargement…" : "Impossible de charger le cahier des erreurs."}</p>;
+
+  const stat = (lang: "wo" | "fr") => board.langs.find((l) => l.lang === lang) ?? { lang, actions: 0, annule: 0, signale: 0 };
+  const all = board.langs.reduce((t, l) => ({ actions: t.actions + l.actions, annule: t.annule + l.annule, signale: t.signale + l.signale }), { actions: 0, annule: 0, signale: 0 });
+  const pct = (s: { actions: number; annule: number; signale: number }) => {
+    const r = errorRate(s);
+    return r === null ? "—" : `${String(r).replace(".", ",")} %`;
+  };
+  const tone = (s: { actions: number; annule: number; signale: number }) => {
+    const r = errorRate(s);
+    return r === null ? undefined : r < 10 ? "good" : r < 20 ? "warn" : "bad";
+  };
+  const errors = board.errors.filter((e) => show === "tout" || !e.fixed);
+
+  return (
+    <div className="cx-stack">
+      <div className="cx-inline">
+        {[7, 30, 90].map((d) => (
+          <Button key={d} size="sm" variant={days === d ? "default" : "outline"} onClick={() => setDays(d)}>{d} jours</Button>
+        ))}
+      </div>
+
+      <section className="cx-kpis">
+        <Kpi label="Taux d’erreur (objectif : moins de 10 %)" value={pct(all)} tone={tone(all)} hint={`${count(all.annule + all.signale)} erreur(s) sur ${count(all.actions)} action(s)`} />
+        <Kpi label="Wolof" value={pct(stat("wo"))} tone={tone(stat("wo"))} hint={`${count(stat("wo").actions)} actions · ${count(stat("wo").signale)} signalées · ${count(stat("wo").annule)} annulées`} />
+        <Kpi label="Français" value={pct(stat("fr"))} tone={tone(stat("fr"))} hint={`${count(stat("fr").actions)} actions · ${count(stat("fr").signale)} signalées · ${count(stat("fr").annule)} annulées`} />
+      </section>
+
+      <section className="cx-card">
+        <h3>Erreurs par jour (en %)</h3>
+        <Bars items={board.byDay.map((d) => ({ label: short(d.day), value: errorRate(d) ?? 0 }))} format={(n) => `${String(n).replace(".", ",")} %`} />
+        <p className="note">
+          Une action = une vente, une dette, une dépense… enregistrée par Jokko à la voix ou par écrit. Une erreur = le commerçant a touché « Jokko s’est trompé » ou a annulé.
+          Une annulation n’est pas toujours une erreur de Jokko (le client a changé d’avis) : le vrai taux est entre « signalées » seules et le total.
+        </p>
+      </section>
+
+      <section className="cx-card">
+        <div className="cx-inline" style={{ justifyContent: "space-between" }}>
+          <h3>Phrases mal comprises</h3>
+          <span className="cx-inline">
+            <Button size="sm" variant={show === "a-faire" ? "default" : "outline"} onClick={() => setShow("a-faire")}>À corriger</Button>
+            <Button size="sm" variant={show === "tout" ? "default" : "outline"} onClick={() => setShow("tout")}>Tout</Button>
+          </span>
+        </div>
+        {errors.length === 0 ? <p className="note">Aucune erreur {show === "a-faire" ? "à corriger" : "notée"} sur cette période.</p> : (
+          <div className="cx-table-wrap">
+            <table className="cx-table">
+              <thead><tr><th>Quand</th><th>Langue</th><th>Ce qui a été dit</th><th>Ce que Jokko a compris</th><th>Type</th><th /></tr></thead>
+              <tbody>
+                {errors.map((e) => (
+                  <tr key={e.id} style={e.fixed ? { opacity: 0.55 } : undefined}>
+                    <td>{date(e.at)}<br /><small>{e.shop}</small></td>
+                    <td>{e.lang === "wo" ? "Wolof" : "Français"}</td>
+                    <td><b>{e.said || "—"}</b></td>
+                    <td>{e.understood || "—"}</td>
+                    <td>{e.kind === "signale" ? "Signalée" : "Annulée"}</td>
+                    <td>
+                      <button type="button" className="cx-link" onClick={async () => { if (await setErrorFixed(e.id, !e.fixed)) void refresh(); }}>
+                        {e.fixed ? "Rouvrir" : "Corrigé"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="note">Chaque semaine : on corrige les phrases qui reviennent le plus (mot wolof inconnu, deux articles qui se ressemblent, nombre mal compris), puis on coche « Corrigé ».</p>
+      </section>
+    </div>
+  );
+}
 
 /** Lancement : « Bientôt disponible » sur jokkoapp.com, et le lien d'accès secret pour l'équipe et les boutiques pilotes. */
 function LaunchCard() {

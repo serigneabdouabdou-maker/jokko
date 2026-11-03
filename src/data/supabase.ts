@@ -47,6 +47,14 @@ export async function trialLeft(shopId: string): Promise<TrialLeft | null> {
   return error || !data ? null : (data as TrialLeft);
 }
 
+/** Cahier des erreurs : une action, une annulation ou un « Jokko s'est trompé ». Hors ligne : on laisse tomber. */
+export function noteAssistant(shopId: string, lang: "wo" | "fr", kind: "action" | "annule" | "signale", said = "", understood = "") {
+  if (!shopId || shopId.startsWith("demo")) return;
+  void supabase
+    .rpc("note_assistant", { p_shop: shopId, p_lang: lang, p_kind: kind, p_said: said.slice(0, 240), p_understood: understood.slice(0, 240) })
+    .then(() => undefined, () => undefined);
+}
+
 // ---------- Connexion : numéro de téléphone + code secret à 6 chiffres ----------
 
 export type AuthOutcome =

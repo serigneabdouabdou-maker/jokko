@@ -56,7 +56,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, countLiveExchange, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
+import { acceptTerms, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
 import { playQuotaClip, QUOTA_MESSAGES, quotaVariant, type QuotaVariant } from "@/assistant/quotaVoice";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
@@ -70,6 +70,7 @@ import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
 import { demoProfile, isDemoShop } from "@/data/demo";
+import { guessLang, type QualityKind } from "@/data/quality";
 import { ShopLocation } from "@/components/jokko/ShopLocation";
 import { Icon, type IconName } from "@/components/jokko/Icon";
 import { clearWantedPlan, peekWantedPlan } from "@/components/jokko/voiceIntro";
@@ -674,6 +675,13 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const turn = useRef<{ user?: string; jokko?: string; userText: string; jokkoText: string }>({ userText: "", jokkoText: "" });
   const lastUserBubble = useRef<string | null>(null);
   const deskRef = useRef<LiveDesk | null>(null);
+  // Cahier des erreurs : chaque action, chaque annulation, chaque « Jokko s'est trompé » (jamais en démo).
+  const flagged = useRef(new Set<string>());
+  const note = (kind: QualityKind, entry: { heard: string; summary: string }) => {
+    if (demo) return;
+    const p = profileRef.current;
+    noteAssistant(p.shopId, guessLang(entry.heard, p.lang), kind, kind === "action" ? "" : entry.heard, kind === "action" ? "" : entry.summary);
+  };
   deskRef.current ??= new LiveDesk({
     getShop: () => currentShop(profileRef.current),
     lang: () => profileRef.current.lang,
@@ -693,6 +701,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       }
     },
     onSaved: (entry) => {
+      note("action", entry);
       setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: `✓ ${entry.summary}`, at: new Date().toISOString() }]);
       // Facture dite à la voix : on l'affiche tout de suite, avec le bouton « Envoyer sur WhatsApp ».
       if (entry.summary.startsWith("Facture ")) setScreen("factures");
@@ -703,7 +712,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         later(1600, () => setVoice("repos"));
       }
     },
-    onUndone: (entry) => {
+    onUndone: (entry, reason) => {
+      if (reason !== "coupure" && !flagged.current.delete(entry.id)) note("annule", entry);
       setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: `↩ Annulé : ${entry.summary}`, at: new Date().toISOString() }]);
       setReply({ text: "Annulé. La boutique est revenue comme avant.", summary: entry.summary, tone: "ok" });
     },
@@ -956,6 +966,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     })();
     connecting.current = opening;
     return opening;
+  }
+
+  /** « Jokko s'est trompé » : on note ce qui a été dit et compris, puis on annule (un seul geste). */
+  function flagLast() {
+    const entry = desk.last;
+    if (!entry) return;
+    flagged.current.add(entry.id);
+    note("signale", entry);
+    if (!desk.undo()) flagged.current.delete(entry.id);
+    liveRef.current?.tell(`(À l'écran, le commerçant dit que tu t'es trompé : « ${entry.summary} » est annulé. Excuse-toi en trois mots et demande-lui de redire, sans appeler d'outil.)`);
+    setReply({ text: "Merci, c’est noté pour améliorer Jokko. J’ai annulé : redis la phrase.", summary: entry.summary, tone: "ok" });
   }
 
   function undoLast() {
@@ -1411,6 +1432,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         onHold={(on) => liveRef.current?.hold(on)}
         onDismiss={() => setReply(null)}
         onUndo={undoLast}
+        onWrong={flagLast}
         live={live}
       />
     </div>

@@ -31,7 +31,8 @@ export type DeskDeps = {
   lang: () => Lang;
   write: (next: Shop) => void;
   onSaved: (entry: Entry) => void;
-  onUndone: (entry: Entry) => void;
+  /** reason « coupure » : Gemini a retiré son propre appel (parole coupée), ce n'est pas une erreur du commerçant. */
+  onUndone: (entry: Entry, reason?: "commercant" | "coupure") => void;
   onHeard?: (heard: string) => void;
   /** Rôle dans la boutique ouverte (patron par défaut). */
   role?: () => Role;
@@ -108,11 +109,11 @@ export class LiveDesk {
   cancelCalls(ids: string[]) {
     for (const id of ids) {
       const index = this.history.findIndex((e) => e.callId === id);
-      if (index >= 0) this.undoAt(index);
+      if (index >= 0) this.undoAt(index, "coupure");
     }
   }
 
-  private undoAt(index: number): Entry | null {
+  private undoAt(index: number, reason: "commercant" | "coupure" = "commercant"): Entry | null {
     const entry = this.history[index];
     if (!entry) return null;
     const current = this.deps.getShop();
@@ -120,7 +121,7 @@ export class LiveDesk {
     const restored = index === 0 && current === entry.after ? entry.before : revert(current, entry);
     this.history = this.history.filter((_, i) => i !== index);
     this.deps.write(restored);
-    this.deps.onUndone(entry);
+    this.deps.onUndone(entry, reason);
     return entry;
   }
 

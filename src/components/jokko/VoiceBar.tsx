@@ -39,12 +39,14 @@ type VoiceBarProps = {
   wake?: boolean;
   onDismiss: () => void;
   onUndo?: () => void;
+  /** « Jokko s'est trompé » : noter l'erreur et annuler. */
+  onWrong?: () => void;
   live?: { phase: "connexion" | "ecoute" | "parle"; caption: string } | null;
 };
 
 const LIVE_LABELS = { connexion: "Connexion", ecoute: "En direct", parle: "Jokko parle" } as const;
 
-export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, onHold, wake = false, onDismiss, onUndo, live }: VoiceBarProps) {
+export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, onHold, wake = false, onDismiss, onUndo, onWrong, live }: VoiceBarProps) {
   const [holding, setHolding] = useState(false);
   const press = (on: boolean) => {
     setHolding(on);
@@ -114,9 +116,16 @@ export function VoiceBar({ state, reply, stream, text, onText, onSend, onMic, on
               )}
             </div>
             {reply.undo && onUndo && (
-              <button type="button" className="vundo" onClick={onUndo}>
-                <Icon name="annuler" size="sm" /> Annuler
-              </button>
+              <div className="vacts">
+                <button type="button" className="vundo" onClick={onUndo}>
+                  <Icon name="annuler" size="sm" /> Annuler
+                </button>
+                {onWrong && (
+                  <button type="button" className="vwrong" onClick={onWrong}>
+                    Jokko s’est trompé
+                  </button>
+                )}
+              </div>
             )}
             <button type="button" className="vclose" aria-label="Fermer la réponse" onClick={onDismiss}>
               <Icon name="fermer" size="sm" />

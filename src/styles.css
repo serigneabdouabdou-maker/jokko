@@ -807,6 +807,25 @@
   .vundo:hover { background: var(--j-wash); }
   .vundo:active { transform: scale(0.97); }
   .vundo:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
+  /* Annuler + « Jokko s'est trompé » : l'un au-dessus de l'autre, petits mais touchables. */
+  .vacts { flex: none; align-self: center; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+  .vwrong {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--j-ink-2, var(--j-ink));
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .vwrong:hover { background: var(--j-wash); }
+  .vwrong:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
 
   .vrow {
     position: relative;
