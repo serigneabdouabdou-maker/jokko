@@ -512,6 +512,47 @@ function Payments({ overview, onChanged }: { overview: AdminOverview; onChanged:
   );
 }
 
+/** Boutiques supprimées par leur patron : cachées partout, mais récupérables par CFC (erreur de manipulation). */
+function DeletedShops({ onChanged }: { onChanged: () => Promise<void> }) {
+  const [list, setList] = useState<{ id: string; name: string; city: string; deleted_at: string; patron_phone: string; products: number; sales: number }[] | null>(null);
+  const [note, setNote] = useState("");
+  async function refresh() {
+    const { data } = await supabase.rpc("admin_deleted_shops");
+    setList((data as typeof list) ?? []);
+  }
+  useEffect(() => {
+    void refresh();
+  }, []);
+  if (!list || list.length === 0) return null;
+  return (
+    <section className="cx-card">
+      <h3>Boutiques supprimées ({list.length})</h3>
+      <p className="note">Supprimées par leur patron : elles n’apparaissent plus nulle part (ni dans l’appli, ni dans les chiffres). Si c’était une erreur, touche « Récupérer ».</p>
+      <ul className="cx-rank">
+        {list.map((s) => (
+          <li key={s.id}>
+            <span><b>{s.name}</b> · {s.city || "—"} · {phone(s.patron_phone)}<br /><small>Supprimée le {date(s.deleted_at)} · {s.products} article(s), {s.sales} vente(s)</small></span>
+            <button
+              type="button"
+              className="cx-link"
+              onClick={async () => {
+                if (!window.confirm(`Récupérer « ${s.name} » ? Elle réapparaîtra chez son patron.`)) return;
+                const { error } = await supabase.rpc("admin_restore_shop", { p_shop: s.id });
+                setNote(error ? "✗ Récupération impossible." : `✓ « ${s.name} » récupérée.`);
+                await refresh();
+                await onChanged();
+              }}
+            >
+              Récupérer
+            </button>
+          </li>
+        ))}
+      </ul>
+      {note && <Notice text={note} tone={note.startsWith("✓") ? "ok" : "erreur"} />}
+    </section>
+  );
+}
+
 function Shops({ shops, onChanged }: { shops: ConsoleShop[]; onChanged: () => Promise<void> }) {
   const [filter, setFilter] = useState("");
   const [plan, setPlan] = useState<PlanName | "tout">("tout");
@@ -591,6 +632,7 @@ function Shops({ shops, onChanged }: { shops: ConsoleShop[]; onChanged: () => Pr
         </table>
         {list.length === 0 && <p className="note">Aucune boutique ne correspond.</p>}
       </section>
+      <DeletedShops onChanged={onChanged} />
     </div>
   );
 }
