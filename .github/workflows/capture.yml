@@ -2,6 +2,8 @@ name: Capture
 on:
   push:
     branches: [capture]
+permissions:
+  contents: write
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -11,7 +13,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
       - run: npx vite build
-      - run: npx playwright install --with-deps chromium
+      - run: npm i --no-save --no-audit --no-fund playwright@1.49.1 && npx playwright install --with-deps chromium
       - name: Captures
         run: |
           (npx vite preview --port 4173 --strictPort > preview.log 2>&1 &)
@@ -32,10 +34,8 @@ jobs:
           await b.close();
           JS
           node shot.mjs | tee shots.log
-      - uses: actions/upload-artifact@v4
-        with:
-          name: captures
-          path: |
-            *.png
-            shots.log
-            preview.log
+      - name: Enregistrer les captures dans la branche
+        run: |
+          mkdir -p captures && cp *.png shots.log captures/ || true
+          git config user.name "capture-bot"; git config user.email "capture-bot@users.noreply.github.com"
+          git add -f captures && git commit -m "Captures" && git push
