@@ -3,6 +3,7 @@ import { Notice } from "./Icon";
 import { supabase } from "@/data/supabase";
 import { Button } from "@/components/ui/button";
 import { enableNotifications, notificationState, type NotifyState, setSummaryHour, useInstall } from "@/pwa";
+import { isNativeApp } from "@/native";
 
 const HIDE_KEY = "jokko.install.hidden";
 
@@ -52,6 +53,9 @@ function IosSteps() {
   );
 }
 
+/** Dernière version de l'application Android (page de GitHub, toujours la plus récente). */
+const ANDROID_APK = "https://github.com/serigneabdouabdou-maker/jokko/releases/latest/download/Jokko.apk";
+
 const NOTIFY_TEXT: Record<NotifyState, string> = {
   non_dispo: "Ce navigateur ne sait pas afficher de notifications. Installe Jokko, ou ouvre-le avec Chrome.",
   a_demander: "Active les notifications : Jokko pourra te prévenir (dettes en retard, alertes de la boutique).",
@@ -64,12 +68,13 @@ export function InstallSettings({ userId }: { userId?: string }) {
   const { installed, canPrompt, ios, install } = useInstall();
   const [notify, setNotify] = useState<NotifyState>(notificationState);
   const [busy, setBusy] = useState(false);
+  const inApp = isNativeApp();
 
   return (
     <div className="install-settings">
       <h3>Application sur le téléphone</h3>
       {installed ? (
-        <p className="note">Jokko est installé sur ce téléphone.</p>
+        <p className="note">{inApp ? "Tu es dans l’application Jokko pour Android." : "Jokko est installé sur ce téléphone."}</p>
       ) : canPrompt ? (
         <div className="row">
           <Button className="h-11 rounded-full px-5" onClick={() => void install()}>Installer Jokko</Button>
@@ -79,7 +84,12 @@ export function InstallSettings({ userId }: { userId?: string }) {
       ) : (
         <p className="note">Pour installer : ouvre le menu de Chrome (les trois points en haut à droite), puis touche « Installer l’application » ou « Ajouter à l’écran d’accueil ».</p>
       )}
-      <p className="note">{NOTIFY_TEXT[notify]}</p>
+      {!inApp && /Android/i.test(navigator.userAgent) && (
+        <p className="note">
+          Ou l’application Android (sans Chrome) : <a className="link" href={ANDROID_APK}>Télécharger Jokko pour Android</a>
+        </p>
+      )}
+      <p className="note">{inApp && notify === "non_dispo" ? "Dans l’application, les notifications arrivent dans la prochaine version. En attendant, elles marchent avec Jokko ouvert dans Chrome." : NOTIFY_TEXT[notify]}</p>
       {notify === "a_demander" && (
         <div className="row">
           <Button

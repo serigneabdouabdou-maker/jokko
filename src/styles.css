@@ -1505,6 +1505,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .soon-card h1 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: clamp(34px, 9vw, 46px); line-height: 1; letter-spacing: -0.035em; }
 .soon-text { color: var(--j-ink-2); font-size: 16px; line-height: 1.45; max-width: 34ch; }
 .soon-wa { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 12px 20px; border-radius: 999px; background: #17191F; color: #fff; font-weight: 650; text-decoration: none; min-height: 44px; }
+.soon-code { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
+.soon-code input { height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(23,25,31,.2); font: inherit; min-width: 0; width: 180px; }
+.soon-code button { height: 44px; padding: 0 18px; border-radius: 999px; border: 0; background: #F6B800; color: #17191F; font-weight: 700; }
+.soon-code small { width: 100%; text-align: center; color: #b3261e; }
 .soon-cfc { margin-top: 6px; font-size: 13px; color: var(--j-ink-3); }
 @keyframes soon-in { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .soon-card { animation: none; } }

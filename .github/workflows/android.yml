@@ -1,0 +1,111 @@
+name: android
+
+# Application Android de Jokko : construite, signée, testée sur un téléphone virtuel, puis publiée
+# (https://github.com/serigneabdouabdou-maker/jokko/releases/latest/download/Jokko.apk).
+on:
+  push:
+    branches: [main]
+    paths: ["android-app/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Projet Android (Capacitor)
+        working-directory: android-app
+        env:
+          JOKKO_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npm init -y > /dev/null
+          npm i --no-audit --no-fund @capacitor/core@6.2.0 @capacitor/cli@6.2.0 @capacitor/android@6.2.0 @capacitor/filesystem@6.0.2 @capacitor/share@6.0.3 @capacitor/app@6.0.2
+          npx cap add android
+          python3 patch.py
+          npx cap sync android
+      - name: Clé de signature (remise seulement à cette construction)
+        run: |
+          T=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=jokko-android" | jq -r .value)
+          R=$(curl -sS -X POST -H "Authorization: Bearer $T" https://solocpbqtqlxdfpjiewm.supabase.co/functions/v1/android-key)
+          P=$(printf '%s' "$R" | jq -r .password)
+          echo "::add-mask::$P"
+          test -n "$P" && test "$P" != "null" || { echo "Clé refusée : $(printf '%s' "$R" | jq -c '.error')"; exit 1; }
+          printf '%s' "$R" | jq -r .keystore | base64 -d > "$RUNNER_TEMP/jokko.jks"
+          echo "JOKKO_KS=$RUNNER_TEMP/jokko.jks" >> "$GITHUB_ENV"
+          echo "JOKKO_KS_PASS=$P" >> "$GITHUB_ENV"
+      - name: Construire l'APK signé
+        working-directory: android-app/android
+        run: ./gradlew --no-daemon -q assembleRelease
+      - name: Vérifier la signature
+        run: |
+          cp android-app/android/app/build/outputs/apk/release/app-release.apk Jokko.apk
+          rm -f "$RUNNER_TEMP/jokko.jks"
+          "$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs Jokko.apk | head -4
+          ls -la Jokko.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: Jokko.apk
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+      - name: Accélération du téléphone virtuel
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Tester sur Android 11
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash android-app/shots.sh
+      - name: Captures d'écran (branche capture-android)
+        if: always()
+        run: |
+          cd shots || exit 0
+          git init -q
+          git checkout -q -b capture-android
+          git add .
+          git -c user.name=jokko-ci -c user.email=ci@jokkoapp.com commit -qm "Captures Android ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" capture-android
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+      - name: Publier la version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="1.0.${{ github.run_number }}"
+          gh release create "android-v$V" Jokko.apk --repo "${{ github.repository }}" --latest \
+            --title "Jokko pour Android $V" \
+            --notes "Application Android de Jokko (CFC – Cissé Family Company). Télécharger Jokko.apk, l'ouvrir, puis autoriser l'installation."

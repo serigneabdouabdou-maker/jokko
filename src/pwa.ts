@@ -33,6 +33,7 @@ export function setupPwa(): void {
 export function isInstalled(): boolean {
   if (typeof window === "undefined") return false;
   const nav = navigator as Navigator & { standalone?: boolean };
+  if (/JokkoApp\//.test(navigator.userAgent)) return true; // déjà dans l'application Android
   return window.matchMedia?.("(display-mode: standalone)").matches || nav.standalone === true;
 }
 

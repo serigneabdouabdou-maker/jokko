@@ -53,3 +53,12 @@ export async function claimAccessFromUrl(): Promise<boolean> {
   if (data === true) write(ACCESS_KEY, "1");
   return hasAccess();
 }
+
+/** Code d'accès tapé à la main (application Android : pas de barre d'adresse pour le lien). */
+export async function claimAccessCode(code: string): Promise<boolean> {
+  const clean = code.trim();
+  if (!clean) return false;
+  const { data } = await supabase.rpc("check_access", { p_code: clean });
+  if (data === true) write(ACCESS_KEY, "1");
+  return data === true;
+}

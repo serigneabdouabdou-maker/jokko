@@ -1,0 +1,17 @@
+{
+  "appId": "sn.cfc.jokko",
+  "appName": "Jokko",
+  "webDir": "www",
+  "server": {
+    "url": "https://jokkoapp.com/",
+    "androidScheme": "https",
+    "errorPath": "offline.html",
+    "allowNavigation": ["jokkoapp.com", "www.jokkoapp.com"]
+  },
+  "android": {
+    "appendUserAgent": "JokkoApp/1",
+    "backgroundColor": "#FFFDF7",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
