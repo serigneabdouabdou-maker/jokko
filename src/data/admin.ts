@@ -115,7 +115,7 @@ export async function loadUsage(): Promise<Usage | null> {
 
 // ---------- Gemini : quota de Google et usage des clients (console CFC) ----------
 
-export type GeminiKind = "direct" | "vocal" | "texte" | "conseil" | "voix";
+export type GeminiKind = "direct" | "vocal" | "texte" | "conseil" | "voix" | "stock";
 export type GeminiShop = { id: string; name: string; city: string; plan: string; total: number; echanges: number; vocaux: number; ecrits: number; wolof: number; francais: number; dernier: string | null };
 export type GeminiBoard = {
   google_day_start: string;

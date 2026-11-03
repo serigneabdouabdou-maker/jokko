@@ -55,7 +55,7 @@ function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?
     .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null) })
     .then(() => undefined, () => undefined);
 }
-const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix" };
+const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
 
 /** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
 const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -183,14 +183,66 @@ async function speakSentence(text: string, language: string): Promise<{ pcm: Uin
   return null;
 }
 
+// ---------- Installation du stock : dictée ou photo de facture/cahier → liste lisible par Jokko ----------
+// Gemini ne fait que transcrire / recopier ; c'est le code de l'appli qui comprend les quantités et les prix,
+// et le patron vérifie tout avant d'enregistrer.
+const MAX_STOCK_BODY = 6 * 1024 * 1024;
+const STOCK_PROMPT: Record<string, string> = {
+  audio:
+    "Tu transcris la dictée d'un commerçant sénégalais qui fait l'inventaire de sa boutique (wolof, français ou les deux mélangés). " +
+    "Écris exactement ce qui est dit, mot pour mot, sans traduire. Ne convertis JAMAIS un montant dit en wolof (garde « ñaari junni » tel quel). " +
+    "Les nombres dits en français peuvent être écrits en chiffres. Sépare les articles par des virgules. Réponds seulement avec la transcription. Si c'est inaudible, réponds (inaudible).",
+  photo:
+    "Cette photo est une facture de fournisseur, un bon de livraison ou une page de cahier de stock d'une boutique au Sénégal. " +
+    "Recopie chaque article sur sa propre ligne, au format exact : QUANTITÉ UNITÉ NOM, acheté PRIX\n" +
+    "- QUANTITÉ en chiffres ; UNITÉ en un mot (sac, bidon, carton, paquet, boîte, kg, litre, pièce…) ; NOM court, en français, tel qu'écrit.\n" +
+    "- PRIX = prix d'achat pour UNE unité, en francs CFA, en chiffres sans espace. Si seul le total de la ligne est écrit, divise par la quantité.\n" +
+    "- Si un prix de vente est écrit, ajoute « , vendu PRIX ».\n" +
+    "- N'invente rien : une valeur illisible est laissée de côté. Ignore l'en-tête, les totaux, la TVA, les remises et les signatures.\n" +
+    "Réponds seulement avec les lignes. Si ce n'est pas un document de stock, réponds (aucun article).",
+};
+
+async function readStock(mode: string, mimeType: string, data: string): Promise<string> {
+  const e = env();
+  const apiKey = e.apiKey?.trim();
+  if (!apiKey) throw new GeminiNotConfiguredError();
+  const models = [e.model?.trim() || "gemini-3.5-flash", "gemini-flash-lite-latest"];
+  let last = 0;
+  for (const model of models) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: STOCK_PROMPT[mode] }, { inlineData: { mimeType, data } }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => null);
+    if (!res) continue;
+    if (!res.ok) {
+      last = res.status;
+      continue;
+    }
+    const json = await res.json().catch(() => null);
+    const text = (json?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p?.text ?? "").join("").trim();
+    if (text) return text;
+  }
+  throw new AssistantUpstreamError("lecture du stock impossible", last || 502);
+}
+
 // ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
-const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil" };
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock" };
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
   // Essai gratuit : l'enveloppe totale de voix et d'IA est épuisée.
   if (q.reason === "essai") {
     return "Ton essai gratuit de la voix et de l'IA est terminé. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
+  }
+  if (kind === "stock") {
+    return q.reason === "patron"
+      ? "Seul le patron peut remplir le stock."
+      : `Tu as déjà fait ${q.limit} lectures de stock aujourd'hui. Continue en écrivant la liste, ou reprends demain.`;
   }
   const upsell = q.tier === "gratuit" || q.tier === "medium" ? " Tu peux passer à une offre supérieure dans « Mon offre »." : "";
   if (kind === "direct") {
@@ -269,6 +321,19 @@ Deno.serve(async (req) => {
       logCall(req, "voix", b.data.language, Boolean(clip), clip ? 200 : 502);
       if (!clip) return send(req, 502, { error: "voice_unavailable", message: "La voix ne répond pas pour le moment." });
       return new Response(clip.pcm, { status: 200, headers: { "Content-Type": `audio/l16;rate=${clip.rate}`, "Cache-Control": "no-store", ...cors(req) } });
+    }
+    if (route === "stock") {
+      const b = await body(req, MAX_STOCK_BODY, z.object({
+        mode: z.enum(["audio", "photo"]),
+        mimeType: z.string().regex(/^(audio|image)\/[a-z0-9.+-]+$/i).max(60),
+        data: z.string().min(16).max(MAX_STOCK_BODY),
+        lang: z.string().max(4).optional(),
+      }));
+      if (!b.ok) return b.res;
+      if ((b.data.mode === "audio") !== b.data.mimeType.startsWith("audio/")) return send(req, 400, { error: "invalid_request" });
+      const text = await readStock(b.data.mode, b.data.mimeType, b.data.data);
+      logCall(req, "stock", b.data.lang ?? null, true);
+      return send(req, 200, { text });
     }
     if (route === "live") {
       const b = await body(req, MAX_TEXT_BODY, liveRequestSchema);

@@ -657,6 +657,7 @@ const KIND_LABEL: Record<GeminiKind, string> = {
   texte: "Demandes écrites",
   conseil: "Conseils de l’IA",
   voix: "Lectures à voix haute",
+  stock: "Installation du stock (dictée, photos)",
 };
 const LANG_LABEL: Record<string, string> = { wo: "Wolof", fr: "Français", en: "Anglais", fuc: "Pulaar", "?": "Inconnue" };
 const hour = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -681,7 +682,7 @@ function GeminiTab() {
 
   if (!board) return <p className="note">{loading ? "Chargement…" : "Impossible de charger les chiffres de Gemini."}</p>;
 
-  const kinds: GeminiKind[] = ["direct", "vocal", "texte", "conseil", "voix"];
+  const kinds: GeminiKind[] = ["direct", "vocal", "texte", "conseil", "voix", "stock"];
   const refusToday = kinds.reduce((n, k) => n + (board.today[k]?.refus ?? 0), 0);
   const callsToday = kinds.reduce((n, k) => n + (board.today[k]?.ok ?? 0), 0);
   const langTotal = Object.values(board.langs).reduce((a, b) => a + b, 0);
