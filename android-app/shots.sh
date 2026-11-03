@@ -11,6 +11,7 @@ shot 1-premier-lancement
 adb shell pidof $PKG > shots/pid.txt || { echo "L'application s'est fermée" ; adb logcat -d | tail -300 > shots/logcat.txt; exit 1; }
 adb shell pm grant $PKG android.permission.RECORD_AUDIO
 adb shell pm grant $PKG android.permission.CAMERA
+adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 adb shell am force-stop $PKG
 adb shell am start -W -n $PKG/.MainActivity
 sleep 25

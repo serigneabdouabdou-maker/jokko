@@ -65,6 +65,12 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 30 : moteur web d'usine ancien (2020) → doit afficher « Mets ton téléphone à jour ».
+        # 34 : moteur web récent → Jokko normal.
+        api: [30, 34]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -75,10 +81,13 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Tester sur Android 11
+      - name: Attendre la dernière version de jokkoapp.com
+        run: |
+          for i in $(seq 1 30); do curl -fsS https://jokkoapp.com/ | grep -q vieux-moteur && break; sleep 10; done
+      - name: Tester sur Android (API ${{ matrix.api }})
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
           disable-animations: true
@@ -89,10 +98,10 @@ jobs:
         run: |
           cd shots || exit 0
           git init -q
-          git checkout -q -b capture-android
+          git checkout -q -b capture-android-${{ matrix.api }}
           git add .
-          git -c user.name=jokko-ci -c user.email=ci@jokkoapp.com commit -qm "Captures Android ${{ github.run_number }}"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" capture-android
+          git -c user.name=jokko-ci -c user.email=ci@jokkoapp.com commit -qm "Captures Android ${{ github.run_number }} API ${{ matrix.api }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" capture-android-${{ matrix.api }}
 
   release:
     needs: test
