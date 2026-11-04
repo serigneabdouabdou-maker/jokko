@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jokko — les offres</title>
+<style>
+  @font-face { font-family: "Brico"; src: url(assets/Bricolage.ttf); font-weight: 200 800; }
+  @font-face { font-family: "Serif"; src: url(assets/InstrumentItalic.ttf); font-style: italic; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #FFFDF7; }
+  text { font-family: "Brico", sans-serif; }
+  #cap { position: absolute; left: 60px; right: 60px; bottom: 150px; text-align: center; font-family: "Brico", sans-serif; font-weight: 700; font-size: 46px; line-height: 1.24; color: #fff; }
+  #cap .wo { background: rgba(23,25,31,.86); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 6px 18px; border-radius: 14px; }
+  #cap .fr { display: block; margin-top: 14px; font-size: 31px; font-weight: 500; line-height: 1.3; color: #17191F; }
+  #cap .fr span { background: rgba(255,253,247,.92); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 3px 12px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    {{DEFS_PRODUCTS}}
+    {{DEFS_PERSON}}
+    <linearGradient id="gFree" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F4EFE3"/></linearGradient>
+    <linearGradient id="gMed" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B8BD8"/><stop offset="1" stop-color="#1F5FA6"/></linearGradient>
+    <linearGradient id="gAdv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#13285A"/><stop offset="1" stop-color="#0A1636"/></linearGradient>
+    <linearGradient id="gGift" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6B800"/><stop offset="1" stop-color="#E09A00"/></linearGradient>
+  </defs>
+  <rect id="bg" width="1080" height="1920" fill="#FFFDF7"/>
+  <g id="blobs"><circle id="b1" cx="900" cy="300" r="380" fill="#FFF0C2"/><circle id="b2" cx="120" cy="1400" r="420" fill="#E8F1FB"/></g>
+
+  <!-- présentateur : Modou (en haut) -->
+  <g id="presenter" transform="translate(190,600)"></g>
+
+  <!-- 1. accroche : trois cartes en éventail -->
+  <g id="hook"></g>
+  <!-- 2. l'essai : cadeau -->
+  <g id="gift"></g>
+  <!-- 3-5. les offres -->
+  <g id="cards"></g>
+  <!-- 6. Wave + monter d'offre -->
+  <g id="pay"></g>
+  <!-- 7. fin -->
+  <g id="end" opacity="0">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <circle id="endRing" cx="540" cy="700" r="300" fill="#FFF0C2"/>
+    <image id="endLogo" href="assets/icon-512.png" x="390" y="550" width="300" height="300"/>
+    <text id="endName" x="540" y="1000" text-anchor="middle" font-size="120" font-weight="800" fill="#17191F" letter-spacing="-3">Jokko</text>
+    <text id="endTag" x="540" y="1090" text-anchor="middle" font-family="Serif" font-style="italic" font-size="66" fill="#4A4D55">sa bitig dafay déglu</text>
+    <g id="endPills"><rect x="230" y="1170" width="620" height="110" rx="55" fill="#F6B800"/><text x="540" y="1222" text-anchor="middle" font-size="46" font-weight="800" fill="#17191F">14 fan, ci dara</text><text x="540" y="1260" text-anchor="middle" font-size="28" font-weight="600" fill="#17191F">14 jours gratuits</text><text x="540" y="1370" text-anchor="middle" font-size="54" font-weight="700" fill="#17191F">jokkoapp.com</text></g>
+  </g>
+</svg>
+<div id="cap"></div>
+<script>
+let T = { s: [0.5, 4.0, 10.0, 19.0, 28.5, 39.0, 44.5], d: [3.0, 5.5, 8.5, 9.0, 10.0, 5.0, 5.0], duration: 52 };
+let CAPS = [], AMP = null;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const eio = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.5; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const win = (t, a, b, f = 0.35) => clamp(Math.min((t - a) / f, (b - t) / f));
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function txt(parent, x, y, s, attrs = {}) { const e = el("text", { x, y, ...attrs }, parent); e.textContent = s; return e; }
+function use(href, x, y, parent, s = 1) { return el("use", { href: "#" + href, transform: `translate(${x},${y}) scale(${s})` }, parent); }
+
+{{JS_PERSON}}
+
+// ---------- présentateur ----------
+const pres = person($("presenter"), MODOU);
+pres.prop.innerHTML = "";
+
+// ---------- 1. accroche ----------
+const hook = $("hook");
+const fan = [["Gratuit", "0 F", "url(#gFree)", "#17191F"], ["Médium", "4 000 F", "url(#gMed)", "#fff"], ["Avancé", "8 000 F", "url(#gAdv)", "#fff"]].map(([n, p, bg, fg], i) => {
+  const g = el("g", {}, hook);
+  el("rect", { x: -170, y: -230, width: 340, height: 460, rx: 40, fill: "rgba(23,25,31,.12)", transform: "translate(10,16)" }, g);
+  el("rect", { x: -170, y: -230, width: 340, height: 460, rx: 40, fill: bg, stroke: i === 0 ? "rgba(23,25,31,.12)" : "none", "stroke-width": 3 }, g);
+  txt(g, 0, -120, n, { "text-anchor": "middle", "font-size": 54, "font-weight": 800, fill: fg });
+  txt(g, 0, 10, p, { "text-anchor": "middle", "font-size": 70, "font-weight": 800, fill: i === 2 ? "#F6B800" : fg });
+  return g;
+});
+const hookQ = el("g", { opacity: 0 }, hook);
+txt(hookQ, 540, 250, "Ban offre moo baax", { "text-anchor": "middle", "font-size": 82, "font-weight": 800, fill: "#17191F" });
+txt(hookQ, 540, 345, "ci sa bitig ?", { "text-anchor": "middle", "font-size": 88, "font-family": "Serif", "font-style": "italic", fill: "#E09A00" });
+
+// ---------- 2. cadeau ----------
+const gift = $("gift");
+const giftBox = el("g", {}, gift);
+el("rect", { x: -190, y: -120, width: 380, height: 260, rx: 26, fill: "url(#gGift)" }, giftBox);
+el("rect", { x: -26, y: -120, width: 52, height: 260, fill: "#C8372D" }, giftBox);
+const lid = el("g", {}, giftBox);
+el("rect", { x: -215, y: -190, width: 430, height: 84, rx: 22, fill: "#F6B800" }, lid);
+el("rect", { x: -26, y: -190, width: 52, height: 84, fill: "#C8372D" }, lid);
+el("path", { d: "M0,-190 C-70,-290 -150,-220 -60,-195 Z M0,-190 C70,-290 150,-220 60,-195 Z", fill: "#C8372D" }, lid);
+const giftNum = el("g", { opacity: 0 }, gift);
+txt(giftNum, 0, -40, "14", { "text-anchor": "middle", "font-size": 280, "font-weight": 800, fill: "#17191F", "letter-spacing": -10 });
+txt(giftNum, 0, 70, "fan, ci dara", { "text-anchor": "middle", "font-size": 84, "font-family": "Serif", "font-style": "italic", fill: "#17191F" });
+txt(giftNum, 0, 140, "14 jours gratuits · tout Jokko", { "text-anchor": "middle", "font-size": 38, "font-weight": 600, fill: "#4A4D55" });
+const confetti = [];
+for (let i = 0; i < 26; i++) confetti.push(el("rect", { x: -8, y: -14, width: 16, height: 28, rx: 4, fill: ["#F6B800", "#2F7DC9", "#C8372D", "#2B9A66"][i % 4] }, gift));
+
+// ---------- 3-5. cartes des offres ----------
+const PLANS = [
+  { name: "Gratuit", wo: "Ñeel bitig bu ndaw", fr: "petite boutique, tu es seul", price: 0, per: "", bg: "url(#gFree)", fg: "#17191F", sub: "#4A4D55", accent: "#2B9A66",
+    feats: [["Jaay", "ventes"], ["Stock", "stock"], ["Bor", "dettes"], ["Caisse", "caisse et bilan"], ["10 vocaux / bés", "10 messages vocaux par jour"]] },
+  { name: "Médium", wo: "Ñeel ku am vendeur", fr: "tu as un vendeur", price: 4000, per: "/ weer", bg: "url(#gMed)", fg: "#FFFFFF", sub: "rgba(255,255,255,.8)", accent: "#F6B800",
+    feats: [["Vendeur yi", "vendeurs et journal"], ["Scanner", "caisse par scan, étiquettes"], ["Alertes", "à distance, sécurité"], ["Relances WhatsApp", "pour les dettes"], ["40 vocaux / bés", "40 messages vocaux par jour"]] },
+  { name: "Avancé", wo: "Ñeel patron bu bari liggéey", fr: "patron occupé, plusieurs boutiques", price: 8000, per: "/ weer", bg: "url(#gAdv)", fg: "#FFFFFF", sub: "rgba(255,255,255,.75)", accent: "#F6B800", best: true,
+    feats: [["Waxtaan ak Jokko", "conversation en direct"], ["Conseiller IA", "conseils pour vendre plus"], ["Résumé guddi", "résumé chaque soir"], ["Ay bitig", "plusieurs boutiques"], ["Lépp ci Médium", "tout le Médium"]] },
+];
+const cards = PLANS.map((p) => {
+  const g = el("g", { opacity: 0 }, $("cards"));
+  el("rect", { x: -440, y: -470, width: 880, height: 1000, rx: 54, fill: "rgba(23,25,31,.14)", transform: "translate(0,22)" }, g);
+  el("rect", { x: -440, y: -470, width: 880, height: 1000, rx: 54, fill: p.bg, stroke: p.price ? "none" : "rgba(23,25,31,.1)", "stroke-width": 3 }, g);
+  if (p.best) { const b = el("g", { transform: "translate(250,-470)" }, g); el("rect", { x: -150, y: -34, width: 300, height: 68, rx: 34, fill: "#F6B800" }, b); txt(b, 0, -2, "Bi gën a mat", { "text-anchor": "middle", "font-size": 32, "font-weight": 800, fill: "#17191F" }); txt(b, 0, 24, "le plus complet", { "text-anchor": "middle", "font-size": 20, "font-weight": 600, fill: "#17191F" }); }
+  txt(g, -370, -360, "Offre " + p.name, { "font-size": 64, "font-weight": 800, fill: p.fg });
+  const price = txt(g, -370, -230, "0 F", { "font-size": 132, "font-weight": 800, fill: p.price ? p.accent : p.fg, "letter-spacing": -4 });
+  txt(g, 200, -232, p.per, { "font-size": 44, "font-weight": 600, fill: p.sub });
+  txt(g, -370, -160, p.wo, { "font-size": 44, "font-weight": 700, fill: p.fg });
+  txt(g, -370, -116, p.fr, { "font-size": 32, "font-weight": 500, fill: p.sub });
+  el("rect", { x: -370, y: -80, width: 740, height: 3, fill: p.price ? "rgba(255,255,255,.2)" : "rgba(23,25,31,.1)" }, g);
+  const feats = p.feats.map(([wo, fr], i) => {
+    const f = el("g", { opacity: 0 }, g);
+    const y = -10 + i * 104;
+    el("circle", { cx: -340, cy: y, r: 30, fill: p.accent }, f);
+    el("path", { d: `M${-354},${y + 1} L${-344},${y + 11} L${-325},${y - 11}`, stroke: p.price ? "#17191F" : "#fff", "stroke-width": 7, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, f);
+    txt(f, -286, y + 4, wo, { "font-size": 44, "font-weight": 800, fill: p.fg });
+    txt(f, -286, y + 42, fr, { "font-size": 28, "font-weight": 500, fill: p.sub });
+    return f;
+  });
+  return { g, price, feats, p };
+});
+
+// ---------- 6. Wave ----------
+const pay = $("pay");
+const mini = PLANS.map((p, i) => {
+  const g = el("g", { opacity: 0 }, pay);
+  el("rect", { x: -150, y: -200, width: 300, height: 400, rx: 36, fill: p.bg, stroke: p.price ? "none" : "rgba(23,25,31,.12)", "stroke-width": 3 }, g);
+  txt(g, 0, -100, p.name, { "text-anchor": "middle", "font-size": 46, "font-weight": 800, fill: p.fg });
+  txt(g, 0, 10, p.price ? p.price.toLocaleString("fr-FR").replace(/ /g, " ") + " F" : "0 F", { "text-anchor": "middle", "font-size": 58, "font-weight": 800, fill: p.price ? p.accent : p.fg });
+  txt(g, 0, 70, p.per ? "ci weer wi" : "ci dara", { "text-anchor": "middle", "font-size": 30, "font-weight": 600, fill: p.sub });
+  return g;
+});
+const arrow = el("g", { opacity: 0 }, pay);
+el("path", { d: "M0,0 C120,-90 300,-100 420,-40", stroke: "#2B9A66", "stroke-width": 14, fill: "none", "stroke-linecap": "round" }, arrow);
+el("path", { d: "M400,-80 L440,-30 L380,-10", stroke: "#2B9A66", "stroke-width": 14, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, arrow);
+const wave = el("g", { opacity: 0 }, pay);
+el("rect", { x: -300, y: -70, width: 600, height: 140, rx: 70, fill: "#1DC3F0" }, wave);
+txt(wave, 0, 18, "Fey ak Wave", { "text-anchor": "middle", "font-size": 56, "font-weight": 800, fill: "#fff" });
+
+// ---------- sous-titres ----------
+function caption(t) {
+  let wo = "", fr = "";
+  for (let i = 0; i < CAPS.length; i++) if (t >= T.s[i] - 0.1 && t < T.s[i] + T.d[i] + 0.35) { wo = CAPS[i].text; fr = CAPS[i].fr; }
+  const cap = $("cap");
+  if (cap.dataset.t !== wo) { cap.dataset.t = wo; cap.innerHTML = wo ? `<span class="wo">${wo}</span><span class="fr"><span>${fr}</span></span>` : ""; }
+}
+// bouche de Modou : suit l'énergie de la voix
+function voiceLevel(t) {
+  if (AMP) { const i = Math.floor(t * AMP.fps); return AMP.v[i] ?? 0; }
+  for (let i = 0; i < T.s.length; i++) if (t >= T.s[i] && t < T.s[i] + T.d[i]) return 0.3 + 0.6 * Math.abs(Math.sin(t * 11));
+  return 0;
+}
+
+function seek(t) {
+  const S = T.s;
+  const sc = (k) => S[k] - 0.4;
+  const endAt = sc(6);
+  // fond qui respire
+  $("b1").setAttribute("cx", 900 + Math.sin(t * .4) * 40); $("b2").setAttribute("cy", 1400 + Math.cos(t * .35) * 50);
+  // Modou présente (cache pendant le cadeau et la fin)
+  const presOn = t < sc(1) + 0.3 ? 1 : 0;
+  const pk = t < sc(1) ? eo((t - 0.1) / 0.6) : 1 - eo((t - sc(1)) / 0.4);
+  $("presenter").setAttribute("transform", `translate(${lerp(-200, 260, pk)},1120) scale(1.05)`);
+  $("presenter").setAttribute("opacity", presOn);
+  face(pres, t, { mood: 0.8, talk: voiceLevel(t), look: 0.6, tilt: Math.sin(t * 1.3) * 3, nod: Math.sin(t * 2.1) * 3 });
+  pres.armRot.setAttribute("transform", `rotate(${lerp(10, 125, eo((t - 0.6) / 0.5)) + Math.sin(t * 3) * 4})`);
+  // 1. accroche : éventail de cartes
+  const hk = win(t, 0, sc(1), 0.3);
+  fan.forEach((g, i) => {
+    const k = back((t - 0.3 - i * 0.15) / 0.55), a = (i - 1) * 14 * clamp(k);
+    g.setAttribute("opacity", hk * clamp((t - 0.3 - i * 0.15) / 0.2));
+    g.setAttribute("transform", `translate(${640 + (i - 1) * 150},${720 + Math.abs(i - 1) * 40}) rotate(${a}) scale(${0.6 + 0.4 * k})`);
+  });
+  hookQ.setAttribute("opacity", hk * clamp((t - 0.9) / 0.4)); hookQ.setAttribute("transform", `translate(0,${(1 - eo((t - 0.9) / 0.5)) * 40})`);
+  // 2. cadeau
+  const a2 = sc(1), b2 = sc(2), gt = t - a2;
+  $("gift").setAttribute("opacity", win(t, a2, b2, 0.3));
+  $("gift").setAttribute("transform", "translate(540,820)");
+  const open = eo((gt - 0.9) / 0.5);
+  lid.setAttribute("transform", `translate(${open * 120},${-open * 260}) rotate(${open * 28})`);
+  giftBox.setAttribute("transform", `translate(0,${open * 420}) scale(${1 - open * 0.35})`);
+  giftNum.setAttribute("opacity", clamp((gt - 1.1) / 0.3)); giftNum.setAttribute("transform", `translate(0,${-60 + (1 - eo((gt - 1.1) / 0.5)) * 80}) scale(${back((gt - 1.1) / 0.5)})`);
+  confetti.forEach((c, i) => {
+    const k = clamp((gt - 1.0) / 2.2), ang = (i / confetti.length) * Math.PI * 2, sp = 380 + (i % 5) * 70;
+    const x = Math.cos(ang) * sp * eo(k), y = Math.sin(ang) * sp * eo(k) - 100 + k * k * 500;
+    c.setAttribute("opacity", gt > 1.0 ? (1 - k) : 0); c.setAttribute("transform", `translate(${x},${y}) rotate(${i * 40 + k * 400})`);
+  });
+  // 3-5. cartes des offres
+  cards.forEach((c, i) => {
+    const a = sc(2 + i), b = sc(3 + i), lt = t - a;
+    const o = win(t, a, b + 0.1, 0.35);
+    c.g.setAttribute("opacity", o);
+    const enter = back(lt / 0.6), leave = eio((t - (b - 0.25)) / 0.5);
+    c.g.setAttribute("transform", `translate(${540 + (1 - clamp(enter)) * 700 - leave * 700},${880}) rotate(${(1 - clamp(enter)) * 8 - leave * 8}) scale(${0.92 + 0.08 * clamp(enter)})`);
+    const pr = Math.round(c.p.price * eo((lt - 0.6) / 1.2) / 50) * 50;
+    c.price.textContent = `${pr.toLocaleString("fr-FR").replace(/ /g, " ")} F`;
+    const span = T.d[2 + i];
+    c.feats.forEach((f, j) => { const d = 1.6 + j * (span - 2.6) / c.feats.length; const k = eo((lt - d) / 0.4); f.setAttribute("opacity", k); f.setAttribute("transform", `translate(${(1 - k) * 60},0)`); });
+  });
+  // 6. Wave + monter d'offre
+  const a6 = sc(5), b6 = endAt, wt = t - a6;
+  $("pay").setAttribute("opacity", win(t, a6, b6 + 0.1, 0.35));
+  mini.forEach((g, i) => { const k = back((wt - i * 0.15) / 0.5); g.setAttribute("opacity", clamp((wt - i * 0.15) / 0.2)); g.setAttribute("transform", `translate(${200 + i * 340},${720 - i * 40}) scale(${0.7 + 0.3 * k})`); });
+  arrow.setAttribute("opacity", clamp((wt - 2.6) / 0.3)); arrow.setAttribute("transform", `translate(250,${500}) scale(${eo((wt - 2.6) / 0.6)},1)`);
+  wave.setAttribute("opacity", clamp((wt - 0.5) / 0.3)); wave.setAttribute("transform", `translate(540,${1100 + (1 - eo((wt - 0.5) / 0.5)) * 80}) scale(${back((wt - 0.5) / 0.5)})`);
+  // 7. fin
+  const et = t - endAt;
+  $("end").setAttribute("opacity", clamp(et / 0.4));
+  $("endLogo").setAttribute("transform", `translate(540,700) scale(${back(et / 0.55)}) translate(-540,-700)`);
+  $("endRing").setAttribute("r", Math.max(0, 300 * eo(et / 0.6) + Math.sin(t * 2) * 6));
+  for (const [id, d] of [["endName", 0.35], ["endTag", 0.55], ["endPills", 0.85]]) { const k = eo((et - d) / 0.5); $(id).setAttribute("opacity", k); $(id).setAttribute("transform", `translate(0,${(1 - k) * 40})`); }
+  caption(t);
+}
+window.seek = seek;
+Promise.all([fetch("offres-timing.json").then((r) => r.json()).then((j) => { T = j; }).catch(() => {}), fetch("offres-script.json").then((r) => r.json()).then((j) => { CAPS = j; }).catch(() => {}), fetch("offres-amp.json").then((r) => r.json()).then((j) => { AMP = j; }).catch(() => {})]).finally(() => {
+  seek(0); document.fonts.ready.then(() => { window.READY = true; });
+  if (!location.search.includes("render")) { const t0 = performance.now(); const loop = () => { seek(((performance.now() - t0) / 1000) % T.duration); requestAnimationFrame(loop); }; loop(); }
+});
+</script>
+</body>
+</html>
