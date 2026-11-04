@@ -82,7 +82,21 @@ await step("reglages", async () => {
   await shot(p, "07-notifications");
   await p.close();
 });
-for (const [ecran, name] of [["equipe", "08-equipe"], ["offre", "09-offre"], ["dettes", "10-dettes"]]) {
-  await step(ecran, async () => { const p = await open(`/capture.html?ecran=${ecran}`); await ready(p); await p.evaluate(() => document.querySelector(".screen")?.scrollIntoView({ block: "start" })); await shot(p, name); await p.close(); });
+// Sans serveur, quelques messages « pas de connexion » ou « chargement » : on les cache pour l'image.
+const tidy = (p) =>
+  p.evaluate(() => {
+    for (const el of document.querySelectorAll("p, small, .note")) {
+      if (/Pas de connexion internet|Chargement…|Dans la boutique/.test(el.textContent ?? "")) el.style.display = "none";
+    }
+  });
+for (const [ecran, name, sel] of [["equipe", "08-equipe", ".screen"], ["offre", "09-offre", ".plans"], ["dettes", "10-dettes", ".screen"]]) {
+  await step(ecran, async () => {
+    const p = await open(`/capture.html?ecran=${ecran}`);
+    await ready(p);
+    await tidy(p);
+    await p.evaluate((s) => { const el = document.querySelector(s); if (el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 70); }, sel);
+    await shot(p, name);
+    await p.close();
+  });
 }
 await browser.close();
