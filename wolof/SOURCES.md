@@ -38,5 +38,5 @@ Important : on ne réentraîne pas Gemini. Les corpus servent à **trouver des m
 | [wolof/wolof-english-dictionary](https://github.com/wolof/wolof-english-dictionary) | Dictionnaire wolof–anglais scanné (~1 400 articles, fautes de lecture) | Non précisée | 🟡 Pistes seulement | 1 | Mots du commerce proposés à Fallou (jafe, jar, waxaale, wanteer, déggoo, jappandi, kiliyaan, mbaar, fayyul) ; rien recopié |
 | [Galsenaicommunity/Wolof-TTS](https://github.com/Galsenaicommunity/Wolof-TTS) | Carnets pour entraîner une voix wolof (xTTS v2, Parler-TTS, Fish, Tortoise) sur le jeu Baamtu ; pas de voix prête dans le dépôt | MIT | 🟡 Réserve | 6 | Rien branché : il faut une carte graphique et un serveur payant. À ressortir si la voix Gemini (Sulafat) prononce mal le wolof ; l'examen de la voix se fera alors à l'oreille par Fallou |
 
-Mots ajoutés au vocabulaire grâce aux corpus (validés par Fallou le 04/11/2026) : fay, marse, soxla, indi, yóbbu, tuuti, bari.
+Mots ajoutés au vocabulaire grâce aux corpus (validés par Fallou le 04/11/2026) : fay, marse, soxla, indi, yóbbu, tuuti, bari ; puis jafe, jar, waxaale, wanteer, déggoo, jappandi, kiliyaan, mbaar, fayyul (135 mots au total).
 Score de l'examen : 70,2 % → 100 % (84 phrases) le 04/11/2026.
