@@ -27,6 +27,7 @@
 - Format **vertical 9:16** (1080 × 1920), 30 images par seconde.
 - **Wolof en grand, un peu de français en petit** (sous-titres et textes à l'écran). Les nombres se disent en wolof (« fukk ak ñeent »). **L'argent se compte en dërëm** (1 dërëm = 5 F) : 4 000 F = « juróom ñetti téeméer », 8 000 F = « junni ak juróom benni téeméer » ; utiliser `francsToWolof()` de `src/assistant/wolofNumbers.ts`, puis redire le montant en français.
 - Voix : Gemini TTS, voix **Sulafat**, enregistrée par la fonction Supabase `voix-accueil` ; chaque phrase validée en wolof par Fallou avant l'enregistrement.
+- **Vrais sons (depuis le 4 nov. 2026)** : ambiances enregistrées de `remvze/moodist` (rue animée, village la nuit, grillons, horloge, foule ; CC0 / licence Pixabay), bruitages enregistrés de Kenney RPG Audio (`Boyquotes/kenney-rpg-audio-for-godot` : pièces, porte, pas, tissu, pages ; CC0) et bruitages de `wyzowl/sfx-kit` (caisse, billets, téléphone, notifications ; CC0). Fonctions `bed()` et `hit()` dans `audio/real.py`, exemple complet : `audio/cues_real.py`. Chaque scène a son ambiance.
 - Musique et sons : moteur `sfx` de claude-motion (`audio/cues.py`), mineur pendant le problème, majeur quand Jokko arrive ; voix au-dessus de la musique ; volume final −14 LUFS.
 
 ## Épisodes
