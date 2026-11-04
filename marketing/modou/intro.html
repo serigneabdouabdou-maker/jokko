@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jokko — intro / fin</title>
+<style>
+  @font-face { font-family: "Brico"; src: url(assets/Bricolage.ttf); font-weight: 200 800; }
+  @font-face { font-family: "Serif"; src: url(assets/InstrumentItalic.ttf); font-style: italic; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #FFFDF7; }
+  text { font-family: "Brico", sans-serif; }
+</style>
+</head>
+<body>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="iris"><circle id="irisC" cx="540" cy="820" r="2000"/></clipPath>
+  </defs>
+  <rect width="1080" height="1920" fill="#17191F"/>
+  <g clip-path="url(#iris)">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <circle id="halo" cx="540" cy="820" r="0" fill="#FFF0C2"/>
+    <g id="rings"></g>
+    <g id="bars"></g>
+    <image id="logo" href="assets/icon-512.png" x="390" y="670" width="300" height="300"/>
+    <text id="name" x="540" y="1150" text-anchor="middle" font-size="150" font-weight="800" fill="#17191F" letter-spacing="-4">Jokko</text>
+    <text id="tag" x="540" y="1250" text-anchor="middle" font-family="Serif" font-style="italic" font-size="70" fill="#4A4D55">sa bitig dafay déglu</text>
+    <text id="tagFr" x="540" y="1312" text-anchor="middle" font-size="36" fill="#7A7D85">ta boutique qui écoute</text>
+    <g id="pills"></g>
+    <g id="cta"></g>
+  </g>
+</svg>
+<script>
+const MODE = location.search.includes("fin") ? "fin" : "intro";
+const DUR = MODE === "intro" ? 5.0 : 6.5;
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const eio = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.6; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+
+// ondes de voix autour du logo (Jokko écoute)
+const bars = [];
+for (let i = 0; i < 2; i++) for (let j = 0; j < 4; j++) {
+  const side = i ? 1 : -1, x = 540 + side * (215 + j * 42);
+  bars.push([el("rect", { x: x - 13, y: 820, width: 26, height: 0, rx: 13, fill: j % 2 ? "#2F7DC9" : "#F6B800" }, $("bars")), j, side]);
+}
+const rings = [0, 1, 2].map(() => el("circle", { cx: 540, cy: 820, r: 0, fill: "none", stroke: "#F6B800", "stroke-width": 6, opacity: 0 }, $("rings")));
+
+// ce que fait Jokko (intro) / appel à la communauté (fin)
+const PILLS = MODE === "intro"
+  ? [["Jaay", "ventes", "#F6B800", "#17191F"], ["Stock", "stock", "#2F7DC9", "#fff"], ["Bor", "dettes", "#C8372D", "#fff"], ["Caisse", "caisse", "#2B9A66", "#fff"]]
+  : [];
+const pills = PILLS.map(([wo, fr, bg, fg], i) => {
+  const g = el("g", { opacity: 0 }, $("pills"));
+  const x = [270, 810, 270, 810][i], y = [1440, 1440, 1590, 1590][i];
+  el("rect", { x: x - 230, y: y - 62, width: 460, height: 124, rx: 62, fill: bg }, g);
+  const t1 = el("text", { x, y: y + 6, "text-anchor": "middle", "font-size": 58, "font-weight": 800, fill: fg }, g); t1.textContent = wo;
+  const t2 = el("text", { x, y: y + 44, "text-anchor": "middle", "font-size": 26, "font-weight": 500, fill: fg, opacity: .8 }, g); t2.textContent = fr;
+  g.base = [x, y];
+  return g;
+});
+let ctaParts = [];
+if (MODE !== "intro") {
+  const c = $("cta");
+  const mk = (y, wo, fr, big, bg, fg) => {
+    const g = el("g", { opacity: 0 }, c);
+    if (bg) el("rect", { x: 140, y: y - 70, width: 800, height: 140, rx: 70, fill: bg }, g);
+    const t = el("text", { x: 540, y: y + (fr ? 2 : 18), "text-anchor": "middle", "font-size": big, "font-weight": 800, fill: fg }, g); t.textContent = wo;
+    if (fr) { const f = el("text", { x: 540, y: y + 46, "text-anchor": "middle", "font-size": 30, "font-weight": 500, fill: fg, opacity: .75 }, g); f.textContent = fr; }
+    ctaParts.push(g);
+  };
+  mk(1460, "Bokkal ci sunu mbooloo", "Rejoins la communauté Jokko", 54, "#F6B800", "#17191F");
+  mk(1640, "Abonne-toi · Commente · Partage", "", 44, "#17191F", "#FFFFFF");
+  mk(1790, "jokkoapp.com", "", 52, null, "#17191F");
+}
+
+function seek(t) {
+  const intro = MODE === "intro";
+  // ouverture (intro) : le rond s'ouvre ; fin : le rond se referme
+  const open = intro ? eio(t / 0.55) : eio(t / 0.45);
+  const close = intro ? eio((t - (DUR - 0.45)) / 0.45) : eio((t - (DUR - 0.7)) / 0.7);
+  $("irisC").setAttribute("r", Math.max(0, 2000 * open * (1 - close)));
+  // halo + logo
+  $("halo").setAttribute("r", 330 * back((t - 0.15) / 0.6) + Math.sin(t * 2.2) * 8);
+  const ls = back((t - 0.25) / 0.6);
+  $("logo").setAttribute("transform", `translate(540,820) scale(${ls}) rotate(${(1 - clamp((t - 0.25) / 0.6)) * -12}) translate(-540,-820)`);
+  // ondes : Jokko écoute
+  bars.forEach(([r, j, side]) => {
+    const on = clamp((t - 0.8 - j * 0.06) / 0.3);
+    const h = on * (40 + 70 * Math.abs(Math.sin(t * 7 + j * 1.3 + (side > 0 ? 0.6 : 0))));
+    r.setAttribute("height", h); r.setAttribute("y", 820 - h / 2);
+  });
+  rings.forEach((c, i) => {
+    const k = ((t - 0.9 - i * 0.45) % 1.35) / 1.35;
+    const live = t > 0.9 + i * 0.45;
+    c.setAttribute("r", live ? 170 + k * 260 : 0); c.setAttribute("opacity", live ? (1 - k) * 0.5 : 0);
+  });
+  // nom + phrase
+  for (const [id, d] of [["name", 0.7], ["tag", 1.0], ["tagFr", 1.2]]) {
+    const k = eo((t - d) / 0.5);
+    $(id).setAttribute("opacity", k); $(id).setAttribute("transform", `translate(0,${(1 - k) * 50})`);
+  }
+  // ce que fait Jokko
+  pills.forEach((g, i) => {
+    const d = 1.7 + i * 0.22, k = back((t - d) / 0.45);
+    const [x, y] = g.base;
+    g.setAttribute("opacity", clamp((t - d) / 0.15));
+    g.setAttribute("transform", `translate(${x},${y}) scale(${k}) translate(${-x},${-y})`);
+  });
+  ctaParts.forEach((g, i) => {
+    const d = 1.5 + i * 0.45, k = eo((t - d) / 0.5);
+    g.setAttribute("opacity", k); g.setAttribute("transform", `translate(0,${(1 - k) * 60})`);
+  });
+}
+window.seek = seek;
+window.DUR = DUR;
+document.fonts.ready.then(() => { seek(0); window.READY = true; });
+if (!location.search.includes("render")) { const t0 = performance.now(); const loop = () => { seek(((performance.now() - t0) / 1000) % DUR); requestAnimationFrame(loop); }; loop(); }
+</script>
+</body>
+</html>

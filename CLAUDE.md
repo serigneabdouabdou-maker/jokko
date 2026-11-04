@@ -38,3 +38,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 1. Ouvrir l'onglet « Erreurs de Jokko » (7 jours) : taux wolof et français.
 2. Corriger les phrases mal comprises qui reviennent (synonyme, modificateur, autre nom d'article, test dans `liveDesk.test.ts`).
 3. Cocher « Corrigé », pousser, vérifier CI + Cloudflare, annoncer le nouveau taux à Fallou la semaine suivante.
+
+## Publicités : toujours Modou
+
+Toutes les publicités Jokko sont des épisodes de l'histoire de **Modou** (commerçant, boubou bleu à broderie jaune) et de son ami **Ibou** (boubou vert, kufi blanc). Fiche du personnage, style, voix et méthode : `marketing/modou/README.md`. Ne jamais changer leur apparence. Wolof en grand, un peu de français en petit ; nombres dits en wolof.

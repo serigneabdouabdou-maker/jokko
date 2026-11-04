@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jokko — Modou</title>
+<style>
+  @font-face { font-family: "Brico"; src: url(assets/Bricolage.ttf); font-weight: 200 800; }
+  @font-face { font-family: "Serif"; src: url(assets/InstrumentItalic.ttf); font-style: italic; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #FFFDF7; }
+  svg { display: block; }
+  text { font-family: "Brico", sans-serif; }
+  #cap { position: absolute; left: 60px; right: 60px; bottom: 170px; text-align: center; font-family: "Brico", sans-serif; font-weight: 700; font-size: 48px; line-height: 1.22; color: #fff; text-shadow: 0 3px 14px rgba(0,0,0,.55), 0 0 2px rgba(0,0,0,.6); letter-spacing: -.005em; }
+  #cap .wo { display: inline; background: rgba(23,25,31,.78); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 6px 18px; border-radius: 14px; }
+  #cap .fr { display: block; margin-top: 14px; font-size: 32px; font-weight: 500; line-height: 1.3; color: rgba(255,255,255,.92); }
+  #cap .fr span { background: rgba(23,25,31,.55); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 3px 12px; border-radius: 10px; }
+  #hook { position: absolute; left: 0; right: 0; top: 230px; padding: 60px 0 90px; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(11,16,48,.82), rgba(11,16,48,0) 75%); text-align: center; font-family: "Brico"; font-weight: 800; font-size: 92px; line-height: 1.02; color: #fff; letter-spacing: -.03em; text-shadow: 0 6px 30px rgba(0,0,0,.5); }
+  #hook em { font-family: "Serif"; font-style: italic; font-weight: 400; color: #F6B800; font-size: 1.1em; letter-spacing: 0; }
+  #hook small { display: block; margin-top: 18px; font-size: 38px; font-weight: 600; letter-spacing: 0; color: rgba(255,255,255,.9); }
+</style>
+</head>
+<body>
+<svg id="stage" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <linearGradient id="wallDay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3DDB7"/><stop offset="1" stop-color="#E7C795"/></linearGradient>
+    <linearGradient id="wallNight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B2340"/><stop offset="1" stop-color="#3A2C3A"/></linearGradient>
+    <radialGradient id="lampGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE7A3" stop-opacity=".75"/><stop offset="1" stop-color="#FFE7A3" stop-opacity="0"/></radialGradient>
+    <linearGradient id="counterG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B8743C"/><stop offset="1" stop-color="#8E5629"/></linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="homeWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7E6CF"/><stop offset="1" stop-color="#EBCFA9"/></linearGradient>
+    <clipPath id="phoneClip"><rect x="-150" y="-300" width="300" height="600" rx="34"/></clipPath>
+    <clipPath id="bigPhoneClip"><rect x="-230" y="-470" width="460" height="940" rx="46"/></clipPath>
+
+    <!-- Produits -->
+    <g id="sack"><path d="M-38,-58 Q-44,-62 -40,-70 L40,-70 Q44,-62 38,-58 Q50,-20 46,40 Q0,52 -46,40 Q-50,-20 -38,-58Z" fill="#F4F1E8" stroke="#CFC6B2" stroke-width="3"/><rect x="-30" y="-22" width="60" height="30" rx="5" fill="#C8372D"/><text x="0" y="0" text-anchor="middle" font-size="19" font-weight="800" fill="#fff">RIZ</text></g>
+    <g id="bidon"><rect x="-26" y="-60" width="52" height="96" rx="12" fill="#F2B51D" stroke="#C98E06" stroke-width="3"/><rect x="-10" y="-74" width="20" height="16" rx="4" fill="#D23B2B"/><rect x="-20" y="-32" width="40" height="34" rx="5" fill="#FFF6D6"/><text x="0" y="-9" text-anchor="middle" font-size="13" font-weight="800" fill="#B5770A">HUILE</text></g>
+    <g id="box"><rect x="-30" y="-40" width="60" height="76" rx="5" fill="#2F7DC9" stroke="#21609E" stroke-width="3"/><rect x="-22" y="-20" width="44" height="22" rx="4" fill="#fff"/><text x="0" y="-4" text-anchor="middle" font-size="12" font-weight="800" fill="#2F7DC9">SUCRE</text></g>
+    <g id="tin"><rect x="-20" y="-28" width="40" height="52" rx="6" fill="#E8E2D6" stroke="#B9B0A0" stroke-width="3"/><rect x="-20" y="-10" width="40" height="18" fill="#2B9A66"/><text x="0" y="5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">LAIT</text></g>
+    <g id="soap"><rect x="-26" y="-14" width="52" height="28" rx="8" fill="#7FC6E8" stroke="#4E9FC6" stroke-width="3"/></g>
+
+    <!-- Personnage (buste derrière un comptoir) : la tête, les sourcils, la bouche et le bras bougent depuis seek(). -->
+    <g id="pBody">
+      <path d="M-150,40 Q-150,-80 -60,-108 L60,-108 Q150,-80 150,40 L150,260 L-150,260Z" class="robe"/>
+      <path d="M-60,-108 Q0,-40 60,-108 Q40,-80 0,-74 Q-40,-80 -60,-108Z" class="trim"/>
+      <path d="M-14,-80 L0,10 L14,-80" fill="none" class="trimLine" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="0" cy="30" r="6" class="trimDot"/><circle cx="0" cy="62" r="6" class="trimDot"/>
+      <rect x="-34" y="-150" width="68" height="56" rx="20" class="skin"/>
+    </g>
+    <g id="pHead">
+      <ellipse cx="-92" cy="-8" rx="16" ry="22" class="skin"/><ellipse cx="92" cy="-8" rx="16" ry="22" class="skin"/>
+      <path d="M-86,-40 Q-90,-130 0,-134 Q90,-130 86,-40 Q92,40 54,78 Q0,112 -54,78 Q-92,40 -86,-40Z" class="skin"/>
+      <path d="M-88,-36 Q-96,-142 0,-146 Q96,-142 88,-36 Q78,-90 40,-104 Q0,-90 -40,-104 Q-78,-90 -88,-36Z" class="hair"/>
+      <path class="beard" d="M-74,26 Q-70,86 0,104 Q70,86 74,26 Q60,70 0,78 Q-60,70 -74,26Z"/>
+    </g>
+  </defs>
+
+  <!-- ======= Scène 1-2-3-5 : la boutique (jour / nuit) ======= -->
+  <g id="shop">
+    <rect width="1080" height="1920" fill="url(#wallDay)"/>
+    <rect id="nightWall" width="1080" height="1920" fill="url(#wallNight)" opacity="0"/>
+    <!-- porte / rue à droite -->
+    <g id="door"><rect x="800" y="330" width="230" height="760" rx="10" fill="#7FB7D9"/><rect id="doorNight" x="800" y="330" width="230" height="760" rx="10" fill="#111a33" opacity="0"/><rect x="800" y="330" width="230" height="760" rx="10" fill="none" stroke="#8E5629" stroke-width="16"/><path d="M820,1090 L1010,1090" stroke="#C9A06B" stroke-width="10"/><g id="sun"><circle cx="960" cy="420" r="34" fill="#FFE07A"/></g><g id="moon" opacity="0"><circle cx="960" cy="420" r="30" fill="#F4EBC4"/><circle cx="975" cy="410" r="27" fill="#111a33"/></g><path d="M800,860 Q915,800 1030,870 L1030,1090 L800,1090Z" fill="#E8C78B" opacity=".55"/></g>
+    <!-- étagères -->
+    <g id="shelves">
+      <rect x="40" y="300" width="730" height="800" rx="12" fill="#9A6332"/>
+      <rect x="58" y="318" width="694" height="764" rx="6" fill="#7A4A22"/>
+      <g id="row1"></g><g id="row2"></g><g id="row3"></g>
+      <rect x="40" y="540" width="730" height="20" fill="#B47A43"/><rect x="40" y="800" width="730" height="20" fill="#B47A43"/><rect x="40" y="1080" width="730" height="20" fill="#B47A43"/>
+    </g>
+    <!-- lampe -->
+    <g id="lamp"><line x1="0" y1="0" x2="0" y2="190" stroke="#2C2C2C" stroke-width="5"/><path d="M-46,190 L46,190 L30,150 L-30,150Z" fill="#2E5E4E"/><circle cx="0" cy="200" r="20" fill="#FFF1B8"/><circle id="glow" cx="0" cy="210" r="300" fill="url(#lampGlow)" opacity="0"/></g>
+    <!-- horloge -->
+    <g id="clock" transform="translate(660,210)"><circle r="56" fill="#fff" stroke="#3B3B3B" stroke-width="8"/><line id="hh" x1="0" y1="0" x2="0" y2="-28" stroke="#222" stroke-width="7" stroke-linecap="round"/><line id="mh" x1="0" y1="0" x2="0" y2="-42" stroke="#222" stroke-width="5" stroke-linecap="round"/><circle r="6" fill="#222"/></g>
+    <!-- personnages -->
+    <g id="modou" transform="translate(430,1120)"></g>
+    <g id="ibou" transform="translate(1300,1150)"></g>
+    <!-- comptoir -->
+    <g id="counter">
+      <rect x="-20" y="1180" width="1120" height="760" fill="url(#counterG)"/>
+      <rect x="-20" y="1160" width="1120" height="40" rx="8" fill="#D08B4A"/>
+      <rect x="150" y="1290" width="520" height="120" rx="16" fill="#17191F"/><text x="410" y="1368" text-anchor="middle" font-size="54" font-weight="800" fill="#F6B800">BOUTIQUE MODOU</text>
+      <g id="notebook" transform="translate(300,1150)"><path d="M-130,10 L0,-6 L130,10 L130,24 L0,8 L-130,24Z" fill="#fff" stroke="#9AA" stroke-width="3"/><path d="M-110,4 L-20,-6 M-110,-2 L-30,-11 M20,-6 L110,4 M30,-11 L100,-3" stroke="#6C7BA8" stroke-width="3"/></g>
+      <g id="calc" transform="translate(560,1146)"><rect x="-50" y="-20" width="100" height="30" rx="6" fill="#444"/><rect x="-38" y="-16" width="76" height="12" rx="2" fill="#B8D3A0"/></g>
+      <g id="drawer" transform="translate(410,1500)" opacity="0"><rect x="-200" y="-40" width="400" height="120" rx="12" fill="#5E3A1B"/><rect x="-180" y="-20" width="360" height="80" rx="8" fill="#3B240F"/></g>
+    </g>
+    <rect id="shopNight" width="1080" height="1920" fill="#0B1030" opacity="0"/>
+    <g id="floaters"></g>
+  </g>
+
+  <!-- ======= Scène 2 : les problèmes (gros plans) ======= -->
+  <g id="probs" opacity="0">
+    <rect width="1080" height="1920" fill="#20243A"/>
+    <g id="pStock"></g>
+    <g id="pDebt"></g>
+    <g id="pCash"></g>
+  </g>
+
+  <!-- ======= Scène 4-5 : le téléphone en grand ======= -->
+  <g id="phoneScene" opacity="0">
+    <rect width="1080" height="1920" fill="#FFF5DC"/>
+    <circle cx="540" cy="860" r="620" fill="#FBE7B0"/>
+    <g id="bigPhone" transform="translate(540,880)">
+      <rect x="-250" y="-490" width="500" height="980" rx="62" fill="#17191F"/>
+      <g clip-path="url(#bigPhoneClip)">
+        <rect x="-230" y="-470" width="460" height="940" fill="#FFFDF7"/>
+        <g id="ps-store"></g>
+        <g id="ps-home"></g>
+        <g id="ps-app"></g>
+      </g>
+      <rect x="-40" y="-458" width="80" height="16" rx="8" fill="#000"/>
+    </g>
+    <ellipse id="hand" cx="540" cy="1420" rx="300" ry="40" fill="rgba(23,25,31,.14)"/>
+    <g id="tapRipple" opacity="0"><circle r="40" fill="none" stroke="#F6B800" stroke-width="8"/></g>
+  </g>
+
+  <!-- ======= Scène 6 : tout est clair (cartes) + maison ======= -->
+  <g id="clear" opacity="0">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <g id="cards"></g>
+  </g>
+  <g id="home" opacity="0">
+    <rect width="1080" height="1920" fill="url(#homeWall)"/>
+    <rect x="90" y="260" width="380" height="420" rx="14" fill="#1C2A55"/><circle cx="380" cy="350" r="36" fill="#F4EBC4"/><circle cx="395" cy="340" r="32" fill="#1C2A55"/><g fill="#fff"><circle cx="160" cy="330" r="3"/><circle cx="250" cy="420" r="2.5"/><circle cx="200" cy="560" r="3"/><circle cx="420" cy="520" r="2"/></g><rect x="90" y="260" width="380" height="420" rx="14" fill="none" stroke="#fff" stroke-width="16"/><path d="M280,260 L280,680 M90,470 L470,470" stroke="#fff" stroke-width="10"/>
+    <rect x="620" y="300" width="300" height="200" rx="10" fill="#C8372D"/><rect x="640" y="320" width="260" height="160" rx="6" fill="#E9A23B"/><path d="M640,480 L740,380 L820,450 L860,410 L900,480Z" fill="#2B7A4B"/>
+    <g id="modouHome" transform="translate(560,1250)"></g>
+    <path d="M-20,1290 Q540,1180 1100,1290 L1100,1920 L-20,1920Z" fill="#B0412E"/><path d="M-20,1290 Q540,1180 1100,1290 L1100,1340 Q540,1240 -20,1340Z" fill="#C9553F"/>
+    <g id="teaTray" transform="translate(860,1430)"><ellipse rx="110" ry="30" fill="#C9C2B0"/><rect x="-60" y="-56" width="26" height="46" rx="4" fill="#E3D9A8" opacity=".9"/><rect x="-14" y="-56" width="26" height="46" rx="4" fill="#E3D9A8" opacity=".9"/><path d="M30,-30 Q30,-80 70,-80 Q100,-80 96,-30Z" fill="#B9B3A3"/></g>
+    <g id="notif" opacity="0" transform="translate(540,420)"><rect x="-430" y="-90" width="860" height="180" rx="36" fill="#fff"/><rect x="-430" y="-90" width="860" height="180" rx="36" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="2"/><image href="assets/icon-512.png" x="-400" y="-56" width="96" height="96"/><text x="-280" y="-18" font-size="36" font-weight="800" fill="#17191F">Jokko · Boutique Modou</text><text x="-280" y="34" font-size="34" fill="#4A4D55">Jaay : 2 sac ceeb · 34 000 F</text></g>
+  </g>
+
+  <!-- ======= Scène 7 : fin du mois ======= -->
+  <g id="month" opacity="0">
+    <rect width="1080" height="1920" fill="#17191F"/>
+    <circle cx="540" cy="900" r="560" fill="#22263A"/>
+    <g id="calendar" transform="translate(380,470)"><rect x="-170" y="-150" width="340" height="300" rx="28" fill="#fff"/><rect x="-170" y="-150" width="340" height="86" rx="28" fill="#C8372D"/><rect x="-170" y="-100" width="340" height="36" fill="#C8372D"/><text id="calMonth" y="-92" text-anchor="middle" font-size="40" font-weight="800" fill="#fff">NOVEMBRE</text><text id="calDay" y="100" text-anchor="middle" font-size="150" font-weight="800" fill="#17191F">28</text></g>
+    <g id="profit" transform="translate(540,1050)"><rect x="-400" y="-260" width="800" height="560" rx="44" fill="#FFFDF7"/><text x="-340" y="-170" font-size="40" font-weight="700" fill="#4A4D55">Njariñu weer wi · <tspan font-weight="500">bénéfice du mois</tspan></text><text id="profitNum" x="-340" y="-70" font-size="118" font-weight="800" fill="#17191F">0 F</text><g id="bars"></g></g>
+    <g id="modouMonth" transform="translate(880,1700)"></g>
+  </g>
+
+  <!-- ======= Scène 8 : logo ======= -->
+  <g id="end" opacity="0">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <circle id="endRing" cx="540" cy="760" r="300" fill="#FFF0C2"/>
+    <image id="endLogo" href="assets/icon-512.png" x="390" y="610" width="300" height="300"/>
+    <text id="endName" x="540" y="1060" text-anchor="middle" font-size="120" font-weight="800" fill="#17191F" letter-spacing="-3">Jokko</text>
+    <text id="endTag" x="540" y="1150" text-anchor="middle" font-family="Serif" font-style="italic" font-size="66" fill="#4A4D55">sa bitig dafay déglu<tspan x="540" dy="56" font-family="Brico" font-style="normal" font-size="34" fill="#7A7D85">ta boutique qui écoute</tspan></text>
+    <g id="endPills"><rect x="230" y="1290" width="620" height="110" rx="55" fill="#F6B800"/><text x="540" y="1340" text-anchor="middle" font-size="44" font-weight="800" fill="#17191F">14 fan, ci dara</text><text x="540" y="1380" text-anchor="middle" font-size="28" font-weight="600" fill="#17191F">14 jours gratuits</text><text x="540" y="1488" text-anchor="middle" font-size="52" font-weight="700" fill="#17191F">jokkoapp.com</text><text x="540" y="1540" text-anchor="middle" font-size="32" fill="#4A4D55">ci wolof ak ci français</text></g>
+    <image id="endCfc" href="assets/cfc-logo-cut.png" x="415" y="1620" width="250" height="140"/>
+  </g>
+</svg>
+<div id="hook"></div>
+<div id="cap"></div>
+<script>
+const T = { s: [0.6, 7.2, 17.4, 22.0, 26.4, 35.2, 45.4, 53.6], d: [5.6, 9.4, 3.6, 3.6, 8.0, 9.4, 7.4, 4.6], duration: 61 };
+let CAPS = [];
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = (k) => 1 - Math.pow(1 - clamp(k), 3);          // sortie douce
+const eio = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.5; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const win = (t, a, b, f = 0.35) => clamp(Math.min((t - a) / f, (b - t) / f));  // 0→1→0 sur [a,b]
+const prog = (t, a, d) => clamp((t - a) / d);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function use(href, x, y, parent, s = 1) { return el("use", { href: "#" + href, transform: `translate(${x},${y}) scale(${s})` }, parent); }
+
+// ---------- Personnages ----------
+const MODOU = { skin: "#6B4226", hair: "#1A1410", beard: "#1A1410", robe: "#2F7DC9", trim: "#F6B800", dot: "#F6B800" };
+const IBOU = { skin: "#4E2F1B", hair: "#141010", beard: "none", robe: "#2B9A66", trim: "#FFFDF7", dot: "#FFFDF7" };
+function person(root, c, opts = {}) {
+  root.innerHTML = "";
+  const g = el("g", {}, root);
+  const armBack = el("g", {}, g);
+  el("path", { d: "M0,0 Q-40,90 -30,200 L10,206 Q8,110 40,20Z", fill: c.robe, transform: "translate(118,-70)" }, armBack);
+  const body = el("g", {}, g);
+  body.innerHTML = $("pBody").innerHTML; // copie (les styles par classe ne traversent pas un <use>)
+  const st = el("style", {}, g);
+  const id = root.id;
+  st.textContent = `#${id} .skin{fill:${c.skin}} #${id} .hair{fill:${c.hair}} #${id} .beard{fill:${c.beard}} #${id} .robe{fill:${c.robe}} #${id} .trim{fill:${c.trim}} #${id} .trimLine{stroke:${c.trim}} #${id} .trimDot{fill:${c.dot}}`;
+  const head = el("g", { transform: "translate(0,-230)" }, g);
+  head.innerHTML = $("pHead").innerHTML + (opts.cap ? `<path d="M-84,-80 Q-80,-158 0,-160 Q80,-158 84,-80 Z" fill="#E9E2D0"/><path d="M-84,-80 L84,-80" stroke="#C9BFA6" stroke-width="8"/>` : "");
+  const eyes = el("g", {}, head);
+  const eyeL = el("ellipse", { cx: -34, cy: -18, rx: 13, ry: 15, fill: "#fff" }, eyes), eyeR = el("ellipse", { cx: 34, cy: -18, rx: 13, ry: 15, fill: "#fff" }, eyes);
+  const pupL = el("circle", { cx: -34, cy: -16, r: 8, fill: "#1A1410" }, eyes), pupR = el("circle", { cx: 34, cy: -16, r: 8, fill: "#1A1410" }, eyes);
+  const lidL = el("rect", { x: -50, y: -36, width: 32, height: 0, fill: c.skin }, eyes), lidR = el("rect", { x: 18, y: -36, width: 32, height: 0, fill: c.skin }, eyes);
+  const browL = el("path", { d: "", stroke: c.hair, "stroke-width": 9, "stroke-linecap": "round", fill: "none" }, head);
+  const browR = el("path", { d: "", stroke: c.hair, "stroke-width": 9, "stroke-linecap": "round", fill: "none" }, head);
+  el("path", { d: "M-6,6 Q0,26 10,22", stroke: "#4A2C18", "stroke-width": 5, fill: "none", "stroke-linecap": "round" }, head);
+  const mouth = el("path", { d: "", fill: "#3A1A12", stroke: "#3A1A12", "stroke-width": 5, "stroke-linejoin": "round" }, head);
+  const arm = el("g", { transform: "translate(-118,-70)" }, g);
+  const armRot = el("g", {}, arm);
+  el("path", { d: "M0,0 Q40,90 30,200 L-10,206 Q-8,110 -40,20Z", fill: c.robe }, armRot);
+  const handG = el("g", { transform: "translate(10,206)" }, armRot);
+  el("circle", { r: 30, fill: c.skin }, handG);
+  const prop = el("g", {}, handG);
+  return { g, head, eyes, lidL, lidR, pupL, pupR, browL, browR, mouth, armRot, handG, prop, body };
+}
+// mood : -1 inquiet … +1 heureux ; talk : 0…1 ouverture ; look : -1…1
+function face(p, t, { mood = 0, talk = 0, look = 0, blinkSeed = 0, tilt = 0, nod = 0 }) {
+  const lift = 10 * mood;
+  const inner = -10 * mood;   // inquiet : intérieur des sourcils relevé
+  p.browL.setAttribute("d", `M-58,${-52 - lift} Q-38,${-62 - lift + (mood < 0 ? -6 : 0)} -16,${-52 + inner}`);
+  p.browR.setAttribute("d", `M16,${-52 + inner} Q38,${-62 - lift + (mood < 0 ? -6 : 0)} 58,${-52 - lift}`);
+  const w = 34, curve = 24 * mood, open = 26 * talk;
+  if (open > 2) p.mouth.setAttribute("d", `M${-w * .7},42 Q0,${42 + open * 2 + curve * .3} ${w * .7},42 Q0,${44 - 4} ${-w * .7},42Z`);
+  else p.mouth.setAttribute("d", `M${-w},${44 - curve * .25} Q0,${44 + curve} ${w},${44 - curve * .25}`);
+  p.mouth.setAttribute("fill", open > 2 ? "#3A1A12" : "none");
+  // clignements
+  const ph = (t + blinkSeed) % 3.7, bl = ph < 0.14 ? Math.sin((ph / 0.14) * Math.PI) : 0;
+  for (const l of [p.lidL, p.lidR]) l.setAttribute("height", 32 * bl);
+  const lx = 5 * look;
+  p.pupL.setAttribute("cx", -34 + lx); p.pupR.setAttribute("cx", 34 + lx);
+  p.head.setAttribute("transform", `translate(0,${-230 + nod}) rotate(${tilt})`);
+}
+
+// ---------- Boutique : produits sur les étagères ----------
+const rows = [["row1", 520, ["sack", "sack", "sack", "sack", "sack", "sack", "sack"]], ["row2", 780, ["bidon", "bidon", "bidon", "box", "box", "box", "bidon", "bidon"]], ["row3", 1060, ["tin", "tin", "tin", "tin", "soap", "soap", "soap", "tin", "tin"]]];
+const items = {};
+for (const [id, y, list] of rows) {
+  const g = $(id); items[id] = [];
+  list.forEach((k, i) => { const x = 110 + i * (640 / (list.length - 1)); items[id].push(use(k, x, y - 52, g, k === "sack" ? 1.15 : 1.1)); });
+}
+const modou = person($("modou"), MODOU);
+const ibou = person($("ibou"), IBOU, { cap: true });
+// téléphone tenu par Modou (petit)
+modou.prop.innerHTML = `<g id="mPhone" opacity="0" transform="translate(0,-70) rotate(-8)"><rect x="-44" y="-86" width="88" height="172" rx="16" fill="#17191F"/><rect x="-36" y="-76" width="72" height="150" rx="10" fill="#FFFDF7"/><image href="assets/icon-512.png" x="-24" y="-40" width="48" height="48"/></g>`;
+ibou.prop.innerHTML = `<g transform="translate(0,-70) rotate(-110)"><rect x="-44" y="-86" width="88" height="172" rx="16" fill="#17191F"/><rect x="-36" y="-76" width="72" height="150" rx="10" fill="#FFFDF7"/><image href="assets/icon-512.png" x="-26" y="-38" width="52" height="52"/></g>`;
+
+// bulles et signes flottants (scène 1)
+const floaters = $("floaters");
+const qMarks = [[240, 760, "?"], [720, 640, "?"], [520, 520, "12 500 ?"], [300, 600, "8 000 ?"], [800, 560, "?"]].map(([x, y, s]) => {
+  const g = el("g", { transform: `translate(${x},${y})`, opacity: 0 }, floaters);
+  const big = s.length > 1;
+  el("rect", { x: big ? -120 : -44, y: -48, width: big ? 240 : 88, height: 96, rx: 30, fill: "#fff" }, g);
+  const tx = el("text", { y: 22, "text-anchor": "middle", "font-size": big ? 48 : 64, "font-weight": 800, fill: "#C8372D" }, g); tx.textContent = s;
+  return g;
+});
+const bubble = el("g", { opacity: 0 }, floaters);
+el("path", { d: "M-230,-80 Q-230,-130 -180,-130 L180,-130 Q230,-130 230,-80 L230,10 Q230,60 180,60 L40,60 L80,120 L-10,60 L-180,60 Q-230,60 -230,10Z", fill: "#fff" }, bubble);
+const bt = el("text", { y: -16, "text-anchor": "middle", "font-size": 66, "font-weight": 800, fill: "#17191F" }, bubble); bt.textContent = "Jéemal Jokko !";
+const saidB = el("g", { opacity: 0 }, floaters);
+el("path", { d: "M-300,-80 Q-300,-130 -250,-130 L250,-130 Q300,-130 300,-80 L300,10 Q300,60 250,60 L-60,60 L-120,120 L-110,60 L-250,60 Q-300,60 -300,10Z", fill: "#fff" }, saidB);
+const st2 = el("text", { y: -16, "text-anchor": "middle", "font-size": 56, "font-weight": 800, fill: "#17191F" }, saidB); st2.textContent = "« Jaay naa ñaari sac ceeb »";
+const waves = el("g", { opacity: 0 }, floaters);
+[0, 1, 2].forEach((i) => el("path", { d: `M${30 + i * 26},-50 Q${60 + i * 34},0 ${30 + i * 26},50`, stroke: "#F6B800", "stroke-width": 10, fill: "none", "stroke-linecap": "round", class: "wv" }, waves));
+
+// ---------- Scène 2 : gros plans des problèmes ----------
+(function () {
+  const s = $("pStock");
+  el("rect", { x: 90, y: 360, width: 900, height: 620, rx: 30, fill: "#7A4A22" }, s);
+  el("rect", { x: 90, y: 760, width: 900, height: 26, fill: "#B47A43" }, s);
+  s.slots = [];
+  for (let i = 0; i < 5; i++) { const x = 210 + i * 165; s.slots.push(use(i % 2 ? "bidon" : "sack", x, 690, s, 1.9)); }
+  s.q = el("g", { opacity: 0, transform: "translate(540,560)" }, s);
+  el("circle", { r: 120, fill: "#fff" }, s.q);
+  const q = el("text", { y: 52, "text-anchor": "middle", "font-size": 170, "font-weight": 800, fill: "#C8372D" }, s.q); q.textContent = "?";
+  const lab = el("text", { x: 540, y: 1150, "text-anchor": "middle", "font-size": 76, "font-weight": 800, fill: "#fff" }, s); lab.textContent = "Lan moo des ?"; { const f = el("text", { x: 540, y: 1215, "text-anchor": "middle", "font-size": 40, "font-weight": 500, fill: "rgba(255,255,255,.8)" }, lab.parentNode); f.textContent = "Il reste combien ?"; }
+
+  const d = $("pDebt");
+  el("rect", { x: 170, y: 380, width: 740, height: 640, rx: 22, fill: "#fff" }, d);
+  for (let i = 0; i < 9; i++) el("line", { x1: 220, y1: 470 + i * 62, x2: 860, y2: 470 + i * 62, stroke: "#C9D3EA", "stroke-width": 3 }, d);
+  el("line", { x1: 280, y1: 400, x2: 280, y2: 1000, stroke: "#E9A0A0", "stroke-width": 4 }, d);
+  d.pages = [["Awa", "5 000"], ["Moussa", "12 000"], ["Fatou", "3 500"], ["Ibrahima", "8 000"]].map(([n, v], i) => {
+    const g = el("g", {}, d);
+    const t1 = el("text", { x: 310, y: 520 + i * 124, "font-size": 58, "font-family": "Serif", "font-style": "italic", fill: "#2A3A7A" }, g); t1.textContent = n;
+    const t2 = el("text", { x: 860, y: 520 + i * 124, "text-anchor": "end", "font-size": 58, "font-family": "Serif", "font-style": "italic", fill: "#2A3A7A" }, g); t2.textContent = v + " ?";
+    return g;
+  });
+  const lab2 = el("text", { x: 540, y: 1150, "text-anchor": "middle", "font-size": 76, "font-weight": 800, fill: "#fff" }, d); lab2.textContent = "Kan moo ma ameel bor ?"; { const f = el("text", { x: 540, y: 1215, "text-anchor": "middle", "font-size": 40, "font-weight": 500, fill: "rgba(255,255,255,.8)" }, lab2.parentNode); f.textContent = "Qui me doit quoi ?"; }
+
+  const c = $("pCash");
+  el("rect", { x: 160, y: 640, width: 760, height: 300, rx: 26, fill: "#5E3A1B" }, c);
+  el("rect", { x: 190, y: 670, width: 700, height: 240, rx: 18, fill: "#2E1C0C" }, c);
+  c.bills = [];
+  for (let i = 0; i < 7; i++) {
+    const g = el("g", {}, c);
+    el("rect", { x: -90, y: -44, width: 180, height: 88, rx: 10, fill: i % 2 ? "#7CC48F" : "#8DB8E8", stroke: "rgba(0,0,0,.2)", "stroke-width": 3 }, g);
+    const tx = el("text", { y: 14, "text-anchor": "middle", "font-size": 40, "font-weight": 800, fill: "rgba(0,0,0,.45)" }, g); tx.textContent = i % 2 ? "2000" : "5000";
+    c.bills.push(g);
+  }
+  const lab3 = el("text", { x: 540, y: 1150, "text-anchor": "middle", "font-size": 76, "font-weight": 800, fill: "#fff" }, c); lab3.textContent = "Xaalis bi, fan la jaar ?"; { const f = el("text", { x: 540, y: 1215, "text-anchor": "middle", "font-size": 40, "font-weight": 500, fill: "rgba(255,255,255,.8)" }, lab3.parentNode); f.textContent = "L’argent part où ?"; }
+})();
+
+// ---------- Scène 4-5 : écrans du téléphone ----------
+(function () {
+  const st = $("ps-store");
+  st.innerHTML = `<rect x="-230" y="-470" width="460" height="940" fill="#fff"/>
+    <text x="-200" y="-380" font-size="30" fill="#4A4D55">jokkoapp.com/android</text>
+    <rect x="-230" y="-350" width="460" height="2" fill="#eee"/>
+    <image href="assets/icon-512.png" x="-200" y="-310" width="120" height="120"/>
+    <text x="-60" y="-262" font-size="46" font-weight="800" fill="#17191F">Jokko</text>
+    <text x="-60" y="-216" font-size="28" fill="#4A4D55">CFC – Cissé Family</text>
+    <rect x="-200" y="-140" width="400" height="90" rx="45" fill="#F6B800"/>
+    <text id="dlText" x="0" y="-82" text-anchor="middle" font-size="34" font-weight="800" fill="#17191F">Télécharger</text>
+    <rect x="-200" y="-10" width="400" height="18" rx="9" fill="#EEE"/>
+    <rect id="dlBar" x="-200" y="-10" width="0" height="18" rx="9" fill="#2B9A66"/>
+    <text x="-200" y="80" font-size="30" fill="#4A4D55">Jaay, stock, bor :</text><text x="-200" y="124" font-size="30" fill="#4A4D55">wax rekk, ci wolof</text>`;
+  const hm = $("ps-home");
+  let icons = `<rect x="-230" y="-470" width="460" height="940" fill="#2B5D8A"/><circle cx="160" cy="-300" r="220" fill="#3C77AA"/><text x="0" y="-330" text-anchor="middle" font-size="84" font-weight="300" fill="#fff">10:24</text>`;
+  const cols = ["#E85D4A", "#55A86B", "#F2B51D", "#7E6BD6", "#3FA7D6", "#E98A2E", "#6C7A89", "#D04F8E"];
+  for (let i = 0; i < 8; i++) { const x = -150 + (i % 4) * 100, y = -150 + Math.floor(i / 4) * 130; icons += `<rect x="${x - 36}" y="${y - 36}" width="72" height="72" rx="20" fill="${cols[i]}"/>`; }
+  icons += `<g id="newIcon" transform="translate(-150,110)"><image href="assets/icon-512.png" x="-44" y="-44" width="88" height="88"/><text y="76" text-anchor="middle" font-size="24" font-weight="700" fill="#fff">Jokko</text></g>`;
+  hm.innerHTML = icons;
+  $("ps-app").innerHTML = `<image id="appShot" href="assets/03-parler.png" x="-230" y="-470" width="460" height="996" preserveAspectRatio="xMidYMin slice"/><rect id="appSplash" x="-230" y="-470" width="460" height="940" fill="#FFFDF7"/><image id="appSplashLogo" href="assets/icon-512.png" x="-90" y="-120" width="180" height="180"/>`;
+  const ok = el("g", { id: "okPop", opacity: 0 }, $("bigPhone"));
+  el("circle", { r: 74, fill: "#2B9A66" }, ok); el("path", { d: "M-32,2 L-9,26 L34,-22", stroke: "#fff", "stroke-width": 16, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, ok);
+})();
+
+// ---------- Scène 6 : cartes ----------
+(function () {
+  const cards = $("cards");
+  const data = [["Stock bi", "Ceeb : 8 sac · Diw : 12 bidon", "Stock · riz, huile", "#2F7DC9"], ["Bor yi", "Moussa : 12 000 F", "Dettes · relancé sur WhatsApp ✓", "#C8372D"], ["Caisse bi", "Tey : 87 500 F", "Caisse · bénéfice 14 200 F", "#2B9A66"]];
+  cards.list = data.map(([h, a, b, col], i) => {
+    const g = el("g", { transform: `translate(540,${430 + i * 330})` }, cards);
+    el("rect", { x: -440, y: -130, width: 880, height: 270, rx: 40, fill: "#fff", stroke: "rgba(23,25,31,.08)", "stroke-width": 3 }, g);
+    el("rect", { x: -440, y: -130, width: 26, height: 270, rx: 13, fill: col }, g);
+    const t0 = el("text", { x: -380, y: -46, "font-size": 58, "font-weight": 800, fill: "#17191F" }, g); t0.textContent = h;
+    const t1 = el("text", { x: -380, y: 26, "font-size": 44, fill: "#17191F" }, g); t1.textContent = a;
+    const t2 = el("text", { x: -380, y: 86, "font-size": 40, fill: "#4A4D55" }, g); t2.textContent = b;
+    const ok = el("g", { transform: "translate(350,-10)" }, g);
+    el("circle", { r: 52, fill: col }, ok); el("path", { d: "M-22,2 L-6,18 L24,-16", stroke: "#fff", "stroke-width": 12, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, ok);
+    g.ok = ok;
+    return g;
+  });
+})();
+const modouHome = person($("modouHome"), MODOU);
+modouHome.prop.innerHTML = `<g transform="translate(0,-70) rotate(-8)"><rect x="-44" y="-86" width="88" height="172" rx="16" fill="#17191F"/><rect x="-36" y="-76" width="72" height="150" rx="10" fill="#FFFDF7"/><image href="assets/icon-512.png" x="-24" y="-40" width="48" height="48"/></g>`;
+const modouMonth = person($("modouMonth"), MODOU);
+(function () {
+  const bars = $("bars"); bars.list = [];
+  const h = [70, 110, 90, 150, 130, 190, 230];
+  h.forEach((v, i) => { bars.list.push([el("rect", { x: -320 + i * 96, y: 230, width: 62, height: 0, rx: 12, fill: i === h.length - 1 ? "#F6B800" : "#2B9A66" }, bars), v]); });
+})();
+
+// ---------- Sous-titres ----------
+function caption(t) {
+  let txt = "";
+  let fr = "";
+  for (let i = 0; i < CAPS.length; i++) if (t >= T.s[i] - 0.1 && t < T.s[i] + T.d[i] + 0.35) { txt = CAPS[i].lang === "wo" ? CAPS[i].text : ""; fr = CAPS[i].fr; }
+  const cap = $("cap");
+  if (cap.dataset.t !== txt + fr) { cap.dataset.t = txt + fr; cap.innerHTML = txt ? `<span class="wo">${txt}</span>${fr ? `<span class="fr"><span>${fr}</span></span>` : ""}` : ""; }
+}
+
+// ---------- Horloge des scènes ----------
+function seek(t) {
+  const S = T.s, D = T.duration;
+  const sc = (k) => S[k] - 0.45; // début de la scène k
+  // --- boutique : scènes 1 (nuit), 3 (jour, ami), 5 (Modou parle)
+  const inS1 = t < sc(1) + 0.4, inS3 = t >= sc(2) && t < sc(3) + 0.4, inS5 = t >= sc(4) - 0.4 && t < sc(4) + 6.0;
+  const shopOn = inS1 || inS3 || inS5;
+  $("shop").setAttribute("opacity", shopOn ? Math.max(win(t, -1, sc(1) + 0.4, 0.4), win(t, sc(2), sc(3) + 0.4, 0.4), win(t, sc(4) - 0.3, sc(4) + 5.8, 0.4)) : 0);
+  const night = inS1 ? 1 : 0;
+  $("nightWall").setAttribute("opacity", night); $("doorNight").setAttribute("opacity", night); $("moon").setAttribute("opacity", night); $("sun").setAttribute("opacity", 1 - night);
+  $("shopNight").setAttribute("opacity", night * 0.28);
+  const sway = Math.sin(t * 1.6) * (inS1 ? 5 : 2);
+  $("lamp").setAttribute("transform", `translate(430,0) rotate(${sway})`); $("glow").setAttribute("opacity", night);
+  // horloge : il est tard (23 h 40 qui avance)
+  const mins = inS1 ? 40 + t * 3 : 10;
+  $("mh").setAttribute("transform", `rotate(${mins * 6})`); $("hh").setAttribute("transform", `rotate(${(inS1 ? 23 : 10) * 30 + mins * .5})`);
+  // caméra boutique
+  let cam = "";
+  if (inS1) { const k = eio(t / (sc(1) + 0.4)); cam = `translate(540,960) scale(${lerp(1.0, 1.16, k)}) translate(-540,${-960 + lerp(0, -40, k)})`; }
+  else if (inS3) { const k = eio((t - sc(2)) / 5); cam = `translate(540,960) scale(${lerp(1.08, 1.0, k)}) translate(-540,-960)`; }
+  else if (inS5) { const k = eio((t - sc(4)) / 5.8); cam = `translate(540,960) scale(${lerp(1.0, 1.22, k)}) translate(${-540 + lerp(0, 60, k)},${-960 + lerp(0, -60, k)})`; }
+  $("shop").setAttribute("transform", cam);
+  // Modou
+  if (inS1) {
+    const k = prog(t, 2.0, 1.2), scratch = Math.sin(t * 7) * 6 * clamp((t - 2.6) * 2) * clamp((sc(1) - t));
+    face(modou, t, { mood: -0.9, talk: 0, look: -0.6 + Math.sin(t * .8) * .3, tilt: -6 + Math.sin(t * .7) * 2, nod: 18 });
+    modou.armRot.setAttribute("transform", `rotate(${lerp(0, 150, eio(k)) + scratch})`);
+    $("mPhone").setAttribute("opacity", 0);
+  } else if (inS3) {
+    const lt = t - sc(2);
+    face(modou, t, { mood: lerp(-0.6, 0.6, eo((lt - 4.6) / 0.6)), talk: 0, look: clamp(lt - 0.6) * 1, tilt: 4 });
+    modou.armRot.setAttribute("transform", "rotate(0)");
+    $("mPhone").setAttribute("opacity", 0);
+  } else if (inS5) {
+    const lt = t - sc(4), speak = lt > 3.75 && lt < 5.45;
+    const talk = speak ? 0.35 + 0.65 * Math.abs(Math.sin(lt * 11)) * Math.abs(Math.sin(lt * 3.3 + 1)) : 0;
+    face(modou, t, { mood: speak ? 0.4 : 0.9, talk, look: 0.4, tilt: speak ? -3 : 3 });
+    modou.armRot.setAttribute("transform", `rotate(${lerp(30, 128, eo((lt - 2.6) / 0.6))})`);
+    $("mPhone").setAttribute("opacity", 1);
+  }
+  // signes « ? » (scène 1)
+  qMarks.forEach((g, i) => {
+    const a = 3.4 + i * 0.5, o = win(t, a, sc(1), 0.3) * (inS1 ? 1 : 0);
+    g.setAttribute("opacity", o);
+    g.setAttribute("transform", `translate(${[240, 720, 520, 300, 800][i]},${[760, 640, 520, 600, 560][i] - (t - a) * 18}) scale(${back((t - a) / 0.4)})`);
+  });
+  // ami Ibou (scène 3)
+  const it = t - sc(2);
+  const ibX = inS3 ? lerp(1300, 870, eo(it / 1.1)) : 1300;
+  $("ibou").setAttribute("transform", `translate(${ibX},1150)`);
+  face(ibou, t, { mood: 0.9, talk: inS3 && it > 4.1 && it < 5.3 ? 0.3 + 0.6 * Math.abs(Math.sin(it * 12)) : 0, look: -0.9, blinkSeed: 1.3, tilt: -3 });
+  ibou.armRot.setAttribute("transform", `rotate(${inS3 ? lerp(0, 120, eo((it - 3.6) / 0.5)) : 0})`);
+  bubble.setAttribute("opacity", inS3 ? win(t, sc(2) + 4.1, sc(3) + 0.2, 0.2) : 0);
+  bubble.setAttribute("transform", `translate(800,500) scale(${back((it - 4.1) / 0.35)})`);
+  // Modou parle (scène 5) : bulle + ondes
+  const lt5 = t - sc(4);
+  saidB.setAttribute("opacity", inS5 ? win(t, sc(4) + 3.7, sc(4) + 5.9, 0.2) : 0);
+  saidB.setAttribute("transform", `translate(520,600) scale(${back((lt5 - 3.7) / 0.35)})`);
+  waves.setAttribute("opacity", inS5 && lt5 > 3.75 && lt5 < 5.45 ? 1 : 0);
+  waves.setAttribute("transform", `translate(440,880)`);
+  waves.querySelectorAll(".wv").forEach((w, i) => w.setAttribute("opacity", 0.3 + 0.7 * Math.abs(Math.sin(t * 6 - i))));
+  // sacs de riz qui partent quand la vente est dite (scène 5)
+  items.row1.forEach((u, i) => {
+    let dx = 0, o = 1;
+    if (i >= 5) { const k = eio((t - sc(4) - 5.0) / 0.8); dx = k * 400; o = 1 - k; if (t < sc(4) - 0.5) { dx = 0; o = 1; } }
+    if (inS1 && i < 3) o = 0.35;
+    u.setAttribute("opacity", o); u.setAttribute("transform", `translate(${110 + i * (640 / 6) + dx},468) scale(1.15)`);
+  });
+
+  // --- scène 2 : gros plans
+  const p2 = $("probs");
+  const a2 = sc(1), b2 = sc(2);
+  p2.setAttribute("opacity", win(t, a2, b2, 0.35));
+  const third = (b2 - a2) / 3;
+  const cuts = [a2, S[1] + 2.75, S[1] + 4.85, b2];
+  const parts = [$("pStock"), $("pDebt"), $("pCash")];
+  parts.forEach((g, i) => {
+    const a = cuts[i], o = win(t, a, cuts[i + 1], 0.3);
+    g.setAttribute("opacity", o);
+    g.setAttribute("transform", `translate(540,960) scale(${lerp(1.06, 1, eo((t - a) / 0.6))}) translate(-540,-960)`);
+  });
+  const sk = $("pStock"); sk.slots.forEach((u, i) => { const k = eio((t - a2 - 0.5 - i * 0.35) / 0.4); u.setAttribute("opacity", 1 - k); u.setAttribute("transform", `translate(${210 + i * 165},${690 - k * 40}) scale(1.9)`); });
+  sk.q.setAttribute("opacity", clamp((t - a2 - 1.9) / 0.2)); sk.q.setAttribute("transform", `translate(540,560) scale(${back((t - a2 - 1.9) / 0.4)})`);
+  $("pDebt").pages.forEach((g, i) => { const k = eio((t - cuts[1] - 1.3 - i * 0.2) / 0.5); g.setAttribute("opacity", 1 - k); g.setAttribute("transform", `translate(${k * (i % 2 ? 260 : -260)},${-k * 320}) rotate(${k * (i % 2 ? 18 : -18)} 540 520)`); });
+  $("pCash").bills.forEach((g, i) => { const k = eio((t - cuts[2] - 0.6 - i * 0.18) / 0.9); const x = 260 + i * 95, y = 790; g.setAttribute("opacity", 1 - k * .9); g.setAttribute("transform", `translate(${x + k * (i - 3) * 90},${y - k * (520 + i * 40)}) rotate(${k * (i - 3) * 22})`); });
+
+  // --- scènes 4-5 : le téléphone
+  const a4 = sc(3), b4 = sc(4) + 0.2, r5 = sc(4) + 5.6, e5 = sc(5) + 0.4;
+  const ph = $("phoneScene");
+  const result = t >= r5 - 0.4;
+  ph.setAttribute("opacity", Math.max(win(t, a4, b4, 0.35), win(t, r5, e5, 0.35)));
+  const pt = result ? 6 : t - a4;
+  $("appShot").setAttribute("href", result ? "assets/05-vente.png" : "assets/03-parler.png");
+  const okPop = $("okPop"); okPop.setAttribute("opacity", result ? clamp((t - r5 - 0.5) / 0.2) : 0); okPop.setAttribute("transform", `translate(150,-300) scale(${back((t - r5 - 0.5) / 0.4)})`);
+  const enter = eo(pt / 0.6);
+  $("bigPhone").setAttribute("transform", `translate(540,${lerp(1200, 880, enter)}) rotate(${lerp(6, 0, enter)})`);
+  $("hand").setAttribute("opacity", enter);
+  const dl = clamp((pt - 0.9) / 1.3);
+  $("dlBar").setAttribute("width", 400 * dl); $("dlText").textContent = dl < 1 ? (dl > 0 ? "Téléchargement…" : "Télécharger") : "Installé ✓";
+  const homeOn = pt > 2.5, appOn = pt > 3.6;
+  $("ps-store").setAttribute("opacity", homeOn ? 0 : 1);
+  $("ps-home").setAttribute("opacity", homeOn && !appOn ? 1 : 0);
+  $("newIcon").setAttribute("transform", `translate(-150,110) scale(${back((pt - 2.6) / 0.4)})`);
+  const rip = $("tapRipple"), rk = clamp((pt - 3.2) / 0.4);
+  rip.setAttribute("opacity", pt > 3.2 && pt < 3.6 ? 1 - rk : 0); rip.setAttribute("transform", `translate(${540 - 150},${880 + 110}) scale(${0.6 + rk * 1.4})`);
+  $("ps-app").setAttribute("opacity", appOn ? 1 : 0);
+  const splash = clamp(1 - (pt - 4.4) / 0.4);
+  $("appSplash").setAttribute("opacity", splash); $("appSplashLogo").setAttribute("opacity", splash);
+  $("appSplashLogo").setAttribute("transform", `translate(0,0)`);
+  // écran Jokko : l'image glisse doucement
+  $("appShot").setAttribute("y", -470 - (result ? clamp((t - r5) / 2.5) * 56 : 0));
+
+  // --- scène 6 : cartes puis maison
+  const a6 = sc(5), mid6 = S[5] + 4.55, b6 = sc(6);
+  $("clear").setAttribute("opacity", win(t, a6, mid6, 0.35));
+  $("cards").list.forEach((g, i) => {
+    const k = back((t - a6 - 0.2 - i * 0.55) / 0.5);
+    g.setAttribute("transform", `translate(${540 + (1 - clamp(k)) * 900},${430 + i * 330}) scale(${0.9 + 0.1 * clamp(k)})`);
+    g.ok.setAttribute("transform", `translate(350,-10) scale(${back((t - a6 - 0.8 - i * 0.55) / 0.35)})`);
+  });
+  $("home").setAttribute("opacity", win(t, mid6, b6, 0.35));
+  const ht = t - mid6;
+  const buzz = ht > 1.0 && ht < 1.6 ? Math.sin(ht * 80) * 3 : 0;
+  face(modouHome, t, { mood: lerp(0.2, 1, eo((ht - 1.6) / 0.5)), look: 0.2, tilt: 2 + buzz * 0.3, blinkSeed: 0.6 });
+  modouHome.armRot.setAttribute("transform", `rotate(${lerp(20, 112, eo((ht - 1.0) / 0.5)) + buzz})`);
+  $("notif").setAttribute("opacity", ht > 1.2 ? clamp((ht - 1.2) / 0.3) : 0);
+  $("notif").setAttribute("transform", `translate(540,${lerp(250, 420, eo((ht - 1.2) / 0.45))})`);
+  $("home").setAttribute("transform", `translate(540,960) scale(${lerp(1.0, 1.06, eio(ht / 5))}) translate(-540,-960)`);
+
+  // --- scène 7 : fin du mois
+  const a7 = sc(6), b7 = S[6] + 4.4;
+  $("month").setAttribute("opacity", win(t, a7, b7, 0.35));
+  const mt = t - a7;
+  $("calDay").textContent = mt < 0.7 ? "28" : mt < 1.2 ? "29" : "30";
+  $("calendar").setAttribute("transform", `translate(380,470) scale(${1 + (mt > 0.7 && mt < 0.85 ? 0.06 : 0) + (mt > 1.2 && mt < 1.35 ? 0.06 : 0)})`);
+  const pk = eo((mt - 1.6) / 1.6);
+  $("profitNum").textContent = `${Math.round(185000 * pk).toLocaleString("fr-FR").replace(/ /g, " ")} F`;
+  $("bars").list.forEach(([r, v], i) => { const k = eo((mt - 1.6 - i * 0.12) / 0.7); r.setAttribute("height", v * k); r.setAttribute("y", 230 - v * k); });
+  face(modouMonth, t, { mood: lerp(0.3, 1, eo((mt - 2.6) / 0.5)), look: -0.6, tilt: -4, blinkSeed: 2.2 });
+  modouMonth.armRot.setAttribute("transform", `rotate(${lerp(0, 150, eo((mt - 3.0) / 0.5))})`);
+  $("modouMonth").setAttribute("transform", `translate(${lerp(1300, 820, eo((mt - 2.2) / 0.7))},640) scale(.62)`);
+
+  // --- scène 8 : logo
+  const a8 = S[6] + 4.0;
+  $("end").setAttribute("opacity", clamp((t - a8) / 0.4));
+  const et = t - a8;
+  $("endLogo").setAttribute("transform", `translate(540,760) scale(${back(et / 0.55)}) translate(-540,-760)`);
+  $("endRing").setAttribute("r", Math.max(0, 300 * eo(et / 0.6) + Math.sin(t * 2) * 6));
+  for (const [id, d] of [["endName", 0.35], ["endTag", 0.55], ["endPills", 0.85], ["endCfc", 1.3]]) {
+    const k = eo((et - d) / 0.5); $(id).setAttribute("opacity", k); $(id).setAttribute("transform", `translate(0,${(1 - k) * 40})`);
+  }
+
+  // --- accroche (3 premières secondes) et sous-titres
+  const hk = $("hook");
+  hk.style.opacity = win(t, 0, 4.2, 0.35);
+  hk.style.transform = `translateY(${(1 - eo(t / 0.6)) * 40}px)`;
+  caption(t < S[6] + 4.6 ? t : -1);
+}
+$("hook").innerHTML = "Ndax xam nga<br><em>lu ngay am ?</em><small>Tu sais ce que tu gagnes ?</small>";
+window.seek = seek;
+fetch("timing.json").then((r) => r.json()).then((j) => Object.assign(T, j)).catch(() => {}).then(() => fetch("script.json")).then((r) => r.json()).then((j) => { CAPS = j; }).catch(() => {}).finally(() => {
+  seek(0);
+  document.fonts.ready.then(() => { window.READY = true; });
+  if (!location.search.includes("render")) { const t0 = performance.now(); const loop = () => { seek(((performance.now() - t0) / 1000) % T.duration); requestAnimationFrame(loop); }; loop(); }
+});
+</script>
+</body>
+</html>
