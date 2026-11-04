@@ -125,11 +125,24 @@ export function metierInstruction(activity: string | undefined | null): string {
 
 const DAY = 86_400_000;
 
-/** Articles qui périment bientôt (dans `days` jours) ou déjà périmés, du plus urgent au moins urgent. */
-export function expiringSoon<T extends { expiresAt?: string; stock: number }>(products: T[], days = 30, now = Date.now()): Array<T & { daysLeft: number }> {
+/**
+ * Articles (ou lots) qui périment bientôt (dans `days` jours) ou déjà périmés, du plus urgent au moins urgent.
+ * Un article avec des lots donne une ligne par lot ; sinon une ligne avec sa date.
+ */
+export function expiringSoon<T extends { expiresAt?: string; stock: number; lots?: Array<{ expiresAt: string; qty: number; lot?: string }> }>(
+  products: T[],
+  days = 30,
+  now = Date.now(),
+): Array<T & { daysLeft: number; lotQty: number; lotRef?: string }> {
+  const left = (d: string) => Math.ceil((new Date(`${d}T23:59:59`).getTime() - now) / DAY);
   return products
-    .filter((p) => p.expiresAt && p.stock > 0)
-    .map((p) => ({ ...p, daysLeft: Math.ceil((new Date(`${p.expiresAt}T23:59:59`).getTime() - now) / DAY) }))
+    .flatMap((p) =>
+      p.lots?.length
+        ? p.lots.filter((l) => l.qty > 0).map((l) => ({ ...p, expiresAt: l.expiresAt, daysLeft: left(l.expiresAt), lotQty: l.qty, ...(l.lot ? { lotRef: l.lot } : {}) }))
+        : p.expiresAt && p.stock > 0
+          ? [{ ...p, daysLeft: left(p.expiresAt), lotQty: p.stock }]
+          : [],
+    )
     .filter((p) => p.daysLeft <= days)
     .sort((a, b) => a.daysLeft - b.daysLeft);
 }

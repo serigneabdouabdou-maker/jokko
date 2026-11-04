@@ -12,7 +12,7 @@ type NativeDetectorClass = {
   getSupportedFormats?: () => Promise<string[]>;
 };
 
-const WANTED = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"];
+const WANTED = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code", "data_matrix"];
 
 export type CameraScan = { stop: () => void; engine: "telephone" | "zxing" };
 

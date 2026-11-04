@@ -57,6 +57,8 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
 import { METIERS, expiringSoon, metierOf } from "@/data/metiers";
+import { fitShopLots, removeLot } from "@/data/lots";
+import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
@@ -607,7 +609,9 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const shop = currentShop(profile);
   const today = useMemo(() => buildReport(shop, periodOf("jour")), [shop]);
   const late = useMemo(() => overdueDebts(shop), [shop]);
-  function commit(next: Shop) {
+  function commit(input: Shop) {
+    // Lots des médicaments : ce qui est vendu sort d'abord des lots qui périment le plus tôt.
+    const next = fitShopLots(input);
     // Patron avec plusieurs boutiques : un prix changé ici peut être mis partout (proposé, jamais automatique).
     const before = profile.shops.find((s) => s.id === next.id);
     if (before && roleIn(profile, next.id) === "patron" && can(next, "boutiques")) {
@@ -1393,7 +1397,15 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                   </button>
                 )}
                 <div className="list">
-                  {expiringSoon(shop.products, 30).map((p) => <article key={`exp-${p.id}`} className="is-low"><span>{p.name} <em><Icon name="alerte" size="sm" />{p.daysLeft < 0 ? "périmé" : p.daysLeft === 0 ? "périme aujourd'hui" : `périme dans ${p.daysLeft} j`}</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
+                  {expiringSoon(shop.products, 30).map((p) => (
+                    <article key={`exp-${p.id}-${p.expiresAt}-${p.lotRef ?? ""}`} className="is-low">
+                      <span>{p.name} <em><Icon name="alerte" size="sm" />{p.daysLeft < 0 ? "périmé" : p.daysLeft === 0 ? "périme aujourd'hui" : `périme dans ${p.daysLeft} j`}</em><small>{new Date(`${p.expiresAt}T12:00:00`).toLocaleDateString("fr-FR")}{p.lotRef ? ` · lot ${p.lotRef}` : ""}</small></span>
+                      <b className="num">{p.lotQty} {p.unit}</b>
+                      {patron && p.daysLeft < 0 && p.lots?.length ? (
+                        <Button variant="outline" className="h-9 rounded-full px-3" onClick={() => commit(removeLot(shop, p.id, p.expiresAt!, p.lotRef))}>Retirer</Button>
+                      ) : null}
+                    </article>
+                  ))}
                   {lowStock(shop).map((p) => <article key={p.id} className="is-low"><span>{p.name} <em><Icon name="stockBas" size="sm" />stock bas</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
                   {shop.sales.slice(0, 4).map((s) => <article key={s.id}><span>{s.label}</span><b className="num">{amount(s.amount)}</b></article>)}
                 </div>
@@ -1471,7 +1483,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
-  const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | null>(null);
+  const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | "reception" | null>(null);
   const toggle = (t: typeof tool) => setTool((cur) => (cur === t ? null : t));
   const codeOwner = (code: string) =>
     shop.products.find((p) => (p.barcode && normalizeCode(p.barcode) === code) || (p.retail?.barcode && normalizeCode(p.retail.barcode) === code))?.id;
@@ -1483,6 +1495,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
             <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}><Icon name="micro" size="sm" />Ajouter en parlant</Button>
             <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}><Icon name="etiquette" size="sm" />Changer les prix</Button>
+            {(metierOf(shop.activity).peremption || shop.products.some((p) => p.lots?.length)) && <Button variant={tool === "reception" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("reception")}><Icon name="scanner" size="sm" />Réception (dates)</Button>}
             {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
           </div>
         )}
@@ -1491,6 +1504,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
       {canEdit && tool === "voix" && <StockEntry shop={shop} lang={lang} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "prix" && <PriceTool shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "etiquettes" && <Labels shop={shop} commit={commit} onClose={() => setTool(null)} />}
+      {canEdit && tool === "reception" && <ReceiveLots shop={shop} commit={commit} onClose={() => setTool(null)} />}
       <div className="stock-list">
         {shop.products.map((p) => {
           const low = p.stock <= p.min;

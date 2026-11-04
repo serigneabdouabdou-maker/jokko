@@ -20,9 +20,15 @@ export type Product = {
   barcode?: string;
   /** Autres noms (wolof, surnoms) : « diwu oto » pour l'huile moteur. Aident Jokko à reconnaître l'article. */
   aliases?: string[];
-  /** Date de péremption (AAAA-MM-JJ) : médicaments, lait, conserves… Jokko prévient avant. */
+  /** Date de péremption (AAAA-MM-JJ) : médicaments, lait, conserves… Jokko prévient avant.
+   *  Avec des lots, c'est la date du lot qui périme le plus tôt. */
   expiresAt?: string;
+  /** Lots reçus avec leur date (pharmacie) : vendus du plus proche au plus lointain. */
+  lots?: Lot[];
 };
+
+/** Un lot : combien d'unités, leur date de péremption, et le numéro de lot lu sur la boîte. */
+export type Lot = { expiresAt: string; qty: number; lot?: string };
 
 /** Réparation au comptoir (téléphones, ordinateurs…) : le client laisse l'appareil, revient le chercher, parfois des mois après. */
 export type RepairStatus = "depot" | "repare" | "rendu" | "annule";

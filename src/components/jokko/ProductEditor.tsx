@@ -83,8 +83,10 @@ export function ProductEditor({
     if (code.trim()) next.barcode = cleanCode(code);
     const names = [...new Set(aliases.split(/[,;\n]/).map((a) => a.trim()).filter((a) => a && a.toLowerCase() !== next.name.toLowerCase()))].slice(0, 8);
     if (names.length) next.aliases = names;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(expires)) next.expiresAt = expires;
-    else delete next.expiresAt;
+    if (product.lots?.length) {
+      next.lots = product.lots;
+      if (product.expiresAt) next.expiresAt = product.expiresAt;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(expires)) next.expiresAt = expires;
     if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp), ...(retailCode.trim() ? { barcode: cleanCode(retailCode) } : {}) };
     // Le stock n'est remplacé que si on l'a changé ici (une vente à la voix a pu le modifier entre-temps).
     onSave(next, stock.trim() !== String(product.stock));
@@ -109,7 +111,13 @@ export function ProductEditor({
       </div>
       <div className="field">
         <Label htmlFor="pe-expires">Date de péremption (si l'article périme)</Label>
-        <Input id="pe-expires" type="date" className="h-11" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        {product.lots?.length ? (
+          <p className="note">
+            Lots : {[...product.lots].sort((a, b) => a.expiresAt.localeCompare(b.expiresAt)).map((l) => `${l.qty} ${product.unit} → ${new Date(`${l.expiresAt}T12:00:00`).toLocaleDateString("fr-FR")}${l.lot ? ` (lot ${l.lot})` : ""}`).join(" · ")}. Ajoute une livraison avec « Réception (dates) ».
+          </p>
+        ) : (
+          <Input id="pe-expires" type="date" className="h-11" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        )}
         <p className="note">Jokko te prévient 30 jours avant. Utile pour les médicaments, le lait, les conserves.</p>
       </div>
       <div className="grid-2">

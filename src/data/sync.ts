@@ -33,6 +33,7 @@ const toRow = {
     barcode: p.barcode ?? null, retail_barcode: p.retail?.barcode ?? null,
     aliases: p.aliases?.length ? p.aliases : null,
     expires_at: opt(p.expiresAt),
+    lots: p.lots?.length ? p.lots : null,
   }),
   clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt) }),
   sales: (s: Sale, shopId: string): Row => ({
@@ -375,6 +376,12 @@ export function rowsToShop(rows: ShopRows): Shop {
       if (code) product.barcode = code;
       const expires = optStr(r.expires_at);
       if (expires) product.expiresAt = expires.slice(0, 10);
+      if (Array.isArray(r.lots)) {
+        const lots = (r.lots as Row[])
+          .map((l) => ({ expiresAt: str(l.expiresAt).slice(0, 10), qty: num(l.qty), ...(optStr(l.lot) ? { lot: str(l.lot) } : {}) }))
+          .filter((l) => /^\d{4}-\d{2}-\d{2}$/.test(l.expiresAt) && l.qty > 0);
+        if (lots.length) product.lots = lots;
+      }
       if (Array.isArray(r.aliases)) {
         const aliases = (r.aliases as unknown[]).map((a) => String(a ?? "").trim()).filter(Boolean);
         if (aliases.length) product.aliases = aliases;

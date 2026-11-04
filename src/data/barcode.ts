@@ -1,3 +1,4 @@
+import { gtinToEan, parseGs1 } from "./gs1";
 import type { Product, Shop } from "../model";
 
 /**
@@ -21,6 +22,9 @@ export function isValidEan13(code: string): boolean {
 
 /** Code lu (caméra, douchette, clavier) → forme comparable. UPC-A (12 chiffres) = EAN-13 commençant par 0. */
 export function normalizeCode(raw: string): string {
+  // Code carré d'une boîte de médicament (GS1 Datamatrix) : on garde le code du produit (GTIN → EAN-13).
+  const gs1 = parseGs1(raw);
+  if (gs1) return gtinToEan(gs1.gtin);
   const c = raw.trim().replace(/\s+/g, "");
   return /^\d{12}$/.test(c) ? `0${c}` : c;
 }
