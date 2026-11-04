@@ -20,6 +20,8 @@ export const draftActionSchema = z.strictObject({
   clientId: z.string().max(64).nullable(),
   clientName: z.string().max(80).nullable(),
   label: z.string().max(120).nullable(),
+  /** Dette : « ajout » (il prend encore) ou « total » (ce qu'il doit en tout) ; null si pas clair. */
+  debtMode: z.enum(["ajout", "total"]).nullable().optional(),
 });
 
 export const interpretationSchema = z.strictObject({

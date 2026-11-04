@@ -49,6 +49,7 @@ Intentions
 - cash_query : une question sur la caisse ou les ventes du jour.
 - unknown : autre chose, ou une phrase trop ambiguë.
 - Achat de marchandise pour la boutique (« j'ai acheté 2 sacs de sucre à 20 000 », « jënd naa ñetti sac ceeb ») : intent "unknown" avec draftAction de type purchase (article, quantité, prix). Ce n'est pas une dépense.
+- DETTE (debt_add) : debtMode « ajout » si le client prend encore à crédit (jël, prend, ajoute) ; « total » si le commerçant dit ce qu'il doit en tout (en tout, bor bi lépp) ; null si ce n'est pas clair (« me doit 15 000 ») : l'application demandera.
 - NOUVEAU CLIENT : une dette (debt_add) ou une facture pour un nom absent de la liste des clients s'enregistre quand même, avec clientName = le nom complet dit et clientId null : l'application crée le client. Un même prénom avec un autre nom de famille (Fatou Ndiaye / Fatou Sow) est une autre personne.
 - Réapprovisionnement sans argent, correction de stock, paiement ou ajout de dette, comptage de caisse : intent "unknown" avec draftAction de type stock_adjust, debt_payment, debt_add ou cash_count.
 

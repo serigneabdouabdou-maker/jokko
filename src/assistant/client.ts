@@ -21,6 +21,8 @@ export type DraftAction = {
   dueDays?: number | null;
   /** Prix d'UN article (« 20 000 chacun ») : le total est calculé par le code, quantité × prix. */
   unitPrice?: number | null;
+  /** Dette : « ajout » = elle prend encore (on additionne) ; « total » = ce qu'elle doit en tout (on remplace). */
+  debtMode?: "ajout" | "total" | null;
 };
 
 export type Interpretation = {

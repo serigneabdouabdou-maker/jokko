@@ -177,14 +177,20 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
   if (action.type === "debt_add") {
     if (!amount || (!known && !heardClient)) return null;
     const { clients, client } = withClient(shop, known, heardClient);
-    const debt = client.debt + amount;
+    // « Elle me doit en tout 15 000 » : la dette devient 15 000. Sinon on ajoute à ce qu'elle devait.
+    const total = action.debtMode === "total";
+    const debt = total ? amount : client.debt + amount;
     // Échéance : celle donnée par le commerçant, sinon 30 jours ; une dette déjà en cours garde la sienne.
     const days = action.dueDays && action.dueDays > 0 ? action.dueDays : null;
     const dueAt = days ? new Date(Date.now() + days * DAY).toISOString() : client.debt > 0 && client.dueAt ? client.dueAt : new Date(Date.now() + DEFAULT_DUE_DAYS * DAY).toISOString();
     return {
       shop: { ...shop, clients: clients.map((c) => (c.id === client.id ? { ...c, debt, dueAt } : c)) },
       amount,
-      summary: `${client.name} doit ${money(debt)}`,
+      summary: total
+        ? `${client.name} doit en tout ${money(debt)}${client.debt > 0 ? ` (avant : ${money(client.debt)})` : ""}`
+        : client.debt > 0
+          ? `${client.name} : + ${money(amount)} · doit en tout ${money(debt)}`
+          : `${client.name} doit ${money(debt)}`,
     };
   }
 

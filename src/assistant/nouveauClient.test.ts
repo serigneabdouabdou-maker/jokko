@@ -64,3 +64,37 @@ describe("numéro du nouveau client, dicté à Jokko", () => {
     expect(wrongAmounts("Bind naa ko. 77 567 47 25.", tool.values())).toEqual([]);
   });
 });
+
+describe("dette d'un client qui doit déjà : ajouter ou total ?", () => {
+  function withDebt() {
+    const s = setup(["Fatou Ndiaye"]);
+    s.desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "ñeenti junni", heard: "Fatou Ndiaye jël na bor ñeenti junni" } });
+    expect(s.shop().clients[0].debt).toBe(20000);
+    return s;
+  }
+
+  it("« Fatou Ndiaye me doit 15 000 » : Jokko demande, n'écrit rien", () => {
+    const { desk, shop } = withDebt();
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", montantDit: "15 000", heard: "Fatou Ndiaye me doit 15 000 francs" } }) as Record<string, unknown>;
+    expect(r.statut).toBe("ajout_ou_total");
+    expect(r.avant_wolof).toBe("ñeenti junni");
+    expect(r.ajout_wolof).toBe("ñetti junni");
+    expect(shop().clients[0].debt).toBe(20000);
+  });
+
+  it("« ajoute » : 20 000 + 15 000 = 35 000, et Jokko dit la dette totale", () => {
+    const { desk, shop } = withDebt();
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "ñetti junni", heard: "yokkal ñetti junni" } }) as Record<string, unknown>;
+    expect(r.montant_francs).toBe(15000);
+    expect(r.dette_totale).toBe(35000);
+    expect(r.dette_totale_en_wolof).toBe("juróom-ñaari junni");
+    expect(shop().clients[0].debt).toBe(35000);
+  });
+
+  it("« en tout » : la dette devient 15 000", () => {
+    const { desk, shop } = withDebt();
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "total", montantDit: "15 000", heard: "Fatou Ndiaye me doit 15 000 en tout" } }) as Record<string, unknown>;
+    expect(r.dette_totale).toBe(15000);
+    expect(shop().clients[0].debt).toBe(15000);
+  });
+});

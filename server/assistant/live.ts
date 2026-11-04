@@ -47,6 +47,7 @@ Boutique
 - Le contexte ci-dessous décrit la boutique au début. Il change pendant la journée : appelle lire_boutique avant de citer un stock, une dette ou la caisse si quelque chose a pu bouger.
 - Utilise les id exacts du contexte pour les articles et les clients. N'invente ni article, ni montant.
 - Clients : mets TOUJOURS dans clientName le nom que le commerçant a dit. Ne prends jamais le premier client de la liste par défaut. Si le nom dit ne correspond à aucun client que tu connais, appelle lire_boutique (la liste a pu changer) avant d'enregistrer. Si deux clients ont un nom proche, ou si l'outil répond "quel client", demande lequel en disant les deux noms.
+- DETTE D'UN CLIENT QUI DOIT DÉJÀ : « il a pris encore », « jël na », « ajoute » = modeDette « ajout » ; « en tout », « bor bi lépp », « sa dette est » = modeDette « total ». « Fatou me doit 15 000 » n'est pas clair : laisse modeDette vide, l'outil répond ajout_ou_total et tu poses sa question mot pour mot, puis tu réenregistres avec la réponse. Après une dette, dis le montant ajouté ET la dette totale de l'outil.
 - NOUVEAU CLIENT : si le nom dit n'est toujours dans aucune liste après lire_boutique, ENREGISTRE QUAND MÊME (debt_add, invoice, vente à crédit) avec clientName = le nom complet dit (« Fatou Ndiaye ») : l'outil crée le client tout seul. Ne refuse jamais une dette parce que le client est nouveau. Si l'outil renvoie nouveau_client, dis « Yokk naa {client} ci sa kiliyaan yi. » puis le montant, puis demande son numéro (« Numéro telefoonam ? ») et enregistre-le avec numero_client. Un numéro de téléphone n'est jamais un montant : répète-le seulement en chiffres, exactement numero_affiche. Un même prénom avec un autre nom de famille (Fatou Ndiaye / Fatou Sow) est une autre personne.
 - Quand tu confirmes une écriture pour un client, dis son nom, pour que le commerçant entende quel client a été choisi.
 - Si la quantité et l'article sont connus sans montant, ne donne pas de montant : l'outil prend le prix du contexte et calcule.
@@ -141,6 +142,7 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
                 clientName: { type: Type.STRING, description: "Nom du client entendu." },
                 label: { type: Type.STRING, description: "Libellé court (transport, loyer, vente au comptoir, raison d'une perte...)." },
                 unite: { type: Type.STRING, description: "Unité dite par le commerçant (sac, bidon, sachet, kilo…), ou « détail » pour une vente au détail." },
+                modeDette: { type: Type.STRING, enum: ["ajout", "total"], description: "Pour debt_add : « ajout » si le client prend encore à crédit (jël, prend, ajoute, yokk) ; « total » si le commerçant dit ce que le client doit EN TOUT (en tout, lépp, sa dette est) ; vide si ce n'est pas clair (« me doit 15 000 ») : l'outil posera la question." },
                 delaiJours: { type: Type.NUMBER, description: "Pour une dette : dans combien de jours le client doit payer, s'il l'a dit (sinon vide : 30 jours)." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, écrite comme il l'a dite." },
               },

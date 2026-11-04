@@ -26,7 +26,7 @@ const NOT_UNDERSTOOD = {
 /** Une écriture enregistrée, que le commerçant peut encore annuler. */
 export type Entry = { id: string; summary: string; heard: string; before: Shop; after: Shop; at: number; callId?: string; key?: string; amount?: number };
 
-export type Recorded = { ok: true; entry: Entry } | { ok: false; besoin: string };
+export type Recorded = { ok: true; entry: Entry } | { ok: false; besoin: string; question?: Record<string, number | string> };
 
 export type DeskDeps = {
   getShop: () => Shop;
@@ -71,6 +71,20 @@ export class LiveDesk {
     }
     if (this.deps.role?.() === "vendeur" && PATRON_ONLY.includes(action.type)) return { ok: false, besoin: PATRON_ONLY_MESSAGE };
     const before = this.deps.getShop();
+    // « Fatou me doit 15 000 » alors qu'elle doit déjà 20 000 : ajouter, ou est-ce le total ? Jokko ne devine pas.
+    const prior = action.type === "debt_add" && !action.debtMode && action.clientId ? before.clients.find((c) => c.id === action.clientId) : undefined;
+    if (prior && prior.debt > 0 && action.amount) {
+      const add = action.amount;
+      return {
+        ok: false,
+        besoin: `de savoir : ${prior.name} doit déjà ${fr(prior.debt)} (${francsToWolof(prior.debt)}). J'ajoute ${fr(add)} (total ${fr(prior.debt + add)}), ou sa dette totale est ${fr(add)} ?`,
+        question: {
+          avant: prior.debt, avant_wolof: francsToWolof(prior.debt),
+          ajout: add, ajout_wolof: francsToWolof(add),
+          total_si_ajout: prior.debt + add, total_si_ajout_wolof: francsToWolof(prior.debt + add),
+        },
+      };
+    }
     const applied = applyDraft(before, action);
     if (!applied) return { ok: false, besoin: missing(action) };
     return { ok: true, entry: this.commit(before, applied.shop, applied.summary, heard, { callId, key, amount: applied.amount }) };
@@ -192,6 +206,14 @@ export class LiveDesk {
       if (!result.ok && result.besoin === PATRON_ONLY_MESSAGE) {
         return { statut: "refuse", raison: PATRON_ONLY_MESSAGE, consigne: "N'enregistre rien. Dis en une phrase que seul le patron peut faire ça." };
       }
+      if (!result.ok && result.question) {
+        const q = result.question;
+        return {
+          statut: "ajout_ou_total",
+          ...q,
+          consigne: `Rien n'est enregistré. Demande en une phrase, avec ces montants exacts : en wolof « Amoon na ${q.avant_wolof}. Ma yokk ${q.ajout_wolof}, walla bor bi lépp ${q.ajout_wolof} la ? » ; en français « Elle devait déjà ${q.avant} F. J'ajoute ${q.ajout} F, ou sa dette totale est ${q.ajout} F ? ». Puis rappelle enregistrer avec modeDette « ajout » ou « total ».`,
+        };
+      }
       if (!result.ok) return { statut: "incomplet", besoin: result.besoin, consigne: "Rien n'est enregistré. Pose une seule question courte pour avoir cette information." };
       const low = lowStock(result.entry.after)
         .filter((p) => p.id === action.productId)
@@ -205,6 +227,20 @@ export class LiveDesk {
         montant_francs: amount ?? null,
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
+        ...(action.type === "debt_add"
+          ? (() => {
+              const was = new Map(result.entry.before.clients.map((c) => [c.id, c.debt]));
+              const changed = result.entry.after.clients.find((c) => was.get(c.id) !== c.debt);
+              if (!changed) return {};
+              const avant = was.get(changed.id) ?? 0;
+              return {
+                dette_avant: avant,
+                dette_totale: changed.debt,
+                dette_totale_en_wolof: francsToWolof(changed.debt),
+                ...(avant > 0 ? { consigne_dette: `Dis le montant ajouté (montant_en_wolof) ET la dette totale : « Bor bi lépp : ${francsToWolof(changed.debt)}. » (en français : « Dette totale : ${changed.debt} F. »)` } : {}),
+              };
+            })()
+          : {}),
         ...(created
           ? {
               nouveau_client: created.name,
@@ -382,6 +418,7 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
       unit: text(args.unite),
       dueDays: number(args.delaiJours),
       unitPrice: number(args.prixUnitaire),
+      debtMode: args.modeDette === "total" || args.debtMode === "total" ? "total" : args.modeDette === "ajout" || args.debtMode === "ajout" ? "ajout" : null,
     },
     ambigu,
   };
