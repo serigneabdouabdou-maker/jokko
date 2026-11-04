@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import examen from "./wolofExamen.json";
 import { extractSpokenAmount, francsToWolof, moneyAmountsSaid, spokenAmountToFrancs, wrongAmounts } from "./wolofNumbers";
-import { pickByName } from "./wolofNames";
+import { nameClash, pickByName } from "./wolofNames";
 import { sameSound } from "./wolofSpelling";
 
 type Echec = { dit: string; attendu: unknown; obtenu: unknown };
@@ -78,6 +78,18 @@ function balayage(): [Echec[], number] {
   return [ko, n];
 }
 
+function nouveauxClients(): Echec[] {
+  const items = examen.nouveaux_clients.cahier.map((name, i) => ({ id: String(i), name }));
+  const ko: Echec[] = [];
+  for (const q of examen.nouveaux_clients.phrases) {
+    const r = pickByName(items, q.dit);
+    const item = r.item && !nameClash(r.item.name, q.dit) ? r.item : undefined;
+    const nouveau = !item && !r.ambiguous.length;
+    if (nouveau !== q.nouveau || (!q.nouveau && item?.name !== q.client)) ko.push({ dit: q.dit, attendu: q.nouveau ? "nouveau client" : q.client, obtenu: nouveau ? "nouveau client" : item?.name ?? "?" });
+  }
+  return ko;
+}
+
 function ecritures(): Echec[] {
   const ko: Echec[] = [];
   for (const [a, b] of examen.ecritures.pareils) if (!sameSound(a, b)) ko.push({ dit: `${a} / ${b}`, attendu: "pareil", obtenu: "différent" });
@@ -87,7 +99,7 @@ function ecritures(): Echec[] {
 
 describe("examen de wolof", () => {
   it("score au-dessus du seuil", () => {
-    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], "Jokko dit le montant": [dire(), examen.dire.montants.length * 2 + examen.dire.garde_fou.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
+    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], "nouveaux clients": [nouveauxClients(), examen.nouveaux_clients.phrases.length], "Jokko dit le montant": [dire(), examen.dire.montants.length * 2 + examen.dire.garde_fou.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
     let total = 0, ok = 0;
     const lignes: string[] = [];
     for (const [nom, [ko, n]] of Object.entries(parts)) {

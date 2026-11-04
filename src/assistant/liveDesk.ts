@@ -6,7 +6,7 @@ import { extractSpokenAmount, francsToWolof, settleAmounts, spokenAmountToFrancs
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 import { Basket } from "./basket";
-import { distinguishes, expandHeard, type Named, pickByName, plain, sameName } from "./wolofNames";
+import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName } from "./wolofNames";
 
 export { expandHeard, pickByName, plain, sameName };
 
@@ -197,12 +197,20 @@ export class LiveDesk {
         .filter((p) => p.id === action.productId)
         .map((p) => `${p.name} : ${p.stock} ${p.unit}`);
       const amount = result.entry.amount;
+      const known = new Set(result.entry.before.clients.map((c) => c.id));
+      const created = result.entry.after.clients.find((c) => !known.has(c.id));
       return {
         statut: "enregistre",
         resume: result.entry.summary,
         montant_francs: amount ?? null,
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
+        ...(created
+          ? {
+              nouveau_client: created.name,
+              consigne_client: `Nouveau client créé : ${created.name}. Dis d'abord « Yokk naa ${created.name} ci sa kiliyaan yi. » (en français : « J'ai ajouté ${created.name} à tes clients. »), puis le montant. Il pourra ajouter son numéro dans Dettes pour les rappels WhatsApp.`,
+            }
+          : {}),
       };
     }
 
@@ -319,7 +327,9 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
   const productName = text(args.productName);
   const clientName = text(args.clientName);
   const product = resolveOne(shop.products, args.productId, productName);
-  const client = resolveOne(shop.clients, args.clientId, clientName);
+  const found = resolveOne(shop.clients, args.clientId, clientName);
+  // « Fatou Ndiaye » n'est pas « Fatou Sow » : un autre nom de famille = un nouveau client.
+  const client = found.item && clientName && nameClash(found.item.name, clientName) ? { item: undefined, ambiguous: [] } : found;
   const ambigu = client.ambiguous.length
     ? `quel client : ${client.ambiguous.map((c) => c.name).join(" ou ")} ?`
     : product.ambiguous.length

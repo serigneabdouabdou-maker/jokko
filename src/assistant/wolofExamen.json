@@ -729,5 +729,47 @@
         "pourquoi": "4 000 F au lieu de 8 000 F"
       }
     ]
+  },
+  "nouveaux_clients": {
+    "_lisezmoi": "Dette dictée pour un nom absent du cahier : Jokko crée le client, sans le rattacher à un homonyme.",
+    "cahier": [
+      "Fatou Sow",
+      "Moussa Diop",
+      "Awa Fall"
+    ],
+    "phrases": [
+      {
+        "dit": "Fatou Ndiaye",
+        "nouveau": true,
+        "pourquoi": "autre nom de famille que Fatou Sow"
+      },
+      {
+        "dit": "Faatu Njaay",
+        "nouveau": true
+      },
+      {
+        "dit": "Fatou",
+        "nouveau": false,
+        "client": "Fatou Sow"
+      },
+      {
+        "dit": "Faatu Sow",
+        "nouveau": false,
+        "client": "Fatou Sow"
+      },
+      {
+        "dit": "Moussa Ndiaye",
+        "nouveau": true
+      },
+      {
+        "dit": "Musaa Jóob",
+        "nouveau": false,
+        "client": "Moussa Diop"
+      },
+      {
+        "dit": "Ibrahima Ba",
+        "nouveau": true
+      }
+    ]
   }
 }

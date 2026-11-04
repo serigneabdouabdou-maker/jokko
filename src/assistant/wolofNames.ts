@@ -122,6 +122,18 @@ function alike(a: string, b: string): boolean {
   return NAME_VARIANTS.some((g) => g.some((x) => sameSound(x, a)) && g.some((x) => sameSound(x, b)));
 }
 
+/**
+ * Le nom entendu désigne-t-il une AUTRE personne ? « Fatou Ndiaye » quand le cahier n'a que « Fatou Sow » :
+ * même prénom, nom de famille différent → c'est un nouveau client, pas Fatou Sow.
+ * (Un prénom seul, « Fatou », reste rattaché à Fatou Sow ; s'il y a deux Fatou, Jokko demande.)
+ */
+export function nameClash(known: string, heard: string): boolean {
+  const kw = plain(known).split(" ").filter((w) => w.length >= 3);
+  const hw = plain(heard).split(" ").filter((w) => w.length >= 3);
+  if (kw.length < 2 || hw.length < 2) return false;
+  return hw.some((w) => !kw.some((x) => alike(x, w)));
+}
+
 export type Named = { id: string; name: string; aliases?: string[] };
 const namesOf = (item: Named) => [item.name, ...(item.aliases ?? [])].filter((n) => n && n.trim());
 
