@@ -208,7 +208,7 @@ export class LiveDesk {
         ...(created
           ? {
               nouveau_client: created.name,
-              consigne_client: `Nouveau client créé : ${created.name}. Dis d'abord « Yokk naa ${created.name} ci sa kiliyaan yi. » (en français : « J'ai ajouté ${created.name} à tes clients. »), puis le montant. Il pourra ajouter son numéro dans Dettes pour les rappels WhatsApp.`,
+              consigne_client: `Nouveau client créé : ${created.name}. Dis d'abord « Yokk naa ${created.name} ci sa kiliyaan yi. » (en français : « J'ai ajouté ${created.name} à tes clients. »), puis le montant, puis demande son numéro pour les rappels WhatsApp : « Numéro telefoonam ? » (en français : « Son numéro de téléphone ? »). S'il donne le numéro, appelle numero_client. S'il ne le connaît pas, n'insiste pas.`,
             }
           : {}),
       };
@@ -240,6 +240,28 @@ export class LiveDesk {
       };
     }
 
+    if (call.name === "numero_client") {
+      const shop = this.deps.getShop();
+      const name = typeof args.clientName === "string" ? args.clientName.trim() : "";
+      const heard = typeof args.heard === "string" ? args.heard.trim() : "";
+      const phone = senegalPhone(typeof args.numero === "string" ? args.numero : String(args.numero ?? ""));
+      if (!phone) {
+        return { statut: "incomplet", besoin: "un numéro sénégalais de 9 chiffres (77, 78, 76, 75, 70 ou 33…)", consigne: "N'enregistre rien. Redemande le numéro, chiffre par chiffre si besoin." };
+      }
+      const found = pickByName(shop.clients, name);
+      const client = found.item && !nameClash(found.item.name, name) ? found.item : undefined;
+      if (found.ambiguous.length) return { statut: "incomplet", besoin: `quel client : ${found.ambiguous.map((c) => c.name).join(" ou ")} ?` };
+      if (!client) return { statut: "incomplet", besoin: "le client : il doit déjà être dans le cahier (enregistre d'abord sa dette ou sa facture)" };
+      const after = { ...shop, clients: shop.clients.map((c) => (c.id === client.id ? { ...c, phone: phone.digits } : c)) };
+      this.commit(shop, after, `Numéro de ${client.name} : ${phone.shown}`, heard, { callId: call.id });
+      return {
+        statut: "enregistre",
+        client: client.name,
+        numero_affiche: phone.shown,
+        consigne: `Dis « Bind naa ko. » puis le numéro en chiffres, exactement « ${phone.shown} », pour que le commerçant vérifie. Les rappels WhatsApp de ${client.name} marchent maintenant.`,
+      };
+    }
+
     if (call.name === "annuler_derniere") {
       const last = this.last;
       if (!last || Date.now() - last.at > UNDO_WINDOW_MS) {
@@ -252,6 +274,18 @@ export class LiveDesk {
 
     return { statut: "outil_inconnu" };
   }
+}
+
+/**
+ * Numéro de téléphone sénégalais dicté (« 77 567 47 25 », « +221 77… », « 00221… ») → 9 chiffres.
+ * Mobiles : 70, 75, 76, 77, 78 ; fixes : 33. Sinon null (Jokko redemande).
+ */
+export function senegalPhone(said: string): { digits: string; shown: string } | null {
+  let d = said.replace(/\D/g, "");
+  if (d.startsWith("00221")) d = d.slice(5);
+  else if (d.startsWith("221") && d.length === 12) d = d.slice(3);
+  if (!/^(7[05678]|33)\d{7}$/.test(d)) return null;
+  return { digits: d, shown: `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}` };
 }
 
 /** Défait une écriture sans perdre les changements faits après elle. */

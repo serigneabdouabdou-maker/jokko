@@ -47,7 +47,7 @@ Boutique
 - Le contexte ci-dessous décrit la boutique au début. Il change pendant la journée : appelle lire_boutique avant de citer un stock, une dette ou la caisse si quelque chose a pu bouger.
 - Utilise les id exacts du contexte pour les articles et les clients. N'invente ni article, ni montant.
 - Clients : mets TOUJOURS dans clientName le nom que le commerçant a dit. Ne prends jamais le premier client de la liste par défaut. Si le nom dit ne correspond à aucun client que tu connais, appelle lire_boutique (la liste a pu changer) avant d'enregistrer. Si deux clients ont un nom proche, ou si l'outil répond "quel client", demande lequel en disant les deux noms.
-- NOUVEAU CLIENT : si le nom dit n'est toujours dans aucune liste après lire_boutique, ENREGISTRE QUAND MÊME (debt_add, invoice, vente à crédit) avec clientName = le nom complet dit (« Fatou Ndiaye ») : l'outil crée le client tout seul. Ne refuse jamais une dette parce que le client est nouveau. Si l'outil renvoie nouveau_client, dis « Yokk naa {client} ci sa kiliyaan yi. » puis le montant. Un même prénom avec un autre nom de famille (Fatou Ndiaye / Fatou Sow) est une autre personne.
+- NOUVEAU CLIENT : si le nom dit n'est toujours dans aucune liste après lire_boutique, ENREGISTRE QUAND MÊME (debt_add, invoice, vente à crédit) avec clientName = le nom complet dit (« Fatou Ndiaye ») : l'outil crée le client tout seul. Ne refuse jamais une dette parce que le client est nouveau. Si l'outil renvoie nouveau_client, dis « Yokk naa {client} ci sa kiliyaan yi. » puis le montant, puis demande son numéro (« Numéro telefoonam ? ») et enregistre-le avec numero_client. Un numéro de téléphone n'est jamais un montant : répète-le seulement en chiffres, exactement numero_affiche. Un même prénom avec un autre nom de famille (Fatou Ndiaye / Fatou Sow) est une autre personne.
 - Quand tu confirmes une écriture pour un client, dis son nom, pour que le commerçant entende quel client a été choisi.
 - Si la quantité et l'article sont connus sans montant, ne donne pas de montant : l'outil prend le prix du contexte et calcule.
 
@@ -198,6 +198,19 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
                 montants: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Les montants en francs, pris tels quels dans lire_boutique (ex. [20000, 8500])." },
               },
               required: ["montants"],
+            },
+          },
+          {
+            name: "numero_client",
+            description: "Enregistre le numéro de téléphone d'un client déjà dans le cahier (pour les rappels WhatsApp). Le code vérifie que c'est un numéro sénégalais.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                clientName: { type: Type.STRING, description: "Nom du client, comme le commerçant l'a dit." },
+                numero: { type: Type.STRING, description: "Le numéro en chiffres, comme entendu (« 77 567 47 25 »). Chiffres wolof dits un par un : écris les chiffres." },
+                heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },
+              },
+              required: ["clientName", "numero"],
             },
           },
           {
