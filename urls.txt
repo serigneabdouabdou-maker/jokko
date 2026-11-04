@@ -1,8 +1,1 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-1-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-2-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-3-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-4-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-5-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-6-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-7-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-8-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-8-v2.mp3
