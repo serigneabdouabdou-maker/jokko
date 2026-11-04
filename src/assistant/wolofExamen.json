@@ -2,96 +2,516 @@
   "_lisezmoi": "Examen de wolof de Jokko. Chaque ligne = une phrase réelle du comptoir et la bonne réponse. Écritures relevées dans les corpus publics (ALFFA, Kallaama CC-BY-4.0, WolBanking77 CC-BY-4.0, Common Voice wolof) et dans le lexique validé par le patron. Ajouter ici chaque phrase mal comprise du cahier des erreurs. Argent : nombres wolof en dërëm (×5), millions en francs.",
   "seuil": 0.95,
   "argent": [
-    { "dit": "Jaay naa ko ñaari junni", "francs": 10000 },
-    { "dit": "Juróomi téeméer la", "francs": 2500 },
-    { "dit": "benn junni ak juróomi téeméer", "francs": 7500 },
-    { "dit": "Ñatti junni la fey", "francs": 15000, "source": "Dakar : ñatt = 3 (corpus)" },
-    { "dit": "ñetti junni", "francs": 15000 },
-    { "dit": "xaf sér duma ci fey ñenti téeméer", "francs": 2000, "source": "Kallaama/ALFFA : ñenti" },
-    { "dit": "ñeenti téeméer", "francs": 2000 },
-    { "dit": "Juroom-ñatti junni", "francs": 40000, "source": "corpus" },
-    { "dit": "juroom ñetti téeméer", "francs": 4000 },
-    { "dit": "Médium bi, juróom ñetti téeméer ci weer wi", "francs": 4000 },
-    { "dit": "junni ak juróom benni téeméer", "francs": 8000 },
-    { "dit": "fukki junni", "francs": 50000 },
-    { "dit": "Ñaar-fukki junni", "francs": 100000, "source": "corpus" },
-    { "dit": "fanweeri junni", "francs": 150000 },
-    { "dit": "fan-weeri junni", "francs": 150000, "source": "corpus : fan-weer" },
-    { "dit": "téeméeri junni", "francs": 500000 },
-    { "dit": "benn milyoŋ", "francs": 1000000 },
-    { "dit": "ñaari milyoŋ ak téeméeri junni", "francs": 2500000 },
-    { "dit": "ñaar fukk dërëm", "francs": 100 },
-    { "dit": "juróom fukk dërëm", "francs": 250 },
-    { "dit": "fukk ak juróomi junni", "francs": 75000 },
-    { "dit": "juróom ñeent fukk dërëm", "francs": 450 },
-    { "dit": "téeméer", "francs": 500 },
-    { "dit": "ñaari téeméer", "francs": 1000 },
-    { "dit": "gnaari junni", "francs": 10000, "source": "écriture française" },
-    { "dit": "niaari junni", "francs": 10000 },
-    { "dit": "dioroomi téeméer", "francs": 2500, "source": "écriture française" },
-    { "dit": "juróom-benni junni", "francs": 30000 },
-    { "dit": "ñetti téeméer ak juróom fukk", "francs": 1750 },
-    { "dit": "deux mille cinq cents", "francs": 2500 },
-    { "dit": "10 000", "francs": 10000 },
-    { "dit": "ñaari mil", "francs": 2000 },
-    { "dit": "fukki mil", "francs": 10000 },
-    { "dit": "benn junni", "francs": 5000 },
-    { "dit": "juróomi junni", "francs": 25000 },
-    { "dit": "ñeent fukki junni", "francs": 200000 },
-    { "dit": "ñeen fukki junni", "francs": 200000, "source": "corpus : ñeen" },
-    { "dit": "ñetti téeméeri junni", "francs": 1500000 },
-    { "dit": "Moussa dafa ma ameel bor ñatti téeméer", "francs": 1500 },
-    { "dit": "Awa fey na ñaari junni ak juróomi téeméer", "francs": 12500 },
-    { "dit": "jaay naa ñaari saku ceeb, ñaar-fukki junni", "francs": 100000 },
-    { "dit": "Gnetti téeméer", "francs": 1500, "source": "écriture française" },
-    { "dit": "juróom ñatti téeméer", "francs": 4000 },
-    { "dit": "téeméeru junni", "francs": 500000, "source": "corpus : téeméeru" }
+    {
+      "dit": "Jaay naa ko ñaari junni",
+      "francs": 10000
+    },
+    {
+      "dit": "Juróomi téeméer la",
+      "francs": 2500
+    },
+    {
+      "dit": "benn junni ak juróomi téeméer",
+      "francs": 7500
+    },
+    {
+      "dit": "Ñatti junni la fey",
+      "francs": 15000,
+      "source": "Dakar : ñatt = 3 (corpus)"
+    },
+    {
+      "dit": "ñetti junni",
+      "francs": 15000
+    },
+    {
+      "dit": "xaf sér duma ci fey ñenti téeméer",
+      "francs": 2000,
+      "source": "Kallaama/ALFFA : ñenti"
+    },
+    {
+      "dit": "ñeenti téeméer",
+      "francs": 2000
+    },
+    {
+      "dit": "Juroom-ñatti junni",
+      "francs": 40000,
+      "source": "corpus"
+    },
+    {
+      "dit": "juroom ñetti téeméer",
+      "francs": 4000
+    },
+    {
+      "dit": "Médium bi, juróom ñetti téeméer ci weer wi",
+      "francs": 4000
+    },
+    {
+      "dit": "junni ak juróom benni téeméer",
+      "francs": 8000
+    },
+    {
+      "dit": "fukki junni",
+      "francs": 50000
+    },
+    {
+      "dit": "Ñaar-fukki junni",
+      "francs": 100000,
+      "source": "corpus"
+    },
+    {
+      "dit": "fanweeri junni",
+      "francs": 150000
+    },
+    {
+      "dit": "fan-weeri junni",
+      "francs": 150000,
+      "source": "corpus : fan-weer"
+    },
+    {
+      "dit": "téeméeri junni",
+      "francs": 500000
+    },
+    {
+      "dit": "benn milyoŋ",
+      "francs": 1000000
+    },
+    {
+      "dit": "ñaari milyoŋ ak téeméeri junni",
+      "francs": 2500000
+    },
+    {
+      "dit": "ñaar fukk dërëm",
+      "francs": 100
+    },
+    {
+      "dit": "juróom fukk dërëm",
+      "francs": 250
+    },
+    {
+      "dit": "fukk ak juróomi junni",
+      "francs": 75000
+    },
+    {
+      "dit": "juróom ñeent fukk dërëm",
+      "francs": 450
+    },
+    {
+      "dit": "téeméer",
+      "francs": 500
+    },
+    {
+      "dit": "ñaari téeméer",
+      "francs": 1000
+    },
+    {
+      "dit": "gnaari junni",
+      "francs": 10000,
+      "source": "écriture française"
+    },
+    {
+      "dit": "niaari junni",
+      "francs": 10000
+    },
+    {
+      "dit": "dioroomi téeméer",
+      "francs": 2500,
+      "source": "écriture française"
+    },
+    {
+      "dit": "juróom-benni junni",
+      "francs": 30000
+    },
+    {
+      "dit": "ñetti téeméer ak juróom fukk",
+      "francs": 1750
+    },
+    {
+      "dit": "deux mille cinq cents",
+      "francs": 2500
+    },
+    {
+      "dit": "10 000",
+      "francs": 10000
+    },
+    {
+      "dit": "ñaari mil",
+      "francs": 2000
+    },
+    {
+      "dit": "fukki mil",
+      "francs": 10000
+    },
+    {
+      "dit": "benn junni",
+      "francs": 5000
+    },
+    {
+      "dit": "juróomi junni",
+      "francs": 25000
+    },
+    {
+      "dit": "ñeent fukki junni",
+      "francs": 200000
+    },
+    {
+      "dit": "ñeen fukki junni",
+      "francs": 200000,
+      "source": "corpus : ñeen"
+    },
+    {
+      "dit": "ñetti téeméeri junni",
+      "francs": 1500000
+    },
+    {
+      "dit": "Moussa dafa ma ameel bor ñatti téeméer",
+      "francs": 1500
+    },
+    {
+      "dit": "Awa fey na ñaari junni ak juróomi téeméer",
+      "francs": 12500
+    },
+    {
+      "dit": "jaay naa ñaari saku ceeb, ñaar-fukki junni",
+      "francs": 100000
+    },
+    {
+      "dit": "Gnetti téeméer",
+      "francs": 1500,
+      "source": "écriture française"
+    },
+    {
+      "dit": "juróom ñatti téeméer",
+      "francs": 4000
+    },
+    {
+      "dit": "téeméeru junni",
+      "francs": 500000,
+      "source": "corpus : téeméeru"
+    }
   ],
   "pas_argent": [
-    { "dit": "jaay naa ñaari saku ceeb", "pourquoi": "2 sacs = une quantité" },
-    { "dit": "natt naa ñetti kilo", "pourquoi": "natt = peser, 3 kilos = quantité" },
-    { "dit": "yokkal ñatti bidoŋ diw", "pourquoi": "3 bidons = quantité" }
+    {
+      "dit": "jaay naa ñaari saku ceeb",
+      "pourquoi": "2 sacs = une quantité"
+    },
+    {
+      "dit": "natt naa ñetti kilo",
+      "pourquoi": "natt = peser, 3 kilos = quantité"
+    },
+    {
+      "dit": "yokkal ñatti bidoŋ diw",
+      "pourquoi": "3 bidons = quantité"
+    }
   ],
   "articles": {
-    "boutique": ["Riz", "Huile", "Sucre", "Lait", "Pain", "Savon", "Oignon", "Sel", "Niébé", "Mil", "Maïs", "Arachide", "Tomate", "Poulet", "Bouillon", "Piment", "Thé", "Café", "Eau", "Bougie"],
+    "boutique": [
+      "Riz",
+      "Huile",
+      "Sucre",
+      "Lait",
+      "Pain",
+      "Savon",
+      "Oignon",
+      "Sel",
+      "Niébé",
+      "Mil",
+      "Maïs",
+      "Arachide",
+      "Tomate",
+      "Poulet",
+      "Bouillon",
+      "Piment",
+      "Thé",
+      "Café",
+      "Eau",
+      "Bougie"
+    ],
     "phrases": [
-      { "dit": "ceeb", "article": "Riz" },
-      { "dit": "thieb", "article": "Riz" },
-      { "dit": "tchep", "article": "Riz" },
-      { "dit": "ceebu", "article": "Riz" },
-      { "dit": "diw", "article": "Huile" },
-      { "dit": "diwu", "article": "Huile" },
-      { "dit": "soukar", "article": "Sucre" },
-      { "dit": "suukar", "article": "Sucre" },
-      { "dit": "meuw", "article": "Lait" },
-      { "dit": "mbourou", "article": "Pain" },
-      { "dit": "saabu", "article": "Savon" },
-      { "dit": "sabou", "article": "Savon" },
-      { "dit": "soblé", "article": "Oignon" },
-      { "dit": "khorom", "article": "Sel" },
-      { "dit": "xorom", "article": "Sel" },
-      { "dit": "ñebbe", "article": "Niébé" },
-      { "dit": "niébé", "article": "Niébé" },
-      { "dit": "gnebe", "article": "Niébé" },
-      { "dit": "dugub", "article": "Mil" },
-      { "dit": "dougoub", "article": "Mil" },
-      { "dit": "sankhal", "article": "Mil" },
-      { "dit": "mbóq", "article": "Maïs" },
-      { "dit": "mbokh", "article": "Maïs" },
-      { "dit": "gerte", "article": "Arachide" },
-      { "dit": "guerte", "article": "Arachide" },
-      { "dit": "tamaate", "article": "Tomate" },
-      { "dit": "ganaar", "article": "Poulet" },
-      { "dit": "maggi", "article": "Bouillon" },
-      { "dit": "jumbo", "article": "Bouillon" },
-      { "dit": "kaani", "article": "Piment" },
-      { "dit": "attaya", "article": "Thé" },
-      { "dit": "kafe", "article": "Café" },
-      { "dit": "ndokh", "article": "Eau" },
-      { "dit": "bugi", "article": "Bougie" },
-      { "dit": "jaay naa ñaari saku ceeb", "article": "Riz" },
-      { "dit": "benn bidoŋ diw", "article": "Huile" },
-      { "dit": "Kan moo ma ameel bor ?", "article": null, "pourquoi": "question sur un client : aucun article" }
+      {
+        "dit": "ceeb",
+        "article": "Riz"
+      },
+      {
+        "dit": "thieb",
+        "article": "Riz"
+      },
+      {
+        "dit": "tchep",
+        "article": "Riz"
+      },
+      {
+        "dit": "ceebu",
+        "article": "Riz"
+      },
+      {
+        "dit": "thiép",
+        "article": "Riz"
+      },
+      {
+        "dit": "thiep",
+        "article": "Riz"
+      },
+      {
+        "dit": "diw",
+        "article": "Huile"
+      },
+      {
+        "dit": "diwu",
+        "article": "Huile"
+      },
+      {
+        "dit": "soukar",
+        "article": "Sucre"
+      },
+      {
+        "dit": "suukar",
+        "article": "Sucre"
+      },
+      {
+        "dit": "meuw",
+        "article": "Lait"
+      },
+      {
+        "dit": "mbourou",
+        "article": "Pain"
+      },
+      {
+        "dit": "saabu",
+        "article": "Savon"
+      },
+      {
+        "dit": "sabou",
+        "article": "Savon"
+      },
+      {
+        "dit": "soblé",
+        "article": "Oignon"
+      },
+      {
+        "dit": "khorom",
+        "article": "Sel"
+      },
+      {
+        "dit": "xorom",
+        "article": "Sel"
+      },
+      {
+        "dit": "ñebbe",
+        "article": "Niébé"
+      },
+      {
+        "dit": "niébé",
+        "article": "Niébé"
+      },
+      {
+        "dit": "gnebe",
+        "article": "Niébé"
+      },
+      {
+        "dit": "dugub",
+        "article": "Mil"
+      },
+      {
+        "dit": "dougoub",
+        "article": "Mil"
+      },
+      {
+        "dit": "sankhal",
+        "article": "Mil"
+      },
+      {
+        "dit": "mbóq",
+        "article": "Maïs"
+      },
+      {
+        "dit": "mbokh",
+        "article": "Maïs"
+      },
+      {
+        "dit": "gerte",
+        "article": "Arachide"
+      },
+      {
+        "dit": "guerte",
+        "article": "Arachide"
+      },
+      {
+        "dit": "tamaate",
+        "article": "Tomate"
+      },
+      {
+        "dit": "ganaar",
+        "article": "Poulet"
+      },
+      {
+        "dit": "maggi",
+        "article": "Bouillon"
+      },
+      {
+        "dit": "jumbo",
+        "article": "Bouillon"
+      },
+      {
+        "dit": "kaani",
+        "article": "Piment"
+      },
+      {
+        "dit": "attaya",
+        "article": "Thé"
+      },
+      {
+        "dit": "kafe",
+        "article": "Café"
+      },
+      {
+        "dit": "ndokh",
+        "article": "Eau"
+      },
+      {
+        "dit": "bugi",
+        "article": "Bougie"
+      },
+      {
+        "dit": "jaay naa ñaari saku ceeb",
+        "article": "Riz"
+      },
+      {
+        "dit": "benn bidoŋ diw",
+        "article": "Huile"
+      },
+      {
+        "dit": "Kan moo ma ameel bor ?",
+        "article": null,
+        "pourquoi": "question sur un client : aucun article"
+      }
     ]
+  },
+  "ecritures": {
+    "_source": "Paires écriture informelle → orthographe officielle, dont une partie relevée dans wolof-nlp (maimouna-mbacke, MIT).",
+    "pareils": [
+      [
+        "thiep",
+        "ceeb"
+      ],
+      [
+        "thiép",
+        "ceeb"
+      ],
+      [
+        "thieb",
+        "ceeb"
+      ],
+      [
+        "tchep",
+        "ceeb"
+      ],
+      [
+        "jeund",
+        "jënd"
+      ],
+      [
+        "djang",
+        "jàng"
+      ],
+      [
+        "diox",
+        "jox"
+      ],
+      [
+        "khalis",
+        "xalis"
+      ],
+      [
+        "wakh",
+        "wax"
+      ],
+      [
+        "kham",
+        "xam"
+      ],
+      [
+        "touti",
+        "tuuti"
+      ],
+      [
+        "beug",
+        "bëgg"
+      ],
+      [
+        "begue",
+        "bëgg"
+      ],
+      [
+        "deug",
+        "dëgg"
+      ],
+      [
+        "keur",
+        "kër"
+      ],
+      [
+        "dieuredieuf",
+        "jërëjëf"
+      ],
+      [
+        "serigne",
+        "seriñ"
+      ],
+      [
+        "sokhna",
+        "soxna"
+      ],
+      [
+        "gnaari",
+        "ñaari"
+      ],
+      [
+        "niebe",
+        "ñebbe"
+      ],
+      [
+        "soukar",
+        "suukar"
+      ],
+      [
+        "khorom",
+        "xorom"
+      ],
+      [
+        "mbourou",
+        "mburu"
+      ],
+      [
+        "dougoub",
+        "dugub"
+      ],
+      [
+        "guerte",
+        "gerte"
+      ],
+      [
+        "yallah",
+        "yàlla"
+      ]
+    ],
+    "differents": [
+      [
+        "kan",
+        "kaani"
+      ],
+      [
+        "jaay",
+        "jox"
+      ],
+      [
+        "bor",
+        "bari"
+      ],
+      [
+        "fey",
+        "fukk"
+      ]
+    ],
+    "_note": "Pour les noms d'articles, n et ñ se confondent (natt / ñatt) : accepté, aucun produit ne s'appelle ainsi. Les montants, eux, distinguent ñatt (3) de natt (peser) : voir argent et pas_argent."
   }
 }

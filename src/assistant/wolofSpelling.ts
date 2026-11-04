@@ -26,7 +26,11 @@ export function wolofKey(word: string): string {
     .replace(/ou/g, "u") // soukar, mbourou, dougoub → sukar, mburu, dugub
     .replace(/eu/g, "e") // meuw, deurem → mew, derem
     .replace(/ie/g, "e") // thieb → ceb
-    .replace(/(.)\1+/g, "$1"); // ceeb → ceb, suukar → sukar
+    .replace(/(.)\1+/g, "$1") // ceeb → ceb, suukar → sukar
+    // Fins de mots à la française (règles relevées avec wolof-nlp, MIT, 04/11/2026) :
+    .replace(/h$/, "") // yallah → yalla
+    .replace(/p$/, "b") // thiep, tchep → ceb (b final se prononce p)
+    .replace(/(?<=[^aeiou])e$/, (e, i: number) => (i >= 3 ? "" : e)); // begue, serigne, ndeysane : e muet final
   return w;
 }
 

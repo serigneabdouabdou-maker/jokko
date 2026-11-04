@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import examen from "./wolofExamen.json";
 import { extractSpokenAmount, spokenAmountToFrancs } from "./wolofNumbers";
 import { pickByName } from "./wolofNames";
+import { sameSound } from "./wolofSpelling";
 
 type Echec = { dit: string; attendu: unknown; obtenu: unknown };
 
@@ -39,9 +40,16 @@ function articles(): Echec[] {
   return ko;
 }
 
+function ecritures(): Echec[] {
+  const ko: Echec[] = [];
+  for (const [a, b] of examen.ecritures.pareils) if (!sameSound(a, b)) ko.push({ dit: `${a} / ${b}`, attendu: "pareil", obtenu: "différent" });
+  for (const [a, b] of examen.ecritures.differents) if (sameSound(a, b)) ko.push({ dit: `${a} / ${b}`, attendu: "différent", obtenu: "pareil" });
+  return ko;
+}
+
 describe("examen de wolof", () => {
   it("score au-dessus du seuil", () => {
-    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length] } as const;
+    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
     let total = 0, ok = 0;
     const lignes: string[] = [];
     for (const [nom, [ko, n]] of Object.entries(parts)) {
