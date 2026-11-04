@@ -1,1 +1,2 @@
-https://huggingface.co/api/datasets/soynade-research/Wolof-Non-Standard-Orthography/tree/main?recursive=true
+https://huggingface.co/datasets/soynade-research/Wolof-Non-Standard-Orthography/resolve/main/data/train-00000-of-00001.parquet
+https://huggingface.co/datasets/soynade-research/Wolof-Non-Standard-Orthography/resolve/main/README.md
