@@ -1,7 +1,8 @@
 /**
  * Vocabulaire wolof de la boutique : ce que DIT le commerçant, pour que Jokko le COMPRENNE.
  * (Le livre de phrases, lui, contient ce que Jokko a le droit de DIRE.)
- * Les 120 entrées ont été validées par le patron de Jokko le 02/11/2026 (« tout est correct »).
+ * Les 120 entrées ont été validées par le patron de Jokko le 02/11/2026 (« tout est correct ») ;
+ * fay, marse, soxla, indi, yóbbu, tuuti et bari (relevés dans les corpus publics) l'ont été le 04/11/2026 (« OK mots »).
  * Orthographe officielle du wolof quand elle existe ; sinon la forme courante à Dakar.
  */
 export type LexiconEntry = { wo: string; fr: string };
@@ -32,18 +33,18 @@ export const WOLOF_LEXICON: LexiconTheme[] = [
     theme: "Quantités et unités",
     entries: [
       e("saku", "sac"), e("bidoŋ", "bidon"), e("kilo", "kilo"), e("liitar", "litre"), e("paket", "paquet"), e("kartoŋ", "carton"),
-      e("pot", "pot"), e("tas", "tas (de tomates, d'oignons…)"), e("xaaj", "morceau, part"), e("genn-wàll", "moitié"), e("ñeenteel", "quart"),
+      e("pot", "pot"), e("tas", "tas (de tomates, d'oignons…)"), e("xaaj", "morceau, part"), e("genn-wàll", "moitié"), e("ñeenteel", "quart"), e("tuuti", "un peu"), e("bari", "beaucoup"),
     ],
   },
   {
     theme: "Verbes du commerce",
     entries: [
-      e("jaay", "vendre"), e("jaaykat", "vendeur"), e("jënd", "acheter"), e("jëndkat", "acheteur"), e("fey", "payer"), e("bor", "dette"),
+      e("jaay", "vendre"), e("jaaykat", "vendeur"), e("jënd", "acheter"), e("jëndkat", "acheteur"), e("fey / fay", "payer"), e("bor", "dette"),
       e("ameel bor", "devoir de l'argent"), e("abal", "prêter (un objet)"), e("leb", "emprunter"), e("lebal", "prêter (de l'argent)"),
       e("delloo", "rendre, rembourser"), e("weccit", "monnaie, faire la monnaie"), e("wàññi", "baisser, réduire"), e("yokk", "augmenter, ajouter"),
       e("dugal", "faire entrer, ajouter au stock"), e("dindi", "enlever"), e("denc", "garder, stocker, épargner"), e("natt", "peser, mesurer"),
       e("lim", "compter"), e("jox", "donner"), e("jël", "prendre"), e("yónnee", "envoyer"), e("ñàkk", "manquer"), e("jeex", "être fini, épuisé"),
-      e("des", "rester"), e("lor", "perte, perdre"),
+      e("des", "rester"), e("lor", "perte, perdre"), e("soxla", "avoir besoin"), e("indi", "apporter"), e("yóbbu", "emporter"),
     ],
   },
   {
@@ -51,7 +52,7 @@ export const WOLOF_LEXICON: LexiconTheme[] = [
     entries: [
       e("xaalis", "argent"), e("dërëm", "5 francs"), e("kopar", "sou, petite somme"), e("njëg", "prix"), e("seer", "cher"), e("yomb", "pas cher"),
       e("tono", "bénéfice"), e("depaans", "dépense"), e("jaay ci bor", "vendre à crédit"), e("jënd ci bor", "acheter à crédit"),
-      e("fey ci kanam", "payer d'avance"), e("fey genn-wàll", "payer la moitié"), e("fey lépp", "tout payer"),
+      e("fey ci kanam", "payer d'avance"), e("fey genn-wàll", "payer la moitié"), e("fey lépp", "tout payer"), e("marse", "marché"),
     ],
   },
   {
