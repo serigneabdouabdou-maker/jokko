@@ -1,2 +1,6 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-4-v2.mp3?b=3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-5-v2.mp3?b=3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-1-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-1b-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-2-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-3-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-4-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-5-v1.mp3
