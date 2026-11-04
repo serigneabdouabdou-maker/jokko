@@ -25,7 +25,7 @@
 - Dessin plat (« flat »), couleurs Jokko : crème `#FFFDF7`, encre `#17191F`, jaune `#F6B800`, bleu nuit `#0A1F44`.
 - Polices : Bricolage Grotesque (titres) et Instrument Serif italique (accents).
 - Format **vertical 9:16** (1080 × 1920), 30 images par seconde.
-- **Wolof en grand, un peu de français en petit** (sous-titres et textes à l'écran). Les nombres se disent en wolof (« fukk ak ñeent »).
+- **Wolof en grand, un peu de français en petit** (sous-titres et textes à l'écran). Les nombres se disent en wolof (« fukk ak ñeent »). **L'argent se compte en dërëm** (1 dërëm = 5 F) : 4 000 F = « juróom ñetti téeméer », 8 000 F = « junni ak juróom benni téeméer » ; utiliser `francsToWolof()` de `src/assistant/wolofNumbers.ts`, puis redire le montant en français.
 - Voix : Gemini TTS, voix **Sulafat**, enregistrée par la fonction Supabase `voix-accueil` ; chaque phrase validée en wolof par Fallou avant l'enregistrement.
 - Musique et sons : moteur `sfx` de claude-motion (`audio/cues.py`), mineur pendant le problème, majeur quand Jokko arrive ; voix au-dessus de la musique ; volume final −14 LUFS.
 

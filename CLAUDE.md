@@ -42,3 +42,5 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 ## Publicités : toujours Modou
 
 Toutes les publicités Jokko sont des épisodes de l'histoire de **Modou** (commerçant, boubou bleu à broderie jaune) et de son ami **Ibou** (boubou vert, kufi blanc). Fiche du personnage, style, voix et méthode : `marketing/modou/README.md`. Ne jamais changer leur apparence. Wolof en grand, un peu de français en petit ; nombres dits en wolof.
+
+**Argent en wolof = dërëm (1 dërëm = 5 F)**, comme au comptoir et comme `francsToWolof()` : 4 000 F = « juróom ñetti téeméer », 8 000 F = « junni ak juróom benni téeméer ». Jamais « ñeenti junni » pour 4 000 F (= 20 000 F). Ajouter le montant en français (« mooy quatre mille francs »).
