@@ -263,7 +263,7 @@ const TRIAL_LIVE_MS = 5 * 60_000;
 
 type AuthMode = "creer" | "entrer" | "oubli";
 
-function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
+export function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
   const [mode, setMode] = useState<AuthMode>(startMode);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");

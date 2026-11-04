@@ -1,0 +1,27 @@
+name: capture-fiche
+on:
+  push:
+    branches: [capture-fiche]
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx vite build
+      - run: npm i --no-save --no-audit --no-fund playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: Captures
+        run: |
+          (npx vite preview --port 4173 --strictPort > preview.log 2>&1 &)
+          sleep 6
+          node capture-shots.mjs | tee shots.log
+      - name: Enregistrer les captures
+        if: always()
+        run: |
+          mkdir -p out && cp -r shots out/ 2>/dev/null; cp shots.log out/ 2>/dev/null || true
+          cd out && git init -q && git checkout -q -b captures-fiche && git add . && git -c user.name=capture-bot -c user.email=capture-bot@users.noreply.github.com commit -qm "Captures fiche" && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" captures-fiche
