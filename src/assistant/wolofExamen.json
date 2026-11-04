@@ -513,5 +513,106 @@
       ]
     ],
     "_note": "Pour les noms d'articles, n et ñ se confondent (natt / ñatt) : accepté, aucun produit ne s'appelle ainsi. Les montants, eux, distinguent ñatt (3) de natt (peser) : voir argent et pas_argent."
+  },
+  "clients": {
+    "_source": "Noms fréquents relevés dans MasakhaNER (wolof) : écriture wolof entendue → nom écrit dans le cahier.",
+    "cahier": [
+      "Fatou Ndiaye",
+      "Moussa Diop",
+      "Cheikh Fall",
+      "Ousmane Sarr",
+      "Abdoulaye Seck",
+      "Mamadou Diouf",
+      "Aminata Cissé",
+      "Modou Gueye",
+      "Serigne Mbaye",
+      "Ibrahima Thiam",
+      "Khady Diallo",
+      "Moustapha Sonko",
+      "Coumba Ndoye",
+      "Pape Diagne",
+      "Aliou Niang",
+      "Sokhna Diatta",
+      "Fatou Sow"
+    ],
+    "phrases": [
+      {
+        "dit": "Faatu Njaay",
+        "client": "Fatou Ndiaye"
+      },
+      {
+        "dit": "Musaa Jóob",
+        "client": "Moussa Diop"
+      },
+      {
+        "dit": "Seex Faal",
+        "client": "Cheikh Fall"
+      },
+      {
+        "dit": "Usmaan",
+        "client": "Ousmane Sarr"
+      },
+      {
+        "dit": "Ablaay Sekk",
+        "client": "Abdoulaye Seck"
+      },
+      {
+        "dit": "Maamadu Juuf",
+        "client": "Mamadou Diouf"
+      },
+      {
+        "dit": "Aminata Siise",
+        "client": "Aminata Cissé"
+      },
+      {
+        "dit": "Móodu Géy",
+        "client": "Modou Gueye"
+      },
+      {
+        "dit": "Sëriñ Mbay",
+        "client": "Serigne Mbaye"
+      },
+      {
+        "dit": "Ibraayima Caam",
+        "client": "Ibrahima Thiam"
+      },
+      {
+        "dit": "Xadi Jàllo",
+        "client": "Khady Diallo"
+      },
+      {
+        "dit": "Mustafaa Sónko",
+        "client": "Moustapha Sonko"
+      },
+      {
+        "dit": "Kumba Ndóoy",
+        "client": "Coumba Ndoye"
+      },
+      {
+        "dit": "Paap Jaañ",
+        "client": "Pape Diagne"
+      },
+      {
+        "dit": "Aliw Ñaŋ",
+        "client": "Aliou Niang"
+      },
+      {
+        "dit": "Soxna Jaata",
+        "client": "Sokhna Diatta"
+      },
+      {
+        "dit": "Seex",
+        "client": "Cheikh Fall"
+      },
+      {
+        "dit": "Faatu",
+        "client": "? Fatou Ndiaye / Fatou Sow",
+        "pourquoi": "deux Fatou : Jokko doit demander"
+      },
+      {
+        "dit": "Faatu Sow",
+        "client": "Fatou Sow"
+      }
+    ]
   }
 }

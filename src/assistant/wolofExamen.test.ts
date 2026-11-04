@@ -40,6 +40,17 @@ function articles(): Echec[] {
   return ko;
 }
 
+function clients(): Echec[] {
+  const items = examen.clients.cahier.map((name, i) => ({ id: String(i), name }));
+  const ko: Echec[] = [];
+  for (const q of examen.clients.phrases) {
+    const r = pickByName(items, q.dit);
+    const got = r.item?.name ?? (r.ambiguous.length ? `? ${r.ambiguous.map((x) => x.name).join(" / ")}` : null);
+    if (got !== q.client) ko.push({ dit: q.dit, attendu: q.client, obtenu: got });
+  }
+  return ko;
+}
+
 function ecritures(): Echec[] {
   const ko: Echec[] = [];
   for (const [a, b] of examen.ecritures.pareils) if (!sameSound(a, b)) ko.push({ dit: `${a} / ${b}`, attendu: "pareil", obtenu: "différent" });
@@ -49,7 +60,7 @@ function ecritures(): Echec[] {
 
 describe("examen de wolof", () => {
   it("score au-dessus du seuil", () => {
-    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
+    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
     let total = 0, ok = 0;
     const lignes: string[] = [];
     for (const [nom, [ko, n]] of Object.entries(parts)) {

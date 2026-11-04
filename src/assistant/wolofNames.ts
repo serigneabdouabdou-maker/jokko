@@ -101,6 +101,27 @@ export function expandHeard(heard: string): string {
   return extra.length ? `${h} ${extra.join(" ")}` : h;
 }
 
+/**
+ * Prénoms et noms sénégalais : écriture française (celle du cahier) ↔ écriture wolof (celle que Gemini peut entendre).
+ * `wolofKey` unit déjà Fatou = Faatu, Ndiaye = Njaay, Diop = Jóob, Diouf = Juuf, Thiam = Caam, Gueye = Géy, Ousmane = Usmaan.
+ * Ici, seulement les paires qu'aucune règle ne peut rapprocher. Noms fréquents relevés dans MasakhaNER (wolof), 04/11/2026.
+ */
+const NAME_VARIANTS: string[][] = [
+  ["cheikh", "cheikhou", "cheick", "seex", "sheikh"], ["abdoulaye", "ablaye", "ablaay", "abdulaay", "laye"],
+  ["moustapha", "mustafa", "mustafaa", "tapha"], ["ibrahima", "ibraayima", "ibra"], ["idrissa", "idiriisa"],
+  ["khady", "xadi", "khadija"], ["coumba", "kumba"], ["cisse", "siise", "sise"], ["seck", "sekk"], ["diagne", "jaan", "jaañ"],
+  ["niang", "nan", "ñaŋ"], ["aliou", "aliw"], ["daouda", "dawuda", "daawuda"], ["thioune", "cuun"], ["diatta", "jaata"],
+  ["pape", "paap", "paab"], ["baye", "baay"], ["mamour", "maamur"], ["ndoye", "ndooy", "ndóoy"], ["khalifa", "xalifa"],
+  ["cheikhouna", "seexuna"], ["mariama", "mareem", "mariame"], ["astou", "astu"], ["rokhaya", "roxaya", "roki"],
+];
+
+/** Deux mots du nom sont-ils le même nom ? (même son, ou même famille d'écritures ci-dessus) */
+function alike(a: string, b: string): boolean {
+  if (a.length < 3 || b.length < 3) return a === b;
+  if (sameSound(a, b)) return true;
+  return NAME_VARIANTS.some((g) => g.some((x) => sameSound(x, a)) && g.some((x) => sameSound(x, b)));
+}
+
 export type Named = { id: string; name: string; aliases?: string[] };
 const namesOf = (item: Named) => [item.name, ...(item.aliases ?? [])].filter((n) => n && n.trim());
 
@@ -116,6 +137,11 @@ export function pickByName<T extends Named>(items: T[], heard: string): { item?:
     if (hw.length && kw.filter((w) => w.length >= 3 && !UNITS.has(w)).every((w) => hw.includes(w))) return 90 + Math.min(kw.length, 5);
     if (hw.length && hw.every((w) => kw.includes(w))) return 80 + Math.min(hw.length, 5);
     if (hw.some((w) => kw.includes(w))) return 60 + hw.filter((w) => kw.includes(w)).length;
+    // Même nom écrit autrement (Faatu Njaay = Fatou Ndiaye, Seex = Cheikh)
+    const kl = kw.filter((w) => w.length >= 3 && !UNITS.has(w));
+    const hits = kl.filter((w) => hw.some((x) => alike(w, x))).length;
+    if (kl.length && hits === kl.length) return 75 + Math.min(kl.length, 5);
+    if (hits) return 50 + hits;
     return sameName(name, heard) ? 40 : 0;
   };
   const score = (item: T) => Math.max(...namesOf(item).map(scoreOne));
