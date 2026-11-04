@@ -1,6 +1,1 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-1-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-1b-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-2-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-3-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-4-v1.mp3
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/camp-5-v1.mp3
+https://huggingface.co/api/datasets/soynade-research/Wolof-Non-Standard-Orthography/tree/main?recursive=true
