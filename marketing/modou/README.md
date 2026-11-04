@@ -49,3 +49,5 @@ Idées d'épisodes suivants : Modou et le vendeur qui oublie de noter (alertes �
 6. Regarder la planche (1 image / 2 s) : pas de flash gris entre les scènes, sous-titres lisibles.
 
 `render.mjs` utilise Playwright (Chromium) et ffmpeg.
+
+**Outil vidéo installé à chaque génération : video-shotcraft** (https://github.com/Vincentwei1021/video-shotcraft) — skill `video-shotcraft-jokko`. Effets de plans (`references/shots/`), règles d'esthétique, calage sur le rythme ; idéal pour les démos avec les vrais écrans de l'application. Si Remotion ne s'installe pas, refaire l'effet dans la page `window.seek(t)`.
