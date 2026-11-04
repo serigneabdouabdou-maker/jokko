@@ -30,13 +30,14 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - React 19 + Vite + TypeScript strict. Tests : `vitest`. Domaine : https://jokkoapp.com (Cloudflare Workers, build au push sur `main`).
 - Supabase projet `solocpbqtqlxdfpjiewm` : fonctions `assistant`, `signup`, `login`, `otp`, `wave`, `notify`, `voix-accueil`.
 - Offres : Gratuit / Essai / Médium 4 000 F / Avancé 8 000 F ; quotas par boutique (`use_assistant`).
-- Wolof : `src/assistant/liveDesk.ts` (noms, synonymes, `MODIFIERS`, autres noms des articles). Jokko **demande** au lieu de deviner entre deux articles proches.
+- Wolof : `src/assistant/wolofNames.ts` (noms, synonymes, `MODIFIERS`, autres noms des articles), `wolofSpelling.ts` (`wolofKey` : thieb = ceeb, soukar = suukar, niébé = ñebbe), `wolofNumbers.ts` (montants en dërëm). Jokko **demande** au lieu de deviner entre deux articles proches.
+- Corpus wolof publics pour trouver des écritures et des mots (pas pour entraîner Gemini) : ALFFA (`getalp/ALFFA_PUBLIC`), Kallaama (`gauthelo/kallaama-speech-dataset`, CC-BY-4.0), WolBanking77 (`abdoukarim/wolbanking77`, CC-BY-4.0), Common Voice wolof (`Galsenaicommunity/Wolof-Common-Voice`, CC-BY-SA). Catalogue : `papasega/african-speech-mcp`. Un mot nouveau donné à Gemini (`wolofLexicon.ts`) doit d'abord être validé par Fallou.
 - Cahier des erreurs : `note_assistant` (actions, annulations, « Jokko s'est trompé ») → console, onglet « Erreurs de Jokko ». Objectif : **moins de 10 % d'erreurs en wolof**.
 
 ## Routine hebdomadaire
 
 1. Ouvrir l'onglet « Erreurs de Jokko » (7 jours) : taux wolof et français.
-2. Corriger les phrases mal comprises qui reviennent (synonyme, modificateur, autre nom d'article, test dans `liveDesk.test.ts`).
+2. Corriger les phrases mal comprises qui reviennent (synonyme, modificateur, autre nom d'article, test dans `liveDesk.test.ts`). **Chaque phrase mal comprise entre dans l'examen de wolof** (`src/assistant/wolofExamen.json`) avec sa bonne réponse ; le score s'affiche à chaque CI et ne peut pas descendre sous le `seuil`.
 3. Cocher « Corrigé », pousser, vérifier CI + Cloudflare, annoncer le nouveau taux à Fallou la semaine suivante.
 
 ## Publicités : toujours Modou
