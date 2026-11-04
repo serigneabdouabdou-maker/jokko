@@ -20,8 +20,16 @@ jobs:
           (npx vite preview --port 4173 --strictPort > preview.log 2>&1 &)
           sleep 6
           node capture-shots.mjs | tee shots.log
+      - name: Polices de Jokko (pour la mise en page de la fiche)
+        if: always()
+        run: |
+          mkdir -p fonts
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+          curl -s -A "$UA" "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&display=swap" > fonts/fonts.css
+          i=0; for u in $(grep -o 'https://fonts.gstatic.com[^)]*' fonts/fonts.css); do i=$((i+1)); curl -s "$u" -o "fonts/f$i.woff2"; sed -i "s#$u#f$i.woff2#" fonts/fonts.css; done
+          ls -la fonts
       - name: Enregistrer les captures
         if: always()
         run: |
-          mkdir -p out && cp -r shots out/ 2>/dev/null; cp shots.log out/ 2>/dev/null || true
+          mkdir -p out && cp -r shots fonts out/ 2>/dev/null; cp shots.log out/ 2>/dev/null || true
           cd out && git init -q && git checkout -q -b captures-fiche && git add . && git -c user.name=capture-bot -c user.email=capture-bot@users.noreply.github.com commit -qm "Captures fiche" && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" captures-fiche
