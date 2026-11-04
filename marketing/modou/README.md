@@ -36,6 +36,7 @@
 |---|---|---|---|
 | 1 | Modou ne sait pas ce qu'il gagne → Jokko | `film.html` + `script.json` (1 min 02) | ✅ livré le 4 nov. 2026 |
 | — | Intro (5 s) et fin TikTok (6,5 s) | `intro.html` (`?fin` pour la fin) | ✅ livré |
+| 3 | Pub de campagne « Wax rekk, Jokko bind » (A : Modou parle ; B : question), 9:16 et 4:5, bouton WhatsApp | `campagne.tpl.html` (`?b=1`) + `campagne-script.json` (24 s / 22 s) | ✅ livré |
 | 2 | Les offres : essai 14 jours, Gratuit, Médium, Avancé | `offres.tpl.html` + `offres-script.json` (1 min 06) | ✅ livré |
 
 Idées d'épisodes suivants : Modou et le vendeur qui oublie de noter (alertes à distance) · Modou et les dettes (relance WhatsApp) · Modou installe son stock avec une photo de facture · Modou ouvre une deuxième boutique · Modou paie par Wave et reçoit son reçu · Modou au marché, il voit sa boutique depuis son téléphone.

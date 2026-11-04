@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jokko — pub de campagne</title>
+<style>
+  @font-face { font-family: "Brico"; src: url(assets/Bricolage.ttf); font-weight: 200 800; }
+  @font-face { font-family: "Serif"; src: url(assets/InstrumentItalic.ttf); font-style: italic; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #FFFDF7; }
+  text { font-family: "Brico", sans-serif; }
+  /* sous-titres dans la zone sûre 4:5 (y 285 → 1635) */
+  #cap { position: absolute; left: 70px; right: 70px; top: 1440px; text-align: center; font-family: "Brico", sans-serif; font-weight: 700; font-size: 44px; line-height: 1.24; color: #fff; }
+  #cap .wo { background: rgba(23,25,31,.88); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 6px 18px; border-radius: 14px; }
+  #cap .fr { display: block; margin-top: 12px; font-size: 30px; font-weight: 500; line-height: 1.3; color: #17191F; }
+  #cap .fr span { background: rgba(255,253,247,.94); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 3px 12px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    {{DEFS_PRODUCTS}}
+    {{DEFS_PERSON}}
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset="1" stop-color="#F7C65A"/></linearGradient>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A1636"/><stop offset="1" stop-color="#13285A"/></linearGradient>
+    <linearGradient id="wa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2BD46A"/><stop offset="1" stop-color="#14A84E"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".9"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient>
+    <clipPath id="scr"><rect x="-190" y="-380" width="380" height="760" rx="46"/></clipPath>
+  </defs>
+  <rect width="1080" height="1920" fill="#FFFDF7"/>
+
+  <!-- scène 1 : la boutique, Modou parle à son téléphone -->
+  <g id="shop">
+    <rect width="1080" height="1920" fill="url(#wall)"/>
+    <g id="shelves"></g>
+    <rect x="0" y="1180" width="1080" height="740" fill="#B8743C"/><rect x="0" y="1180" width="1080" height="22" fill="#8E5629"/>
+    <g id="modouG"><g id="modou"></g></g>
+    <g id="sale" opacity="0"></g>
+    <g id="hookTxt" opacity="0"></g>
+  </g>
+
+  <!-- scène 2 : « Wax rekk, Jokko bind » -->
+  <g id="kin" opacity="0">
+    <rect width="1080" height="1920" fill="#17191F"/>
+    <g id="bars"></g>
+    <text id="k1" x="540" y="820" text-anchor="middle" font-size="190" font-weight="800" fill="#F6B800" letter-spacing="-6">Wax rekk,</text>
+    <text id="k2" x="540" y="1030" text-anchor="middle" font-size="190" font-weight="800" fill="#FFFDF7" letter-spacing="-6">Jokko bind.</text>
+    <text id="k3" x="540" y="1130" text-anchor="middle" font-family="Serif" font-style="italic" font-size="64" fill="#9AA0AC">Tu parles. Jokko écrit.</text>
+  </g>
+
+  <!-- scène 3 : les 4 fonctions -->
+  <g id="feat" opacity="0">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <circle cx="880" cy="420" r="320" fill="#FFF0C2"/><circle cx="160" cy="1320" r="300" fill="#E8F1FB"/>
+    <g id="tiles"></g>
+    <g id="langs" opacity="0"></g>
+  </g>
+
+  <!-- scène 4 : le soir, le résumé -->
+  <g id="eve" opacity="0">
+    <rect width="1080" height="1920" fill="url(#night)"/>
+    <g id="stars"></g>
+    <circle cx="840" cy="420" r="70" fill="#FFF3C4"/><circle cx="868" cy="400" r="62" fill="#0E1D45"/>
+    <circle id="phGlow" cx="540" cy="880" r="520" fill="url(#glow)" opacity=".25"/>
+    <g id="bigPhone"></g>
+  </g>
+
+  <!-- scène 5 : fin, WhatsApp -->
+  <g id="end" opacity="0">
+    <rect width="1080" height="1920" fill="#FFFDF7"/>
+    <circle id="endRing" cx="540" cy="560" r="230" fill="#FFF0C2"/>
+    <image id="endLogo" href="assets/icon-512.png" x="420" y="440" width="240" height="240"/>
+    <text id="endName" x="540" y="790" text-anchor="middle" font-size="96" font-weight="800" fill="#17191F" letter-spacing="-3">Jokko</text>
+    <text id="endTag" x="540" y="860" text-anchor="middle" font-family="Serif" font-style="italic" font-size="52" fill="#4A4D55">sa bitig dafay déglu</text>
+    <g id="endFree"><rect x="290" y="910" width="500" height="96" rx="48" fill="#F6B800"/><text x="540" y="957" text-anchor="middle" font-size="40" font-weight="800" fill="#17191F">14 fan, ci dara</text><text x="540" y="990" text-anchor="middle" font-size="24" font-weight="600" fill="#17191F">14 jours gratuits</text></g>
+    <g id="waBtn"></g>
+    <g id="tapHand" opacity="0"></g>
+  </g>
+</svg>
+<div id="cap"></div>
+<script>
+const B = location.search.includes("b=1");
+let T = { s: [0.4, 3, 5, 10.5, 13.5], d: [2.2, 1.6, 5, 2.4, 4], duration: 20 };
+let CAPS = [], AMP = null;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const eio = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.6; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const win = (t, a, b, f = 0.25) => clamp(Math.min((t - a) / f, (b - t) / f));
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function txt(parent, x, y, s, attrs = {}) { const e = el("text", { x, y, ...attrs }, parent); e.textContent = s; return e; }
+function use(href, x, y, parent, s = 1) { return el("use", { href: "#" + href, transform: `translate(${x},${y}) scale(${s})` }, parent); }
+
+{{JS_PERSON}}
+
+// ---------- boutique ----------
+const sh = $("shelves");
+for (let r = 0; r < 3; r++) {
+  const y = 470 + r * 230;
+  el("rect", { x: 40, y: y + 70, width: 1000, height: 22, rx: 6, fill: "#9A5E2E" }, sh);
+  for (let i = 0; i < 8; i++) use(["sack", "bidon", "box", "tin", "soap"][(i + r * 2) % 5], 110 + i * 122, y + 10, sh, 1.05);
+}
+const modou = person($("modou"), MODOU);
+const phoneSmall = el("g", { transform: "rotate(-175) translate(0,-20)" }, modou.prop);
+el("rect", { x: -34, y: -62, width: 68, height: 124, rx: 12, fill: "#17191F" }, phoneSmall);
+el("rect", { x: -28, y: -54, width: 56, height: 104, rx: 7, fill: "#2F7DC9" }, phoneSmall);
+// ondes qui sortent du téléphone quand Modou parle
+const waves = [0, 1, 2].map(() => el("path", { d: "", stroke: "#17191F", "stroke-width": 9, fill: "none", "stroke-linecap": "round", opacity: 0 }, $("shop")));
+// la vente s'écrit toute seule
+const sale = $("sale");
+el("rect", { x: -260, y: -170, width: 520, height: 340, rx: 40, fill: "rgba(23,25,31,.18)", transform: "translate(8,14)" }, sale);
+el("rect", { x: -260, y: -170, width: 520, height: 340, rx: 40, fill: "#FFFFFF" }, sale);
+const saleHead = el("g", {}, sale);
+el("circle", { cx: -190, cy: -100, r: 30, fill: "#2B9A66" }, saleHead);
+el("path", { d: "M-204,-100 L-194,-89 L-175,-111", stroke: "#fff", "stroke-width": 7, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, saleHead);
+txt(saleHead, -145, -88, "Jaay bi bind na", { "font-size": 38, "font-weight": 800, fill: "#17191F" });
+const saleRows = [["2 mburu", "pain"], ["1 bidon diw", "huile"]].map(([wo, fr], i) => {
+  const g = el("g", { opacity: 0 }, sale);
+  el("rect", { x: -220, y: -40 + i * 100, width: 440, height: 80, rx: 20, fill: "#F4EFE3" }, g);
+  use(i ? "bidon" : "box", -170, i * 100 + 4, g, 0.5);
+  txt(g, -110, i * 100 + 8, wo, { "font-size": 40, "font-weight": 800, fill: "#17191F" });
+  txt(g, 120, i * 100 + 8, fr, { "font-size": 28, "font-weight": 500, fill: "#4A4D55" });
+  return g;
+});
+// accroche
+const hk = $("hookTxt");
+if (!B) {
+  txt(hk, 540, 380, "Wax rekk.", { "text-anchor": "middle", "font-size": 120, "font-weight": 800, fill: "#17191F", "letter-spacing": -4 });
+} else {
+  txt(hk, 540, 360, "Xam nga lu sa bitig", { "text-anchor": "middle", "font-size": 84, "font-weight": 800, fill: "#17191F", "letter-spacing": -2 });
+  txt(hk, 540, 460, "gañ tey ?", { "text-anchor": "middle", "font-size": 110, "font-weight": 800, fill: "#C8372D", "letter-spacing": -3 });
+}
+const qmarks = [0, 1, 2].map((i) => txt($("shop"), 0, 0, "?", { "font-size": 110, "font-weight": 800, fill: "#C8372D", opacity: 0 }));
+
+// ---------- « Wax rekk » : barres de voix ----------
+const bars = [];
+for (let i = 0; i < 17; i++) bars.push(el("rect", { x: 540 - 8 * 40 + i * 40 - 12, y: 1300, width: 24, height: 0, rx: 12, fill: i % 2 ? "#2F7DC9" : "#F6B800" }, $("bars")));
+
+// ---------- 4 fonctions ----------
+const TILES = [["Jaay", "ventes", "#F6B800", "#17191F", "box"], ["Stock", "stock", "#2F7DC9", "#fff", "sack"], ["Bor", "dettes", "#C8372D", "#fff", "tin"], ["Caisse", "caisse", "#2B9A66", "#fff", "bidon"]];
+const tiles = TILES.map(([wo, fr, bg, fg, ic], i) => {
+  const g = el("g", { opacity: 0 }, $("tiles"));
+  el("rect", { x: -210, y: -190, width: 420, height: 380, rx: 50, fill: "rgba(23,25,31,.14)", transform: "translate(0,16)" }, g);
+  el("rect", { x: -210, y: -190, width: 420, height: 380, rx: 50, fill: bg }, g);
+  el("circle", { cx: 0, cy: -60, r: 78, fill: "rgba(255,255,255,.85)" }, g);
+  use(ic, 0, -50, g, 1.1);
+  txt(g, 0, 90, wo, { "text-anchor": "middle", "font-size": 70, "font-weight": 800, fill: fg });
+  txt(g, 0, 140, fr, { "text-anchor": "middle", "font-size": 34, "font-weight": 600, fill: fg, opacity: .8 });
+  g.base = [[300, 560], [780, 560], [300, 990], [780, 990]][i];
+  return g;
+});
+const langs = $("langs");
+el("rect", { x: 210, y: 1250, width: 660, height: 110, rx: 55, fill: "#17191F" }, langs);
+txt(langs, 540, 1322, "Wolof  ·  Français", { "text-anchor": "middle", "font-size": 52, "font-weight": 800, fill: "#FFFDF7" });
+
+// ---------- le soir ----------
+for (let i = 0; i < 40; i++) el("circle", { cx: (i * 263) % 1080, cy: 300 + ((i * 397) % 1300), r: 2 + (i % 3), fill: "#fff", opacity: 0.25 + (i % 4) * 0.12 }, $("stars"));
+const bp = el("g", {}, $("bigPhone"));
+el("rect", { x: -205, y: -395, width: 410, height: 790, rx: 58, fill: "#05070C" }, bp);
+el("rect", { x: -190, y: -380, width: 380, height: 760, rx: 46, fill: "#FFFDF7" }, bp);
+const scr = el("g", { "clip-path": "url(#scr)" }, bp);
+el("rect", { x: -190, y: -380, width: 380, height: 150, fill: "#17191F" }, scr);
+txt(scr, 0, -300, "Résumé bi · tey", { "text-anchor": "middle", "font-size": 38, "font-weight": 800, fill: "#F6B800" });
+txt(scr, 0, -258, "résumé du soir", { "text-anchor": "middle", "font-size": 24, "font-weight": 500, fill: "#9AA0AC" });
+const sumRows = [["Jaay", "ventes", "47"], ["Gañ", "bénéfice", "18 500 F"], ["Bor yu dellu", "dettes payées", "3"], ["Stock bu néew", "à racheter", "Ceeb"]].map(([wo, fr, v], i) => {
+  const g = el("g", { opacity: 0 }, scr);
+  const y = -170 + i * 120;
+  el("rect", { x: -160, y: y - 48, width: 320, height: 100, rx: 22, fill: i === 1 ? "#E6F6EC" : "#F4EFE3" }, g);
+  txt(g, -138, y - 4, wo, { "font-size": 32, "font-weight": 800, fill: "#17191F" });
+  txt(g, -138, y + 30, fr, { "font-size": 22, "font-weight": 500, fill: "#4A4D55" });
+  const vt = txt(g, 140, y + 12, v, { "text-anchor": "end", "font-size": i === 1 ? 40 : 34, "font-weight": 800, fill: i === 1 ? "#14A84E" : "#17191F" });
+  return { g, vt, v };
+});
+const notif = el("g", { opacity: 0 }, $("bigPhone"));
+el("rect", { x: -250, y: -560, width: 500, height: 120, rx: 30, fill: "#FFFFFF" }, notif);
+el("rect", { x: -228, y: -538, width: 76, height: 76, rx: 18, fill: "#17191F" }, notif);
+el("image", { href: "assets/icon-512.png", x: -228, y: -538, width: 76, height: 76 }, notif);
+txt(notif, -134, -505, "Jokko", { "font-size": 30, "font-weight": 800, fill: "#17191F" });
+txt(notif, -134, -465, "Sa résumé bi agsi na", { "font-size": 28, "font-weight": 500, fill: "#4A4D55" });
+
+// ---------- fin : bouton WhatsApp ----------
+const wa = $("waBtn");
+el("rect", { x: -400, y: -90, width: 800, height: 180, rx: 90, fill: "rgba(20,168,78,.25)", transform: "translate(0,14)" }, wa);
+el("rect", { x: -400, y: -90, width: 800, height: 180, rx: 90, fill: "url(#wa)" }, wa);
+const bub = el("g", { transform: "translate(-305,0)" }, wa);
+el("path", { d: "M-46,-40 Q-46,-58 -28,-58 L28,-58 Q46,-58 46,-40 L46,10 Q46,28 28,28 L-6,28 L-30,50 L-26,28 L-28,28 Q-46,28 -46,10 Z", fill: "#fff" }, bub);
+for (let i = 0; i < 3; i++) el("circle", { cx: -20 + i * 20, cy: -15, r: 7, fill: "#14A84E" }, bub);
+txt(wa, 55, -6, "Bindal nu ci WhatsApp", { "text-anchor": "middle", "font-size": 46, "font-weight": 800, fill: "#fff" });
+txt(wa, 55, 44, "Écris-nous · 77 567 47 25", { "text-anchor": "middle", "font-size": 34, "font-weight": 600, fill: "#fff", opacity: .92 });
+const ring = el("rect", { x: -400, y: -90, width: 800, height: 180, rx: 90, fill: "none", stroke: "#2BD46A", "stroke-width": 6, opacity: 0 }, wa);
+const hand = $("tapHand");
+el("circle", { cx: 0, cy: 0, r: 34, fill: MODOU.skin }, hand);
+el("rect", { x: -16, y: -90, width: 32, height: 90, rx: 16, fill: MODOU.skin }, hand);
+el("path", { d: "M-34,10 Q-40,80 0,100 Q40,80 34,10Z", fill: MODOU.robe }, hand);
+
+// ---------- sous-titres et voix ----------
+function caption(t) {
+  let wo = "", fr = "";
+  for (let i = 0; i < CAPS.length; i++) if (t >= T.s[i] - 0.1 && t < T.s[i] + T.d[i] + 0.3) { wo = CAPS[i].text; fr = CAPS[i].fr; }
+  const cap = $("cap");
+  if (cap.dataset.t !== wo) { cap.dataset.t = wo; cap.innerHTML = wo ? `<span class="wo">${wo}</span><span class="fr"><span>${fr}</span></span>` : ""; }
+}
+function level(t) { if (!AMP) return 0; return AMP.v[Math.floor(t * AMP.fps)] ?? 0; }
+
+function seek(t) {
+  const S = T.s, D = T.d;
+  const c1 = S[1] - 0.2, c2 = S[2] - 0.25, c3 = S[3] - 0.3, c4 = S[4] - 0.3;
+  // ---- scène 1 : boutique ----
+  const o1 = t < c1 + 0.2 ? 1 : 0;
+  $("shop").setAttribute("opacity", o1);
+  const push = eo(t / 2.4);                       // la caméra avance doucement
+  $("shop").setAttribute("transform", `translate(540,1000) scale(${1 + push * 0.06}) translate(-540,-1000)`);
+  const enter = eo((t - 0.0) / 0.5);
+  $("modouG").setAttribute("transform", `translate(${lerp(-160, 400, enter)},1260) scale(1.45)`);
+  const speaking = !B && t >= S[0] && t < S[0] + D[0];
+  face(modou, t, { mood: B ? -0.5 + clamp((t - S[0] - D[0]) / 0.3) * 1.2 : 0.7, talk: speaking ? level(t) : 0, look: B ? -0.3 : 0.9, tilt: B ? -6 + Math.sin(t * 2) * 2 : Math.sin(t * 1.7) * 3, nod: Math.sin(t * 2.4) * 3 });
+  modou.armRot.setAttribute("transform", `rotate(${lerp(10, B ? 60 : 175, eo((t - 0.05) / 0.4))})`);
+  phoneSmall.setAttribute("opacity", B ? 0 : 1);
+  waves.forEach((w, i) => {
+    const k = ((t * 1.8 + i * 0.33) % 1);
+    const on = speaking ? level(t) > 0.08 ? 1 : 0.3 : 0;
+    const r = 60 + k * 120, cx = 560, cy = 640;
+    w.setAttribute("d", `M${cx + r * Math.cos(-0.7)},${cy + r * Math.sin(-0.7)} A${r},${r} 0 0 1 ${cx + r * Math.cos(0.7)},${cy + r * Math.sin(0.7)}`);
+    w.setAttribute("opacity", 0);
+  });
+  const sk = B ? 0 : back((t - S[0] - 0.4) / 0.5);
+  sale.setAttribute("opacity", B ? 0 : clamp((t - S[0] - 0.4) / 0.15));
+  sale.setAttribute("transform", `translate(780,${790 - (1 - clamp(sk)) * 40}) rotate(${(1 - clamp(sk)) * 6}) scale(${0.7 + 0.3 * sk})`);
+  saleRows.forEach((r, i) => { const k = eo((t - S[0] - 0.9 - i * 0.55) / 0.3); r.setAttribute("opacity", k); r.setAttribute("transform", `translate(${(1 - k) * 40},0)`); });
+  hk.setAttribute("opacity", clamp((t - 0.15) / 0.25));
+  hk.setAttribute("transform", `translate(540,0) scale(${back((t - 0.15) / 0.4)}) translate(-540,0)`);
+  qmarks.forEach((q, i) => { const k = clamp((t - 0.5 - i * 0.25) / 0.3); q.setAttribute("opacity", B ? k : 0); q.setAttribute("x", 560 + i * 90); q.setAttribute("y", 760 - i * 60 + Math.sin(t * 5 + i) * 12); q.setAttribute("transform", `rotate(${Math.sin(t * 3 + i) * 10},${560 + i * 90},${760 - i * 60})`); });
+  // ---- scène 2 : typo ----
+  const o2 = t >= c1 && t < c2 + 0.2 ? 1 : 0, kt = t - c1;
+  $("kin").setAttribute("opacity", o2);
+  [["k1", 0.05], ["k2", 0.55], ["k3", 0.95]].forEach(([id, d]) => { const k = back((kt - d) / 0.35); $(id).setAttribute("opacity", clamp((kt - d) / 0.1)); $(id).setAttribute("transform", `translate(540,${id === "k3" ? 1130 : id === "k1" ? 820 : 1030}) scale(${1.25 - 0.25 * k}) translate(-540,${-(id === "k3" ? 1130 : id === "k1" ? 820 : 1030)})`); });
+  $("kin").setAttribute("transform", `translate(${Math.sin(kt * 40) * 6 * clamp(1 - (kt - 0.55) / 0.15) * (kt > 0.55 ? 1 : 0)},0)`);
+  bars.forEach((r, i) => { const h = 30 + (level(t) * 220 + 40) * Math.abs(Math.sin(t * 8 + i * 0.7)) * clamp(kt / 0.4); r.setAttribute("height", h); r.setAttribute("y", 1330 - h / 2); });
+  // ---- scène 3 : tuiles ----
+  const o3 = t >= c2 && t < c3 + 0.2 ? 1 : 0, ft = t - c2;
+  $("feat").setAttribute("opacity", o3);
+  const step = Math.max(0.5, (D[2] - 1.4) / 4);
+  tiles.forEach((g, i) => {
+    const d = 0.15 + i * step, k = back((ft - d) / 0.45), [x, y] = g.base;
+    g.setAttribute("opacity", clamp((ft - d) / 0.12));
+    g.setAttribute("transform", `translate(${x},${y + (1 - clamp(k)) * 120}) rotate(${(1 - clamp(k)) * (i % 2 ? 8 : -8)}) scale(${0.6 + 0.4 * k})`);
+  });
+  const lk = back((ft - (D[2] - 1.2)) / 0.4);
+  langs.setAttribute("opacity", clamp((ft - (D[2] - 1.2)) / 0.15)); langs.setAttribute("transform", `translate(540,1305) scale(${lk}) translate(-540,-1305)`);
+  // ---- scène 4 : le soir ----
+  const o4 = t >= c3 && t < c4 + 0.2 ? 1 : 0, et = t - c3;
+  $("eve").setAttribute("opacity", o4);
+  const pk = eo(et / 0.5), vib = et > 0.5 && et < 1.0 ? Math.sin(et * 90) * 6 : 0;
+  $("bigPhone").setAttribute("transform", `translate(${540 + vib},${880 + (1 - pk) * 400}) rotate(${vib * 0.4}) scale(${0.9 + 0.1 * pk})`);
+  const nk = back((et - 0.45) / 0.4);
+  notif.setAttribute("opacity", clamp((et - 0.45) / 0.15) * (1 - clamp((et - 1.6) / 0.3)));
+  notif.setAttribute("transform", `translate(0,${(1 - clamp(nk)) * -60 + eio((et - 1.6) / 0.4) * -40})`);
+  sumRows.forEach((r, i) => { const k = eo((et - 0.9 - i * 0.3) / 0.3); r.g.setAttribute("opacity", k); r.g.setAttribute("transform", `translate(${(1 - k) * 30},0)`);
+    if (i === 1) { const n = Math.round(18500 * eo((et - 1.2) / 0.9) / 100) * 100; r.vt.textContent = n.toLocaleString("fr-FR").replace(/ /g, " ") + " F"; } });
+  $("phGlow").setAttribute("opacity", 0.2 + 0.1 * Math.sin(t * 2));
+  // ---- scène 5 : fin ----
+  const e5 = t - c4;
+  $("end").setAttribute("opacity", clamp(e5 / 0.3));
+  $("endLogo").setAttribute("transform", `translate(540,560) scale(${back(e5 / 0.5)}) translate(-540,-560)`);
+  $("endRing").setAttribute("r", Math.max(0, 230 * eo(e5 / 0.6) + Math.sin(t * 2.2) * 6));
+  for (const [id, d] of [["endName", 0.25], ["endTag", 0.4], ["endFree", 0.6]]) { const k = eo((e5 - d) / 0.4); $(id).setAttribute("opacity", k); $(id).setAttribute("transform", `translate(0,${(1 - k) * 40})`); }
+  const wk = back((e5 - 1.4) / 0.5), pulse = e5 > 2 ? 1 + 0.035 * Math.sin((e5 - 2) * 6) : 1;
+  wa.setAttribute("opacity", clamp((e5 - 1.4) / 0.15)); wa.setAttribute("transform", `translate(540,1200) scale(${wk * pulse})`);
+  const rk = ((e5 - 2) % 1.1) / 1.1;
+  ring.setAttribute("opacity", e5 > 2 ? (1 - rk) * 0.8 : 0); ring.setAttribute("transform", `scale(${1 + rk * 0.12},${1 + rk * 0.35})`);
+  // la main vient toucher le bouton
+  const hk2 = eio((e5 - 2.4) / 0.6), tap = e5 > 3.0 && e5 < 3.25 ? 1 : 0;
+  hand.setAttribute("opacity", 0);
+  hand.setAttribute("transform", `translate(${lerp(980, 700, hk2)},${lerp(1600, 1330, hk2) + tap * 14}) rotate(-20) scale(${1 - tap * 0.06})`);
+  caption(t);
+}
+window.seek = seek;
+Promise.all([fetch("campagne-timing.json").then((r) => r.json()).then((j) => { T = B ? j.b : j.a; }).catch(() => {}),
+  fetch("campagne-script.json").then((r) => r.json()).then((j) => { CAPS = B ? j.b : j.a; }).catch(() => {}),
+  fetch(B ? "campagne-amp-b.json" : "campagne-amp-a.json").then((r) => r.json()).then((j) => { AMP = j; }).catch(() => {})]).finally(() => {
+  seek(0); document.fonts.ready.then(() => { window.READY = true; });
+  if (!location.search.includes("render")) { const t0 = performance.now(); const loop = () => { seek(((performance.now() - t0) / 1000) % T.duration); requestAnimationFrame(loop); }; loop(); }
+});
+</script>
+</body>
+</html>
