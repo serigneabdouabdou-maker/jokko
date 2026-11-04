@@ -809,6 +809,14 @@
   .vundo:focus-visible { outline: 2px solid var(--j-ink); outline-offset: 2px; }
   /* Annuler + « Jokko s'est trompé » : l'un au-dessus de l'autre, petits mais touchables. */
   .vacts { flex: none; align-self: center; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+  /* Téléphone : Annuler et « Jokko s'est trompé » passent sous la réponse (le résumé garde toute la largeur). */
+  @media (max-width: 560px) {
+    .vreply { flex-wrap: wrap; }
+    .vreply-body { flex: 1 1 calc(100% - 80px); }
+    .vacts { order: 3; flex: 1 1 100%; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding-left: 38px; }
+    .vacts .vundo { height: 38px; }
+    .vreply .vclose { order: 2; }
+  }
   .vwrong {
     min-height: 32px;
     padding: 0 10px;
