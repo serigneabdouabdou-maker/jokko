@@ -624,6 +624,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const [wave, setWave] = useState(0);
   const [assistant, setAssistant] = useState<AssistantStatus>("checking");
   const [live, setLive] = useState<{ phase: LivePhase; caption: string } | null>(null);
+  // Branche de capture uniquement : poignées pour mettre l'écran dans l'état voulu.
+  Object.assign(window as unknown as Record<string, unknown>, { __jokko: { setMessages, setVoice, setReply, setAssistant, setLive } });
   const [sync, setSync] = useState<SyncState>("ok");
   useEffect(() => onSyncState(setSync), []);
   const rec = useRef<MediaRecorder | null>(null);

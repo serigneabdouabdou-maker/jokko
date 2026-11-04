@@ -18,7 +18,8 @@ const base: Profile = { phone: "221775674725", owner: "Fallou", lang: "fr", role
 function Shop() {
   const [profile, setProfile] = useState<Profile>(() => {
     const p = demoProfile(base);
-    return { ...p, shops: p.shops.map((s) => ({ ...s, name: "Boutique Fallou" })) };
+    const trial = { plan: "gratuit" as const, until: null, trialUntil: new Date(Date.now() + 12 * 86400000).toISOString() };
+    return { ...p, shops: p.shops.map((s) => ({ ...s, name: "Boutique Fallou", plan: trial })) };
   });
   return <Desk profile={profile} setProfile={setProfile} />;
 }
