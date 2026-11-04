@@ -18,19 +18,22 @@ export function wolofKey(word: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z]/g, "");
   w = w
+    .replace(/ph/g, "f") // Moustapha → Mustafa
     .replace(/tch|thi(?=[aeiou])|th|ch/g, "c") // thieb, tchep, cheb → ceb
     .replace(/kh|q/g, "x") // khorom, sankhal, sanqal → xorom, sanxal
+    .replace(/c(?=[olrt])/g, "k") // client, courant, docteur, école : c français = k (« cuun », « caam » restent c)
     .replace(/dj|di(?=[aeiou])/g, "j") // djeuguen, dieuredieuf, dioul → j…
     .replace(/gn|ny|ni(?=[aeiou])/g, "n") // gnaari, nyaari, niébé, ñebbe → n…
     .replace(/gu(?=[eiy])/g, "g") // guerte → gerte
     .replace(/ou/g, "u") // soukar, mbourou, dougoub → sukar, mburu, dugub
     .replace(/eu/g, "e") // meuw, deurem → mew, derem
     .replace(/ie/g, "e") // thieb → ceb
+    .replace(/ah$/, "a") // yallah, inchallah → yalla
+    .replace(/h/g, "x") // hel, wahtou, diahal : h écrit pour x
     .replace(/(.)\1+/g, "$1") // ceeb → ceb, suukar → sukar
-    // Fins de mots à la française (règles relevées avec wolof-nlp, MIT, 04/11/2026) :
-    .replace(/h$/, "") // yallah → yalla
-    .replace(/p$/, "b") // thiep, tchep → ceb (b final se prononce p)
-    .replace(/(?<=[^aeiou])e$/, (e, i: number) => (i >= 3 ? "" : e)); // begue, serigne, ndeysane : e muet final
+    // Fins de mots à la française (règles relevées avec wolof-nlp, MIT, et le jeu « Wolof Non-Standard Orthography », 04/11/2026) :
+    .replace(/(?<=[^aeiou])e$/, (e, i: number) => (i >= 3 ? "" : e)) // begue, serigne, boppé : e muet final
+    .replace(/p$/, "b"); // thiep, tchep → ceb (b final se prononce p)
   return w;
 }
 
