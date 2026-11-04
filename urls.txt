@@ -1,1 +1,7 @@
-https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/modou-8-v2.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-1-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-2-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-3-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-4-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-5-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-6-v1.mp3
+https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/media/voix/phrases/offres-7-v1.mp3
