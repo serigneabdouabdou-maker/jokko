@@ -34,8 +34,8 @@ Important : on ne réentraîne pas Gemini. Les corpus servent à **trouver des m
 | [abdoukarim/wolbanking77](https://github.com/abdoukarim/wolbanking77) | Phrases wolof sur l'argent et la banque | CC-BY-4.0 | ✅ Très utile | 1, 5 | fay, phrases d'argent ; 9 791 phrases sur Kaggle à récupérer |
 | [Galsenaicommunity/Wolof-Common-Voice](https://github.com/Galsenaicommunity/Wolof-Common-Voice) | Phrases à lire pour Common Voice | CC-BY-SA-4.0 | 🟡 Mesure seulement | 1 | Fréquence des mots |
 | [dofbi/jolof](https://github.com/dofbi/jolof) | Données pour entraîner des IA en wolof | MIT | ✅ | 1 | Fréquence des mots |
-| [khossdev/baatukaay](https://github.com/khossdev/baatukaay) | Dictionnaire wolof–français | MIT | ⏳ À analyser | 1, 2 | — |
-| [wolof/wolof-english-dictionary](https://github.com/wolof/wolof-english-dictionary) | Dictionnaire wolof–anglais | Non précisée | ⏳ À analyser | 2 | — |
+| [khossdev/baatukaay](https://github.com/khossdev/baatukaay) | Site de dictionnaire wolof–français : seulement 17 mots (lettre « aa ») | MIT | ❌ Trop petit | — | Rien (seul « aaréen = arachide », déjà couvert par gerte) |
+| [wolof/wolof-english-dictionary](https://github.com/wolof/wolof-english-dictionary) | Dictionnaire wolof–anglais scanné (~1 400 articles, fautes de lecture) | Non précisée | 🟡 Pistes seulement | 1 | Mots du commerce proposés à Fallou (jafe, jar, waxaale, wanteer, déggoo, jappandi, kiliyaan, mbaar, fayyul) ; rien recopié |
 | [Galsenaicommunity/Wolof-TTS](https://github.com/Galsenaicommunity/Wolof-TTS) | Carnets pour entraîner une voix wolof (xTTS v2, Parler-TTS, Fish, Tortoise) sur le jeu Baamtu ; pas de voix prête dans le dépôt | MIT | 🟡 Réserve | 6 | Rien branché : il faut une carte graphique et un serveur payant. À ressortir si la voix Gemini (Sulafat) prononce mal le wolof ; l'examen de la voix se fera alors à l'oreille par Fallou |
 
 Mots ajoutés au vocabulaire grâce aux corpus (validés par Fallou le 04/11/2026) : fay, marse, soxla, indi, yóbbu, tuuti, bari.
