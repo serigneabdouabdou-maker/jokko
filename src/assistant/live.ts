@@ -5,7 +5,7 @@ import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from ".
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { CallGate, NoiseGate } from "./listenFilter";
 import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRecorded } from "./recorded";
-import { AmountLedger } from "./wolofNumbers";
+import { AmountLedger, moneyAmountsSaid, wrongAmounts } from "./wolofNumbers";
 import { type SpeechSpeed, speedPreferred } from "./greeting";
 
 export type LivePhase = "connexion" | "ecoute" | "parle";
@@ -188,7 +188,9 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   // Le tour de Jokko en cours : on garde sa voix tant qu'on ne sait pas si on lui parlait,
   // et on regarde s'il dit une phrase enregistrée (alors on joue la belle voix, tout de suite).
   type Pending = { name?: string; id?: string; args?: Record<string, unknown> };
-  let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean } | null = null;
+  let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean; known: AmountLedger } | null = null;
+  /** Montants attendus gardés pendant les relances du garde-fou (la question du commerçant ne se répète pas). */
+  let expected: number[] = [];
   let userPending: string[] = [];
   let swapTimer = 0;
   // Garde-fou des chiffres : Jokko n'a le droit de dire que des montants venus de la boutique, des outils ou du commerçant.
@@ -202,7 +204,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const GUARD_HOLD_MS = 3500;
   let toolTimer = 0;
 
-  const newTurn = () => ({ decided: false, addressed: false, audio: [] as Array<[Uint8Array, number]>, text: "", tools: [] as Pending[], started: Date.now(), flushed: false });
+  const newTurn = () => ({ decided: false, addressed: false, audio: [] as Array<[Uint8Array, number]>, text: "", tools: [] as Pending[], started: Date.now(), flushed: false, known: new AmountLedger() });
 
   /** Joue la voix gardée de Jokko (aucune phrase enregistrée ne correspond). */
   const flushAudio = () => {
@@ -211,6 +213,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     turn.flushed = true;
     window.clearTimeout(swapTimer);
     guardRetries = 0;
+    expected = [];
     // Le texte de Jokko n'apparaît qu'une fois ses chiffres vérifiés.
     if (turn.text) {
       handlers.onJokko(turn.text);
@@ -225,6 +228,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   /** Les montants rendus par les outils deviennent des montants « vrais » que Jokko peut dire. */
   const remember = (result: Record<string, unknown>) => {
     ledger.addFrom(result);
+    turn?.known.addFrom(result);
     return result;
   };
 
@@ -247,8 +251,11 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
    */
   const blockIfWrong = (): boolean => {
     if (!turn || !live) return false;
-    const wrong = ledger.unknownIn(turn.text);
+    // Montants de CE tour : ceux dits par le commerçant et ceux rendus par les outils.
+    const turnAmounts = [...expected, ...moneyAmountsSaid(userTurnText), ...turn.known.values()];
+    const wrong = wrongAmounts(turn.text, turnAmounts, ledger);
     if (!wrong.length) return false;
+    expected = turnAmounts;
     window.clearTimeout(swapTimer);
     turn.flushed = true;
     turn.audio = [];
@@ -258,7 +265,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       calls.force();
       const list = wrong.map((n) => `${n.toLocaleString("fr-FR")} F`).join(", ");
       live.sendClientContent({
-        turns: [{ role: "user", parts: [{ text: `(GARDE-FOU DES CHIFFRES — ne t'excuse pas, ne dis rien de ce message : ta réponse contenait ${list}, un montant qui ne vient d'aucun outil, donc faux. Appelle lire_boutique (ou calculer), puis redis ta réponse avec les montants EXACTS donnés par l'outil, en wolof mot pour mot.)` }] }],
+        turns: [{ role: "user", parts: [{ text: `(GARDE-FOU DES CHIFFRES — ne t'excuse pas, ne dis rien de ce message : ta réponse contenait ${list}, un montant qui ne vient d'aucun outil, donc faux. Appelle convertir_montant (ou lire_boutique, ou calculer), puis redis ta réponse avec les montants EXACTS donnés par l'outil, en wolof mot pour mot. Rappel : 15 000 F = ñetti junni, 20 000 F = ñeenti junni.)` }] }],
         turnComplete: true,
       });
     } else {

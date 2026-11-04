@@ -48,6 +48,7 @@ import {
 } from "@/assistant/client";
 import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive } from "@/assistant/live";
 import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
+import { AmountLedger, guardReply, moneyAmountsSaid } from "@/assistant/wolofNumbers";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
@@ -805,7 +806,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       }
       const saved = desk.record(action, heard);
       if (saved.ok) {
-        say(result.spokenReply);
+        // Garde-fou de l'argent : la phrase dit le montant ENREGISTRÉ par le code, jamais un calcul de Gemini.
+        say(guardReply(result.spokenReply, moneyAmountsSaid(heard), result.language, undefined, saved.entry.amount ?? null));
         return;
       }
       const message = `Il me manque ${saved.besoin}. Redis la phrase en entier.`;
@@ -813,8 +815,12 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       fail(message);
       return;
     }
-    say(result.spokenReply);
-    settle(result.spokenReply, undefined);
+    // Garde-fou de l'argent : un montant qui ne vient ni de la phrase, ni de la boutique est remplacé.
+    const book = new AmountLedger();
+    book.addFrom(buildShopContext(currentShop(profileRef.current), profileRef.current.lang));
+    const reply = guardReply(result.spokenReply, moneyAmountsSaid(heard), result.language, book);
+    say(reply);
+    settle(reply, undefined);
   }
 
   function bubble(role: "user" | "jokko", chunk: string) {

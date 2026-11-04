@@ -614,5 +614,120 @@
         "client": "Fatou Sow"
       }
     ]
+  },
+  "dire": {
+    "_lisezmoi": "Ce que Jokko DIT : le code convertit les francs en wolof (dërëm). Chaque ligne est vérifiée dans les deux sens, plus un balayage automatique de 5 F à 1 milliard.",
+    "montants": [
+      {
+        "francs": 500,
+        "wolof": "téeméer"
+      },
+      {
+        "francs": 1000,
+        "wolof": "ñaari téeméer"
+      },
+      {
+        "francs": 1500,
+        "wolof": "ñetti téeméer"
+      },
+      {
+        "francs": 2500,
+        "wolof": "juróomi téeméer"
+      },
+      {
+        "francs": 4000,
+        "wolof": "juróom-ñetti téeméer"
+      },
+      {
+        "francs": 5000,
+        "wolof": "benn junni"
+      },
+      {
+        "francs": 7500,
+        "wolof": "benn junni ak juróomi téeméer"
+      },
+      {
+        "francs": 8000,
+        "wolof": "benn junni ak juróom-benni téeméer"
+      },
+      {
+        "francs": 10000,
+        "wolof": "ñaari junni"
+      },
+      {
+        "francs": 15000,
+        "wolof": "ñetti junni"
+      },
+      {
+        "francs": 20000,
+        "wolof": "ñeenti junni"
+      },
+      {
+        "francs": 25000,
+        "wolof": "juróomi junni"
+      },
+      {
+        "francs": 50000,
+        "wolof": "fukki junni"
+      },
+      {
+        "francs": 100000,
+        "wolof": "ñaar-fukki junni"
+      },
+      {
+        "francs": 150000,
+        "wolof": "fanweeri junni"
+      },
+      {
+        "francs": 500000,
+        "wolof": "téeméeri junni"
+      },
+      {
+        "francs": 1000000,
+        "wolof": "benn milyoŋ"
+      },
+      {
+        "francs": 2500000,
+        "wolof": "ñaari milyoŋ ak téeméeri junni"
+      },
+      {
+        "francs": 1000000000,
+        "wolof": "benn miliyaar"
+      }
+    ],
+    "garde_fou": [
+      {
+        "question": "15 000 F, ñaata la ci wolof ?",
+        "jokko": "Ñeenti junni la.",
+        "bloque": true,
+        "pourquoi": "ñeenti junni = 20 000 F, pas 15 000 F"
+      },
+      {
+        "question": "15 000 F, ñaata la ci wolof ?",
+        "jokko": "Ñetti junni la.",
+        "bloque": false
+      },
+      {
+        "question": "Jaay naa ñetti junni",
+        "jokko": "Bind naa ko : ñeenti junni.",
+        "bloque": true
+      },
+      {
+        "question": "Jaay naa ñetti junni",
+        "jokko": "Bind naa ko : ñetti junni.",
+        "bloque": false
+      },
+      {
+        "question": "Awa fey na 8 000",
+        "jokko": "Bind naa ko : junni ak juróom benni téeméer.",
+        "bloque": false
+      },
+      {
+        "question": "Awa fey na 8 000",
+        "jokko": "Bind naa ko : juróom ñetti téeméer.",
+        "bloque": true,
+        "pourquoi": "4 000 F au lieu de 8 000 F"
+      }
+    ]
   }
 }

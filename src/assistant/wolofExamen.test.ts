@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import examen from "./wolofExamen.json";
-import { extractSpokenAmount, spokenAmountToFrancs } from "./wolofNumbers";
+import { extractSpokenAmount, francsToWolof, moneyAmountsSaid, spokenAmountToFrancs, wrongAmounts } from "./wolofNumbers";
 import { pickByName } from "./wolofNames";
 import { sameSound } from "./wolofSpelling";
 
@@ -51,6 +51,33 @@ function clients(): Echec[] {
   return ko;
 }
 
+function dire(): Echec[] {
+  const ko: Echec[] = [];
+  for (const q of examen.dire.montants) {
+    const w = francsToWolof(q.francs);
+    if (w !== q.wolof) ko.push({ dit: `${q.francs} F`, attendu: q.wolof, obtenu: w });
+    const back = spokenAmountToFrancs(q.wolof)?.francs;
+    if (back !== q.francs) ko.push({ dit: q.wolof, attendu: q.francs, obtenu: back ?? null });
+  }
+  for (const q of examen.dire.garde_fou) {
+    const bloque = wrongAmounts(q.jokko, moneyAmountsSaid(q.question)).length > 0;
+    if (bloque !== q.bloque) ko.push({ dit: `${q.question} → ${q.jokko}`, attendu: q.bloque ? "bloqué" : "accepté", obtenu: bloque ? "bloqué" : "accepté" });
+  }
+  return ko;
+}
+
+/** Balayage : chaque montant de 5 F à 1 milliard, dit en wolof par le code, redonne le même montant. */
+function balayage(): [Echec[], number] {
+  const ko: Echec[] = [];
+  let n = 0;
+  for (let f = 5; f <= 1_000_000_000; f += f < 100_000 ? 5 : f < 1_000_000 ? 2_500 : f < 100_000_000 ? 250_000 : 50_000_000) {
+    n++;
+    const back = spokenAmountToFrancs(francsToWolof(f))?.francs;
+    if (back !== f && ko.length < 5) ko.push({ dit: `${f} F → ${francsToWolof(f)}`, attendu: f, obtenu: back ?? null });
+  }
+  return [ko, n];
+}
+
 function ecritures(): Echec[] {
   const ko: Echec[] = [];
   for (const [a, b] of examen.ecritures.pareils) if (!sameSound(a, b)) ko.push({ dit: `${a} / ${b}`, attendu: "pareil", obtenu: "différent" });
@@ -60,7 +87,7 @@ function ecritures(): Echec[] {
 
 describe("examen de wolof", () => {
   it("score au-dessus du seuil", () => {
-    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
+    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], "Jokko dit le montant": [dire(), examen.dire.montants.length * 2 + examen.dire.garde_fou.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
     let total = 0, ok = 0;
     const lignes: string[] = [];
     for (const [nom, [ko, n]] of Object.entries(parts)) {
@@ -68,6 +95,10 @@ describe("examen de wolof", () => {
       lignes.push(`${nom} : ${n - ko.length}/${n}`);
       for (const e of ko) lignes.push(`  ✗ « ${e.dit} » attendu ${JSON.stringify(e.attendu)}, obtenu ${JSON.stringify(e.obtenu)}`);
     }
+    const [sweep, swept] = balayage();
+    lignes.push(`balayage 5 F → 1 milliard : ${swept - sweep.length}/${swept}`);
+    for (const e of sweep) lignes.push(`  ✗ ${e.dit} relu ${JSON.stringify(e.obtenu)}`);
+    expect(sweep).toEqual([]);
     const score = ok / total;
     console.log(`Examen de wolof : ${(score * 100).toFixed(1)} % (${ok}/${total})\n${lignes.join("\n")}`);
     expect(score).toBeGreaterThanOrEqual(examen.seuil);

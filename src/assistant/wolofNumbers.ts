@@ -478,4 +478,32 @@ export class AmountLedger {
   unknownIn(said: string): number[] {
     return moneyAmountsSaid(said).filter((n) => !this.known.has(n));
   }
+
+  values(): number[] {
+    return [...this.known];
+  }
+}
+
+/**
+ * Garde-fou STRICT d'une réponse : quand la question ou les outils de CE tour donnent des montants,
+ * Jokko ne peut dire que ceux-là (sinon un « ñeenti junni » = 20 000 F passerait dès que la boutique
+ * contient 20 000 F quelque part). Sans montant dans le tour, on revient au registre de la conversation.
+ * Renvoie les montants faux (vide = tout est juste).
+ */
+export function wrongAmounts(said: string, turnAmounts: Iterable<number>, conversation?: AmountLedger): number[] {
+  const strict = new Set(turnAmounts);
+  const spoken = moneyAmountsSaid(said);
+  if (strict.size) return spoken.filter((n) => !strict.has(n));
+  return conversation ? conversation.unknownIn(said) : [];
+}
+
+/**
+ * Réponse écrite du mode secours (messages vocaux) : un montant que le code n'a pas donné est remplacé
+ * par la phrase du code (montant enregistré) ou par « Baal ma, waxaat ko. ».
+ */
+export function guardReply(reply: string, turnAmounts: number[], lang: string, conversation?: AmountLedger, saved?: number | null): string {
+  const allowed = saved ? [...turnAmounts, saved] : turnAmounts;
+  if (!wrongAmounts(reply, allowed, conversation).length) return reply;
+  if (saved) return lang === "fr" ? `C'est noté : ${saved.toLocaleString("fr-FR").replace(/\u202f/g, " ")} F.` : `Bind naa ko : ${francsToWolof(saved)}.`;
+  return lang === "fr" ? "Pardon, peux-tu répéter ?" : "Baal ma, waxaat ko.";
 }
