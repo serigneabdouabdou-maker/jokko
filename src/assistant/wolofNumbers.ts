@@ -27,15 +27,15 @@ const MULTIPLIERS: Record<string, number> = {
 
 /** Écritures courantes → forme de base (sans accents ni ñ). */
 const SPELLINGS: Array<[RegExp, string]> = [
-  [/^(?:nyaar|niaar|naar|ñaar)i?$/, "naar"],
-  [/^(?:nyett|niett|nett|ñett|nyet|net)t?i?$/, "nett"],
-  [/^(?:nyeent|nieent|neent|ñeent|nyent|neen)t?i?$/, "neent"],
-  [/^(?:juroom|jurom|diouroum|djouroum|juróom|juroum)i?$/, "juroom"],
+  [/^(?:nyaar|niaar|gnaar|naar|ñaar)i?$/, "naar"],
+  [/^(?:nyett|niett|gnett|nett|ñett|nyet|gnet|net)t?i?$/, "nett"],
+  [/^(?:nyeent|nieent|gneent|neent|ñeent|nyent|gnent|nent|neen)t?i?$/, "neent"],
+  [/^(?:juroom|jurom|diouroum|djouroum|diouroom|dioroom|djoroom|joroom|juróom|juroum)i?$/, "juroom"],
   [/^(?:benn|ben)i?$/, "benn"],
   [/^(?:fukk|fuk|fouk|foukk)i?$/, "fukk"],
   [/^(?:fanweer|fanwer|fanweeri)i?$/, "fanweer"],
-  [/^(?:teemeer|temeer|teemer|temer|téeméer|teeméer)i?$/, "teemeer"],
-  [/^(?:junni|juni|djouni|jounni|douni)i?$/, "junni"],
+  [/^(?:teemeer|temeer|teemer|temer|téeméer|teeméer)[iu]?$/, "teemeer"],
+  [/^(?:junni|juni|djouni|jounni|douni)[iy]?$/, "junni"],
   [/^(?:milyon|milyoŋ|miliyon|milyong)i?$/, "milyon"],
   [/^(?:miliyaar|milyaar|miliyar|milyar|miliaar)i?$/, "miliyaar"],
   [/^(?:derem|dërëm|dorom|deurem|dereum)$/, "derem"],
@@ -153,6 +153,10 @@ export function saysUnitPrice(text: string): boolean {
 function clean(text: string): string[] {
   return text
     .toLowerCase()
+    // « ñatt / ñatti » = 3 (parler de Dakar, relevé dans les corpus) ; « natt » seul = peser : on ne le touche pas.
+    .replace(/(^|[^a-zñ])(?:ñ|ny|gn)att(i?)(?=$|[^a-z])/g, "$1nett$2")
+    // « fan-weer » / « fan weeri » = 30
+    .replace(/\bfan[-–\s]+weer/g, "fanweer")
     .replace(/ñ/g, "n")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
