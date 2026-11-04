@@ -14,7 +14,7 @@ describe("buildShopContext", () => {
     const json = JSON.stringify(context);
 
     expect(context.language).toBe("fuc");
-    expect(Object.keys(context).sort()).toEqual(["clients", "figures", "language", "products"]);
+    expect(Object.keys(context).sort()).toEqual(["activity", "clients", "figures", "language", "products"]);
     expect(Object.keys(context.clients[0]).sort()).toEqual(["debt", "id", "name"]);
     expect(json).not.toContain("AIza");
     expect(json).not.toMatch(/phone|221\d{9}|Pikine/);
