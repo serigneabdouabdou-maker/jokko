@@ -3,6 +3,7 @@ import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import { lexiconInstruction } from "../../src/assistant/wolofLexicon.ts";
 import { contextAmountsInWolof } from "./prompt.ts";
+import { metierInstruction } from "../../src/data/metiers.ts";
 import type { ShopContext } from "./schema.ts";
 
 /** Gemini 3.8 Live : environ 3 fois plus rapide que 2.5 sur nos essais en wolof (0,9 s contre 3,3 s). */
@@ -97,7 +98,7 @@ const SPEED_LINE: Record<LiveSpeed, string> = {
 export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, speed: LiveSpeed = "normal"): LiveConnectConfig {
   return {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: `${LIVE_INSTRUCTION}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction()}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
+    systemInstruction: `${LIVE_INSTRUCTION}\n\n${metierInstruction(context.activity)}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction()}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
@@ -200,6 +201,29 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
                 montants: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Les montants en francs, pris tels quels dans lire_boutique (ex. [20000, 8500])." },
               },
               required: ["montants"],
+            },
+          },
+          {
+            name: "reparation",
+            description: "Carnet de réparations (téléphones…) : déposer un appareil, noter les pièces posées, encaisser un acompte, rendre l'appareil, ou lister les réparations en cours. L'outil calcule le reste à payer et le bénéfice.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING, enum: ["deposer", "reparee", "payer", "rendre", "lister"], description: "deposer : le client laisse l'appareil ; reparee : les pièces sont posées ; payer : acompte ; rendre : le client récupère l'appareil ; lister : réparations en cours." },
+                ticket: { type: Type.STRING, description: "Numéro du ticket (« R-007 ») ou nom du client, pour retrouver la réparation (sauf deposer et lister)." },
+                clientName: { type: Type.STRING, description: "deposer : nom du client." },
+                telephone: { type: Type.STRING, description: "deposer : numéro du client s'il est dit." },
+                appareil: { type: Type.STRING, description: "deposer : l'appareil (« iPhone 11 », « Tecno Spark 10 »)." },
+                panne: { type: Type.STRING, description: "deposer : la panne (« écran cassé, connecteur »)." },
+                prixDit: { type: Type.STRING, description: "deposer : le prix de la réparation, mots exacts (« 25 000 », « juróomi junni »), si fixé." },
+                avanceDit: { type: Type.STRING, description: "deposer : l'avance payée, mots exacts, s'il y en a." },
+                montantDit: { type: Type.STRING, description: "payer ou rendre : ce que le client paie maintenant, mots exacts." },
+                pieces: { type: Type.ARRAY, items: { type: Type.STRING }, description: "reparee : les pièces posées, comme dites (« écran iPhone 11 », « connecteur »)." },
+                resteEnDette: { type: Type.BOOLEAN, description: "rendre : vrai si le reste non payé va en dette du client." },
+                garantieJours: { type: Type.NUMBER, description: "deposer ou rendre : garantie en jours si le réparateur la donne." },
+                heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },
+              },
+              required: ["action"],
             },
           },
           {

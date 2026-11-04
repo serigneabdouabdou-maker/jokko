@@ -58,6 +58,26 @@ export const shopContextSchema = z.strictObject({
     dayExpenses: money,
     expectedCash: z.number().finite(),
   }),
+  /** Métier de la boutique (réparation de téléphones, pharmacie…). */
+  activity: z.string().trim().max(80).optional(),
+  /** Réparations en cours (carnet des réparateurs). */
+  repairs: z
+    .array(
+      z.strictObject({
+        number: z.string().max(12),
+        client: z.string().max(80),
+        device: z.string().max(80),
+        problem: z.string().max(160),
+        status: z.enum(["depot", "repare"]),
+        price: money,
+        paid: money,
+        days: z.number().int().min(0).max(10_000),
+      }),
+    )
+    .max(60)
+    .optional(),
+  /** Articles qui périment dans les 30 jours (pharmacies, alimentation). */
+  expiring: z.array(z.strictObject({ name, expiresAt: z.string().max(10), daysLeft: z.number().int().min(-10_000).max(10_000) })).max(60).optional(),
 });
 
 export const interpretRequestSchema = z.strictObject({

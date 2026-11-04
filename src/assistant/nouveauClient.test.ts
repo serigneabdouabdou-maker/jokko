@@ -98,3 +98,24 @@ describe("dette d'un client qui doit déjà : ajouter ou total ?", () => {
     expect(shop().clients[0].debt).toBe(15000);
   });
 });
+
+describe("réparations à la voix (outil reparation)", () => {
+  it("dépôt → réparé → rendu, bénéfice calculé par le code", () => {
+    let shop: Shop = {
+      ...seedShop(),
+      clients: [],
+      products: [{ id: "ecran", name: "Écran iPhone 11", unit: "pièce", stock: 2, min: 1, price: 30000, cost: 15000 }],
+    };
+    const desk = new LiveDesk({ getShop: () => shop, lang: () => "wo", write: (next) => (shop = next), onSaved: () => {}, onUndone: () => {} });
+    const d = desk.handle({ name: "reparation", args: { action: "deposer", clientName: "Awa Diop", telephone: "77 123 45 67", appareil: "iPhone 11", panne: "écran cassé", prixDit: "juróomi junni", avanceDit: "benn junni" } }) as Record<string, unknown>;
+    expect(d.ticket).toBe("R-001");
+    expect(d.reste).toEqual({ francs: 20000, wolof: "ñeenti junni" });
+    const r = desk.handle({ name: "reparation", args: { action: "reparee", ticket: "R-001", pieces: ["écran iPhone 11"] } }) as Record<string, unknown>;
+    expect(r.benefice).toEqual({ francs: 10000, wolof: "ñaari junni" });
+    expect(shop.products[0].stock).toBe(1);
+    const g = desk.handle({ name: "reparation", args: { action: "rendre", ticket: "Awa", montantDit: "ñeenti junni" } }) as Record<string, unknown>;
+    expect(g.statut).toBe("enregistre");
+    expect(g.reste_en_dette).toBeNull();
+    expect(shop.repairs?.[0].status).toBe("rendu");
+  });
+});

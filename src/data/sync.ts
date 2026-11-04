@@ -1,4 +1,4 @@
-import type { Client, Expense, Invoice, InvoiceLine, Product, Reminder, Sale, Shop, Shortcut } from "../model.ts";
+import type { Client, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -7,7 +7,7 @@ export type Row = Record<string, unknown>;
 export type Op = { table: string; kind: "upsert" | "delete"; id: string; row?: Row };
 
 /** Tables filles, dans l'ordre d'envoi des upserts (parents avant enfants). */
-export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts"] as const;
+export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs"] as const;
 export type ChildTable = (typeof CHILD_TABLES)[number];
 const TABLE_ORDER: string[] = ["shops", ...CHILD_TABLES];
 
@@ -32,6 +32,7 @@ const toRow = {
     cost: opt(p.cost), retail_unit: p.retail?.unit ?? null, retail_per_unit: p.retail?.perUnit ?? null, retail_price: p.retail?.price ?? null,
     barcode: p.barcode ?? null, retail_barcode: p.retail?.barcode ?? null,
     aliases: p.aliases?.length ? p.aliases : null,
+    expires_at: opt(p.expiresAt),
   }),
   clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt) }),
   sales: (s: Sale, shopId: string): Row => ({
@@ -46,6 +47,11 @@ const toRow = {
   }),
   reminders: (r: Reminder, shopId: string): Row => ({ id: r.id, shop_id: shopId, at: r.at, client_id: r.clientId, note: r.note }),
   shortcuts: (k: Shortcut, shopId: string): Row => ({ id: k.id, shop_id: shopId, phrase: k.phrase, does: k.does }),
+  repairs: (r: Repair, shopId: string): Row => ({
+    id: r.id, shop_id: shopId, at: r.at, number: r.number, client_id: opt(r.clientId), client_name: r.clientName, phone: r.phone,
+    device: r.device, problem: r.problem, price: r.price, paid: r.paid, parts: r.parts, status: r.status,
+    repaired_at: opt(r.repairedAt), returned_at: opt(r.returnedAt), warranty_days: opt(r.warrantyDays),
+  }),
 };
 
 /** Lignes d'une table fille pour une boutique. */
@@ -58,6 +64,7 @@ export function childRows(shop: Shop, table: ChildTable): Row[] {
     case "invoices": return shop.invoices.map((x) => toRow.invoices(x, shop.id));
     case "reminders": return shop.reminders.map((x) => toRow.reminders(x, shop.id));
     case "shortcuts": return shop.shortcuts.map((x) => toRow.shortcuts(x, shop.id));
+    case "repairs": return (shop.repairs ?? []).map((x) => toRow.repairs(x, shop.id));
   }
 }
 
@@ -282,6 +289,7 @@ export type ShopRows = {
   invoices: Row[];
   reminders: Row[];
   shortcuts: Row[];
+  repairs?: Row[];
 };
 
 /** numeric / bigint peuvent arriver en string. */
@@ -365,6 +373,8 @@ export function rowsToShop(rows: ShopRows): Shop {
       }
       const code = optStr(r.barcode);
       if (code) product.barcode = code;
+      const expires = optStr(r.expires_at);
+      if (expires) product.expiresAt = expires.slice(0, 10);
       if (Array.isArray(r.aliases)) {
         const aliases = (r.aliases as unknown[]).map((a) => String(a ?? "").trim()).filter(Boolean);
         if (aliases.length) product.aliases = aliases;
@@ -421,7 +431,28 @@ export function rowsToShop(rows: ShopRows): Shop {
     ),
     reminders: byAtDesc(rows.reminders.map((r) => ({ id: str(r.id), at: iso(r.at), clientId: str(r.client_id), note: str(r.note) }))),
     shortcuts: rows.shortcuts.map((r) => ({ id: str(r.id), phrase: str(r.phrase), does: str(r.does) })),
+    ...(rows.repairs?.length ? { repairs: byAtDesc(rows.repairs.map(readRepair)) } : {}),
   };
+}
+
+const REPAIR_STATUSES: Repair["status"][] = ["depot", "repare", "rendu", "annule"];
+function readRepair(r: Row): Repair {
+  const status = str(r.status) as Repair["status"];
+  const repair: Repair = {
+    id: str(r.id), at: iso(r.at), number: str(r.number), clientName: str(r.client_name), phone: str(r.phone),
+    device: str(r.device), problem: str(r.problem), price: num(r.price), paid: num(r.paid),
+    parts: Array.isArray(r.parts)
+      ? (r.parts as Row[]).map((p) => ({ ...(optStr(p.productId) ? { productId: str(p.productId) } : {}), label: str(p.label), qty: num(p.qty) || 1, cost: num(p.cost) }))
+      : [],
+    status: REPAIR_STATUSES.includes(status) ? status : "depot",
+  };
+  const clientId = optStr(r.client_id);
+  if (clientId) repair.clientId = clientId;
+  if (optStr(r.repaired_at)) repair.repairedAt = iso(r.repaired_at);
+  if (optStr(r.returned_at)) repair.returnedAt = iso(r.returned_at);
+  const warranty = optNum(r.warranty_days);
+  if (warranty) repair.warrantyDays = warranty;
+  return repair;
 }
 
 // ---------- Chargement ----------
@@ -481,6 +512,7 @@ export async function loadShops(client: LoadClient, shopIds?: string[]): Promise
       invoices: pick("invoices", id),
       reminders: pick("reminders", id),
       shortcuts: pick("shortcuts", id),
+      repairs: pick("repairs", id),
     });
   });
 }

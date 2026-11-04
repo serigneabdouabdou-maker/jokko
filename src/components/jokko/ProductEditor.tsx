@@ -42,6 +42,7 @@ export function ProductEditor({
   const [retailPrice, setRetailPrice] = useState(product.retail ? String(product.retail.price) : "");
   const [code, setCode] = useState(product.barcode ?? "");
   const [aliases, setAliases] = useState((product.aliases ?? []).join(", "));
+  const [expires, setExpires] = useState(product.expiresAt ?? "");
   const [retailCode, setRetailCode] = useState(product.retail?.barcode ?? "");
   const [error, setError] = useState("");
 
@@ -82,6 +83,8 @@ export function ProductEditor({
     if (code.trim()) next.barcode = cleanCode(code);
     const names = [...new Set(aliases.split(/[,;\n]/).map((a) => a.trim()).filter((a) => a && a.toLowerCase() !== next.name.toLowerCase()))].slice(0, 8);
     if (names.length) next.aliases = names;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(expires)) next.expiresAt = expires;
+    else delete next.expiresAt;
     if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp), ...(retailCode.trim() ? { barcode: cleanCode(retailCode) } : {}) };
     // Le stock n'est remplacé que si on l'a changé ici (une vente à la voix a pu le modifier entre-temps).
     onSave(next, stock.trim() !== String(product.stock));
@@ -103,6 +106,11 @@ export function ProductEditor({
         <Label htmlFor="pe-alias">Autres noms, en wolof ou surnoms (séparés par des virgules)</Label>
         <Input id="pe-alias" className="h-11" value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="ex. diwu oto, diwu moteur" />
         <p className="note">Comment tes clients et tes vendeurs appellent cet article : Jokko le reconnaîtra mieux à la voix, surtout en wolof.</p>
+      </div>
+      <div className="field">
+        <Label htmlFor="pe-expires">Date de péremption (si l'article périme)</Label>
+        <Input id="pe-expires" type="date" className="h-11" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        <p className="note">Jokko te prévient 30 jours avant. Utile pour les médicaments, le lait, les conserves.</p>
       </div>
       <div className="grid-2">
         <div className="field">

@@ -1,3 +1,4 @@
+import { MetierPicker } from "./MetierPicker";
 import { useState } from "react";
 import { Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
         >
           <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la nouvelle boutique (ex. Boutique Médina)" aria-label="Nom de la nouvelle boutique" autoFocus />
           <Input className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville ou quartier" aria-label="Ville" />
-          <Input className="h-11" value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="Activité (alimentation, quincaillerie…)" aria-label="Activité" />
+          <MetierPicker value={activity} onChange={setActivity} />
           <label className="row">
             <input type="checkbox" checked={copyProducts} onChange={(e) => setCopyProducts(e.target.checked)} />
             <span>Reprendre les articles et les prix de « {shop.name} » (stock à zéro)</span>

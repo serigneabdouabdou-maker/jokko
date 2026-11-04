@@ -20,6 +20,37 @@ export type Product = {
   barcode?: string;
   /** Autres noms (wolof, surnoms) : « diwu oto » pour l'huile moteur. Aident Jokko à reconnaître l'article. */
   aliases?: string[];
+  /** Date de péremption (AAAA-MM-JJ) : médicaments, lait, conserves… Jokko prévient avant. */
+  expiresAt?: string;
+};
+
+/** Réparation au comptoir (téléphones, ordinateurs…) : le client laisse l'appareil, revient le chercher, parfois des mois après. */
+export type RepairStatus = "depot" | "repare" | "rendu" | "annule";
+/** Pièce posée : prise dans le stock (productId) ou achetée exprès ; cost = prix d'achat total de la pièce. */
+export type RepairPart = { productId?: string; label: string; qty: number; cost: number };
+export type Repair = {
+  id: string;
+  /** Jour du dépôt. */
+  at: string;
+  /** Numéro court du ticket (R-001), à écrire sur l'appareil. */
+  number: string;
+  clientId?: string;
+  clientName: string;
+  phone: string;
+  /** Appareil : « iPhone 11 », « Tecno Spark 10 ». */
+  device: string;
+  /** Panne : « écran cassé, connecteur de charge ». */
+  problem: string;
+  /** Prix de la réparation (0 = pas encore fixé). */
+  price: number;
+  /** Déjà payé (avance + paiements). */
+  paid: number;
+  parts: RepairPart[];
+  status: RepairStatus;
+  repairedAt?: string;
+  returnedAt?: string;
+  /** Garantie en jours, si le réparateur en donne une. */
+  warrantyDays?: number;
 };
 
 export type Client = {
@@ -116,6 +147,8 @@ export type Shop = {
   invoices: Invoice[];
   reminders: Reminder[];
   shortcuts: Shortcut[];
+  /** Carnet de réparations (réparateurs) ; absent pour une boutique qui n'en fait pas. */
+  repairs?: Repair[];
 };
 
 export type Profile = {

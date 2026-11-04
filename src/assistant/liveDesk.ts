@@ -6,6 +6,7 @@ import { extractSpokenAmount, francsToWolof, settleAmounts, spokenAmountToFrancs
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 import { Basket } from "./basket";
+import { addRepair, deliverRepair, findRepair, markRepaired, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName } from "./wolofNames";
 
 export { expandHeard, pickByName, plain, sameName };
@@ -63,6 +64,90 @@ export class LiveDesk {
   }
 
   /** Enregistre une écriture comprise par Jokko. */
+  /** Outil « reparation » : carnet des réparateurs (dépôt → réparé → rendu). */
+  private repair(args: Record<string, unknown>, callId?: string): Record<string, unknown> {
+    const shop = this.deps.getShop();
+    const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const heard = text(args.heard);
+    const said = (v: unknown) => {
+      const t = text(v);
+      return t ? (spokenAmountToFrancs(t) ?? extractSpokenAmount(t))?.francs ?? null : null;
+    };
+    const W = (n: number) => ({ francs: n, wolof: francsToWolof(n) });
+    const action = text(args.action);
+    if (action === "lister") {
+      const open = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
+      return {
+        statut: "liste",
+        en_cours: open.slice(0, 20).map((r) => ({ ticket: r.number, client: r.clientName, appareil: r.device, panne: r.problem, etat: r.status === "depot" ? "au dépôt, pas encore réparé" : "réparé, attend le client", reste: W(remaining(r)) })),
+        consigne: open.length ? "Dis combien d'appareils attendent, puis les plus anciens (ticket, client, appareil)." : "Dis qu'aucun appareil n'attend.",
+      };
+    }
+    if (action === "deposer") {
+      const clientName = text(args.clientName);
+      if (!clientName) return { statut: "incomplet", besoin: "le nom du client" };
+      const price = said(args.prixDit);
+      const advance = said(args.avanceDit);
+      if (text(args.prixDit) && price === null) return NOT_UNDERSTOOD;
+      if (text(args.avanceDit) && advance === null) return NOT_UNDERSTOOD;
+      const warranty = typeof args.garantieJours === "number" && args.garantieJours > 0 ? Math.round(args.garantieJours) : undefined;
+      const { shop: after, repair } = addRepair(shop, { clientName, phone: text(args.telephone), device: text(args.appareil), problem: text(args.panne), price: price ?? 0, advance: advance ?? 0, warrantyDays: warranty });
+      this.commit(shop, after, `Réparation ${repair.number} · ${repair.clientName} · ${repair.device}${repair.price ? ` · ${fr(repair.price)}` : ""}${repair.paid ? ` · avance ${fr(repair.paid)}` : ""}`, heard, { callId, amount: repair.paid || undefined });
+      return {
+        statut: "enregistre",
+        ticket: repair.number,
+        client: repair.clientName,
+        prix: repair.price ? W(repair.price) : null,
+        avance: repair.paid ? W(repair.paid) : null,
+        reste: W(remaining(repair)),
+        consigne: `Dis le numéro du ticket (${repair.number}) pour qu'il l'écrive sur l'appareil, puis le reste à payer en wolof (reste.wolof).${repair.price ? "" : " Le prix n'est pas encore fixé : il le dira au rendu."}`,
+      };
+    }
+    const ref = text(args.ticket) || text(args.clientName);
+    const found = ref ? findRepair(shop, ref) : undefined;
+    if (!found) return { statut: "incomplet", besoin: "le numéro du ticket (R-…) ou le nom du client de la réparation" };
+    if (action === "reparee") {
+      const names = Array.isArray(args.pieces) ? args.pieces.map((x) => String(x ?? "").trim()).filter(Boolean) : [];
+      const parts = names.map((n) => {
+        const hit = pickByName(shop.products, n);
+        return hit.item ? { productId: hit.item.id } : { label: n, cost: 0 };
+      });
+      const missingPieces = names.filter((n) => !pickByName(shop.products, n).item);
+      const after = markRepaired(shop, found.id, parts);
+      if (!after) return { statut: "incomplet", besoin: "une réparation encore ouverte" };
+      const r = repairsOf(after).find((x) => x.id === found.id)!;
+      this.commit(shop, after, `Réparation ${r.number} réparée · pièces : ${r.parts.map((p) => p.label).join(", ") || "aucune"}`, heard, { callId });
+      return {
+        statut: "enregistre",
+        ticket: r.number,
+        pieces: r.parts.map((p) => p.label),
+        benefice: r.price ? W(repairProfit(r)) : null,
+        reste: W(remaining(r)),
+        ...(missingPieces.length ? { pieces_hors_stock: missingPieces, consigne_pieces: "Ces pièces ne sont pas dans le stock : leur prix d'achat n'est pas compté. Dis-le en une phrase." } : {}),
+      };
+    }
+    if (action === "payer") {
+      const amount = said(args.montantDit);
+      if (!amount) return NOT_UNDERSTOOD;
+      const after = payRepair(shop, found.id, amount);
+      if (!after) return NOT_UNDERSTOOD;
+      const r = repairsOf(after).find((x) => x.id === found.id)!;
+      this.commit(shop, after, `Réparation ${r.number} · acompte ${fr(amount)}`, heard, { callId, amount });
+      return { statut: "enregistre", ticket: r.number, paye: W(amount), reste: W(remaining(r)) };
+    }
+    if (action === "rendre") {
+      const amount = text(args.montantDit) ? said(args.montantDit) : 0;
+      if (amount === null) return NOT_UNDERSTOOD;
+      const after = deliverRepair(shop, found.id, amount, args.resteEnDette === true);
+      if (!after) return { statut: "incomplet", besoin: "une réparation pas encore rendue" };
+      const r = repairsOf(after).find((x) => x.id === found.id)!;
+      const rest = Math.max(0, r.price - r.paid);
+      this.commit(shop, after, `Réparation ${r.number} rendue · payé ${fr(amount)}${rest ? ` · reste ${fr(rest)} en dette` : ""}`, heard, { callId, amount: amount || undefined });
+      return { statut: "enregistre", ticket: r.number, paye: W(amount), reste_en_dette: rest ? W(rest) : null, benefice: W(repairProfit(r)) };
+    }
+    return { statut: "outil_inconnu" };
+  }
+
   record(action: DraftAction, heard = "", callId?: string): Recorded {
     const key = JSON.stringify([action, heard.trim().toLowerCase()]);
     const last = this.history[0];
@@ -274,6 +359,10 @@ export class LiveDesk {
         en_derem: francs % 5 === 0 ? francs / 5 : null,
         consigne: "Répète en_wolof mot pour mot. Ne change aucun chiffre.",
       };
+    }
+
+    if (call.name === "reparation") {
+      return this.repair(args, call.id);
     }
 
     if (call.name === "numero_client") {

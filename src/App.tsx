@@ -55,6 +55,9 @@ import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
+import { Atelier } from "@/components/jokko/Atelier";
+import { METIERS, expiringSoon, metierOf } from "@/data/metiers";
+import { MetierPicker } from "@/components/jokko/MetierPicker";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
 import { acceptTerms, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
@@ -104,7 +107,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -122,6 +125,7 @@ const NAV: Array<[Screen, string]> = [
   ["stock", "Stock"],
   ["clients", "Clients"],
   ["factures", "Factures"],
+  ["atelier", "Atelier"],
   ["depenses", "Dépenses"],
   ["dettes", "Dettes"],
   ["caisse", "Caisse"],
@@ -143,6 +147,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   stock: "stock",
   clients: "client",
   factures: "facture",
+  atelier: "reparation",
   depenses: "depense",
   dettes: "dette",
   caisse: "caisse",
@@ -501,7 +506,7 @@ function TermsGate({ profile, onAccepted }: { profile: Profile; onAccepted: () =
 function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const [owner, setOwner] = useState(profile.owner);
   const [shopName, setShopName] = useState("");
-  const [activity, setActivity] = useState("Alimentation");
+  const [activity, setActivity] = useState(METIERS[0].label);
   const [city, setCity] = useState("");
   const [lang, setLang] = useState<Lang>(profile.lang || "wo");
 
@@ -540,8 +545,8 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
           </div>
           <div className="grid-2">
             <div className="field">
-              <Label htmlFor="activity">Tu vends quoi ?</Label>
-              <Input id="activity" className="h-11" value={activity} onChange={(e) => setActivity(e.target.value)} />
+              <Label htmlFor="activity">Ton métier</Label>
+              <MetierPicker id="activity" value={activity} onChange={setActivity} />
             </div>
             <div className="field">
               <Label htmlFor="city">Quartier ou ville</Label>
@@ -1268,7 +1273,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1)).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || metierOf(shop.activity).atelier || (shop.repairs?.length ?? 0) > 0)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
@@ -1388,6 +1393,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                   </button>
                 )}
                 <div className="list">
+                  {expiringSoon(shop.products, 30).map((p) => <article key={`exp-${p.id}`} className="is-low"><span>{p.name} <em><Icon name="alerte" size="sm" />{p.daysLeft < 0 ? "périmé" : p.daysLeft === 0 ? "périme aujourd'hui" : `périme dans ${p.daysLeft} j`}</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
                   {lowStock(shop).map((p) => <article key={p.id} className="is-low"><span>{p.name} <em><Icon name="stockBas" size="sm" />stock bas</em></span><b className="num">{p.stock} {p.unit}</b></article>)}
                   {shop.sales.slice(0, 4).map((s) => <article key={s.id}><span>{s.label}</span><b className="num">{amount(s.amount)}</b></article>)}
                 </div>
@@ -1417,6 +1423,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
+          {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
@@ -1668,6 +1675,13 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
       )}
       <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
       {roleIn(profile) === "patron" && !isDemoShop(shop) && <ShopManager profile={profile} setProfile={setProfile} canAdd={can(shop, "boutiques")} />}
+      {roleIn(profile) === "patron" && !isDemoShop(shop) && (
+        <div className="field">
+          <Label htmlFor="metier">Métier de « {shop.name} »</Label>
+          <MetierPicker id="metier" value={shop.activity} onChange={(activity) => setProfile(replaceShop(profile, { ...shop, activity }))} />
+          <p className="note">Jokko s'adapte à ton métier : Atelier pour les réparateurs, dates de péremption pour les pharmacies.</p>
+        </div>
+      )}
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
         <ShopLocation

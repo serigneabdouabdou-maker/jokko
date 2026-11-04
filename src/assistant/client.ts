@@ -1,6 +1,7 @@
 import { api } from "../data/supabase";
 import type { OrderGuess } from "./order";
 import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
+import { expiringSoon } from "../data/metiers";
 
 export type AssistantLanguage = "wo" | "fr" | "en" | "fuc";
 export type AssistantIntent = "sale" | "stock_query" | "debt_query" | "expense" | "cash_query" | "invoice" | "unknown";
@@ -39,6 +40,9 @@ export type ShopContext = {
   products: Array<{ id: string; name: string; unit: string; stock: number; min: number; price: number }>;
   clients: Array<{ id: string; name: string; debt: number }>;
   figures: { openingCash: number; daySales: number; dayExpenses: number; expectedCash: number };
+  activity?: string;
+  repairs?: Array<{ number: string; client: string; device: string; problem: string; status: "depot" | "repare"; price: number; paid: number; days: number }>;
+  expiring?: Array<{ name: string; expiresAt: string; daysLeft: number }>;
 };
 
 export type AssistantStatus = "checking" | "ready" | "off";
@@ -69,6 +73,23 @@ export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
       dayExpenses: dayExpenses(shop),
       expectedCash: expectedCash(shop),
     },
+    ...(shop.activity?.trim() ? { activity: shop.activity.trim().slice(0, 80) } : {}),
+    ...(() => {
+      const open = (shop.repairs ?? []).filter((r) => r.status === "depot" || r.status === "repare").slice(0, 60);
+      return open.length
+        ? {
+            repairs: open.map((r) => ({
+              number: r.number.slice(0, 12), client: r.clientName.slice(0, 80), device: r.device.slice(0, 80), problem: r.problem.slice(0, 160),
+              status: r.status as "depot" | "repare", price: r.price, paid: r.paid,
+              days: Math.max(0, Math.floor((Date.now() - new Date(r.repairedAt ?? r.at).getTime()) / 86_400_000)),
+            })),
+          }
+        : {};
+    })(),
+    ...(() => {
+      const soon = expiringSoon(shop.products, 30).slice(0, 60);
+      return soon.length ? { expiring: soon.map((p) => ({ name: p.name.slice(0, 80), expiresAt: p.expiresAt ?? "", daysLeft: p.daysLeft })) } : {};
+    })(),
   };
 }
 
