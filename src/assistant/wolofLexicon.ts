@@ -3,6 +3,7 @@
  * (Le livre de phrases, lui, contient ce que Jokko a le droit de DIRE.)
  * Les 120 entrées ont été validées par le patron de Jokko le 02/11/2026 (« tout est correct ») ;
  * fay, marse, soxla, indi, yóbbu, tuuti et bari (relevés dans les corpus publics) l'ont été le 04/11/2026 (« OK mots »).
+ * jafe, jar, waxaale, wanteer, déggoo, jappandi, kiliyaan, mbaar et fayyul (pistes d'un dictionnaire wolof–anglais) ont été validés le 04/11/2026 (« OK mots »).
  * Orthographe officielle du wolof quand elle existe ; sinon la forme courante à Dakar.
  */
 export type LexiconEntry = { wo: string; fr: string };
@@ -53,6 +54,9 @@ export const WOLOF_LEXICON: LexiconTheme[] = [
       e("xaalis", "argent"), e("dërëm", "5 francs"), e("kopar", "sou, petite somme"), e("njëg", "prix"), e("seer", "cher"), e("yomb", "pas cher"),
       e("tono", "bénéfice"), e("depaans", "dépense"), e("jaay ci bor", "vendre à crédit"), e("jënd ci bor", "acheter à crédit"),
       e("fey ci kanam", "payer d'avance"), e("fey genn-wàll", "payer la moitié"), e("fey lépp", "tout payer"), e("marse", "marché"),
+      e("jafe", "cher, difficile"), e("jar", "coûter, valoir ; se vendre bien"), e("waxaale", "marchander"), e("wanteer", "solder, baisser le prix"),
+      e("déggoo", "se mettre d'accord sur un prix"), e("jappandi", "attendre le reste (de l'argent dû)"), e("kiliyaan", "client habituel"), e("mbaar", "étal, stand au marché"),
+      e("fayyul", "récupérer une dette"),
     ],
   },
   {
