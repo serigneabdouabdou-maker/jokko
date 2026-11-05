@@ -9,6 +9,7 @@ import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@
 import "./landing.css";
 import { AppPrompt } from "@/components/jokko/Install";
 import { LandingMetiers } from "@/components/jokko/LandingMetiers";
+import { noteVisit } from "@/data/visits";
 
 /**
  * Page d'accueil animée. Légère : uniquement CSS + quelques lignes de JavaScript (pas de bibliothèque).
@@ -319,6 +320,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
   };
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
   const [scrolled, setScrolled] = useState(false);
+  useEffect(() => noteVisit(), []);
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 24);
     on();

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JokkoMark } from "@/components/jokko/JokkoMark";
 import { ConsoleMap } from "./ConsoleMap";
+import { ActivityTab } from "./Activity";
 import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
 import { supabase, signIn, phoneOf, SUPABASE_URL } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
@@ -39,8 +40,9 @@ const short = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: 
 const monthName = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { month: "short" });
 const phone = (p: string) => p.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
-type Tab = "apercu" | "gemini" | "erreurs" | "carte" | "paiements" | "boutiques" | "reglages";
+type Tab = "activite" | "apercu" | "gemini" | "erreurs" | "carte" | "paiements" | "boutiques" | "reglages";
 const TABS: [Tab, string][] = [
+  ["activite", "Activité en direct"],
   ["apercu", "Vue d'ensemble"],
   ["gemini", "Gemini et wolof"],
   ["erreurs", "Erreurs de Jokko"],
@@ -50,7 +52,7 @@ const TABS: [Tab, string][] = [
   ["reglages", "Réglages"],
 ];
 
-const TAB_ICONS: Record<Tab, IconName> = { apercu: "rapport", gemini: "ia", erreurs: "alerte", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
+const TAB_ICONS: Record<Tab, IconName> = { activite: "journal", apercu: "rapport", gemini: "ia", erreurs: "alerte", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
 
 const STATUS_LABEL = { active: "Active", calme: "Calme", endormie: "Endormie", nouvelle: "Nouvelle" } as const;
 
@@ -211,8 +213,9 @@ function ConsoleLogin() {
 
 export function ConsoleDesk({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>(() => {
-    const wanted = new URLSearchParams(window.location.search).get("onglet");
-    return TABS.some(([id]) => id === wanted) ? (wanted as Tab) : "apercu";
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("onglet") ?? params.get("tab");
+    return TABS.some(([id]) => id === wanted) ? (wanted as Tab) : "activite";
   });
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -300,7 +303,9 @@ export function ConsoleDesk({ session }: { session: Session }) {
           </div>
         </header>
 
-        {!dash || !overview ? (
+        {tab === "activite" ? (
+          <ActivityTab />
+        ) : !dash || !overview ? (
           <p className="note">{loading ? "Chargement des chiffres…" : "Impossible de charger les chiffres. Vérifie la connexion puis touche Actualiser."}</p>
         ) : (
           <>

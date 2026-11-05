@@ -1,0 +1,20 @@
+{
+  "name": "Jokko Admin — Console CFC",
+  "short_name": "Jokko Admin",
+  "description": "La tour de contrôle de Jokko : inscriptions, boutiques, abonnements, visites, avec notifications.",
+  "lang": "fr",
+  "id": "/console/",
+  "start_url": "/console/?onglet=activite",
+  "scope": "/console/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17191F",
+  "theme_color": "#17191F",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

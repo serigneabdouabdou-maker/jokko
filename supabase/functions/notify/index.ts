@@ -246,7 +246,10 @@ Deno.serve(async (req) => {
     if (body.kind === "cfc" && typeof body.title === "string" && typeof body.body === "string") {
       // Équipe CFC (administrateurs) : paiements reçus, etc.
       const { data: ids } = await admin.rpc("platform_admin_ids");
-      const sent = await push(((ids ?? []) as string[]).filter(Boolean), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url: "/console/", tag: "cfc" });
+      // Chaque événement a son étiquette : les notifications s'empilent au lieu de se remplacer.
+      const tag = typeof body.tag === "string" && /^[a-z0-9-]{1,40}$/.test(body.tag) ? body.tag : `cfc-${Date.now()}`;
+      const url = typeof body.url === "string" && body.url.startsWith("/console/") ? body.url.slice(0, 80) : "/console/?tab=activite";
+      const sent = await push(((ids ?? []) as string[]).filter(Boolean), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url, tag });
       return Response.json({ sent });
     }
     if (body.kind === "test" && typeof body.user === "string") {

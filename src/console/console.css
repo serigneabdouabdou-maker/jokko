@@ -181,3 +181,35 @@
 .cx-inline { display: inline-flex; gap: 6px; align-items: center; }
 .cx-rank li .cx-link { white-space: nowrap; font-size: 13px; }
 .cx-code { display: block; padding: 10px 12px; border-radius: 10px; background: var(--j-wash); font-size: 14px; word-break: break-all; }
+
+/* Activité en direct */
+.cx-act-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+.cx-act-kpi .cx-inline { color: var(--j-ink-3); }
+.cx-act-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.cx-live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 650; color: var(--j-ok); }
+.cx-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--j-ok); box-shadow: 0 0 0 0 color-mix(in oklab, var(--j-ok) 50%, transparent); animation: cx-pulse 1.8s ease-out infinite; }
+@keyframes cx-pulse { to { box-shadow: 0 0 0 8px transparent; } }
+.cx-act-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.cx-act-filters::-webkit-scrollbar { display: none; }
+.cx-act-filters button { flex: none; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-white); font-size: 13px; font-weight: 600; color: var(--j-ink-2); }
+.cx-act-filters button.on { background: var(--j-ink); border-color: var(--j-ink); color: var(--j-white); }
+.cx-feed { list-style: none; margin: 0; padding: 0; display: grid; }
+.cx-feed-day { margin: 14px 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--j-ink-3); }
+.cx-feed li:first-child .cx-feed-day { margin-top: 2px; }
+.cx-feed-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 0; border-top: 1px solid var(--j-line); }
+.cx-feed-ico { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--j-wash); color: var(--j-ink-2); }
+.cx-feed li[data-kind="inscription"] .cx-feed-ico { background: color-mix(in oklab, var(--j-ok) 14%, var(--j-white)); color: var(--j-ok); }
+.cx-feed li[data-kind="boutique"] .cx-feed-ico { background: var(--j-soft); color: var(--j-ink); }
+.cx-feed li[data-kind="abonnement"] .cx-feed-ico, .cx-feed li[data-kind="paiement"] .cx-feed-ico { background: var(--j-ink); color: var(--j-yellow); }
+.cx-feed-txt { display: grid; gap: 2px; min-width: 0; }
+.cx-feed-txt b { font-size: 14.5px; font-weight: 650; }
+.cx-feed-txt small { font-size: 13px; color: var(--j-ink-2); line-height: 1.4; overflow-wrap: anywhere; }
+.cx-feed time { font-size: 12px; color: var(--j-ink-3); white-space: nowrap; padding-top: 2px; }
+.cx-switch { position: relative; width: 46px; height: 28px; border-radius: 999px; background: var(--j-line); border: 0; flex: none; transition: background var(--t-fast) var(--ease); }
+.cx-switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); transition: transform var(--t-fast) var(--ease); }
+.cx-switch.on { background: var(--j-ok); }
+.cx-switch.on i { transform: translateX(18px); }
+.cx-switch:focus-visible { outline: 3px solid var(--j-yellow); outline-offset: 2px; }
+.cx-phone .note[data-tone="error"] { color: var(--j-danger); }
+@media (max-width: 1100px) { .cx-act-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .cx-live i { animation: none; } }
