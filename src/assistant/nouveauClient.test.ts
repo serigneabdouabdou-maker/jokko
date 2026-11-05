@@ -29,6 +29,38 @@ describe("dette dictée pour un nouveau client", () => {
   });
 });
 
+describe("famille au même nom (Cissé) : trier sans se tromper", () => {
+  it("« Anta Cissé » est une nouvelle personne, pas « lequel des deux ? »", () => {
+    const { desk, shop } = setup(["Fallou Cissé", "Diop Cissé"]);
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Anta Cissé", montantDit: "ñetti junni", heard: "Anta Cissé bor na ñetti junni" } }) as Record<string, unknown>;
+    expect(r.statut).toBe("enregistre");
+    expect(r.nouveau_client).toBe("Anta Cissé");
+    expect(shop().clients).toHaveLength(3);
+    expect(shop().clients.find((c) => c.name === "Anta Cissé")?.debt).toBe(15000);
+    expect(shop().clients.find((c) => c.name === "Fallou Cissé")?.debt).toBe(0);
+    expect(shop().clients.find((c) => c.name === "Diop Cissé")?.debt).toBe(0);
+  });
+
+  it("« Cissé » tout seul reste ambigu : Jokko demande lequel", () => {
+    const { desk, shop } = setup(["Fallou Cissé", "Diop Cissé"]);
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Cissé", montantDit: "ñetti junni", heard: "Cissé bor na ñetti junni" } }) as Record<string, unknown>;
+    expect(r.statut).toBe("incomplet");
+    expect(String(r.besoin)).toContain("Fallou Cissé");
+    expect(String(r.besoin)).toContain("Diop Cissé");
+    expect(shop().clients).toHaveLength(2);
+  });
+
+  it("« Diop Cissé » retrouve bien le Diop existant, sans doublon", () => {
+    const { desk, shop } = setup(["Fallou Cissé", "Diop Cissé"]);
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Diop Cissé", montantDit: "ñetti junni", heard: "Diop Cissé bor na ñetti junni" } }) as Record<string, unknown>;
+    expect(r.statut).toBe("enregistre");
+    expect(r.nouveau_client).toBeUndefined();
+    expect(shop().clients).toHaveLength(2);
+    expect(shop().clients.find((c) => c.name === "Diop Cissé")?.debt).toBe(15000);
+    expect(shop().clients.find((c) => c.name === "Fallou Cissé")?.debt).toBe(0);
+  });
+});
+
 describe("numéro du nouveau client, dicté à Jokko", () => {
   it("reconnaît les numéros sénégalais, refuse le reste", async () => {
     const { senegalPhone } = await import("./liveDesk");

@@ -145,7 +145,7 @@ export class Basket {
   }
 
   private recapInstruction() {
-    return "Récapitule le panier ligne par ligne (quantité en wolof ou en français, article), puis dis le total EXACTEMENT comme total_en_wolof (ou total_en_francs), puis demande « Noonu la ? » (« C'est bien ça ? »). Si le commerçant corrige, appelle panier (changer, ajouter ou retirer). Appelle panier « valider » SEULEMENT après « waaw » / « oui ».";
+    return "Récapitule le panier ligne par ligne, CHAQUE ligne jusqu'à la dernière, sans en sauter même s'il y en a beaucoup (quantité en wolof ou en français, article), puis dis le total EXACTEMENT comme total_en_wolof (ou total_en_francs), puis demande « Noonu la ? » (« C'est bien ça ? »). Si le commerçant corrige, appelle panier (changer, ajouter ou retirer). Appelle panier « valider » SEULEMENT après « waaw » / « oui ».";
   }
 
   /** Le récapitulatif calculé par le code : chaque ligne, son prix et le total. */

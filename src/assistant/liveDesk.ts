@@ -488,7 +488,15 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
   const product = resolveOne(shop.products, args.productId, productName);
   const found = resolveOne(shop.clients, args.clientId, clientName);
   // « Fatou Ndiaye » n'est pas « Fatou Sow » : un autre nom de famille = un nouveau client.
-  const client = found.item && clientName && nameClash(found.item.name, clientName) ? { item: undefined, ambiguous: [] } : found;
+  // Vrai aussi quand plusieurs clients partagent un nom (la famille Cissé) mais qu'AUCUN ne correspond au nom
+  // complet entendu : « Anta Cissé » à côté de « Fallou Cissé » et « Diop Cissé » = une nouvelle personne,
+  // pas « lequel des deux ? ». (Un nom seul — « Cissé », « Fatou » — reste ambigu : Jokko demande.)
+  const newPerson =
+    clientName &&
+    (found.item
+      ? nameClash(found.item.name, clientName)
+      : found.ambiguous.length > 0 && found.ambiguous.every((c) => nameClash(c.name, clientName)));
+  const client = newPerson ? { item: undefined, ambiguous: [] as typeof found.ambiguous } : found;
   const ambigu = client.ambiguous.length
     ? `quel client : ${client.ambiguous.map((c) => c.name).join(" ou ")} ?`
     : product.ambiguous.length
