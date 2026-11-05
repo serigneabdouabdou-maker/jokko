@@ -15,7 +15,7 @@ export function MetierPicker({ id, value, onChange }: { id?: string; value: stri
         id={id}
         className="h-11 rounded-md border px-3"
         value={selected}
-        onChange={(e) => onChange(e.target.value === "Autre activité" ? "" : e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         aria-label="Métier"
       >
         {METIERS.map((m) => (

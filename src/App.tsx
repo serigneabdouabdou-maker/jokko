@@ -56,10 +56,11 @@ import { Bilan } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
-import { METIERS, expiringSoon, metierOf } from "@/data/metiers";
+import { expiringSoon, metierOf } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
+import { chosenMetier, forgetMetier, METIER_LOOK, MetierCards, MetierSetup, rememberMetier } from "@/components/jokko/MetierCards";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
 import { acceptTerms, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
@@ -284,6 +285,9 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  // Inscription en 3 étapes : 1. le métier, 2. le numéro et le code, 3. la boutique (après la création du compte).
+  const [metier, setMetier] = useState(chosenMetier);
+  const [step, setStep] = useState<"metier" | "compte">(chosenMetier() ? "compte" : "metier");
   const digits = code.replace(/\D/g, "").slice(0, 6);
   const digits2 = code2.replace(/\D/g, "").slice(0, 6);
   const otpDigits = otp.replace(/\D/g, "").slice(0, 6);
@@ -384,7 +388,7 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
         <h1>
           {forgot ? <>Code oublié ? <em className="accent">On le change.</em></> : creating ? <>Bienvenue. <em className="accent">Crée ton compte.</em></> : <>Bonjour. <em className="accent">Content de te revoir.</em></>}
         </h1>
-        <p className="lede">Tu parles, je travaille : ventes, stock, clients, factures.</p>
+        <p className="lede">{creating && step === "metier" ? "Choisis ton métier : Jokko se règle tout seul pour toi." : "Tu parles, je travaille : ventes, stock, clients, factures."}</p>
       </section>
       <section className="gate-card">
         {!forgot && (
@@ -393,6 +397,24 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
             <button type="button" role="tab" aria-selected={!creating} className={!creating ? "on" : ""} onClick={() => switchTo("entrer")}>Me connecter</button>
           </div>
         )}
+        {creating && <SignupSteps at={step === "metier" ? 0 : 1} />}
+        {creating && step === "metier" ? (
+          <div className="fields">
+            <MetierCards value={metier} onChange={setMetier} />
+            {metier && <MetierSetup value={metier} />}
+            <Button
+              className="h-12 rounded-full text-[15px] font-semibold"
+              disabled={!metier.trim()}
+              onClick={() => {
+                rememberMetier(metier);
+                setStep("compte");
+              }}
+            >
+              Continuer
+            </Button>
+            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
+          </div>
+        ) : (
         <form
           className="fields"
           onSubmit={(e) => {
@@ -400,6 +422,12 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
             if (!busy && ready) void enter();
           }}
         >
+          {creating && metier && (
+            <div className="metier-chip">
+              <span><MetierBadge value={metier} /></span>
+              <button type="button" className="link" onClick={() => setStep("metier")}>Changer</button>
+            </div>
+          )}
           <div className="field">
             <Label htmlFor="phone">Ton numéro de téléphone</Label>
             <Input id="phone" className="h-12 text-base" inputMode="tel" autoComplete="tel" value={phone} readOnly={otpSent} onChange={(e) => setPhone(e.target.value)} placeholder="77 123 45 67" />
@@ -450,9 +478,10 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
           {forgot ? (
             <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={() => switchTo("entrer")}>Retour à la connexion</Button>
           ) : (
-            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={onBack}>Retour</Button>
+            <Button type="button" variant="ghost" className="h-10 rounded-full" onClick={creating ? () => setStep("metier") : onBack}>Retour</Button>
           )}
         </form>
+        )}
       </section>
       {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
     </main>
@@ -505,16 +534,44 @@ function TermsGate({ profile, onAccepted }: { profile: Profile; onAccepted: () =
   );
 }
 
+/** Les 3 étapes de l'inscription : le métier d'abord, puis le compte, puis la boutique. */
+function SignupSteps({ at }: { at: number }) {
+  return (
+    <ol className="steps" aria-label="Étapes de l'inscription">
+      {["1. Ton métier", "2. Ton compte", "3. Ta boutique"].map((t, i) => (
+        <li key={t} className={i < at ? "done" : i === at ? "on" : ""} aria-current={i === at ? "step" : undefined}>{t}</li>
+      ))}
+    </ol>
+  );
+}
+
+/** Le métier choisi, avec son dessin. */
+function MetierBadge({ value }: { value: string }) {
+  const m = metierOf(value);
+  const look = METIER_LOOK[m.id];
+  const Glyph = look.icon;
+  return (
+    <>
+      <span className="metier-ico" aria-hidden="true" style={{ width: 36, height: 36, background: "var(--j-yellow)", color: "var(--j-ink)" }}>
+        <Glyph size={20} strokeWidth={1.75} />
+      </span>
+      {m.id === "autre" && value.trim() && value !== m.label ? value : look.title}
+    </>
+  );
+}
+
 function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const [owner, setOwner] = useState(profile.owner);
   const [shopName, setShopName] = useState("");
-  const [activity, setActivity] = useState(METIERS[0].label);
+  const [activity, setActivity] = useState(chosenMetier);
   const [city, setCity] = useState("");
   const [lang, setLang] = useState<Lang>(profile.lang || "wo");
 
   function finish() {
     setProfile(firstShop(profile, owner.trim(), lang, newShop(shopName.trim(), activity.trim(), city.trim())));
+    forgetMetier();
   }
+  const [picking, setPicking] = useState(!chosenMetier());
 
   return (
     <main className="gate">
@@ -525,7 +582,23 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
         <p className="lede">Ensuite, tu parles à Jokko et il note tout.</p>
       </section>
       <section className="gate-card">
+        <SignupSteps at={2} />
         <div className="fields">
+          {picking || !activity.trim() ? (
+            <div className="field">
+              <Label>Ton métier</Label>
+              <MetierCards value={activity} onChange={(v) => { setActivity(v); rememberMetier(v); }} compact />
+              {activity.trim() && <Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => setPicking(false)}>C'est mon métier</Button>}
+            </div>
+          ) : (
+            <>
+              <div className="metier-chip">
+                <span><MetierBadge value={activity} /></span>
+                <button type="button" className="link" onClick={() => setPicking(true)}>Changer</button>
+              </div>
+              <MetierSetup value={activity} />
+            </>
+          )}
           <div className="grid-2">
             <div className="field">
               <Label htmlFor="owner">Ton prénom</Label>
@@ -545,17 +618,11 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
             <Label htmlFor="shop">Nom de la boutique</Label>
             <Input id="shop" className="h-11" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Boutique Awa" />
           </div>
-          <div className="grid-2">
-            <div className="field">
-              <Label htmlFor="activity">Ton métier</Label>
-              <MetierPicker id="activity" value={activity} onChange={setActivity} />
-            </div>
-            <div className="field">
-              <Label htmlFor="city">Quartier ou ville</Label>
-              <Input id="city" className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pikine" />
-            </div>
+          <div className="field">
+            <Label htmlFor="city">Quartier ou ville</Label>
+            <Input id="city" className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pikine" />
           </div>
-          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim()} onClick={finish}>Ouvrir la boutique</Button>
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim() || !activity.trim()} onClick={finish}>Ouvrir la boutique</Button>
         </div>
       </section>
     </main>
@@ -1674,6 +1741,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
 
 function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; onDemo?: () => void }) {
   const [reading, setReading] = useState<LegalDoc | null>(null);
+  const [changingMetier, setChangingMetier] = useState(false);
   const shop = currentShop(profile);
   const file = useMemo(() => toCsv(shop), [shop]);
   return (
@@ -1693,7 +1761,11 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
         <div className="field">
           <Label htmlFor="metier">Métier de « {shop.name} »</Label>
-          <MetierPicker
+          <div className="metier-chip">
+            <span><MetierBadge value={shop.activity} /></span>
+            <button type="button" className="link" onClick={() => setChangingMetier((v) => !v)}>{changingMetier ? "Fermer" : "Changer"}</button>
+          </div>
+          {changingMetier && <MetierPicker
             id="metier"
             value={shop.activity}
             onChange={(activity) => {
@@ -1711,8 +1783,9 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
               )
                 return;
               setProfile(replaceShop(profile, { ...shop, activity }));
+              setChangingMetier(false);
             }}
-          />
+          />}
           <p className="note">Une boutique = un métier. Jokko s'y adapte : vocabulaire, exemples, unités, Atelier pour les réparateurs, dates de péremption pour les pharmacies. Pour une autre activité, crée une autre boutique.</p>
         </div>
       )}

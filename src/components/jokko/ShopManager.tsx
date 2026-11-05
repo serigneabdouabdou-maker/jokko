@@ -1,4 +1,4 @@
-import { MetierPicker } from "./MetierPicker";
+import { MetierCards } from "./MetierCards";
 import { useState } from "react";
 import { Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
         >
           <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la nouvelle boutique (ex. Boutique Médina)" aria-label="Nom de la nouvelle boutique" autoFocus />
           <Input className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville ou quartier" aria-label="Ville" />
-          <MetierPicker value={activity} onChange={setActivity} />
+          <MetierCards value={activity} onChange={setActivity} compact />
           {sameMetier ? (
             <label className="row">
               <input type="checkbox" checked={copyProducts} onChange={(e) => setCopyProducts(e.target.checked)} />
