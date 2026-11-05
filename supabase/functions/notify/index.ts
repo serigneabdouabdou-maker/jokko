@@ -249,7 +249,11 @@ Deno.serve(async (req) => {
       // Chaque événement a son étiquette : les notifications s'empilent au lieu de se remplacer.
       const tag = typeof body.tag === "string" && /^[a-z0-9-]{1,40}$/.test(body.tag) ? body.tag : `cfc-${Date.now()}`;
       const url = typeof body.url === "string" && body.url.startsWith("/console/") ? body.url.slice(0, 80) : "/console/?tab=activite";
-      const sent = await push(((ids ?? []) as string[]).filter(Boolean), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url, tag });
+      // D'abord Jokko Admin (notifications du navigateur) ; l'appli Android des boutiques seulement si Jokko Admin n'est pas branché.
+      const admins = ((ids ?? []) as string[]).filter(Boolean);
+      const payload = { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url, tag };
+      const viaWeb = await pushWeb(admins, payload);
+      const sent = viaWeb > 0 ? viaWeb : await pushFcm(admins, payload).catch(() => 0);
       return Response.json({ sent });
     }
     if (body.kind === "test" && typeof body.user === "string") {

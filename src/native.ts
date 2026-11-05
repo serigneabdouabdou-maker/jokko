@@ -126,6 +126,8 @@ export function setupNative() {
       const url = action.notification?.data?.url;
       if (!url) return;
       const target = new URL(url, `${window.location.origin}/`);
+      // Une notification de la console CFC ne s'ouvre jamais dans l'appli des boutiques : elle se lit dans Jokko Admin.
+      if (target.pathname.startsWith("/console")) return;
       if (target.origin === window.location.origin) window.location.href = target.href;
     }) as (data: never) => void);
   }
