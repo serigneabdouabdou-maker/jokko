@@ -8,6 +8,7 @@ import { CONDITIONS, CONFIDENTIALITE, type LegalDoc } from "@/legal";
 import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@/components/jokko/voiceIntro";
 import "./landing.css";
 import { AppPrompt } from "@/components/jokko/Install";
+import { LandingMetiers } from "@/components/jokko/LandingMetiers";
 
 /**
  * Page d'accueil animée. Légère : uniquement CSS + quelques lignes de JavaScript (pas de bibliothèque).
@@ -336,6 +337,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           <span>Jokko</span>
         </a>
         <nav className="llinks">
+          <a href="#metiers">Métiers</a>
           <a href="#voix">Écouter</a>
           <a href="#offres">Offres</a>
           <a href="#fonctions">Fonctions</a>
@@ -384,6 +386,8 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </div>
         <CounterScene />
       </section>
+
+      <LandingMetiers onStart={() => onStart("creer")} />
 
       <VoiceIntro autoplay={listen} onChoose={() => scrollTo("offres")} />
 
