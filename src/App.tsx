@@ -1259,7 +1259,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     setVoice("ecoute");
   }
 
-  const prompts = ["Ajoute une vente de 15 000", "Il me reste combien de riz ?", "Qui me doit de l'argent ?", "Jaay naa 2 huile", "Caisse du jour", "Relance Moussa"];
+  const prompts = metierOf(shop.activity).ex.prompts;
   const busy = voice === "transcription" || voice === "comprehension";
   const role = roleIn(profile);
   const patron = role === "patron";
@@ -1513,6 +1513,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
             editing === p.id ? (
               <ProductEditor
                 key={p.id}
+                units={metierOf(shop.activity).units}
                 product={p}
                 codeOwner={codeOwner}
                 onClose={() => setEditing(null)}
@@ -1692,8 +1693,27 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
         <div className="field">
           <Label htmlFor="metier">Métier de « {shop.name} »</Label>
-          <MetierPicker id="metier" value={shop.activity} onChange={(activity) => setProfile(replaceShop(profile, { ...shop, activity }))} />
-          <p className="note">Jokko s'adapte à ton métier : Atelier pour les réparateurs, dates de péremption pour les pharmacies.</p>
+          <MetierPicker
+            id="metier"
+            value={shop.activity}
+            onChange={(activity) => {
+              const before = metierOf(shop.activity);
+              const after = metierOf(activity);
+              const used = shop.products.length + shop.sales.length + shop.clients.length > 0;
+              if (
+                before.id !== after.id &&
+                used &&
+                !window.confirm(
+                  `« ${shop.name} » a déjà des articles, des ventes ou des clients (${before.label}).\n\n` +
+                    `Si tu passes en « ${after.label} », rien n'est effacé : les anciens articles restent dans le stock.\n\n` +
+                    "Pour une autre activité, crée plutôt une NOUVELLE boutique (Mes boutiques, juste au-dessus) : chaque boutique garde son stock, sa caisse et ses dettes, sans mélange.\n\nChanger quand même le métier ?",
+                )
+              )
+                return;
+              setProfile(replaceShop(profile, { ...shop, activity }));
+            }}
+          />
+          <p className="note">Une boutique = un métier. Jokko s'y adapte : vocabulaire, exemples, unités, Atelier pour les réparateurs, dates de péremption pour les pharmacies. Pour une autre activité, crée une autre boutique.</p>
         </div>
       )}
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}

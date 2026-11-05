@@ -3,7 +3,7 @@ import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import { lexiconInstruction } from "../../src/assistant/wolofLexicon.ts";
 import { contextAmountsInWolof } from "./prompt.ts";
-import { metierInstruction } from "../../src/data/metiers.ts";
+import { metierInstruction, metierOf } from "../../src/data/metiers.ts";
 import type { ShopContext } from "./schema.ts";
 
 /** Gemini 3.8 Live : environ 3 fois plus rapide que 2.5 sur nos essais en wolof (0,9 s contre 3,3 s). */
@@ -98,7 +98,7 @@ const SPEED_LINE: Record<LiveSpeed, string> = {
 export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, speed: LiveSpeed = "normal"): LiveConnectConfig {
   return {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: `${LIVE_INSTRUCTION}\n\n${metierInstruction(context.activity)}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction()}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
+    systemInstruction: `${LIVE_INSTRUCTION}\n\n${metierInstruction(context.activity)}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction(metierOf(context.activity).vivres)}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     inputAudioTranscription: {},
     outputAudioTranscription: {},

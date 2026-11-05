@@ -16,4 +16,12 @@ describe("vocabulaire wolof de la boutique", () => {
     expect(text).toContain("Ku ma ameel bor ? = Qui me doit de l'argent ?");
     expect(text).not.toMatch(/phone|221\d{9}/);
   });
+
+  it("une boutique qui n'est pas d'alimentation ne reçoit pas le riz ni l'huile", () => {
+    const text = lexiconInstruction(false);
+    expect(text).not.toContain("ceeb = riz");
+    expect(text).not.toContain("diwu gerte");
+    expect(text).toContain("fey / fay = payer");
+    expect(text).toContain("xaalis = argent");
+  });
 });

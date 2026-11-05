@@ -9,6 +9,7 @@ import { addToCart, cartTotal, type CartLine, checkout, setQty, shortages, unitN
 import { beep, type CameraScan, startCamera } from "@/data/scanner";
 import { waveReady } from "@/data/wave";
 import { WavePay } from "@/components/jokko/WavePay";
+import { metierOf } from "@/data/metiers";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -161,7 +162,7 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
 
         <div className="field">
           <Label htmlFor="scan-search">Article sans code ? Cherche-le</Label>
-          <Input id="scan-search" className="h-11" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="riz, huile, sucre…" />
+          <Input id="scan-search" className="h-11" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={metierOf(shop.activity).ex.search} />
         </div>
         {found.length > 0 && (
           <div className="scan-found">

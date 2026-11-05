@@ -2,7 +2,7 @@ import { francsToWolof, wolofNumber } from "../../src/assistant/wolofNumbers.ts"
 import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import { lexiconInstruction } from "../../src/assistant/wolofLexicon.ts";
 import type { ShopContext } from "./schema.ts";
-import { metierInstruction } from "../../src/data/metiers.ts";
+import { metierInstruction, metierOf } from "../../src/data/metiers.ts";
 
 const F = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
 const W = (n: number) => `${francsToWolof(n)} (${F(n)})`;
@@ -29,7 +29,7 @@ export function contextAmountsInWolof(context: ShopContext): string {
 }
 
 function wolofAmounts(context: ShopContext): string {
-  return `${contextAmountsInWolof(context)}\n${lexiconInstruction()}\n${phrasebookInstruction()}`;
+  return `${contextAmountsInWolof(context)}\n${lexiconInstruction(metierOf(context.activity).vivres)}\n${phrasebookInstruction()}`;
 }
 
 export const SYSTEM_INSTRUCTION = `Tu es Jokko, l'assistante d'une boutique au Sénégal (quartier, marché, banlieue de Dakar).

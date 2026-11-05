@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { newShop, type Profile, type Shop, uid } from "@/model";
 import { supabase } from "@/data/supabase";
 import { flushNow } from "@/data/store";
+import { metierOf } from "@/data/metiers";
 
 /** Supprime une boutique au serveur (le patron qui l'a créée, en retapant son nom). */
 async function deleteShop(shopId: string, name: string): Promise<string | null> {
@@ -39,11 +40,14 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   if (!shop) return null;
+  // Jamais de mélange : on ne reprend les articles que pour une boutique du même métier.
+  const sameMetier = metierOf(activity).id === metierOf(shop.activity).id;
+  const copy = copyProducts && sameMetier;
 
   function create() {
     const fresh: Shop = newShop(name.trim(), activity.trim(), city.trim());
     // Mêmes articles et prix si demandé (stock à zéro, nouveaux identifiants). Pas de clients ni de dettes.
-    const created: Shop = copyProducts ? { ...fresh, products: shop.products.map((p) => ({ ...p, id: uid("p"), stock: 0 })) } : fresh;
+    const created: Shop = copy ? { ...fresh, products: shop.products.map((p) => ({ ...p, id: uid("p"), stock: 0 })) } : fresh;
     setProfile({ ...profile, shops: [...profile.shops, created], shopId: created.id });
     setMode("");
     setName("");
@@ -102,10 +106,14 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
           <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la nouvelle boutique (ex. Boutique Médina)" aria-label="Nom de la nouvelle boutique" autoFocus />
           <Input className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville ou quartier" aria-label="Ville" />
           <MetierPicker value={activity} onChange={setActivity} />
-          <label className="row">
-            <input type="checkbox" checked={copyProducts} onChange={(e) => setCopyProducts(e.target.checked)} />
-            <span>Reprendre les articles et les prix de « {shop.name} » (stock à zéro)</span>
-          </label>
+          {sameMetier ? (
+            <label className="row">
+              <input type="checkbox" checked={copyProducts} onChange={(e) => setCopyProducts(e.target.checked)} />
+              <span>Reprendre les articles et les prix de « {shop.name} » (stock à zéro)</span>
+            </label>
+          ) : (
+            <p className="note">Autre métier : la nouvelle boutique démarre vide, sans les articles de « {shop.name} ».</p>
+          )}
           <p className="note">Chaque boutique a son propre stock, sa caisse, ses ventes et ses dettes. Tu passes de l’une à l’autre en touchant son nom ci-dessus.</p>
           <div className="row">
             <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim()}>Créer la boutique</Button>

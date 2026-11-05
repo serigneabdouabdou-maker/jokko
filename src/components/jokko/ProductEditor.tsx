@@ -21,6 +21,7 @@ export function ProductEditor({
   onClose,
   codeOwner,
   onDelete,
+  units,
 }: {
   product: Product;
   onSave: (p: Product, stockChanged: boolean) => void;
@@ -29,6 +30,8 @@ export function ProductEditor({
   codeOwner?: (code: string) => string | undefined;
   /** Supprimer l'article (patron) : demandé avec confirmation. */
   onDelete?: () => void;
+  /** Unités du métier de la boutique (proposées dans la liste). */
+  units?: string[];
 }) {
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit);
@@ -100,8 +103,9 @@ export function ProductEditor({
           <Input id="pe-name" className="h-11" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="field">
-          <Label htmlFor="pe-unit">Unité de gros (sac, bidon, carton…)</Label>
-          <Input id="pe-unit" className="h-11" value={unit} onChange={(e) => setUnit(e.target.value)} />
+          <Label htmlFor="pe-unit">Unité ({(units ?? ["sac", "bidon", "carton"]).slice(0, 3).join(", ")}…)</Label>
+          <Input id="pe-unit" className="h-11" list="pe-units" value={unit} onChange={(e) => setUnit(e.target.value)} />
+          <datalist id="pe-units">{(units ?? []).map((u) => <option key={u} value={u} />)}</datalist>
         </div>
       </div>
       <div className="field">

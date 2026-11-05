@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { type Lang, type Shop, money, uid } from "@/model";
 import { applyStockDrafts, parseStockList, type StockDraft } from "@/assistant/stockEntry";
 import { freeSpeechAvailable, readStockAudio, readStockPhoto, startFreeDictation } from "@/assistant/stockReader";
+import { metierOf } from "@/data/metiers";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const toNum = (s: string) => {
@@ -47,7 +48,7 @@ export function StockEntry({ shop, lang, commit, onClose }: { shop: Shop; lang: 
   function understand(input = text) {
     const found = parseStockList(input, shop);
     setDrafts(found);
-    setNote(found.length ? "" : "Je n'ai trouvé aucun article. Exemple : « 10 sacs de riz à 18 000, acheté à 16 000 ».");
+    setNote(found.length ? "" : `Je n'ai trouvé aucun article. Exemple : ${metierOf(shop.activity).ex.stock}.`);
   }
 
   async function dictate() {
@@ -126,7 +127,7 @@ export function StockEntry({ shop, lang, commit, onClose }: { shop: Shop; lang: 
         <h3>Ajouter au stock : parler, photographier ou écrire</h3>
         <Button variant="ghost" className="h-9 rounded-full px-3" onClick={onClose}>Fermer</Button>
       </div>
-      <p className="note">Dis ou écris : « 10 sacs de riz à 18 000, acheté à 16 000 ; 5 bidons d'huile ; 20 savons à 300 ». Ou prends en photo une facture de fournisseur ou une page de ton cahier. Les articles déjà là montent en stock, les autres sont créés. Rien n'est enregistré avant que tu vérifies.</p>
+      <p className="note">Dis ou écris : {metierOf(shop.activity).ex.stock}. Ou prends en photo une facture de fournisseur ou une page de ton cahier. Les articles déjà là montent en stock, les autres sont créés. Rien n'est enregistré avant que tu vérifies.</p>
       <textarea className="stock-entry-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris ou dicte ta liste ici" />
       <div className="row">
         <Button variant={state === "ecoute" ? "default" : "outline"} className="h-11 rounded-full px-5" disabled={state === "lecture"} onClick={() => void dictate()}>

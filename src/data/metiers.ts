@@ -20,6 +20,10 @@ export type Metier = {
   peremption: boolean;
   /** Ce que Gemini doit savoir de ce métier. */
   consigne: string;
+  /** Vocabulaire wolof de l'alimentation (riz, huile, sucre…) donné à Gemini : seulement pour ce métier. */
+  vivres: boolean;
+  /** Exemples montrés dans l'application (jamais ceux d'un autre métier). */
+  ex: { stock: string; search: string; invoice: string; prompts: string[]; units: string };
 };
 
 export const METIERS: Metier[] = [
@@ -31,6 +35,8 @@ export const METIERS: Metier[] = [
     atelier: false,
     peremption: true,
     consigne: "Alimentation générale : ventes au détail et en gros (sac, bidon, sachet), crédit des clients du quartier.",
+    vivres: true,
+    ex: { stock: "« 10 sacs de riz à 18 000, acheté à 16 000 ; 5 bidons d'huile ; 20 savons à 300 »", search: "riz, huile, sucre…", invoice: "« Facture Moussa ñaari bidon diw » ou « Fais une facture de 15 000 pour Awa »", prompts: ["Ajoute une vente de 15 000", "Il me reste combien de riz ?", "Qui me doit de l'argent ?", "Jaay naa 2 huile", "Caisse du jour", "Relance Moussa"], units: "sac, bidon, carton…" },
   },
   {
     id: "reparation",
@@ -46,6 +52,8 @@ export const METIERS: Metier[] = [
       "puis le client revient le chercher, parfois des mois après, et paie le reste (ou le reste va en dette). " +
       "Bénéfice d'une réparation = prix de la réparation − prix d'achat des pièces : c'est l'outil qui le calcule. " +
       "Mots : ekraan / écran, konektëer / connecteur de charge, batri / batterie, nappe, vitre, coque, chargeur, « dafa dee » = l'appareil ne s'allume plus.",
+    vivres: false,
+    ex: { stock: "« 10 écrans iPhone 11 à 25 000, achetés à 15 000 ; 20 connecteurs à 2 000 ; 5 batteries Tecno »", search: "écran, batterie, connecteur…", invoice: "« Facture Awa, écran iPhone 11, 25 000 »", prompts: ["Awa dépose un iPhone 11, écran cassé", "Quels téléphones sont au dépôt ?", "Il me reste combien d'écrans ?", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice de la semaine"], units: "pièce, lot, carton…" },
   },
   {
     id: "pharmacie",
@@ -59,6 +67,8 @@ export const METIERS: Metier[] = [
       "INTERDIT : tout conseil médical, posologie, dose, indication, contre-indication, diagnostic ou avis de santé, même si on insiste, même pour un proche. " +
       "Réponse dans ce cas : « Duma joxe ndigal ci wér-gi-yaram. » (en français : « Je ne donne pas de conseil de santé : c'est le pharmacien qui conseille. »). " +
       "Signale les produits proches de leur date de péremption quand on te demande le stock.",
+    vivres: false,
+    ex: { stock: "« 20 boîtes de paracétamol à 1 000, achetées à 700 ; 10 flacons de sirop ; 5 tubes de pommade »", search: "nom du médicament ou code…", invoice: "« Facture de 12 500 pour Awa »", prompts: ["Il me reste combien de paracétamol ?", "Quels produits périment bientôt ?", "Ajoute une vente de 3 500", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice du mois"], units: "boîte, plaquette, flacon…" },
   },
   {
     id: "quincaillerie",
@@ -68,6 +78,8 @@ export const METIERS: Metier[] = [
     atelier: false,
     peremption: false,
     consigne: "Quincaillerie : ciment, fer, peinture, plomberie, électricité ; ventes en gros et au détail (mètre, barre, kilo).",
+    vivres: false,
+    ex: { stock: "« 50 sacs de ciment à 4 500, achetés à 4 000 ; 20 barres de fer de 10 ; 10 pots de peinture »", search: "ciment, fer, peinture…", invoice: "« Facture Moussa, 10 sacs de ciment »", prompts: ["Il me reste combien de ciment ?", "Ajoute une vente de 45 000", "Qui me doit de l'argent ?", "Caisse du jour", "Relance Moussa", "Bénéfice de la semaine"], units: "sac, barre, mètre…" },
   },
   {
     id: "vetements",
@@ -77,6 +89,8 @@ export const METIERS: Metier[] = [
     atelier: false,
     peremption: false,
     consigne: "Vêtements et tissus : pièces, mètres de tissu, paires ; ventes souvent à crédit.",
+    vivres: false,
+    ex: { stock: "« 20 pantalons à 7 500, achetés à 5 000 ; 30 mètres de bazin ; 10 paires de chaussures »", search: "pantalon, bazin, chaussures…", invoice: "« Facture Awa, 5 mètres de bazin »", prompts: ["Il me reste combien de pantalons ?", "Ajoute une vente de 15 000", "Qui me doit de l'argent ?", "Caisse du jour", "Relance Awa", "Bénéfice de la semaine"], units: "pièce, mètre, paire…" },
   },
   {
     id: "multiservice",
@@ -88,6 +102,8 @@ export const METIERS: Metier[] = [
     consigne:
       "Multiservice : impression, photocopie, saisie, transfert d'argent, petites réparations. Un service sans marchandise est une vente " +
       "(« 50 photocopies à 25 F » = 50 × 25 F, calculé par l'outil) ; tout est bénéfice sauf le papier et l'encre achetés.",
+    vivres: false,
+    ex: { stock: "« 10 rames de papier à 3 500 ; 2 cartouches d'encre »", search: "papier, encre…", invoice: "« Facture de 5 000 pour Moussa, 200 photocopies »", prompts: ["50 photocopies à 25", "Ajoute une vente de 2 000", "Qui me doit de l'argent ?", "Caisse du jour", "Il me reste combien de papier ?", "Bénéfice de la semaine"], units: "rame, pièce, unité…" },
   },
   {
     id: "autre",
@@ -97,6 +113,8 @@ export const METIERS: Metier[] = [
     atelier: false,
     peremption: false,
     consigne: "",
+    vivres: false,
+    ex: { stock: "« 10 articles à 2 000, achetés à 1 500 »", search: "nom de l'article…", invoice: "« Fais une facture de 15 000 pour Awa »", prompts: ["Ajoute une vente de 15 000", "Qu'est-ce qui manque dans le stock ?", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice de la semaine", "Relance Moussa"], units: "pièce, carton, paquet…" },
   },
 ];
 
@@ -118,6 +136,8 @@ export function metierInstruction(activity: string | undefined | null): string {
   const lines = [
     `MÉTIER DE LA BOUTIQUE : ${activity?.trim() || m.label}.`,
     m.consigne,
+    `UN SEUL MÉTIER : cette boutique fait seulement « ${m.label} ». Ne propose jamais d'article d'un autre métier et n'en invente pas. ` +
+      "Si le commerçant cite un article qui n'est pas dans son stock, demande avant de le créer.",
     "SANTÉ, POUR TOUTES LES BOUTIQUES : ne donne jamais de conseil médical, de dose ou d'avis de santé ; dis que ce n'est pas ton rôle.",
   ].filter(Boolean);
   return lines.join("\n");

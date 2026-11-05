@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiringSoon, metierInstruction, metierOf } from "./metiers";
+import { expiringSoon, METIERS, metierInstruction, metierOf } from "./metiers";
 
 describe("métiers", () => {
   it("reconnaît le métier, même écrit à la main", () => {
@@ -38,5 +38,26 @@ describe("métiers", () => {
     );
     expect(list.map((p) => p.name)).toEqual(["Amoxicilline", "Doliprane"]);
     expect(list[0].daysLeft).toBeLessThan(0);
+  });
+});
+
+describe("mode strict : une boutique = un métier", () => {
+  it("seule l'alimentation reçoit le vocabulaire des vivres", () => {
+    expect(METIERS.filter((m) => m.vivres).map((m) => m.id)).toEqual(["alimentation"]);
+  });
+
+  it("les exemples d'une pharmacie ne parlent ni de riz ni d'huile", () => {
+    const ex = JSON.stringify(metierOf("Pharmacie, dépôt de médicaments").ex);
+    expect(ex).not.toMatch(/riz|huile|ceeb|diw|bidon|sac/i);
+    expect(metierOf("pharmacie").units).not.toContain("sac");
+  });
+
+  it("chaque métier a ses exemples, et Gemini reçoit la règle du métier unique", () => {
+    for (const m of METIERS) {
+      expect(m.ex.prompts.length).toBeGreaterThanOrEqual(4);
+      expect(m.ex.stock && m.ex.search && m.ex.invoice && m.ex.units).toBeTruthy();
+    }
+    expect(metierInstruction("pharmacie")).toContain("UN SEUL MÉTIER");
+    expect(metierInstruction("pharmacie")).toContain("Pharmacie, dépôt de médicaments");
   });
 });

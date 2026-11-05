@@ -77,10 +77,13 @@ export const WOLOF_LEXICON: LexiconTheme[] = [
   },
 ];
 
-/** Bloc à mettre dans les consignes de Jokko (compréhension). */
-export function lexiconInstruction(): string {
-  const blocks = WOLOF_LEXICON.map((t) => `${t.theme} : ${t.entries.map((x) => `${x.wo} = ${x.fr}`).join(" ; ")}`).join("\n");
+/** Thèmes de l'alimentation : donnés à Gemini seulement pour une boutique d'alimentation (jamais de riz dans une pharmacie). */
+export const VIVRES_THEMES = ["Produits", "Maison"];
+
+/** Bloc à mettre dans les consignes de Jokko (compréhension). `vivres` = false : sans les produits de l'alimentation. */
+export function lexiconInstruction(vivres = true): string {
+  const blocks = WOLOF_LEXICON.filter((t) => vivres || !VIVRES_THEMES.includes(t.theme)).map((t) => `${t.theme} : ${t.entries.map((x) => `${x.wo} = ${x.fr}`).join(" ; ")}`).join("\n");
   return `Vocabulaire wolof de la boutique (ce que le commerçant peut dire, validé par le patron) :
 ${blocks}
-- Le commerçant peut aussi déformer ces mots ou mélanger avec le français : choisis le sens le plus proche dans cette liste et dans les articles du contexte. Si tu hésites entre deux sens, demande (« Ban produit ? »).`;
+- Le commerçant peut aussi déformer ces mots ou mélanger avec le français : choisis le sens le plus proche dans cette liste et dans les articles du contexte (les articles du contexte passent avant). Si tu hésites entre deux sens, demande (« Ban produit ? »).`;
 }

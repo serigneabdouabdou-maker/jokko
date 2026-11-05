@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { type Shop, money } from "@/model";
 import { applyImport, type Cell, type ImportLine, parseRows, previewImport, templateCsv, textToRows } from "@/data/stockImport";
+import { metierOf } from "@/data/metiers";
 
 /** Lit un fichier Excel (.xlsx) ou CSV en tableau de cellules. */
 async function readFile(file: File): Promise<Cell[][]> {
@@ -89,7 +90,7 @@ export function StockImport({ shop, commit }: { shop: Shop; commit: (s: Shop) =>
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
             rows={5}
-            placeholder={"Une ligne par article : nom, quantité, prix, unité\nRiz 12 sac 18000\nHuile 10 bidon 7500\nSucre; 40; 700; kg"}
+            placeholder={`Une ligne par article : nom, quantité, prix, unité\nUnités de ton métier : ${metierOf(shop.activity).ex.units}`}
             aria-label="Liste d'articles à coller"
           />
           <Button className="h-10 rounded-full px-5" disabled={!paste.trim()} onClick={() => show(textToRows(paste))}>Lire la liste</Button>

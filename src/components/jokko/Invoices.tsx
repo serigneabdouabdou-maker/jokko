@@ -7,6 +7,7 @@ import { type Invoice, type InvoiceLine, type Shop, todayStamp, uid } from "@/mo
 import { invoiceTotal, nextInvoiceNumber } from "@/assistant/apply";
 import { francs, invoiceLines } from "@/data/invoicePdf";
 import { downloadInvoice, sendInvoiceWhatsApp, shareInvoice } from "@/data/invoiceShare";
+import { metierOf } from "@/data/metiers";
 
 const STATUS: Record<Invoice["status"], string> = { brouillon: "À envoyer", envoyee: "Envoyée", payee: "Payée" };
 const dateFr = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
@@ -67,7 +68,7 @@ export function Invoices({ shop, commit, canEditShop = true }: { shop: Shop; com
           {canEditShop && <Button variant="ghost" className="h-10 rounded-full px-4" onClick={() => setSettings(!settings)}>Infos de la boutique</Button>}
         </div>
       </div>
-      <p className="note">Tu peux aussi dire à Jokko : « Facture Moussa ñaari bidon diw » ou « Fais une facture de 15 000 pour Awa ».</p>
+      <p className="note">Tu peux aussi dire à Jokko : {metierOf(shop.activity).ex.invoice}.</p>
 
       {settings && canEditShop && <InvoiceSettings shop={shop} commit={commit} onClose={() => setSettings(false)} />}
       {creating && (
