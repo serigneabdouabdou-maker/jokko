@@ -6,7 +6,9 @@ type Check = { at: string; ok: boolean; status: number | null; detail: string | 
 type Service = { target: string; label: string; last: Check | null; uptime: number | null; open: boolean };
 type Incident = { id: number; target: string; title: string; detail: string; opened_at: string; closed_at: string | null };
 type Bug = { id: number; app: string; page: string; message: string; source: string; count: number; first_at: string; last_at: string };
-type Health = { services: Service[]; gemini: { calls: number; fail: number }; incidents: Incident[]; bugs: Bug[] };
+type Step = { step: "connexion" | "inscription" | "sms" | "code_oublie"; total: number; ok: number; user: number; panne: number; reseau: number };
+type Health = { services: Service[]; gemini: { calls: number; fail: number }; parcours: Step[]; incidents: Incident[]; bugs: Bug[] };
+const STEP_LABEL: Record<Step["step"], string> = { connexion: "Connexions", inscription: "Inscriptions", sms: "Codes SMS envoyés", code_oublie: "Codes oubliés" };
 
 const when = (iso: string) => new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 const mins = (a: string, b?: string | null) => Math.max(1, Math.round(((b ? Date.parse(b) : Date.now()) - Date.parse(a)) / 60_000));
@@ -71,6 +73,34 @@ export function HealthTab() {
             <small>{data.gemini.calls ? `${data.gemini.calls - data.gemini.fail} réussies sur ${data.gemini.calls} en 1 h` : "Aucun appel dans l'heure"}</small>
           </article>
         </div>
+      </section>
+
+      <section className="cx-card">
+        <h3>Vrais commerçants : connexion et inscription (24 h)</h3>
+        {data.parcours.length === 0 ? (
+          <p className="note">Aucune tentative depuis 24 h. Chaque vraie connexion, inscription ou code SMS s'affichera ici.</p>
+        ) : (
+          <div className="cx-table-wrap">
+            <table className="cx-table">
+              <thead>
+                <tr><th>Étape</th><th>Tentatives</th><th>Réussies</th><th>Erreurs de l'utilisateur</th><th>Pannes chez nous</th><th>Sans internet</th></tr>
+              </thead>
+              <tbody>
+                {data.parcours.map((p) => (
+                  <tr key={p.step}>
+                    <td>{STEP_LABEL[p.step]}</td>
+                    <td className="num">{p.total}</td>
+                    <td className="num">{p.ok}</td>
+                    <td className="num">{p.user}</td>
+                    <td className="num" style={p.panne ? { color: "var(--j-danger)", fontWeight: 700 } : undefined}>{p.panne}</td>
+                    <td className="num">{p.reseau}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="note">« Erreurs de l'utilisateur » : code faux, numéro déjà inscrit, trop d'essais. « Pannes chez nous » : le serveur ou les SMS n'ont pas marché. À 2 pannes en 15 minutes, ton téléphone sonne.</p>
       </section>
 
       <div className="cx-grid">

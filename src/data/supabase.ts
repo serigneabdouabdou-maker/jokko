@@ -72,6 +72,42 @@ export function normalizePhone(raw: string): string | null {
 /** Numéro WhatsApp de l'assistance Jokko (code oublié, compte bloqué). */
 export const SUPPORT_PHONE = "77 567 47 25";
 
+// ---------- Parcours des vrais commerçants (console CFC, onglet Santé) ----------
+// Chaque tentative de connexion, d'inscription, d'envoi de SMS ou de code oublié est notée : l'étape, le résultat
+// et le code de réponse. Jamais le numéro ni le code. Sans internet, la note attend sur le téléphone et part plus tard.
+export type AuthStep = "connexion" | "inscription" | "sms" | "code_oublie";
+export type AuthResult = "ok" | "code_faux" | "bloque" | "existe" | "saisie" | "trop_essais" | "panne_serveur" | "sms_echec" | "reseau";
+const AUTH_QUEUE = "jokko.parcours";
+
+export function noteAuth(step: AuthStep, result: AuthResult, status?: number): void {
+  let queue: [AuthStep, AuthResult, number | null][] = [];
+  try {
+    queue = JSON.parse(localStorage.getItem(AUTH_QUEUE) ?? "[]");
+  } catch {
+    queue = [];
+  }
+  queue = [...queue, [step, result, status ?? null] as [AuthStep, AuthResult, number | null]].slice(-20);
+  const save = (q: typeof queue) => {
+    try {
+      if (q.length) localStorage.setItem(AUTH_QUEUE, JSON.stringify(q));
+      else localStorage.removeItem(AUTH_QUEUE);
+    } catch {
+      /* rien */
+    }
+  };
+  save(queue);
+  void (async () => {
+    const left = [...queue];
+    while (left.length) {
+      const [s, r, st] = left[0];
+      const { error } = await supabase.rpc("note_auth", { p_step: s, p_result: r, p_status: st });
+      if (error) break;
+      left.shift();
+    }
+    save(left);
+  })().catch(() => undefined);
+}
+
 function checkInput(rawPhone: string, code: string): { phone: string } | AuthOutcome {
   const phone = normalizePhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid", message: "Numéro sénégalais invalide (ex. 77 123 45 67)." };
@@ -99,18 +135,31 @@ async function login(phone: string, code: string, created: boolean): Promise<Aut
     const body = (await response.json().catch(() => null)) as { access_token?: string; refresh_token?: string; error?: string; left?: number; minutes?: number } | null;
     if (response.ok && body?.access_token && body.refresh_token) {
       const { data, error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
-      if (data.session && !error) return { ok: true, session: data.session, created };
+      if (data.session && !error) {
+        noteAuth("connexion", "ok", response.status);
+        return { ok: true, session: data.session, created };
+      }
+      noteAuth("connexion", "panne_serveur", response.status);
       return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
     }
-    if (response.status === 423 || body?.error === "locked") return { ok: false, reason: "locked", message: lockedMessage(body?.minutes ?? 15) };
+    if (response.status === 423 || body?.error === "locked") {
+      noteAuth("connexion", "bloque", response.status);
+      return { ok: false, reason: "locked", message: lockedMessage(body?.minutes ?? 15) };
+    }
     if (response.status === 401) {
+      noteAuth("connexion", "code_faux", 401);
       const left = body?.left ?? 0;
       const warn = left > 0 && left <= 3 ? ` Attention : encore ${left} essai${left > 1 ? "s" : ""}, puis le compte est bloqué un moment.` : "";
       return { ok: false, reason: "wrong_code", message: `Numéro ou code secret incorrect.${warn} Pas encore de compte ? Touche « Créer mon compte ».` };
     }
-    if (response.status === 429) return { ok: false, reason: "network", message: "Trop d’essais depuis ce réseau. Réessaie dans 10 minutes." };
+    if (response.status === 429) {
+      noteAuth("connexion", "trop_essais", 429);
+      return { ok: false, reason: "network", message: "Trop d’essais depuis ce réseau. Réessaie dans 10 minutes." };
+    }
+    noteAuth("connexion", "panne_serveur", response.status);
     return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
   } catch {
+    noteAuth("connexion", "reseau");
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }
 }
@@ -132,6 +181,8 @@ export async function signUp(rawPhone: string, code: string, termsVersion: strin
       body: JSON.stringify({ phone: input.phone, code, terms: termsVersion, ...(otp ? { otp } : {}) }),
     });
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    const user = response.status === 409 || body?.error === "exists" ? "existe" : body?.error === "weak_code" || body?.error === "terms_required" || body?.error?.startsWith("otp_") ? "saisie" : null;
+    noteAuth("inscription", response.ok ? "ok" : user ?? (response.status === 429 ? "trop_essais" : "panne_serveur"), response.status);
     if (response.status === 409 || body?.error === "exists") {
       return { ok: false, reason: "exists", message: "Ce numéro a déjà un compte. Touche « Me connecter » et mets ton code secret." };
     }
@@ -143,6 +194,7 @@ export async function signUp(rawPhone: string, code: string, termsVersion: strin
     const entered = await login(input.phone, code, true);
     return entered.ok ? entered : { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
   } catch {
+    noteAuth("inscription", "reseau");
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }
 }
@@ -185,12 +237,14 @@ export async function sendOtp(rawPhone: string, purpose: OtpPurpose): Promise<st
   if (!phone) return "Numéro sénégalais invalide (ex. 77 123 45 67).";
   try {
     const { status, body } = await otpCall({ action: "send", phone, purpose });
+    noteAuth("sms", status === 200 ? "ok" : status === 409 ? "existe" : status === 429 || body?.error === "daily" ? "trop_essais" : "sms_echec", status);
     if (status === 200) return null;
     if (status === 409) return "Ce numéro a déjà un compte. Touche « Me connecter ».";
     if (body?.error === "daily") return `Trop de codes envoyés aujourd’hui à ce numéro. Réessaie demain, ou écris sur WhatsApp au ${SUPPORT_PHONE}.`;
     if (status === 429) return `Attends ${Number(body?.seconds ?? 60)} secondes avant de redemander un code.`;
     return `Le SMS n’a pas pu partir. Réessaie dans un instant, ou écris sur WhatsApp au ${SUPPORT_PHONE}.`;
   } catch {
+    noteAuth("sms", "reseau");
     return "Pas de connexion internet. Réessaie.";
   }
 }
@@ -201,11 +255,14 @@ export async function resetCode(rawPhone: string, otp: string, code: string): Pr
   if (!("phone" in input)) return input;
   try {
     const { status, body } = await otpCall({ action: "reset", phone: input.phone, otp, code });
+    const userError = body?.error === "weak_code" || (typeof body?.error === "string" && body.error.startsWith("otp_"));
+    noteAuth("code_oublie", status === 200 ? "ok" : userError ? "saisie" : "panne_serveur", status);
     if (status === 200) return login(input.phone, code, false);
     if (body?.error === "weak_code") return { ok: false, reason: "invalid", message: "Code trop facile à deviner. Choisis 6 chiffres différents." };
     if (typeof body?.error === "string" && body.error.startsWith("otp_")) return { ok: false, reason: "invalid", message: otpMessage(body.error) };
     return { ok: false, reason: "network", message: "Impossible pour le moment. Réessaie." };
   } catch {
+    noteAuth("code_oublie", "reseau");
     return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
   }
 }
