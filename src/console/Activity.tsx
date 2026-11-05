@@ -4,7 +4,7 @@ import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
 import { supabase } from "@/data/supabase";
 import { enableNotifications, isIos, notificationState, type NotifyState, useInstall } from "../pwa";
 
-export type EventKind = "inscription" | "boutique" | "abonnement" | "paiement" | "visite";
+export type EventKind = "inscription" | "boutique" | "abonnement" | "paiement" | "visite" | "anomalie" | "retabli";
 type AdminEvent = { id: number; at: string; kind: EventKind; title: string; body: string; shop_id: string | null };
 type Activity = { events: AdminEvent[]; today: { visites: number; inscriptions: number; boutiques: number; abonnements: number }; off: string[] };
 
@@ -14,8 +14,10 @@ const KINDS: { id: EventKind; label: string; icon: IconName }[] = [
   { id: "abonnement", label: "Demandes d'abonnement", icon: "offre" },
   { id: "paiement", label: "Paiements reçus", icon: "mobileMoney" },
   { id: "visite", label: "Visites du site (au plus 1 toutes les 15 min)", icon: "lien" },
+  { id: "anomalie", label: "Anomalies (site en panne, bugs, Gemini)", icon: "alerte" },
+  { id: "retabli", label: "Retour à la normale", icon: "ok" },
 ];
-const ICON: Record<EventKind, IconName> = { inscription: "client", boutique: "boutique", abonnement: "offre", paiement: "mobileMoney", visite: "lien" };
+const ICON: Record<EventKind, IconName> = { inscription: "client", boutique: "boutique", abonnement: "offre", paiement: "mobileMoney", visite: "lien", anomalie: "alerte", retabli: "ok" };
 
 function ago(iso: string): string {
   const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));

@@ -213,3 +213,24 @@
 .cx-phone .note[data-tone="error"] { color: var(--j-danger); }
 @media (max-width: 1100px) { .cx-act-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .cx-live i { animation: none; } }
+.cx-feed li[data-kind="anomalie"] .cx-feed-ico { background: color-mix(in oklab, var(--j-danger) 14%, var(--j-white)); color: var(--j-danger); }
+.cx-feed li[data-kind="retabli"] .cx-feed-ico { background: color-mix(in oklab, var(--j-ok) 14%, var(--j-white)); color: var(--j-ok); }
+
+/* Santé de la plateforme */
+.cx-health-banner { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 20px; border: 1px solid var(--j-line); }
+.cx-health-banner[data-ok="true"] { background: color-mix(in oklab, var(--j-ok) 10%, var(--j-white)); border-color: color-mix(in oklab, var(--j-ok) 30%, var(--j-line)); }
+.cx-health-banner[data-ok="false"] { background: color-mix(in oklab, var(--j-danger) 9%, var(--j-white)); border-color: color-mix(in oklab, var(--j-danger) 35%, var(--j-line)); }
+.cx-health-banner .cx-health-big { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; flex: none; color: #fff; background: var(--j-ok); }
+.cx-health-banner[data-ok="false"] .cx-health-big { background: var(--j-danger); }
+.cx-health-banner b { display: block; font-size: 18px; font-weight: 700; }
+.cx-health-banner small { color: var(--j-ink-2); font-size: 13.5px; }
+.cx-services { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.cx-service { display: grid; gap: 6px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--j-line); background: var(--j-card); }
+.cx-service[data-state="bad"] { border-color: color-mix(in oklab, var(--j-danger) 45%, var(--j-line)); background: color-mix(in oklab, var(--j-danger) 6%, var(--j-white)); }
+.cx-service header { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 14.5px; }
+.cx-service header i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--j-ok); }
+.cx-service[data-state="bad"] header i { background: var(--j-danger); }
+.cx-service[data-state="unknown"] header i { background: var(--j-line); }
+.cx-service small { color: var(--j-ink-3); font-size: 12.5px; }
+.cx-uptime { font-size: 13px; color: var(--j-ink-2); }
+.cx-bug-msg { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
