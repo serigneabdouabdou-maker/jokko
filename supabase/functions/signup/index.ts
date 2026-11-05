@@ -1,6 +1,6 @@
 // Jokko — création de compte : numéro sénégalais + code secret à 6 chiffres.
 // Le compte est créé confirmé (pas d'e-mail réel) ; l'appli se connecte ensuite elle-même.
-// Quand l'envoi de SMS est branché, le numéro doit d'abord être prouvé par un code reçu par SMS (fonction « otp »).
+// Quand l'envoi de SMS est branché (Twilio Verify), le numéro doit d'abord être prouvé par un code reçu par SMS.
 // Les conditions d'utilisation doivent avoir été acceptées : la version et la date sont gardées.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -24,8 +24,29 @@ async function hmac(admin: ReturnType<typeof createClient>, message: string): Pr
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 const passwordOf = async (admin: ReturnType<typeof createClient>, phone: string, code: string) => `jk1-${await hmac(admin, `${phone}:${code}`)}`;
-/** L'envoi de SMS est branché (clés Orange posées) : le numéro doit alors être vérifié par code SMS. */
-const smsReady = () => Boolean(Deno.env.get("ORANGE_CLIENT_ID")?.trim() && Deno.env.get("ORANGE_CLIENT_SECRET")?.trim());
+
+/** L'envoi de SMS est branché (clés Twilio posées) : le numéro doit alors être vérifié par code SMS. */
+function twilio() {
+  return { sid: Deno.env.get("TWILIO_ACCOUNT_SID")?.trim() ?? "", token: Deno.env.get("TWILIO_AUTH_TOKEN")?.trim() ?? "", service: Deno.env.get("TWILIO_VERIFY_SERVICE")?.trim() ?? "" };
+}
+const smsReady = () => {
+  const t = twilio();
+  return Boolean(t.sid && t.token && t.service);
+};
+
+/** Demande à Twilio si le code tapé par la personne est le bon pour ce numéro. */
+async function verifyCheck(phone: string, otp: string): Promise<boolean> {
+  const t = twilio();
+  const res = await fetch(`https://verify.twilio.com/v2/Services/${encodeURIComponent(t.service)}/VerificationCheck`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${btoa(`${t.sid}:${t.token}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ To: `+${phone}`, Code: otp }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!res.ok) return false;
+  const json = await res.json().catch(() => null);
+  return json?.status === "approved";
+}
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
@@ -84,8 +105,7 @@ Deno.serve(async (req) => {
   // Vérification du numéro par le code reçu par SMS (si l'envoi de SMS est branché).
   if (smsReady()) {
     if (!/^\d{6}$/.test(otp)) return send(req, 400, { error: "otp_required" });
-    const { data: check } = await admin.rpc("otp_consume", { p_phone: phone, p_purpose: "inscription", p_hash: await hmac(admin, `otp:${phone}:inscription:${otp}`) });
-    if (check !== "ok") return send(req, 400, { error: `otp_${check ?? "faux"}` });
+    if (!(await verifyCheck(phone, otp))) return send(req, 400, { error: "otp_faux" });
   }
   const { data, error } = await admin.auth.admin.createUser({
     email: `${phone}@tel.jokko.app`,

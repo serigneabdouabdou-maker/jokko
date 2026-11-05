@@ -21,7 +21,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 ## Sécurité (non négociable)
 
 - Ne jamais taper de mot de passe, code, clé ou paiement à la place de Fallou : il le fait lui-même.
-- Clés Gemini, Wave, Orange (ORANGE_CLIENT_ID / SECRET) : collées par lui dans les tableaux de bord, jamais envoyées dans la conversation.
+- Clés Gemini, Wave, Twilio (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_VERIFY_SERVICE, pour les codes SMS via Twilio Verify) : collées par lui dans les tableaux de bord, jamais envoyées dans la conversation.
 - Ne jamais commiter `.env.local` ni afficher les secrets de `private.app_config`.
 - Données des commerçants : uniquement vers Supabase et Gemini, jamais vers un autre service.
 
