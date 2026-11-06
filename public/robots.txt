@@ -1,0 +1,6 @@
+# Jokko : tout le site public peut être lu par Google, sauf la console CFC (réservée).
+User-agent: *
+Allow: /
+Disallow: /console/
+
+Sitemap: https://jokkoapp.com/sitemap.xml

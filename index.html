@@ -4,14 +4,69 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#FFFDF7" />
-    <meta name="description" content="Jokko : ventes, stock, clients, dettes et factures, à la voix, en wolof et en français." />
+    <meta name="description" content="Jokko, l'application de gestion de boutique au Sénégal qui comprend le wolof et le français : notez ventes, stock, dettes, caisse et factures à la voix. Essai gratuit 14 jours, paiement Wave." />
+    <link rel="canonical" href="https://jokkoapp.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Jokko" />
+    <meta property="og:locale" content="fr_SN" />
+    <meta property="og:url" content="https://jokkoapp.com/" />
+    <meta property="og:title" content="Jokko : gérez votre boutique à la voix, en wolof et en français" />
+    <meta property="og:description" content="Ventes, stock, dettes et caisse notés à la voix. Pour les boutiques, ateliers et commerces du Sénégal. Essai gratuit 14 jours." />
+    <meta property="og:image" content="https://jokkoapp.com/og-jokko.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Jokko, l'application de boutique qui comprend le wolof" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Jokko : gérez votre boutique à la voix, en wolof et en français" />
+    <meta name="twitter:description" content="Ventes, stock, dettes et caisse notés à la voix. Essai gratuit 14 jours." />
+    <meta name="twitter:image" content="https://jokkoapp.com/og-jokko.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://jokkoapp.com/#cfc",
+            "name": "CFC – Cissé Family Company",
+            "url": "https://jokkoapp.com/",
+            "logo": "https://jokkoapp.com/icon-512.png",
+            "areaServed": "SN"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://jokkoapp.com/#site",
+            "name": "Jokko",
+            "url": "https://jokkoapp.com/",
+            "inLanguage": ["fr", "wo"],
+            "publisher": { "@id": "https://jokkoapp.com/#cfc" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Jokko",
+            "url": "https://jokkoapp.com/",
+            "image": "https://jokkoapp.com/og-jokko.png",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Android, iPhone, navigateur web",
+            "inLanguage": ["fr", "wo"],
+            "description": "Application de gestion de boutique à la voix, en wolof et en français : ventes, stock, dettes, caisse et factures.",
+            "publisher": { "@id": "https://jokkoapp.com/#cfc" },
+            "offers": [
+              { "@type": "Offer", "name": "Gratuit", "price": "0", "priceCurrency": "XOF" },
+              { "@type": "Offer", "name": "Médium", "price": "4000", "priceCurrency": "XOF" },
+              { "@type": "Offer", "name": "Avancé", "price": "8000", "priceCurrency": "XOF" }
+            ]
+          }
+        ]
+      }
+    </script>
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Jokko" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <title>Jokko — la boutique qui écoute</title>
+    <title>Jokko : application de gestion de boutique en wolof et français (Sénégal)</title>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%jokko-mark.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,7 +76,39 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Texte lisible par Google avant le démarrage de l'appli. React le remplace dès qu'il démarre. Caché dans l'appli installée. -->
+      <script>
+        try {
+          if (/JokkoApp\//.test(navigator.userAgent) || matchMedia("(display-mode: standalone)").matches || Object.keys(localStorage).some(function (k) { return k.indexOf("auth-token") > 0; })) document.write("<style>#seo{display:none}</style>");
+        } catch (e) {}
+      </script>
+      <main id="seo" style="max-width:640px;margin:0 auto;padding:48px 20px;font-family:system-ui,Roboto,sans-serif;color:#17191F;line-height:1.5">
+        <h1 style="font-size:30px;line-height:1.15">Jokko : gérez votre boutique à la voix, en wolof et en français</h1>
+        <p>Jokko note les ventes, surveille le stock, suit les dettes des clients et compte la caisse. Vous parlez en wolof, en français, ou les deux mélangés, comme on parle à Dakar : « Jaay naa 2 huile », « Il me reste combien de riz ? ».</p>
+        <h2 style="font-size:21px">Pour quels commerces ?</h2>
+        <ul>
+          <li>Alimentation générale et boutique de quartier</li>
+          <li>Réparation de téléphones et pièces détachées</li>
+          <li>Pharmacie et dépôt de médicaments</li>
+          <li>Quincaillerie et matériaux</li>
+          <li>Vêtements, tissus et chaussures, couture</li>
+          <li>Multiservice : impression, photocopie, transfert d'argent</li>
+        </ul>
+        <h2 style="font-size:21px">Ce que fait Jokko</h2>
+        <ul>
+          <li>Ventes et caisse du jour, bénéfice et bilan</li>
+          <li>Stock avec alerte avant la rupture</li>
+          <li>Dettes des clients et relances WhatsApp</li>
+          <li>Factures, étiquettes et scanner</li>
+          <li>Vendeurs, suivi à distance et plusieurs boutiques</li>
+        </ul>
+        <h2 style="font-size:21px">Offres</h2>
+        <p>Essai gratuit de 14 jours. Puis Gratuit, Médium à 4 000 F CFA par mois ou Avancé à 8 000 F CFA par mois, payable par Wave.</p>
+        <p><a href="https://jokkoapp.com/" style="color:#0A1F44;font-weight:700">Ouvrir ma boutique sur jokkoapp.com</a></p>
+        <p style="font-size:14px;color:#4a4d55">Une solution CFC – Cissé Family Company, Sénégal.</p>
+      </main>
+    </div>
     <!-- Téléphone trop ancien (moteur web d'avant 2023) : Jokko s'afficherait cassé. On explique comment mettre à jour. -->
     <div id="vieux-moteur" hidden style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:9999;background:#FFFDF7;color:#17191F;font-family:system-ui,Roboto,sans-serif;overflow:auto">
       <div style="max-width:420px;margin:0 auto;padding:40px 20px;text-align:center">
