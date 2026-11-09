@@ -42,7 +42,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Offres payantes : budget Gemini par boutique et par mois (`budget_medium_mois` 3 000 F, `budget_avance_mois` 6 000 F) → raison `budget` : plus de voix, l'écrit continue jusqu'à 125 %. Alerte console « Budget du mois atteint » (bon moment pour appeler le client).
 - Avancé : 25 échanges en direct par jour (`quota_avance_echange`).
 - Direct : 5 min max par conversation, coupé après 30 s de silence (`App.tsx`).
-- Messages vocaux de forfait : `src/assistant/quotaVoice.ts` (fichiers `media/voix/phrases/forfait-*-v1.mp3`). Le wolof de `forfait-mois-fini` et `forfait-budget-mois` est à faire valider par Fallou.
+- Messages vocaux de forfait : `src/assistant/quotaVoice.ts` (fichiers `media/voix/phrases/forfait-*-v1.mp3`). Wolof de `forfait-mois-fini` validé par Fallou le 09/11/2026 ; `forfait-budget-mois` encore à valider.
 - Les admins (`platform_admins`) ne sont jamais limités, mais leur usage est compté : tester en texte pour économiser.
 - SQL de référence : `supabase/migrations/`.
 

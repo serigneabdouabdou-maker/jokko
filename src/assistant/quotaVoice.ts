@@ -30,6 +30,7 @@ export const QUOTA_MESSAGES: Record<QuotaVariant, { wo: string; fr: string; slug
     fr: "Votre essai gratuit est terminé. Pour continuer à parler avec Jokko, choisissez l'offre Médium ou l'offre Avancé. Je vous montre les offres.",
     offers: true,
   },
+  // Wolof validé par Fallou le 09/11/2026.
   mois: {
     slug: "forfait-mois-fini",
     wo: "Sa forfait gratuit bu weer wi jeex na. Ngir wéy di wax ak Jokko, tànnal offre Médium walla offre Avancé. Maa ngi lay won offre yi.",
