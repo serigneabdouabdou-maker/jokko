@@ -4,7 +4,21 @@
  * Pas d'import avec « @/ » : ce fichier est aussi lu par le serveur (consignes de Gemini).
  */
 
-export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "vetements" | "multiservice" | "autre";
+export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "couture" | "vetements" | "multiservice" | "autre";
+
+/**
+ * Modules : morceaux de l'appli propres à un métier. Le métier choisi donne ses modules ; le patron peut en ajouter
+ * d'un autre métier dans les réglages (ex. boutique + transfert d'argent). Un module absent n'apparaît nulle part :
+ * ni écran, ni outil de Jokko, ni consigne de Gemini.
+ */
+export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services";
+export const MODULES: { id: ModuleId; label: string; desc: string }[] = [
+  { id: "atelier", label: "Atelier de réparation", desc: "Dépôts d'appareils, pannes, pièces posées, « c'est prêt » sur WhatsApp" },
+  { id: "couture", label: "Atelier couture", desc: "Mesures des clients, commandes, essayages, « ton habit est prêt »" },
+  { id: "peremption", label: "Dates de péremption", desc: "Lots, dates, alertes avant que ça périme" },
+  { id: "vivres", label: "Vivres en wolof", desc: "Jokko comprend ceeb, diw, suukar… (riz, huile, sucre)" },
+  { id: "services", label: "Services et transfert", desc: "Photocopies, impression, transfert d'argent vendus comme services" },
+];
 
 export type Metier = {
   id: MetierId;
@@ -18,6 +32,8 @@ export type Metier = {
   atelier: boolean;
   /** Dates de péremption suivies et alertes. */
   peremption: boolean;
+  /** Autres modules donnés par ce métier (en plus de atelier / peremption / vivres ci-dessus). */
+  modules?: ModuleId[];
   /** Ce que Gemini doit savoir de ce métier. */
   consigne: string;
   /** Vocabulaire wolof de l'alimentation (riz, huile, sucre…) donné à Gemini : seulement pour ce métier. */
@@ -82,9 +98,26 @@ export const METIERS: Metier[] = [
     ex: { stock: "« 50 sacs de ciment à 4 500, achetés à 4 000 ; 20 barres de fer de 10 ; 10 pots de peinture »", search: "ciment, fer, peinture…", invoice: "« Facture Moussa, 10 sacs de ciment »", prompts: ["Il me reste combien de ciment ?", "Ajoute une vente de 45 000", "Qui me doit de l'argent ?", "Caisse du jour", "Relance Moussa", "Bénéfice de la semaine"], units: "sac, barre, mètre…" },
   },
   {
+    id: "couture",
+    label: "Couture, tailleur",
+    keywords: /tailleur|couture|couturi|atelier de couture|brodeur|broderie|styliste/i,
+    units: ["pièce", "mètre", "yard", "ensemble"],
+    atelier: false,
+    peremption: false,
+    modules: ["couture"],
+    consigne:
+      "Tailleur (atelier de couture) : il coud sur mesure (grand boubou, taille basse, kaftan, ensemble, costume, robe). " +
+      "Une commande = un client, ses mesures, le modèle, le tissu (apporté par le client ou vendu par l'atelier), le prix, l'avance, la date promise. " +
+      "Étapes : reçu → coupe → couture → finition → prêt → livré. Le reste à payer = prix − avance (calculé par l'outil). " +
+      "Mesures en centimètres (poitrine, taille, hanches, épaule, manche, longueur, cou, tour de bras). " +
+      "Il vend aussi du tissu au mètre et des fournitures (fil, boutons). Les pics de travail : Tabaski, Korité, mariages.",
+    vivres: false,
+    ex: { stock: "« 30 mètres de bazin à 3 500 ; 20 bobines de fil ; 100 boutons »", search: "bazin, wax, fil…", invoice: "« Facture Awa, grand boubou, 25 000 »", prompts: ["Commande d'Awa : grand boubou, 25 000, avance 10 000", "Quels habits sont prêts ?", "Mesures de Moussa", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice de la semaine"], units: "mètre, pièce, ensemble…" },
+  },
+  {
     id: "vetements",
     label: "Vêtements, tissus, chaussures",
-    keywords: /vetement|vêtement|tissu|habit|chaussure|mode|bazin|wax|couture|friperie|feug jaay/i,
+    keywords: /vetement|vêtement|tissu|habit|chaussure|mode|bazin|wax|friperie|feug jaay/i,
     units: ["pièce", "mètre", "paire", "lot", "balle"],
     atelier: false,
     peremption: false,
@@ -99,6 +132,7 @@ export const METIERS: Metier[] = [
     units: ["page", "copie", "pièce", "unité", "rame"],
     atelier: true,
     peremption: false,
+    modules: ["services"],
     consigne:
       "Multiservice : impression, photocopie, saisie, transfert d'argent, petites réparations. Un service sans marchandise est une vente " +
       "(« 50 photocopies à 25 F » = 50 × 25 F, calculé par l'outil) ; tout est bénéfice sauf le papier et l'encre achetés.",
@@ -130,13 +164,37 @@ export function metierOf(activity: string | undefined | null): Metier {
   return METIERS.find((m) => m.id !== "autre" && (m.keywords.test(a) || m.keywords.test(p))) ?? METIERS[METIERS.length - 1];
 }
 
-/** Bloc des consignes de Gemini pour le métier de la boutique (règle de santé pour tous). */
-export function metierInstruction(activity: string | undefined | null): string {
+/** Modules de la boutique : ceux de son métier + ceux ajoutés par le patron dans les réglages. */
+export function modulesOf(activity: string | undefined | null, extra: readonly string[] = []): Set<ModuleId> {
   const m = metierOf(activity);
+  const set = new Set<ModuleId>(m.modules ?? []);
+  if (m.atelier) set.add("atelier");
+  if (m.peremption) set.add("peremption");
+  if (m.vivres) set.add("vivres");
+  for (const id of extra) if (MODULES.some((x) => x.id === id)) set.add(id as ModuleId);
+  return set;
+}
+
+/** Ce que Gemini doit savoir d'un module ajouté à une boutique d'un autre métier. */
+const MODULE_CONSIGNE: Record<ModuleId, string> = {
+  atelier: "MODULE ATELIER DE RÉPARATION : la boutique répare aussi des appareils (outil reparation : dépôt, pièces, acompte, rendu).",
+  couture: "MODULE COUTURE : la boutique coud aussi sur mesure (commandes, mesures des clients, avance, date promise).",
+  peremption: "MODULE PÉREMPTION : certains articles ont des dates de péremption suivies par lot.",
+  vivres: "",
+  services: "MODULE SERVICES : photocopies, impression et transfert d'argent sont vendus comme des services (une vente sans stock).",
+};
+
+/** Bloc des consignes de Gemini pour le métier de la boutique (règle de santé pour tous). */
+export function metierInstruction(activity: string | undefined | null, extra: readonly string[] = []): string {
+  const m = metierOf(activity);
+  const own = modulesOf(activity);
+  const added = [...modulesOf(activity, extra)].filter((id) => !own.has(id));
   const lines = [
     `MÉTIER DE LA BOUTIQUE : ${activity?.trim() || m.label}.`,
     m.consigne,
-    `UN SEUL MÉTIER : cette boutique fait seulement « ${m.label} ». Ne propose jamais d'article d'un autre métier et n'en invente pas. ` +
+    ...added.map((id) => MODULE_CONSIGNE[id]),
+    `MÉTIER PRINCIPAL : cette boutique fait « ${m.label} »${added.length ? ` (avec ${added.map((id) => MODULES.find((x) => x.id === id)?.label).join(", ")})` : ""}. ` +
+      "Ne propose jamais d'article ni de service d'un autre métier et n'en invente pas. " +
       "Si le commerçant cite un article qui n'est pas dans son stock, demande avant de le créer.",
     "SANTÉ, POUR TOUTES LES BOUTIQUES : ne donne jamais de conseil médical, de dose ou d'avis de santé ; dis que ce n'est pas ton rôle.",
   ].filter(Boolean);

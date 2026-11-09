@@ -41,6 +41,8 @@ export type ShopContext = {
   clients: Array<{ id: string; name: string; debt: number }>;
   figures: { openingCash: number; daySales: number; dayExpenses: number; expectedCash: number };
   activity?: string;
+  /** Modules ajoutés par le patron (en plus de ceux du métier). */
+  modules?: string[];
   repairs?: Array<{ number: string; client: string; device: string; problem: string; status: "depot" | "repare"; price: number; paid: number; days: number }>;
   expiring?: Array<{ name: string; expiresAt: string; daysLeft: number }>;
 };
@@ -74,6 +76,7 @@ export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
       expectedCash: expectedCash(shop),
     },
     ...(shop.activity?.trim() ? { activity: shop.activity.trim().slice(0, 80) } : {}),
+    ...(shop.modules?.length ? { modules: shop.modules.slice(0, 10) } : {}),
     ...(() => {
       const open = (shop.repairs ?? []).filter((r) => r.status === "depot" || r.status === "repare").slice(0, 60);
       return open.length

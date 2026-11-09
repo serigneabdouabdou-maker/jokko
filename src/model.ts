@@ -144,6 +144,8 @@ export type Shop = {
   waveLink?: string;
   /** Position de la boutique (donnée par le patron, arrondie à environ 1 km) pour la carte de CFC. */
   location?: { lat: number; lng: number; at: string };
+  /** Modules ajoutés par le patron en plus de ceux de son métier (ex. « services » pour une boutique qui fait du transfert). */
+  modules?: string[];
   /** Offre de la boutique, lue sur le serveur (jamais envoyée par le téléphone) */
   plan?: ShopPlan;
   products: Product[];

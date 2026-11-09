@@ -23,6 +23,7 @@ export function shopRow(s: Shop): Row {
     lat: s.location ? Math.round(s.location.lat * 100) / 100 : null,
     lng: s.location ? Math.round(s.location.lng * 100) / 100 : null,
     located_at: s.location?.at ?? null,
+    modules: s.modules ?? [],
   };
 }
 
@@ -357,6 +358,7 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(optStr(s.payment_info) ? { paymentInfo: str(s.payment_info) } : {}),
     ...(optStr(s.invoice_note) ? { invoiceNote: str(s.invoice_note) } : {}),
     ...(optStr(s.wave_link) ? { waveLink: str(s.wave_link) } : {}),
+    ...(Array.isArray(s.modules) && s.modules.length ? { modules: (s.modules as unknown[]).filter((m): m is string => typeof m === "string") } : {}),
     ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"
       ? { plan: { plan: s.plan, until: optStr(s.plan_until) ? iso(s.plan_until) : null, trialUntil: optStr(s.trial_until) ? iso(s.trial_until) : null } }

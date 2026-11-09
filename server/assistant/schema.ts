@@ -60,6 +60,8 @@ export const shopContextSchema = z.strictObject({
   }),
   /** Métier de la boutique (réparation de téléphones, pharmacie…). */
   activity: z.string().trim().max(80).optional(),
+  /** Modules ajoutés par le patron (atelier, couture, services…). */
+  modules: z.array(z.string().max(20)).max(10).optional(),
   /** Réparations en cours (carnet des réparateurs). */
   repairs: z
     .array(

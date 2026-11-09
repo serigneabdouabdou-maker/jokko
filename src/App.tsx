@@ -56,7 +56,7 @@ import { Bilan } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
-import { expiringSoon, metierOf } from "@/data/metiers";
+import { expiringSoon, metierOf, MODULES, modulesOf } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
@@ -1362,7 +1362,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || metierOf(shop.activity).atelier || (shop.repairs?.length ?? 0) > 0)).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || modulesOf(shop.activity, shop.modules).has("atelier") || (shop.repairs?.length ?? 0) > 0)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
@@ -1580,7 +1580,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
             <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}><Icon name="micro" size="sm" />Ajouter en parlant</Button>
             <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}><Icon name="etiquette" size="sm" />Changer les prix</Button>
-            {(metierOf(shop.activity).peremption || shop.products.some((p) => p.lots?.length)) && <Button variant={tool === "reception" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("reception")}><Icon name="scanner" size="sm" />Réception (dates)</Button>}
+            {(modulesOf(shop.activity, shop.modules).has("peremption") || shop.products.some((p) => p.lots?.length)) && <Button variant={tool === "reception" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("reception")}><Icon name="scanner" size="sm" />Réception (dates)</Button>}
             {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
           </div>
         )}
@@ -1804,7 +1804,8 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
               setChangingMetier(false);
             }}
           />}
-          <p className="note">Une boutique = un métier. Jokko s'y adapte : vocabulaire, exemples, unités, Atelier pour les réparateurs, dates de péremption pour les pharmacies. Pour une autre activité, crée une autre boutique.</p>
+          <p className="note">Une boutique = un métier. Jokko s'y adapte : écrans, vocabulaire, exemples, unités. Les fonctions des autres métiers n'apparaissent pas.</p>
+          <ModulesSetting shop={shop} onChange={(modules) => setProfile(replaceShop(profile, { ...shop, modules }))} />
         </div>
       )}
       {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
@@ -1885,6 +1886,35 @@ function blobToBase64(blob: Blob): Promise<string> {
 const SPEEDS: [SpeechSpeed, string][] = [["lent", "Lent"], ["normal", "Normal"], ["rapide", "Rapide"]];
 
 /** Écoute en boutique : filtre anti-bruit, voix claire, salutation et vitesse. */
+/** Modules d'un autre métier ajoutés à la boutique (ex. boutique + transfert d'argent). */
+function ModulesSetting({ shop, onChange }: { shop: Shop; onChange: (modules: string[]) => void }) {
+  const own = modulesOf(shop.activity);
+  const extra = new Set(shop.modules ?? []);
+  return (
+    <div className="field">
+      <Label>Ce que fait aussi ta boutique</Label>
+      <p className="note">Coche seulement ce que tu fais vraiment : chaque module ajoute ses écrans et ce que Jokko sait faire.</p>
+      {MODULES.map((m) => {
+        const included = own.has(m.id);
+        return (
+          <div className="row" key={m.id}>
+            <Checkbox
+              id={`module-${m.id}`}
+              checked={included || extra.has(m.id)}
+              disabled={included}
+              onCheckedChange={(checked) => onChange(checked === true ? [...extra, m.id] : [...extra].filter((x) => x !== m.id))}
+            />
+            <Label htmlFor={`module-${m.id}`}>
+              {m.label}
+              <small className="note" style={{ display: "block" }}>{included ? "Inclus dans ton métier" : m.desc}</small>
+            </Label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ClearVoiceSetting() {
   const [on, setOn] = useState(clearVoicePreferred);
   const [noise, setNoise] = useState(noisePreferred);

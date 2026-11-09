@@ -1,4 +1,4 @@
-import { Hammer, type LucideIcon, Pill, Printer, Shirt, ShoppingBasket, Smartphone, Store } from "lucide-react";
+import { Hammer, type LucideIcon, Pill, Printer, Scissors, Shirt, ShoppingBasket, Smartphone, Store } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ICON_STROKE } from "./Icon";
 import { METIERS, type MetierId, metierOf } from "@/data/metiers";
@@ -29,10 +29,16 @@ export const METIER_LOOK: Record<MetierId, { icon: LucideIcon; title: string; su
     sub: "Matériaux, ciment, fer",
     setup: ["Ventes au sac, à la barre, au mètre", "Gros et détail", "Crédit des clients suivi"],
   },
+  couture: {
+    icon: Scissors,
+    title: "Couture",
+    sub: "Tailleur, atelier de couture",
+    setup: ["Mesures des clients, à la voix", "Commandes, avances, date promise", "Message « ton habit est prêt » sur WhatsApp"],
+  },
   vetements: {
     icon: Shirt,
     title: "Vêtements",
-    sub: "Tissus, chaussures",
+    sub: "Habits, tissus, chaussures",
     setup: ["Pièces, mètres de tissu, paires", "Ventes à crédit suivies", "Relances sur WhatsApp"],
   },
   multiservice: {

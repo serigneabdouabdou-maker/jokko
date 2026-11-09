@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiringSoon, METIERS, metierInstruction, metierOf } from "./metiers";
+import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf } from "./metiers";
 
 describe("métiers", () => {
   it("reconnaît le métier, même écrit à la main", () => {
@@ -57,7 +57,30 @@ describe("mode strict : une boutique = un métier", () => {
       expect(m.ex.prompts.length).toBeGreaterThanOrEqual(4);
       expect(m.ex.stock && m.ex.search && m.ex.invoice && m.ex.units).toBeTruthy();
     }
-    expect(metierInstruction("pharmacie")).toContain("UN SEUL MÉTIER");
+    expect(metierInstruction("pharmacie")).toContain("MÉTIER PRINCIPAL");
     expect(metierInstruction("pharmacie")).toContain("Pharmacie, dépôt de médicaments");
+  });
+});
+
+describe("appli hybride : modules par métier", () => {
+  it("le tailleur a son métier, séparé des vendeurs de vêtements", () => {
+    expect(metierOf("Tailleur").id).toBe("couture");
+    expect(metierOf("atelier de couture").id).toBe("couture");
+    expect(metierOf("vente de chaussures").id).toBe("vetements");
+    expect([...modulesOf("Tailleur")]).toEqual(["couture"]);
+  });
+  it("chaque métier n'a que ses modules", () => {
+    expect(modulesOf("Alimentation").has("couture")).toBe(false);
+    expect(modulesOf("Alimentation").has("atelier")).toBe(false);
+    expect(modulesOf("Alimentation").has("vivres")).toBe(true);
+    expect(modulesOf("Pharmacie").has("peremption")).toBe(true);
+    expect(modulesOf("Pharmacie").has("vivres")).toBe(false);
+  });
+  it("le patron ajoute un module d'un autre métier (boutique + transfert d'argent)", () => {
+    const m = modulesOf("Alimentation", ["services", "inconnu"]);
+    expect(m.has("services")).toBe(true);
+    expect(m.has("inconnu" as never)).toBe(false);
+    expect(metierInstruction("Alimentation", ["services"])).toContain("MODULE SERVICES");
+    expect(metierInstruction("Alimentation")).not.toContain("MODULE SERVICES");
   });
 });
