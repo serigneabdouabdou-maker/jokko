@@ -78,6 +78,7 @@ import {
   Wallet,
   X,
   Camera,
+  Pencil,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -146,6 +147,7 @@ export const ICONS = {
   ajouter: Plus,
   moins: Minus,
   supprimer: Trash2,
+  modifier: Pencil,
   annuler: Undo2,
   fermer: X,
   rafraichir: RefreshCw,

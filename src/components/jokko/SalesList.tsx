@@ -8,7 +8,7 @@ import { editSale, removeSale } from "@/data/sales";
 const num = (v: string) => Number(v.replace(/[^\d.,]/g, "").replace(",", "."));
 
 /**
- * Liste des ventes. Le patron touche une vente pour corriger le prix ou la quantité, ou la supprimer
+ * Liste des ventes. Chaque vente a ses boutons « Modifier » (prix, quantité) et « Supprimer » (patron seulement)
  * (le stock revient, la dette du client à crédit baisse, la caisse du jour suit).
  */
 export function SalesList({ shop, commit, canEdit, sales, empty = "Rien pour l’instant." }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean; sales: Sale[]; empty?: string }) {
@@ -19,7 +19,6 @@ export function SalesList({ shop, commit, canEdit, sales, empty = "Rien pour l�
       {sales.map((s) => (
         <SaleRow key={s.id} s={s} shop={shop} commit={commit} canEdit={canEdit} open={open === s.id} toggle={() => setOpen(open === s.id ? null : s.id)} />
       ))}
-      {canEdit && sales.length > 0 && <small className="note">Touche une vente pour corriger le prix ou la supprimer.</small>}
     </div>
   );
 }
@@ -39,12 +38,32 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
   }
 
   return (
-    <article style={open ? { flexWrap: "wrap" } : undefined}>
-      <span onClick={canEdit ? toggle : undefined} style={canEdit ? { cursor: "pointer" } : undefined}>
+    <article style={{ flexWrap: "wrap" }}>
+      <span>
         {s.qty && s.unit ? `${String(s.qty).replace(".", ",")} ${s.unit} · ` : ""}{s.label}
         <small>{when}{s.payment && s.payment !== "especes" ? ` · ${s.payment === "credit" ? "crédit" : s.payment === "om" ? "Orange Money" : "Wave"}` : ""}</small>
       </span>
-      <b className="num" onClick={canEdit ? toggle : undefined}>{money(s.amount)}</b>
+      <b className="num">{money(s.amount)}</b>
+      {canEdit && !open && (
+        <div className="debt-actions" style={{ width: "100%", flexBasis: "100%", gap: 8, marginTop: 6 }}>
+          {sure ? (
+            <>
+              <small className="note" style={{ flex: 1 }}>Supprimer cette vente ?{s.productId ? " L'article revient en stock." : ""}</small>
+              <Button variant="destructive" className="h-10 rounded-full px-4" onClick={() => commit(removeSale(shop, s.id))}>Oui, supprimer</Button>
+              <Button variant="ghost" className="h-10 rounded-full px-3" onClick={() => setSure(false)}>Non</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" className="h-10 rounded-full px-4" onClick={toggle}>
+                <Icon name="modifier" size="sm" /> Modifier
+              </Button>
+              <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setSure(true)}>
+                <Icon name="supprimer" size="sm" /> Supprimer
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {open && canEdit && (
         <div style={{ display: "grid", gap: 8, width: "100%", flexBasis: "100%", marginTop: 8 }}>
           {s.qty !== undefined && (
@@ -54,7 +73,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
             </label>
           )}
           <label className="note">
-            Prix total (F)
+            Prix de la vente (F)
             <Input className="h-11 num" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} />
           </label>
           <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8 }}>
@@ -68,19 +87,8 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
             >
               <Icon name="sauvegarde" size="sm" /> Enregistrer
             </Button>
-            <Button
-              variant={sure ? "destructive" : "outline"}
-              className="h-11 rounded-full px-5"
-              onClick={() => {
-                if (!sure) return setSure(true);
-                commit(removeSale(shop, s.id));
-              }}
-            >
-              {sure ? "Oui, supprimer" : "Supprimer la vente"}
-            </Button>
-            <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => { setSure(false); toggle(); }}>Annuler</Button>
+            <Button variant="ghost" className="h-11 rounded-full px-4" onClick={toggle}>Annuler</Button>
           </div>
-          {sure && <small className="note">La vente sera effacée{s.productId ? ", l'article revient dans le stock" : ""}{s.payment === "credit" ? ", la dette du client baisse" : ""}.</small>}
         </div>
       )}
     </article>
