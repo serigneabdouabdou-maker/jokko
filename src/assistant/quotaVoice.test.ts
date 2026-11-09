@@ -38,7 +38,7 @@ describe("forfait épuisé : quel message dire", () => {
   it("offre payante : budget du mois atteint → voix, sans pousser une autre offre", () => {
     expect(quotaVariant({ reason: "budget", tier: "avance" }, true)).toBe("budget");
     expect(QUOTA_MESSAGES.budget.offers).toBe(false);
-    expect(quotaClipUrl("budget", "fr")).toMatch(/forfait-budget-mois-fr-v1\.mp3$/);
+    expect(quotaClipUrl("budget", "fr")).toMatch(/forfait-budget-merci-fr-v1\.mp3$/);
     expect(quotaVariant({ reason: "budget", tier: "medium" }, false)).toBe("vendeur");
   });
 });

@@ -37,10 +37,11 @@ export const QUOTA_MESSAGES: Record<QuotaVariant, { wo: string; fr: string; slug
     fr: "Votre forfait gratuit du mois est épuisé. Pour continuer à parler avec Jokko, choisissez l'offre Médium ou l'offre Avancé. Je vous montre les offres.",
     offers: true,
   },
+  // Wolof choisi et validé par Fallou le 09/11/2026.
   budget: {
-    slug: "forfait-budget-mois",
-    wo: "Sa forfait bu weer wi jeex na. Ba weer wiy ñëw, mën nga bind walla jëfandikoo bouton yi.",
-    fr: "Votre forfait voix du mois est épuisé. Jusqu'au mois prochain, vous pouvez écrire ou utiliser les boutons de l'application.",
+    slug: "forfait-budget-merci",
+    wo: "Jërëjëf ! Jokko liggéey na lu bari ci sa bitig weer wii, forfait bi jeex na. Weer wi ci topp, dina delsi. Léegi, mën nga bind walla jëfandikoo bouton yi.",
+    fr: "Merci ! Jokko a beaucoup travaillé pour votre boutique ce mois-ci, le forfait est épuisé. Il revient le mois prochain. En attendant, vous pouvez écrire ou utiliser les boutons de l'application.",
     offers: false,
   },
   jour: {
