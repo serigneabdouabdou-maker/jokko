@@ -14,6 +14,7 @@ const IMAGE_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image"];
 const STYLE =
   "Photo de mode réaliste, qualité catalogue, en pied (de la tête aux pieds), mannequin d'Afrique de l'Ouest (Sénégal), pose naturelle et élégante, " +
   "fond uni beige clair de studio, lumière douce. Le vêtement est bien visible : coupe, broderie, tissu. " +
+  "Élégance simple et raffinée : une coupe nette, des finitions impeccables, rien de trop chargé ; une tenue magnifique qu'un tailleur peut vraiment coudre. " +
   "Aucun texte sur l'image sauf une petite signature discrète « Jokko » en bas à droite. Aucun logo de marque.";
 
 // ---------- Fabrique : chaque modèle est tiré au hasard dans le style de la rubrique (variété sans doublons visibles) ----------
