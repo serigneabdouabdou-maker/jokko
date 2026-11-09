@@ -9,6 +9,7 @@ import { lineAt, rememberPlan, VOICE_LINES, VOICE_URL, type WantedPlan } from "@
 import "./landing.css";
 import { AppPrompt } from "@/components/jokko/Install";
 import { LandingMetiers } from "@/components/jokko/LandingMetiers";
+import { MetierSlides } from "@/components/jokko/MetierSlides";
 import { noteVisit } from "@/data/visits";
 
 /**
@@ -48,19 +49,6 @@ function useReveal<T extends HTMLElement>(threshold = 0.2) {
   return [ref, seen] as const;
 }
 
-/** Vrai tant que l'élément est visible (pour ne pas animer hors de l'écran). */
-function useVisible<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !("IntersectionObserver" in window)) return setVisible(true);
-    const io = new IntersectionObserver((entries) => setVisible(entries.some((e) => e.isIntersecting)), { threshold: 0.15 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return [ref, visible] as const;
-}
 
 /** Nombre qui monte vers sa valeur (expo-out), quand `run` est vrai. */
 function useTween(target: number, run: boolean, duration = 900) {
@@ -98,60 +86,6 @@ function Reveal({ as = "div", className = "", children, threshold }: { as?: "div
 
 const at = (i: number) => ({ "--i": i }) as CSSProperties;
 
-/** La scène du comptoir, en boucle : la phrase dite → la réponse → la caisse compte → le stock baisse. */
-function CounterScene() {
-  const [ref, visible] = useVisible<HTMLElement>();
-  const [step, setStep] = useState(reduced() ? 4 : 0);
-  useEffect(() => {
-    if (!visible || reduced()) return;
-    const times = [1300, 1400, 1500, 1700, 3600];
-    const id = window.setTimeout(() => setStep((s) => (s + 1) % 5), times[step]);
-    return () => window.clearTimeout(id);
-  }, [step, visible]);
-  const cash = useTween(step >= 3 ? 50500 : 35500, visible);
-  const sales = useTween(step >= 3 ? 33000 : 18000, visible);
-
-  return (
-    <aside ref={ref} className={`lx-ticket step-${step}`} aria-label="Exemple : une vente dite à Jokko">
-      <span className="lx-ticket-glow" aria-hidden="true" />
-      <header>
-        <JokkoMark size={30} listening={step === 0} />
-        <div>
-          <b>Boutique Awa</b>
-          <span>Pikine · Alimentation</span>
-        </div>
-        <span className="lx-live">En direct</span>
-      </header>
-      <div className="lx-chat">
-        <p className="lx-said">« Jaay naa 2 huile »</p>
-        <p className="lx-reply">Jaay bi dugg na. Huile, 15 000 F. Huile néew na, 1 la des.</p>
-      </div>
-      <dl className="lx-figs">
-        <div className="big">
-          <dt>Caisse attendue</dt>
-          <dd className="num">{fmt(cash)}</dd>
-        </div>
-        <div>
-          <dt>Ventes</dt>
-          <dd className="num">{fmt(sales)}</dd>
-        </div>
-        <div className="lx-stock">
-          <dt>Stock huile</dt>
-          <dd>
-            <i style={{ "--w": step >= 4 ? "12%" : "36%" } as CSSProperties} />
-            <span className="num">{step >= 4 ? 1 : 3}</span>
-          </dd>
-        </div>
-      </dl>
-      <div className="lx-voice">
-        <span className="lx-mic" aria-hidden="true">
-          <i /><i /><i /><i /><i />
-        </span>
-        <span>{step === 0 ? "Jokko écoute…" : step >= 4 ? "Stock bas : Jokko te prévient." : "Dites-le. C’est noté."}</span>
-      </div>
-    </aside>
-  );
-}
 
 function Marquee({ items, reverse = false }: { items: string[]; reverse?: boolean }) {
   return (
@@ -386,7 +320,7 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
           </ul>
           <a className="lx-by lx-in" style={at(7)} href="#cfc">Une solution <b>CFC – Cissé Family Company</b></a>
         </div>
-        <CounterScene />
+        <MetierSlides onStart={() => onStart("creer")} />
       </section>
 
       <LandingMetiers onStart={() => onStart("creer")} />

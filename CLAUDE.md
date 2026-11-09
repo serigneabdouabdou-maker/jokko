@@ -87,6 +87,11 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Page publique `jokkoapp.com/?v=<code>` (`VitrinePublic.tsx`, fonction `vitrine_public`) : articles et modèles, détail avec photo qui tourne, « Commander sur WhatsApp » vers `shops.phone` (message prérempli). Sans compte.
 - Aperçu des liens partagés (WhatsApp, Facebook, TikTok) : `worker/index.js` (Worker Cloudflare, `run_worker_first: ["/"]`) réécrit titre, description et image Open Graph pour `?v=` et `?modele=` (données via `vitrine_public` / `modele_public`, cache 5 min). Le reste du site reste servi tel quel depuis `dist`.
 
+## Page d'accueil : diaporama des métiers (09/11/2026)
+
+- En haut de la page d'accueil (`MetierSlides.tsx`, styles `.ms` dans `landing.css`, à la place de l'ancienne scène du comptoir ; en premier sur téléphone) : alimentation, pharmacie, couture, quincaillerie, vêtements et chaussures, réparation. Une photo IA par métier, phrase dite, 3 fonctions, bouton qui pré-choisit le métier ; défile seul toutes les 5 s, se met en pause au toucher, glisser pour changer.
+- Photos : fonction `accueil` (jeton `galerie_token`, appelée par SQL `net.http_post`) → `galerie/accueil/<métier>-v1.jpg` (4:5, 900 px, ≈ 200 Ko). **Une seule demande à la fois** (plusieurs = WORKER_RESOURCE_LIMIT). Pour changer une photo : nouvelle demande, puis `-v2` dans `MetierSlides.tsx`.
+
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Dette remboursée (bouton « Il a payé » ou à la voix) : faire entrer l'argent dans la caisse du jour pour que la caisse du soir tombe juste. Fallou a dit « après on continue, tu me rappelles ».
