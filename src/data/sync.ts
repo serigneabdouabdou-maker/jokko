@@ -35,6 +35,8 @@ const toRow = {
     aliases: p.aliases?.length ? p.aliases : null,
     expires_at: opt(p.expiresAt),
     lots: p.lots?.length ? p.lots : null,
+    photo_path: p.photoPath ?? null,
+    vitrine: p.vitrine ?? false,
   }),
   clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt), measures: c.measures ?? {} }),
   sales: (s: Sale, shopId: string): Row => ({
@@ -395,6 +397,9 @@ export function rowsToShop(rows: ShopRows): Shop {
         const aliases = (r.aliases as unknown[]).map((a) => String(a ?? "").trim()).filter(Boolean);
         if (aliases.length) product.aliases = aliases;
       }
+      const photo = optStr(r.photo_path);
+      if (photo) product.photoPath = photo;
+      if (r.vitrine === true) product.vitrine = true;
       return product;
     }),
     clients: rows.clients.map((r) => {

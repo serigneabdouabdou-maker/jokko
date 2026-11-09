@@ -76,6 +76,7 @@ import { StockEntry } from "@/components/jokko/StockEntry";
 import { SalesList } from "@/components/jokko/SalesList";
 import { coutureOwed } from "@/data/couture";
 import { Studio } from "@/components/jokko/Studio";
+import { Vitrine } from "@/components/jokko/Vitrine";
 import type { CoutureModel } from "@/data/studio";
 import { ExpensesList } from "@/components/jokko/ExpensesList";
 import { clearTodaySales, todaySales } from "@/data/sales";
@@ -117,7 +118,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "vitrine" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -130,6 +131,7 @@ const NAV: Array<[Screen, string]> = [
   ["studio", "Studio"],
   ["couture", "Couture"],
   ["atelier", "Atelier"],
+  ["vitrine", "Ma vitrine"],
   ["distance", "À distance"],
   ["boutiques", "Mes entreprises"],
   ["conseiller", "Conseiller"],
@@ -163,6 +165,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   atelier: "reparation",
   couture: "couture",
   studio: "photo",
+  vitrine: "boutique",
   depenses: "depense",
   dettes: "dette",
   caisse: "caisse",
@@ -1549,6 +1552,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
+          {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}

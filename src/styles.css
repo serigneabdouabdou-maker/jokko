@@ -1743,3 +1743,83 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .mp-order { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; border-radius: 999px; background: #1B2559; color: #FFFDF7; font-weight: 800; font-size: 17px; text-decoration: none; }
 .mp-foot { margin: 8px 0 0; font-size: 12px; color: #6b6e76; text-align: center; }
 .mp-wait { text-align: center; color: #6b6e76; }
+
+/* ---------- Ma vitrine (dans l'appli) ---------- */
+.vt { --vt-ink: #17191F; --vt-line: #E7E3D8; --vt-wa: #1A9E52; --vt-gold: #F6B800; display: grid; gap: 14px; padding-bottom: 24px; }
+.vt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vt-head h2 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(30px, 8vw, 44px); letter-spacing: -0.03em; margin: 0; line-height: 1; }
+.vt-state { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--vt-line); background: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 700; min-height: 44px; }
+.vt-state span { width: 10px; height: 10px; border-radius: 50%; background: #B8B4AA; }
+.vt-state.on span { background: var(--vt-wa); box-shadow: 0 0 0 4px color-mix(in oklab, var(--vt-wa) 20%, transparent); }
+.vt-intro { display: grid; gap: 12px; padding: 20px; border-radius: 22px; background: #fff; border: 1px solid var(--vt-line); }
+.vt-lede { margin: 0; font-size: 17px; line-height: 1.5; }
+.vt-muted { margin: 0; color: var(--j-ink-3); font-size: 14px; }
+.vt-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--j-soft-2); }
+.vt-primary { border: 0; border-radius: 999px; background: var(--vt-ink); color: #fff; font-weight: 800; font-size: 17px; min-height: 54px; padding: 0 22px; }
+.vt-primary.small { min-height: 46px; font-size: 15px; padding: 0 16px; }
+.vt-primary:disabled { opacity: 0.4; }
+.vt-link { display: grid; gap: 6px; padding: 18px; border-radius: 22px; background: var(--vt-ink); color: #fff; }
+.vt-link small { opacity: 0.7; font-size: 13px; }
+.vt-link a { color: var(--vt-gold); font-weight: 800; font-size: 18px; word-break: break-all; text-decoration: none; }
+.vt-share { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.vt-share button { border: 1px solid rgba(255,255,255,.25); background: transparent; color: #fff; border-radius: 14px; min-height: 48px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.vt-share .vt-wa { grid-column: 1 / -1; background: var(--vt-wa); border-color: var(--vt-wa); font-size: 16px; min-height: 52px; }
+.vt-warn { display: grid; gap: 6px; padding: 14px; border-radius: 16px; background: #FFF4D6; border: 1px solid #F1D48A; }
+.vt-warn p { margin: 0; font-size: 14px; }
+.vt-row { display: flex; gap: 8px; }
+.vt-row input, .vt-bio textarea { flex: 1; border: 1.5px solid var(--vt-line); border-radius: 12px; padding: 10px 12px; font: inherit; background: #fff; min-height: 46px; }
+.vt-bio { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+.vt-block { display: grid; gap: 8px; }
+.vt-block-head { display: flex; align-items: baseline; justify-content: space-between; }
+.vt-block-head h3 { margin: 0; font-size: 19px; font-weight: 800; }
+.vt-block-head span { color: var(--j-ink-3); font-size: 14px; }
+.vt-models { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.vt-models button { position: relative; padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: #EEE9DC; aspect-ratio: 3 / 4; }
+.vt-models button.on { border-color: var(--vt-ink); }
+.vt-models img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-models button:not(.on) img { opacity: 0.55; }
+.vt-check { position: absolute; top: 4px; right: 4px; background: var(--vt-ink); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; }
+.vt-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.vt-items li { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 16px; background: #fff; border: 1px solid var(--vt-line); }
+.vt-thumb { position: relative; width: 56px; height: 56px; flex: none; border-radius: 12px; overflow: hidden; border: 1.5px dashed #C9C4B8; background: #F6F3EA; padding: 0; display: grid; place-items: center; color: var(--j-ink-3); }
+.vt-items li .vt-thumb:has(img) { border-style: solid; border-color: transparent; }
+.vt-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.vt-thumb em { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255,255,255,.7); font-style: normal; font-weight: 800; }
+.vt-item-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.vt-item-text b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-item-text small { color: var(--j-ink-3); }
+.vt-toggle { width: 52px; height: 32px; flex: none; border: 0; border-radius: 999px; background: #D9D5CB; position: relative; padding: 0; }
+.vt-toggle span { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.vt-toggle.on { background: var(--vt-wa); }
+.vt-toggle.on span { transform: translateX(20px); }
+.vt button:focus-visible, .vp button:focus-visible, .vp a:focus-visible { outline: 3px solid var(--vt-gold, #F6B800); outline-offset: 2px; }
+
+/* ---------- Vitrine publique ---------- */
+.vp { --vp-ink: #17191F; --vp-wa: #1A9E52; --vp-line: #E7E3D8; max-width: 560px; margin: 0 auto; padding: 22px 18px 40px; display: grid; gap: 14px; align-content: start; min-height: 100vh; background: #FFFDF7; color: var(--vp-ink); font-family: "Geist Variable", system-ui, sans-serif; }
+.vp-wait { text-align: center; color: #6b6e76; }
+.vp-head { display: flex; align-items: center; gap: 14px; }
+.vp-mark { width: 60px; height: 60px; flex: none; border-radius: 18px; background: var(--vp-ink); color: #F6B800; display: grid; place-items: center; font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 24px; }
+.vp-name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(28px, 8vw, 38px); letter-spacing: -0.03em; line-height: 1; margin: 0; }
+.vp-meta { margin: 4px 0 0; color: #5b5e66; }
+.vp-bio { margin: 0; font-size: 16px; line-height: 1.5; color: #33363d; }
+.vp-call, .vp-order { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 54px; border-radius: 999px; background: var(--vp-wa); color: #fff; font-weight: 800; font-size: 17px; text-decoration: none; }
+.vp-section { display: grid; gap: 10px; margin-top: 6px; }
+.vp-section h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.vp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+.vp-card { display: grid; gap: 3px; padding: 0; border: 0; background: none; text-align: left; color: inherit; }
+.vp-frame { display: block; border-radius: 16px; overflow: hidden; background: #EFEBE0; aspect-ratio: 3 / 4; }
+.vp-frame.square { aspect-ratio: 1; }
+.vp-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vp-card b { margin-top: 6px; font-size: 15px; font-weight: 700; line-height: 1.25; }
+.vp-card small { font-size: 15px; font-weight: 700; color: var(--vp-wa); }
+.vp-card.is-out small { color: #9a9da4; }
+.vp-card.is-out .vp-frame { opacity: 0.55; }
+.vp-noimg { width: 100%; height: 100%; display: grid; place-items: center; font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 42px; color: #B9B3A4; }
+.vp-back { justify-self: start; display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--vp-line); background: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 600; min-height: 44px; }
+.vp-stage { position: relative; border-radius: 22px; overflow: hidden; background: #EFEBE0; aspect-ratio: 3 / 4; }
+.vp-stage .tt { position: absolute; inset: 0; }
+.vp-stage .tt:has(.tt-angles) { grid-template-rows: 1fr auto; padding-bottom: 8px; }
+.vp-item-name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
+.vp-price { margin: 0; font-size: 22px; font-weight: 800; color: var(--vp-wa); }
+.vp-out { margin: 0; color: #9a3412; }
+.vp-foot { margin-top: 12px; text-align: center; font-size: 12px; color: #7a7d84; }

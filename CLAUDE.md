@@ -66,6 +66,12 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Changer le métier d'une boutique déjà utilisée crée une NOUVELLE boutique (offre Avancé) : jamais de données mélangées.
 - Tailleur : Atelier couture (mesures à la voix, commandes, avance/reste, suivi, rappel « habit prêt ») + Studio d'essayage. Les images IA ne s'ouvrent qu'aux tailleurs **payants** (rien d'avancé par CFC) et entrent, avec leur accord, dans la galerie commune signée Jokko.
 
+## Vitrine (livrée le 09/11/2026, tous les métiers)
+
+- Écran « Ma vitrine » (`Vitrine.tsx`, `src/data/vitrine.ts`) : le patron ouvre sa vitrine (`vitrine_save` crée le code court `nom-xxx`), choisit les articles montrés (`products.vitrine`, photo `products.photo_path` dans le stockage public `vitrine/<shop_id>/…`), et pour un tailleur les modèles du Studio (`vitrines.models`). Partage : statut WhatsApp, Facebook, lien à copier (bio TikTok / Instagram).
+- Page publique `jokkoapp.com/?v=<code>` (`VitrinePublic.tsx`, fonction `vitrine_public`) : articles et modèles, détail avec photo qui tourne, « Commander sur WhatsApp » vers `shops.phone` (message prérempli). Sans compte.
+- À faire : aperçu riche du lien dans WhatsApp (image + nom) = balises Open Graph servies par le Worker Cloudflare.
+
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Dette remboursée (bouton « Il a payé » ou à la voix) : faire entrer l'argent dans la caisse du jour pour que la caisse du soir tombe juste. Fallou a dit « après on continue, tu me rappelles ».

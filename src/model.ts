@@ -25,6 +25,10 @@ export type Product = {
   expiresAt?: string;
   /** Lots reçus avec leur date (pharmacie) : vendus du plus proche au plus lointain. */
   lots?: Lot[];
+  /** Photo de l'article (stockage « vitrine »), montrée sur la vitrine publique. */
+  photoPath?: string;
+  /** Montré sur la vitrine publique de l'entreprise. */
+  vitrine?: boolean;
 };
 
 /** Un lot : combien d'unités, leur date de péremption, et le numéro de lot lu sur la boîte. */
