@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/jokko/Icon";
 import { rememberMetier } from "@/components/jokko/MetierCards";
@@ -6,17 +6,39 @@ import { galleryUrl } from "@/data/studio";
 import type { MetierId } from "@/data/metiers";
 
 /** Diaporama de l'accueil : un métier par image (photos IA signées Jokko), avec ce que Jokko fait pour lui. */
-type Slide = { id: MetierId; img: string; tag: string; title: string; said: string; points: string[]; cta: string };
+/** title = [début, mot en couleur, fin] ; color = couleur du métier (lisible sur photo sombre). */
+type Slide = { id: MetierId; img: string; tag: string; title: [string, string, string]; color: string; said: string; points: string[]; cta: string };
 
 const SLIDES: Slide[] = [
-  { id: "alimentation", img: "alimentation", tag: "Boutique", title: "Ceeb, diw, suukar : Jokko comprend.", said: "« Jaay naa ñaari kilo ceeb »", points: ["Ventes à la voix", "Dettes des clients", "Alerte avant la rupture"], cta: "Ouvrir ma boutique" },
-  { id: "pharmacie", img: "pharmacie", tag: "Pharmacie", title: "Aucune boîte ne périme en silence.", said: "« Quels produits périment bientôt ? »", points: ["Lots et péremption", "Stock des médicaments", "Caisse du soir"], cta: "Ouvrir ma pharmacie" },
-  { id: "couture", img: "couture", tag: "Couture", title: "Mesures et commandes, à la voix.", said: "« Grand boubou pour Awa, avance 10 000 »", points: ["Studio d'essayage", "Avance et reste", "Lien de suivi pour le client"], cta: "Ouvrir mon atelier" },
-  { id: "quincaillerie", img: "quincaillerie", tag: "Quincaillerie", title: "Chaque sac de ciment compté.", said: "« Il me reste combien de ciment ? »", points: ["Stock en sacs, barres, mètres", "Crédits des chantiers", "Factures WhatsApp"], cta: "Ouvrir ma quincaillerie" },
-  { id: "vetements", img: "vetements", tag: "Vêtements et chaussures", title: "Votre vitrine sur WhatsApp.", said: "« Il me reste combien de pantalons ? »", points: ["Stock par pièce et par paire", "Vitrine à partager", "Bénéfice de la semaine"], cta: "Ouvrir ma boutique" },
-  { id: "reparation", img: "reparation", tag: "Réparation", title: "Du dépôt au « c'est prêt ».", said: "« Awa dépose un iPhone, écran cassé »", points: ["Pannes et pièces posées", "Message « c'est prêt »", "Bénéfice par réparation"], cta: "Ouvrir mon atelier" },
+  { id: "alimentation", img: "alimentation", tag: "Boutique", title: ["Ceeb, diw, suukar :", "Jokko", "comprend."], color: "#FFC93C", said: "« Jaay naa ñaari kilo ceeb »", points: ["Ventes à la voix", "Dettes des clients", "Alerte avant la rupture"], cta: "Ouvrir ma boutique" },
+  { id: "pharmacie", img: "pharmacie", tag: "Pharmacie", title: ["Aucune boîte ne", "périme", "en silence."], color: "#3DDC84", said: "« Quels produits périment bientôt ? »", points: ["Lots et péremption", "Stock des médicaments", "Caisse du soir"], cta: "Ouvrir ma pharmacie" },
+  { id: "couture", img: "couture", tag: "Couture", title: ["Mesures et commandes,", "à la voix.", ""], color: "#FF8FB1", said: "« Grand boubou pour Awa, avance 10 000 »", points: ["Studio d'essayage", "Avance et reste", "Lien de suivi pour le client"], cta: "Ouvrir mon atelier" },
+  { id: "quincaillerie", img: "quincaillerie", tag: "Quincaillerie", title: ["Chaque sac de ciment", "compté.", ""], color: "#FF9F43", said: "« Il me reste combien de ciment ? »", points: ["Stock en sacs, barres, mètres", "Crédits des chantiers", "Factures WhatsApp"], cta: "Ouvrir ma quincaillerie" },
+  { id: "vetements", img: "vetements", tag: "Vêtements et chaussures", title: ["Votre vitrine", "sur WhatsApp.", ""], color: "#7FD6FF", said: "« Il me reste combien de pantalons ? »", points: ["Stock par pièce et par paire", "Vitrine à partager", "Bénéfice de la semaine"], cta: "Ouvrir ma boutique" },
+  { id: "reparation", img: "reparation", tag: "Réparation", title: ["Du dépôt au", "« c'est prêt ».", ""], color: "#3DE0D0", said: "« Awa dépose un iPhone, écran cassé »", points: ["Pannes et pièces posées", "Message « c'est prêt »", "Bénéfice par réparation"], cta: "Ouvrir mon atelier" },
 ];
-const EVERY = 5000;
+const EVERY = 6000;
+
+/** La phrase dite s'écrit lettre par lettre, comme si le commerçant parlait. */
+function useTyped(text: string, off: boolean): string {
+  const [n, setN] = useState(off ? text.length : 0);
+  useEffect(() => {
+    if (off) return setN(text.length);
+    setN(0);
+    let i = 0;
+    const start = window.setTimeout(() => {
+      const timer = window.setInterval(() => {
+        i += 1;
+        setN(i);
+        if (i >= text.length) window.clearInterval(timer);
+      }, 38);
+      stop = () => window.clearInterval(timer);
+    }, 650);
+    let stop = () => undefined as void;
+    return () => { window.clearTimeout(start); stop(); };
+  }, [text, off]);
+  return text.slice(0, n);
+}
 const src = (s: Slide) => galleryUrl(`accueil/${s.img}-v1.jpg`);
 
 export function MetierSlides({ onStart }: { onStart: () => void }) {
@@ -40,6 +62,11 @@ export function MetierSlides({ onStart }: { onStart: () => void }) {
 
   const go = (d: number) => setAt((i) => (i + d + SLIDES.length) % SLIDES.length);
   const slide = SLIDES[at];
+  const typed = useTyped(slide.said, Boolean(still));
+  const words = (t: string, from: number) => t.split(" ").filter(Boolean).map((w, k) => <span key={k} className="ms-w" style={{ "--i": from + k } as CSSProperties}>{w} </span>);
+  const [pre, hi, post] = slide.title;
+  const preN = pre.split(" ").filter(Boolean).length;
+  const hiN = hi.split(" ").filter(Boolean).length;
 
   return (
     <div
@@ -65,12 +92,19 @@ export function MetierSlides({ onStart }: { onStart: () => void }) {
         </div>
       ))}
       <div className="ms-shade" aria-hidden="true" />
-      <div className="ms-copy" key={slide.id} aria-live="polite">
-        <span className="ms-tag">{slide.tag}</span>
-        <h2>{slide.title}</h2>
-        <p className="ms-said"><Icon name="micro" size="sm" /> {slide.said}</p>
-        <ul>{slide.points.map((p) => <li key={p}>{p}</li>)}</ul>
-        <Button className="h-11 rounded-full px-5" onClick={() => { rememberMetier(slide.id); onStart(); }}>
+      <div className="ms-copy" key={slide.id} aria-live="polite" style={{ "--ms-accent": slide.color } as CSSProperties}>
+        <span className="ms-tag"><span className="ms-tag-dot" />{slide.tag}</span>
+        <h2 className="ms-title">
+          {words(pre, 0)}
+          <span className="ms-hi">{words(hi, preN)}</span>{" "}
+          {words(post, preN + hiN)}
+        </h2>
+        <p className="ms-said" aria-label={slide.said}>
+          <span className="ms-mic"><Icon name="micro" size="sm" /></span>
+          <span aria-hidden="true">{typed}<span className="ms-caret" /></span>
+        </p>
+        <ul className="ms-points">{slide.points.map((p, i) => <li key={p} style={{ "--i": i } as CSSProperties}>{p}</li>)}</ul>
+        <Button className="ms-cta h-11 rounded-full px-5" onClick={() => { rememberMetier(slide.id); onStart(); }}>
           {slide.cta} <Icon name="suivant" size="sm" />
         </Button>
       </div>
