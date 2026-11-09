@@ -53,6 +53,12 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Une seule demande en attente par boutique (index unique) ; « Mon offre » = fenêtre par étapes (durée → paiement → validation).
 - Offre activée ou refusée : le patron reçoit une notification (trigger `on_subscription_decided` → notify `kind: boutique`).
 
+## Appli hybride : un métier = une appli (règle de Fallou, 09/11/2026)
+
+- Le métier choisi à l'inscription (`src/data/metiers.ts`) règle **toute** l'appli : écrans, outils de Jokko (direct), consignes de Gemini, exemples, unités.
+- Une fonction d'un autre métier n'apparaît **jamais** (l'alimentation ne voit ni couture ni cabine d'essayage ; la pharmacie ne voit pas les vivres). Les écrans communs (ventes, stock, clients, dettes, caisse, factures, offre, réglages) restent partout.
+- Tailleur : Atelier couture (mesures à la voix, commandes, avance/reste, suivi, rappel « habit prêt ») + Studio d'essayage. Les images IA ne s'ouvrent qu'aux tailleurs **payants** (rien d'avancé par CFC) et entrent, avec leur accord, dans la galerie commune signée Jokko.
+
 ## Routine hebdomadaire
 
 1. Ouvrir l'onglet « Erreurs de Jokko » (7 jours) : taux wolof et français.
