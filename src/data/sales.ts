@@ -59,3 +59,22 @@ export const todaySales = (shop: Shop): Sale[] => shop.sales.filter((s) => isTod
 export function clearTodaySales(shop: Shop): Shop {
   return todaySales(shop).reduce((acc, s) => removeSale(acc, s.id), shop);
 }
+
+// ---------- Dépenses ----------
+
+/** Supprime une dépense : l'argent revient dans la caisse du jour. (Un achat ou une perte ne change pas le stock.) */
+export function removeExpense(shop: Shop, id: string): Shop {
+  return { ...shop, expenses: shop.expenses.filter((e) => e.id !== id) };
+}
+
+/** Corrige le montant ou le nom d'une dépense. */
+export function editExpense(shop: Shop, id: string, change: { amount?: number; label?: string }): Shop {
+  return {
+    ...shop,
+    expenses: shop.expenses.map((e) =>
+      e.id === id
+        ? { ...e, amount: change.amount !== undefined && Number.isFinite(change.amount) && change.amount > 0 ? Math.round(change.amount) : e.amount, label: change.label?.trim() || e.label }
+        : e,
+    ),
+  };
+}

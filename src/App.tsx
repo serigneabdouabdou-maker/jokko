@@ -74,6 +74,7 @@ import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
 import { SalesList } from "@/components/jokko/SalesList";
+import { ExpensesList } from "@/components/jokko/ExpensesList";
 import { clearTodaySales, todaySales } from "@/data/sales";
 import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
@@ -1539,7 +1540,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} />}
-          {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
+          {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
           {screen === "caisse" && <Cash shop={shop} commit={commit} canEdit={patron} />}
@@ -1564,21 +1565,6 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         live={live}
       />
     </div>
-  );
-}
-
-function MoneyList({ title, rows }: { title: string; rows: string[][] }) {
-  return (
-    <section className="sheet">
-      <div className="sheet-head">
-        <h2>{title}</h2>
-        <span className="count num">{rows.length}</span>
-      </div>
-      <div className="list">
-        {rows.length === 0 && <p className="note">Rien pour l’instant.</p>}
-        {rows.map((row) => <article key={row[0]}><span>{row[1]}<small>{row[3]}</small></span><b className="num">{row[2]}</b></article>)}
-      </div>
-    </section>
   );
 }
 

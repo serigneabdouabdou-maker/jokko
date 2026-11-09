@@ -48,3 +48,14 @@ describe("corriger une vente", () => {
     expect(daySales(clearTodaySales(shop))).toBe(0);
   });
 });
+
+describe("corriger une dépense", () => {
+  it("supprimer remet l'argent dans la caisse ; modifier change le montant", async () => {
+    const { expectedCash } = await import("../model");
+    const { editExpense, removeExpense } = await import("./sales");
+    const base = seedShop();
+    const shop: Shop = { ...base, expenses: [{ id: "e1", at: new Date().toISOString(), label: "Transport", amount: 2000 }, ...base.expenses] };
+    expect(expectedCash(removeExpense(shop, "e1"))).toBe(expectedCash(shop) + 2000);
+    expect(editExpense(shop, "e1", { amount: 1500 }).expenses[0].amount).toBe(1500);
+  });
+});
