@@ -224,6 +224,8 @@ export function screensOf(activity: string | undefined | null, extra: readonly s
 export function screenLabel(activity: string | undefined | null, screen: string, fallback: string): string {
   const id = metierOf(activity).id;
   if (id === "couture" && screen === "stock") return "Tissus et fournitures";
+  // Un tailleur ne « vend » pas : il reçoit des paiements de couture (avances, acomptes, soldes).
+  if (id === "couture" && screen === "ventes") return "Paiements";
   if (id === "reparation" && screen === "stock") return "Pièces";
   if (id === "pharmacie" && screen === "stock") return "Médicaments";
   return fallback;

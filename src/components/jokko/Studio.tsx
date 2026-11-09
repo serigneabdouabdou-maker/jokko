@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES, type CoutureModel, galleryUrl, loadModels, shareImage, tryOn } from "@/data/studio";
+import { AGES, CATEGORIES, type CoutureModel, filterModels, galleryUrl, isNew, loadModels, OCCASIONS, shareImage, tryOn } from "@/data/studio";
 
 /**
  * Studio d'essayage : la galerie de modèles signés Jokko. On touche un modèle, on le voit en grand,
@@ -10,6 +10,8 @@ import { CATEGORIES, type CoutureModel, galleryUrl, loadModels, shareImage, tryO
 export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
   const [models, setModels] = useState<CoutureModel[] | null>(null);
   const [cat, setCat] = useState<CoutureModel["category"]>("femme");
+  const [occasion, setOccasion] = useState("tout");
+  const [age, setAge] = useState("tout");
   const [open, setOpen] = useState<CoutureModel | null>(null);
   const [zoom, setZoom] = useState(false);
   const [state, setState] = useState<"repos" | "essai">("repos");
@@ -21,7 +23,13 @@ export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
     void loadModels().then(setModels);
   }, []);
 
-  const list = (models ?? []).filter((m) => m.category === cat);
+  const all = models ?? [];
+  const list = filterModels(all, cat, occasion, age);
+  const ages = AGES.filter((a) => (cat === "enfant" ? a.for === "enfant" : a.for === "adulte"));
+  // Rubriques qui ont des modèles pour ce genre (les vides sont cachées).
+  const rubrics = OCCASIONS.map((o) => ({ ...o, n: filterModels(all, cat, o.id, "tout").length })).filter((o) => o.n > 0);
+  // « Tout » : la galerie rangée par rubrique, comme un grand catalogue.
+  const sections = occasion === "tout" ? rubrics.map((o) => ({ ...o, items: filterModels(all, cat, o.id, age) })).filter((s) => s.items.length) : [];
 
   function show(m: CoutureModel | null) {
     setOpen(m);
@@ -105,21 +113,51 @@ export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
       <p className="note">Touche un modèle pour le voir en grand, l'essayer sur ton client, puis le commander.</p>
       <div className="debt-actions" style={{ gap: 8, margin: "8px 0", flexWrap: "wrap" }}>
         {CATEGORIES.map((c) => (
-          <Button key={c.id} variant={cat === c.id ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setCat(c.id)}>
-            {c.label} ({(models ?? []).filter((m) => m.category === c.id).length})
+          <Button key={c.id} variant={cat === c.id ? "default" : "outline"} className="h-11 rounded-full px-5" onClick={() => { setCat(c.id); setAge("tout"); setOccasion("tout"); }}>
+            {c.label} ({all.filter((m) => m.category === c.id).length})
           </Button>
         ))}
       </div>
-      {models === null && <p className="note">Jokko ouvre la galerie…</p>}
-      {models !== null && list.length === 0 && <p className="note">Pas encore de modèle ici. De nouveaux modèles arrivent bientôt.</p>}
-      <div className="studio-grid">
-        {list.map((m) => (
-          <button key={m.id} type="button" className="studio-card" onClick={() => show(m)}>
-            <img src={galleryUrl(m.thumb_path ?? m.image_path)} alt={m.title} loading="lazy" />
-            <span>{m.title}</span>
-          </button>
+      <div className="studio-chips" role="tablist" aria-label="Rubriques">
+        <button type="button" className={occasion === "tout" ? "on" : ""} onClick={() => setOccasion("tout")}>Tout</button>
+        {rubrics.map((o) => (
+          <button key={o.id} type="button" className={occasion === o.id ? "on" : ""} onClick={() => setOccasion(o.id)}>{o.label} <small>{o.n}</small></button>
         ))}
       </div>
+      <div className="studio-chips" aria-label="Âge">
+        <button type="button" className={age === "tout" ? "on" : ""} onClick={() => setAge("tout")}>Tous âges</button>
+        {ages.map((a) => (
+          <button key={a.id} type="button" className={age === a.id ? "on" : ""} onClick={() => setAge(a.id)}>{a.label}</button>
+        ))}
+      </div>
+      {models === null && <p className="note">Jokko ouvre la galerie…</p>}
+      {models !== null && (occasion === "tout" ? sections.length === 0 : list.length === 0) && <p className="note">Pas encore de modèle ici. De nouveaux modèles arrivent chaque semaine.</p>}
+      {occasion === "tout"
+        ? sections.map((s) => (
+            <div key={s.id} className="studio-section">
+              <div className="studio-section-head">
+                <h3>{s.label}</h3>
+                <button type="button" className="link" onClick={() => setOccasion(s.id)}>Voir les {s.items.length}</button>
+              </div>
+              <div className="studio-row">
+                {s.items.slice(0, 12).map((m) => <Card key={m.id} m={m} onOpen={show} />)}
+              </div>
+            </div>
+          ))
+        : (
+          <div className="studio-grid">
+            {list.map((m) => <Card key={m.id} m={m} onOpen={show} />)}
+          </div>
+        )}
     </section>
+  );
+}
+
+function Card({ m, onOpen }: { m: CoutureModel; onOpen: (m: CoutureModel) => void }) {
+  return (
+    <button type="button" className="studio-card" onClick={() => onOpen(m)}>
+      <img src={galleryUrl(m.thumb_path ?? m.image_path)} alt={m.title} loading="lazy" />
+      <span>{isNew(m) && <em className="studio-new">Nouveau</em>}{m.title}</span>
+    </button>
   );
 }

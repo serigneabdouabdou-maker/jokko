@@ -74,6 +74,7 @@ import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
 import { SalesList } from "@/components/jokko/SalesList";
+import { coutureOwed } from "@/data/couture";
 import { Studio } from "@/components/jokko/Studio";
 import type { CoutureModel } from "@/data/studio";
 import { ExpensesList } from "@/components/jokko/ExpensesList";
@@ -1358,6 +1359,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   }
 
   const prompts = metierOf(shop.activity).ex.prompts;
+  const tailor = metierOf(shop.activity).id === "couture";
   // Un métier = une appli : seuls les écrans de son métier (et des modules ajoutés) apparaissent.
   const screens = screensOf(shop.activity, shop.modules);
   const allowed = (id: Screen) =>
@@ -1411,14 +1413,15 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           </div>
         )}
 
-        <section className="stats" aria-label="Chiffres du jour">
+        {/* Le Studio est une vitrine de modèles : pas de chiffres de caisse ni de dettes en haut. */}
+        {screen !== "studio" && <section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
             <span className="stat-label"><Icon name="caisse" size="sm" />Caisse attendue</span>
             <Num value={expectedCash(shop)} className="stat-big" />
             <small>Fond {amount(shop.openingCash)} + ventes en espèces − dépenses</small>
           </article>
           <article className="stat stat-sales">
-            <span className="stat-label"><Icon name="vente" size="sm" />Ventes du jour{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
+            <span className="stat-label"><Icon name="vente" size="sm" />{tailor ? "Paiements du jour" : "Ventes du jour"}{patron && today.revenue - today.unknownRevenue > 0 ? <small className="stat-profit"> · bénéfice {amount(today.grossProfit)}</small> : null}</span>
             <Num value={daySales(shop)} />
           </article>
           <article className="stat">
@@ -1426,10 +1429,10 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
             <Num value={dayExpenses(shop)} />
           </article>
           <article className="stat">
-            <span className="stat-label"><Icon name="dette" size="sm" />Dettes</span>
-            <Num value={debtors(shop).reduce((a, c) => a + c.debt, 0)} />
+            <span className="stat-label"><Icon name="dette" size="sm" />{tailor ? "Reste à encaisser" : "Dettes"}</span>
+            <Num value={tailor ? coutureOwed(shop) + debtors(shop).reduce((a, c) => a + c.debt, 0) : debtors(shop).reduce((a, c) => a + c.debt, 0)} />
           </article>
-        </section>
+        </section>}
 
         <div className="screen" key={screen}>
           {screen === "parler" && (
@@ -1517,7 +1520,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "ventes" && (
             <section className="sheet">
               <div className="sheet-head">
-                <h2>Ventes</h2>
+                <h2>{tailor ? "Paiements de couture" : "Ventes"}</h2>
                 <span className="count num">{shop.sales.length}</span>
               </div>
               <SalesList shop={shop} commit={commit} canEdit={patron} sales={shop.sales} />
@@ -1797,6 +1800,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
 function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; onDemo?: () => void }) {
   const [reading, setReading] = useState<LegalDoc | null>(null);
   const [changingMetier, setChangingMetier] = useState(false);
+  const [metierNote, setMetierNote] = useState("");
   const shop = currentShop(profile);
   const file = useMemo(() => toCsv(shop), [shop]);
   return (
@@ -1826,21 +1830,25 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
             onChange={(activity) => {
               const before = metierOf(shop.activity);
               const after = metierOf(activity);
-              const used = shop.products.length + shop.sales.length + shop.clients.length > 0;
-              if (
-                before.id !== after.id &&
-                used &&
-                !window.confirm(
-                  `« ${shop.name} » a déjà des articles, des ventes ou des clients (${before.label}).\n\n` +
-                    `Si tu passes en « ${after.label} », rien n'est effacé : les anciens articles restent dans le stock.\n\n` +
-                    "Pour une autre activité, crée plutôt une NOUVELLE boutique (Mes boutiques, juste au-dessus) : chaque boutique garde son stock, sa caisse et ses dettes, sans mélange.\n\nChanger quand même le métier ?",
-                )
-              )
+              const used = shop.products.length + shop.sales.length + shop.clients.length + (shop.couture?.length ?? 0) + (shop.repairs?.length ?? 0) > 0;
+              // Jamais de mélange : une boutique déjà utilisée garde son métier et ses données.
+              // L'autre métier devient une NOUVELLE boutique, avec son propre stock, sa caisse, ses clients et ses dettes.
+              if (before.id !== after.id && used) {
+                if (!can(shop, "boutiques")) {
+                  setMetierNote(`« ${shop.name} » a déjà ses données de ${before.label}. Pour ${after.label}, il faut une deuxième boutique, séparée (offre Avancé, dans « Mon offre ») : rien ne se mélange.`);
+                  return;
+                }
+                const fresh = newShop(`${shop.name} – ${after.label}`, activity, shop.city);
+                setProfile({ ...profile, shops: [...profile.shops, fresh], shopId: fresh.id });
+                setMetierNote(`✓ Nouvelle boutique « ${fresh.name} » créée pour ${after.label}, avec ses propres données. « ${shop.name} » garde les siennes. Change de boutique dans « Mes boutiques ».`);
+                setChangingMetier(false);
                 return;
+              }
               setProfile(replaceShop(profile, { ...shop, activity }));
               setChangingMetier(false);
             }}
           />}
+          {metierNote && <p className="note jk-notice" role="status">{metierNote}</p>}
           <p className="note">Une boutique = un métier. Jokko s'y adapte : écrans, vocabulaire, exemples, unités. Les fonctions des autres métiers n'apparaissent pas.</p>
           <ModulesSetting shop={shop} onChange={(modules) => setProfile(replaceShop(profile, { ...shop, modules }))} />
         </div>

@@ -208,3 +208,8 @@ export function findCouture(shop: Shop, ref: string): CoutureOrder | undefined {
   const found = pickByName(open.map((o) => ({ ...o, name: `${o.clientName} ${o.garment}` })), ref);
   return found.item ? open.find((o) => o.id === found.item?.id) : undefined;
 }
+
+/** Reste à encaisser sur les commandes en cours (affiché en haut chez les tailleurs). */
+export function coutureOwed(shop: Shop): number {
+  return ordersOf(shop).filter(isOpen).reduce((a, o) => a + remaining(o), 0);
+}

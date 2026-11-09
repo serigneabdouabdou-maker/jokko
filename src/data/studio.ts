@@ -5,7 +5,44 @@
  */
 import { api, SUPABASE_URL, supabase } from "./supabase";
 
-export type CoutureModel = { id: string; title: string; category: "homme" | "femme" | "enfant"; garment: string; fabric: string; image_path: string; thumb_path: string | null };
+export type CoutureModel = { id: string; title: string; category: "homme" | "femme" | "enfant"; garment: string; fabric: string; image_path: string; thumb_path: string | null; occasion?: string; age?: string; created_at?: string };
+
+/** Rubriques du Studio (occasions de l'année au Sénégal). « nouveautes » = les modèles arrivés ces 14 derniers jours. */
+export const OCCASIONS: { id: string; label: string }[] = [
+  { id: "nouveautes", label: "Nouveautés" },
+  { id: "tabaski", label: "Tabaski" },
+  { id: "korite", label: "Korité" },
+  { id: "magal", label: "Magal" },
+  { id: "mariage", label: "Mariage" },
+  { id: "bapteme", label: "Baptême" },
+  { id: "ceremonie", label: "Cérémonie" },
+  { id: "quotidien", label: "Tous les jours" },
+];
+
+/** Tranches d'âge (enfants et adultes). */
+export const AGES: { id: string; label: string; for: "enfant" | "adulte" }[] = [
+  { id: "bebe", label: "1-2 ans", for: "enfant" },
+  { id: "petit", label: "3-5 ans", for: "enfant" },
+  { id: "enfant", label: "6-9 ans", for: "enfant" },
+  { id: "preado", label: "10-13 ans", for: "enfant" },
+  { id: "ado", label: "14-17 ans", for: "enfant" },
+  { id: "jeune", label: "20-30 ans", for: "adulte" },
+  { id: "adulte", label: "30-50 ans", for: "adulte" },
+  { id: "senior", label: "50 ans et +", for: "adulte" },
+];
+
+const NEW_DAYS = 14;
+export const isNew = (m: CoutureModel, now = Date.now()) => Boolean(m.created_at) && now - new Date(m.created_at as string).getTime() < NEW_DAYS * 86_400_000;
+
+/** Filtre de la galerie : genre, rubrique (ou « toutes »), tranche d'âge (ou « tous »). */
+export function filterModels(models: CoutureModel[], category: string, occasion: string, age: string, now = Date.now()): CoutureModel[] {
+  return models.filter(
+    (m) =>
+      m.category === category &&
+      (occasion === "tout" || (occasion === "nouveautes" ? isNew(m, now) || m.occasion === "nouveautes" : (m.occasion ?? "quotidien") === occasion)) &&
+      (age === "tout" || m.age === age),
+  );
+}
 export const CATEGORIES: { id: CoutureModel["category"]; label: string }[] = [
   { id: "femme", label: "Femme" },
   { id: "homme", label: "Homme" },
@@ -15,7 +52,7 @@ export const CATEGORIES: { id: CoutureModel["category"]; label: string }[] = [
 export const galleryUrl = (path: string) => `${SUPABASE_URL}/storage/v1/object/public/galerie/${path}`;
 
 export async function loadModels(): Promise<CoutureModel[]> {
-  const { data } = await supabase.from("couture_models").select("id, title, category, garment, fabric, image_path, thumb_path").order("created_at", { ascending: false }).limit(300);
+  const { data } = await supabase.from("couture_models").select("id, title, category, garment, fabric, image_path, thumb_path, occasion, age, created_at").order("created_at", { ascending: false }).limit(1000);
   return (data ?? []) as CoutureModel[];
 }
 
@@ -71,4 +108,42 @@ export async function shareImage(src: string, title: string): Promise<void> {
   a.href = src;
   a.download = file.name;
   a.click();
+}
+
+// ---------- Fabrique de modèles (console admin) ----------
+
+export type StudioStats = {
+  prix_image: number; prix_essayage: number; plafond_jour: number;
+  fabriques_jour: number; fabriques_mois: number; erreurs_jour: number; en_attente: number;
+  essayages_jour: number; essayages_mois: number; galerie_total: number;
+  par_rubrique: { category: string; occasion: string; n: number }[];
+  jours: { jour: string; faits: number; erreurs: number }[];
+};
+
+export async function studioStats(): Promise<StudioStats | null> {
+  const { data, error } = await supabase.rpc("studio_stats");
+  return error ? null : (data as StudioStats);
+}
+
+export async function studioEnqueue(category: string, occasion: string, age: string, count: number): Promise<{ ajoutes: number; cout_estime: number } | null> {
+  const { data, error } = await supabase.rpc("studio_enqueue", { p_category: category, p_occasion: occasion, p_age: age, p_count: count });
+  return error ? null : (data as { ajoutes: number; cout_estime: number });
+}
+
+export async function studioCancel(): Promise<number> {
+  const { data } = await supabase.rpc("studio_cancel");
+  return typeof data === "number" ? data : 0;
+}
+
+export async function studioHide(id: string): Promise<boolean> {
+  const { error } = await supabase.rpc("studio_hide", { p_id: id });
+  return !error;
+}
+
+/** Réglages de la fabrique (prix d'une image, plafond par jour) : dans les réglages de la console. */
+export const FACTORY_KEYS = ["cout_image_galerie", "plafond_images_jour", "images_par_minute"] as const;
+
+export async function studioSetCap(cap: number): Promise<boolean> {
+  const { error } = await supabase.rpc("studio_set_cap", { p_cap: cap });
+  return !error;
 }

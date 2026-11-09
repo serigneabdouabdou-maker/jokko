@@ -1635,3 +1635,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .couture-model img { width: 72px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; }
 .couture-model span { display: grid; gap: 2px; font-weight: 600; font-size: 14px; }
 .couture-thumb { width: 44px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; flex: none; cursor: pointer; }
+.studio-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
+.studio-chips button { flex: none; border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 14px; }
+.studio-chips button.on { background: var(--j-ink); color: #fff; border-color: var(--j-ink); }
+.studio-chips small { opacity: .6; margin-left: 2px; }
+.studio-section { margin-top: 14px; }
+.studio-section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.studio-section-head h3 { font-size: 18px; margin: 0; }
+.studio-row { display: grid; grid-auto-flow: column; grid-auto-columns: 42%; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
+@media (min-width: 640px) { .studio-row { grid-auto-columns: 22%; } }
+.studio-row .studio-card { scroll-snap-align: start; }
+.studio-new { font-style: normal; font-size: 11px; background: var(--j-yellow); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
