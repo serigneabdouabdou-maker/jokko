@@ -1,0 +1,32 @@
+# Outil de l'atelier vidéo : récupère des fichiers publics (photos de la galerie, voix) en artefact,
+# car l'atelier de Claude ne peut pas joindre le stockage directement. Lancé à la main seulement.
+name: assets
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Chemins dans le stockage public, séparés par des virgules (ex. galerie/accueil/pharmacie-v1.jpg)"
+        required: true
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Télécharger
+        env:
+          PATHS: ${{ inputs.paths }}
+        run: |
+          mkdir -p out
+          IFS=',' read -ra items <<< "$PATHS"
+          for p in "${items[@]}"; do
+            p="$(echo "$p" | xargs)"
+            case "$p" in *..*|/*) echo "chemin refusé: $p"; exit 1;; esac
+            curl -fsSL "https://solocpbqtqlxdfpjiewm.supabase.co/storage/v1/object/public/$p" -o "out/$(echo "$p" | tr '/' '_')"
+          done
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets
+          path: out
+          retention-days: 3

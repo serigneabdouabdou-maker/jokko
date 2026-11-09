@@ -1,0 +1,11 @@
+[
+ { "slug": "metiers-1", "scene": "intro", "lang": "wo", "text": "Salaam aleekum ! Man Modou laa. Ci sama bitig, Jokko moo may bind sama jaay, ci wolof.", "fr": "Je suis Modou. Dans ma boutique, Jokko note mes ventes, en wolof." },
+ { "slug": "metiers-2", "scene": "intro", "lang": "wo", "text": "Waaye Jokko du ñeel bitig yi rekk : liggéey bu nekk am na sa Jokko.", "fr": "Mais Jokko n'est pas que pour les boutiques : chaque métier a son Jokko." },
+ { "slug": "metiers-3", "scene": "pharmacie", "lang": "wo", "text": "Pharmacie : Jokko dina la wax médicament yi date bi jege, balaa ñuy yàqu.", "fr": "Pharmacie : Jokko prévient avant qu'un médicament ne périme." },
+ { "slug": "metiers-4", "scene": "couture", "lang": "wo", "text": "Tailleur : wax rekk mesures yi ak commande bi, Jokko bind. Sa kiliyaan gis na modèle bi ak suivi bi.", "fr": "Tailleur : dis les mesures et la commande, Jokko écrit. Ton client voit le modèle et le suivi." },
+ { "slug": "metiers-5", "scene": "quincaillerie", "lang": "wo", "text": "Quincaillerie : sac ciment, barre fer, pot peinture : Jokko xam na lu des ci sa stock.", "fr": "Quincaillerie : ciment, fer, peinture, Jokko sait ce qui reste en stock." },
+ { "slug": "metiers-6", "scene": "vetements", "lang": "wo", "text": "Yére ak dàll : sa vitrine ci WhatsApp, sa kiliyaan yi gis say prix te commander.", "fr": "Vêtements et chaussures : ta vitrine sur WhatsApp, tes clients voient les prix et commandent." },
+ { "slug": "metiers-7", "scene": "reparation", "lang": "wo", "text": "Réparateur : telefoon bu ñu la dénk, Jokko topp ko ba mu pare, te yónne message « pare na ».", "fr": "Réparation : chaque téléphone suivi jusqu'au message « c'est prêt »." },
+ { "slug": "metiers-8", "scene": "alimentation", "lang": "wo", "text": "Ci sama bitig : ceeb, diw, suukar. Ma wax, Jokko bind, te bor yi du réer.", "fr": "Dans ma boutique : riz, huile, sucre. Je parle, Jokko note, les dettes ne se perdent pas." },
+ { "slug": "metiers-9", "scene": "fin", "lang": "wo", "text": "Wax rekk, Jokko bind. Tàmbalil tey ci jokkoapp.com.", "fr": "Parle, Jokko écrit. Commence aujourd'hui sur jokkoapp.com." }
+]
