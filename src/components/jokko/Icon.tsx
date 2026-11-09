@@ -12,6 +12,7 @@
 import type { CSSProperties, SVGProps } from "react";
 import {
   Wrench,
+  Scissors,
   Sparkles,
   School,
   MapPinned,
@@ -110,6 +111,7 @@ export const ICONS = {
   numerique: CodeXml,
   ia: Sparkles,
   reparation: Wrench,
+  couture: Scissors,
   accessoire: Headphones,
   ecole: School,
   carte: MapPinned,

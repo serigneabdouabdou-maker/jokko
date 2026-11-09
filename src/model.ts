@@ -66,6 +66,8 @@ export type Client = {
   debt: number;
   /** Date à laquelle la dette doit être payée. */
   dueAt?: string;
+  /** Mesures du client en cm (tailleurs) : reprises à chaque nouvelle commande. */
+  measures?: Record<string, number>;
 };
 
 export type Sale = {
@@ -123,6 +125,36 @@ export type Reminder = {
   note: string;
 };
 
+/** Couture sur mesure (tailleurs) : une commande suit des étapes que le client voit sur son lien de suivi. */
+export type CoutureStatus = "recu" | "coupe" | "couture" | "finition" | "pret" | "livre" | "annule";
+export type CoutureOrder = {
+  id: string;
+  /** Jour de la commande. */
+  at: string;
+  /** Numéro court (C-001), à écrire sur le tissu. */
+  number: string;
+  clientId?: string;
+  clientName: string;
+  phone: string;
+  /** Modèle : « grand boubou brodé », « taille basse ». */
+  garment: string;
+  /** Tissu : « bazin bleu apporté par le client », « 6 m de wax de l'atelier ». */
+  fabric: string;
+  /** Mesures en cm, au moment de la commande (cou, épaule, poitrine…). */
+  measures: Record<string, number>;
+  price: number;
+  /** Déjà payé (avance + acomptes). */
+  paid: number;
+  /** Date promise au client (AAAA-MM-JJ). */
+  dueAt?: string;
+  status: CoutureStatus;
+  /** Code secret du lien de suivi donné au client (jokkoapp.com/?suivi=…). */
+  token: string;
+  note?: string;
+  readyAt?: string;
+  deliveredAt?: string;
+};
+
 export type Shortcut = { id: string; phrase: string; does: string };
 
 export type Shop = {
@@ -157,6 +189,8 @@ export type Shop = {
   shortcuts: Shortcut[];
   /** Carnet de réparations (réparateurs) ; absent pour une boutique qui n'en fait pas. */
   repairs?: Repair[];
+  /** Commandes de couture (tailleurs) ; absent pour une boutique qui n'en fait pas. */
+  couture?: CoutureOrder[];
 };
 
 export type Profile = {

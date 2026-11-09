@@ -1597,3 +1597,25 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .app-prompt-x { flex: none; align-self: flex-start; width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; color: #4a4d55; font-size: 22px; line-height: 1; cursor: pointer; }
 .app-prompt-x:hover { background: rgba(23,25,31,.06); }
 .app-dl { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--j-ink); color: #fff; font-weight: 650; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none; }
+
+/* Atelier couture et page de suivi client */
+@layer components {
+  .couture-measures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .couture-measures label { display: grid; gap: 4px; font-size: 13px; color: var(--j-ink-2); }
+  .couture-steps { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0; font-size: 12px; font-weight: 600; }
+  .couture-steps li { padding: 6px 10px; border-radius: 999px; background: var(--j-soft); color: var(--j-ink-3); }
+  .couture-steps li.done { color: var(--j-ink); }
+  .couture-steps li.on { background: var(--j-ink); color: var(--j-white); }
+  .suivi { max-width: 480px; margin: 0 auto; padding: 32px 20px 48px; display: grid; gap: 14px; }
+  .suivi h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+  .suivi-shop { font-weight: 700; color: var(--j-ink-2); }
+  .suivi-steps { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 10px; }
+  .suivi-steps li { display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--j-ink-3); }
+  .suivi-steps li span { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--j-soft); font-weight: 700; }
+  .suivi-steps li.done { color: var(--j-ink); }
+  .suivi-steps li.done span { background: var(--j-ok); color: #fff; }
+  .suivi-steps li.on { color: var(--j-ink); font-weight: 700; }
+  .suivi-steps li.on span { background: var(--j-ink); color: var(--j-white); }
+  .suivi-call { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 999px; background: #25D366; color: #fff; font-weight: 700; text-decoration: none; }
+  .suivi-foot { color: var(--j-ink-3); font-size: 13px; text-align: center; margin-top: 12px; }
+}

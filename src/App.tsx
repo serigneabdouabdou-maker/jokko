@@ -56,6 +56,7 @@ import { Bilan } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
+import { Couture } from "@/components/jokko/Couture";
 import { expiringSoon, metierOf, MODULES, modulesOf } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
@@ -110,7 +111,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -128,6 +129,7 @@ const NAV: Array<[Screen, string]> = [
   ["stock", "Stock"],
   ["clients", "Clients"],
   ["factures", "Factures"],
+  ["couture", "Couture"],
   ["atelier", "Atelier"],
   ["depenses", "Dépenses"],
   ["dettes", "Dettes"],
@@ -151,6 +153,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   clients: "client",
   factures: "facture",
   atelier: "reparation",
+  couture: "couture",
   depenses: "depense",
   dettes: "dette",
   caisse: "caisse",
@@ -1362,7 +1365,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || modulesOf(shop.activity, shop.modules).has("atelier") || (shop.repairs?.length ?? 0) > 0)).map(([id, label]) => (
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || modulesOf(shop.activity, shop.modules).has("atelier") || (shop.repairs?.length ?? 0) > 0) && (id !== "couture" || modulesOf(shop.activity, shop.modules).has("couture") || (shop.couture?.length ?? 0) > 0)).map(([id, label]) => (
             <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
@@ -1521,6 +1524,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
+          {screen === "couture" && <Couture shop={shop} commit={commit} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
