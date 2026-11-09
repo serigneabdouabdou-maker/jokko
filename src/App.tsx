@@ -93,7 +93,8 @@ import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVo
 import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setGreetPreferred, setSpeedPreferred, type SpeechSpeed, speedPreferred, stopGreeting } from "@/assistant/greeting";
 import { noisePreferred, setNoisePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
-import { can } from "@/data/plans";
+import { can, effectivePlan } from "@/data/plans";
+import { noteDevice } from "@/data/device";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -198,6 +199,8 @@ export function App() {
     const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
     return () => data.subscription.unsubscribe();
   }, []);
+  // Garde-fou : le téléphone est noté pour le compte connecté (repère les comptes multiples sur un même téléphone).
+  useEffect(() => noteDevice(session?.user?.id), [session?.user?.id]);
 
   const userId = session?.user.id;
   useEffect(() => {
@@ -740,7 +743,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       const variant = quotaVariant(detail, patronRef.current);
       if (!variant) return;
       setQuotaBanner(variant);
-      if (detail.reason === "essai" || detail.reason === "echanges" || detail.reason === "pause" || detail.reason === "mois" || detail.reason === "budget") liveRef.current?.stop();
+      if (detail.reason === "essai" || detail.reason === "echanges" || detail.reason === "pause" || detail.reason === "mois" || detail.reason === "budget" || detail.reason === "repos" || detail.reason === "appareil") liveRef.current?.stop();
       // Seulement si le commerçant vient d'appuyer (pas pour un préchargement en arrière-plan), et une fois par 10 min.
       const now = Date.now();
       if (now - lastTap.current > 20_000) return;
@@ -1553,7 +1556,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
-          {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
+          {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} canEdit={patron} />}

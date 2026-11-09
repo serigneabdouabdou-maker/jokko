@@ -7,6 +7,7 @@ import { ConsoleMap } from "./ConsoleMap";
 import { ActivityTab } from "./Activity";
 import { HealthTab } from "./Health";
 import { FactoryTab } from "./Factory";
+import { GuardTab } from "./Guard";
 import { Icon, type IconName, Notice } from "@/components/jokko/Icon";
 import { supabase, signIn, phoneOf, SUPABASE_URL } from "@/data/supabase";
 import { type PlanName, money } from "@/model";
@@ -42,13 +43,14 @@ const short = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: 
 const monthName = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { month: "short" });
 const phone = (p: string) => p.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 
-type Tab = "activite" | "sante" | "apercu" | "gemini" | "erreurs" | "studio" | "carte" | "paiements" | "boutiques" | "reglages";
+type Tab = "activite" | "sante" | "apercu" | "gemini" | "erreurs" | "studio" | "garde" | "carte" | "paiements" | "boutiques" | "reglages";
 const TABS: [Tab, string][] = [
   ["activite", "Activité en direct"],
   ["sante", "Santé de la plateforme"],
   ["apercu", "Vue d'ensemble"],
   ["gemini", "Gemini et wolof"],
   ["erreurs", "Erreurs de Jokko"],
+  ["garde", "Garde-fou du budget"],
   ["studio", "Fabrique de modèles"],
   ["carte", "Carte"],
   ["paiements", "Paiements"],
@@ -56,7 +58,7 @@ const TABS: [Tab, string][] = [
   ["reglages", "Réglages"],
 ];
 
-const TAB_ICONS: Record<Tab, IconName> = { activite: "journal", sante: "ok", apercu: "rapport", gemini: "ia", erreurs: "alerte", studio: "photo", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
+const TAB_ICONS: Record<Tab, IconName> = { activite: "journal", sante: "ok", apercu: "rapport", gemini: "ia", erreurs: "alerte", studio: "photo", garde: "verrou", carte: "position", paiements: "mobileMoney", boutiques: "boutique", reglages: "reglages" };
 
 const STATUS_LABEL = { active: "Active", calme: "Calme", endormie: "Endormie", nouvelle: "Nouvelle" } as const;
 
@@ -318,6 +320,7 @@ export function ConsoleDesk({ session }: { session: Session }) {
             {tab === "apercu" && <Overview dash={dash} shops={shops} usage={usage} onGo={go} />}
             {tab === "gemini" && <GeminiTab />}
             {tab === "erreurs" && <QualityTab />}
+            {tab === "garde" && <GuardTab />}
             {tab === "studio" && <FactoryTab />}
             {tab === "carte" && <ConsoleMap shops={shops} />}
             {tab === "paiements" && <Payments overview={overview} onChanged={refresh} />}

@@ -368,6 +368,7 @@ type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: 
 
 function quotaMessage(q: Quota, kind: string): string {
   // Essai gratuit : l'enveloppe totale de voix et d'IA est épuisée.
+  if (q.reason === "essai" && kind === "image") return "Tu as utilisé ton essayage gratuit. Avec l'offre Avancé, tu essaies 5 modèles par jour sur tes clients. La galerie reste ouverte.";
   if (q.reason === "essai") {
     return "Ton essai gratuit de la voix et de l'IA est terminé. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
   }
@@ -385,11 +386,15 @@ function quotaMessage(q: Quota, kind: string): string {
       ? "Jokko a beaucoup travaillé pour ta boutique ce mois-ci. Il reprend le mois prochain. Les boutons de l'appli marchent toujours."
       : "Ton forfait voix du mois est terminé. Jusqu'au mois prochain, écris ta demande à Jokko ou utilise les boutons de l'appli.";
   }
+  // Garde-fou : plafond global de la journée atteint (tous les clients), ou téléphone qui a servi à trop de comptes.
+  if (q.reason === "repos") return "Jokko se repose jusqu'à demain matin. Les boutons de l'appli marchent toujours.";
+  if (q.reason === "appareil") return "Ce téléphone a déjà servi à plusieurs comptes d'essai. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
   if (kind === "voix") return "La voix claire est finie pour aujourd'hui. Jokko continue avec sa voix normale.";
   if (kind === "image") {
+    if (q.reason === "essai") return "Tu as utilisé ton essayage gratuit. Avec l'offre Avancé, tu essaies 5 modèles par jour sur tes clients. La galerie reste ouverte.";
     return q.reason === "offre"
-      ? "L'essayage fait partie des offres Médium et Avancé. Choisis une offre dans « Mon offre » : la galerie reste ouverte."
-      : `Tu as fait tes ${q.limit} essayages d'aujourd'hui. Ça repart demain.${q.tier === "medium" ? " Avec l'offre Avancé, tu en as 10 par jour." : ""}`;
+      ? "L'essayage fait partie de l'offre Avancé (5 par jour). Choisis-la dans « Mon offre » : la galerie reste ouverte."
+      : `Tu as fait tes ${q.limit} essayages d'aujourd'hui. Ça repart demain.`;
   }
   if (kind === "stock") {
     return q.reason === "patron"

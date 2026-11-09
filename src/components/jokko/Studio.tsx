@@ -15,7 +15,10 @@ const nameOf = (m: CoutureModel) => cap(m.garment || m.title.split(" · ")[0]);
 
 type Shot = "visage" | "pied" | "galerie";
 
-export function Studio({ onOrder, shopId, shopName }: { onOrder?: (m: CoutureModel) => void; shopId?: string; shopName?: string }) {
+/** Sans l'offre Avancé : une sélection de modèles (pas de nouveautés), et l'essayage reste réservé à l'Avancé (1 essai pendant l'essai gratuit). */
+const PREVIEW_MODELS = 20;
+
+export function Studio({ onOrder, shopId, shopName, full = true, trial = false }: { onOrder?: (m: CoutureModel) => void; shopId?: string; shopName?: string; full?: boolean; trial?: boolean }) {
   const [models, setModels] = useState<CoutureModel[] | null>(null);
   const [cat, setCat] = useState<CoutureModel["category"]>("femme");
   const [occasion, setOccasion] = useState("tout");
@@ -26,7 +29,9 @@ export function Studio({ onOrder, shopId, shopName }: { onOrder?: (m: CoutureMod
     void loadModels().then(setModels);
   }, []);
 
-  const all = models ?? [];
+  // Sans l'Avancé : les premiers modèles de la galerie seulement (les plus anciens), sans les nouveautés.
+  const all = full ? (models ?? []) : [...(models ?? [])].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")).slice(0, PREVIEW_MODELS);
+  const total = models?.length ?? 0;
   const ofCat = all.filter((m) => m.category === cat);
   const ages = AGES.filter((a) => (cat === "enfant" ? a.for === "enfant" : a.for === "adulte"));
   const rubrics = OCCASIONS.map((o) => ({ ...o, n: filterModels(all, cat, o.id, "tout").length })).filter((o) => o.n > 0);
@@ -65,6 +70,13 @@ export function Studio({ onOrder, shopId, shopName }: { onOrder?: (m: CoutureMod
           <button key={a.id} type="button" className={age === a.id ? "on" : ""} onClick={() => setAge(a.id)}>{a.label}</button>
         ))}
       </div>
+
+      {!full && total > all.length && (
+        <div className="st-upsell">
+          <b>{total} modèles et des nouveautés chaque semaine</b>
+          <p>Avec l'offre Avancé : toute la galerie, l'essayage sur tes clients (5 par jour) et les nouveaux modèles de Tabaski, Korité, Magal… {trial ? "Pendant ton essai, tu as droit à 1 essayage pour voir." : ""}</p>
+        </div>
+      )}
 
       {models !== null && list.length === 0 && (
         <div className="st-empty">
@@ -178,7 +190,7 @@ function Cabine({ m, onBack, onOrder, shopId, shopName }: { m: CoutureModel; onB
           </div>
         )}
       </div>
-      <p className="st-fine">La photo du client sert seulement à l'essayage : elle n'est pas gardée. Essayage avec les offres Médium (3 par jour) et Avancé (10 par jour).</p>
+      <p className="st-fine">La photo du client sert seulement à l'essayage : elle n'est pas gardée. Essayage avec l'offre Avancé (5 par jour) ; 1 essayage pendant l'essai gratuit.</p>
 
       <input ref={inputs.visage} type="file" accept="image/*" capture="user" hidden onChange={(e) => { void essayer(e.target.files?.[0]); e.target.value = ""; }} />
       <input ref={inputs.pied} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void essayer(e.target.files?.[0]); e.target.value = ""; }} />

@@ -1823,3 +1823,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .vp-price { margin: 0; font-size: 22px; font-weight: 800; color: var(--vp-wa); }
 .vp-out { margin: 0; color: #9a3412; }
 .vp-foot { margin-top: 12px; text-align: center; font-size: 12px; color: #7a7d84; }
+.st-upsell { display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: var(--st-bazin, #1B2559); color: #FFFDF7; }
+.st-upsell b { font-size: 16px; }
+.st-upsell p { margin: 0; font-size: 14px; opacity: 0.85; line-height: 1.45; }
