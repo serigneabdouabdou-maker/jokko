@@ -77,6 +77,7 @@ import {
   Users,
   Wallet,
   X,
+  Camera,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -140,6 +141,7 @@ export const ICONS = {
   echange: ArrowLeftRight,
   partager: Share2,
   whatsapp: MessageCircle,
+  photo: Camera,
   telecharger: Download,
   ajouter: Plus,
   moins: Minus,

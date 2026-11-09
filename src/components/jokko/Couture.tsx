@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Icon } from "./Icon";
+import { Studio } from "./Studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type CoutureOrder, type Lang, type Shop, money } from "@/model";
@@ -55,6 +56,7 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
   const [voice, setVoice] = useState<"repos" | "ecoute" | "lecture">("repos");
   const [voiceNote, setVoiceNote] = useState("");
   const rec = useRef<MediaRecorder | null>(null);
+  const [tab, setTab] = useState<"commandes" | "studio">("commandes");
   const [form, setForm] = useState(EMPTY);
   const [measures, setMeasures] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
@@ -145,6 +147,13 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
         <h2>Atelier couture</h2>
         <b className="num sheet-total">{inProgress.length + ready.length} en cours</b>
       </div>
+      <div className="debt-actions" style={{ gap: 8, margin: "4px 0 8px" }}>
+        <Button variant={tab === "commandes" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setTab("commandes")}>Commandes</Button>
+        <Button variant={tab === "studio" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setTab("studio")}>
+          <Icon name="couture" size="sm" /> Studio d'essayage
+        </Button>
+      </div>
+      {tab === "studio" ? <Studio /> : <>
       <p className="note">
         {late ? `${late} commande${late > 1 ? "s" : ""} en retard. ` : ""}
         {owed ? `Reste à encaisser : ${money(owed)}.` : "Rien à encaisser."} Chaque client reçoit un lien pour suivre son habit.
@@ -198,6 +207,7 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
           <OrderRow key={o.id} o={o} shop={shop} commit={commit} lang={lang} open={open === o.id} toggle={() => setOpen(open === o.id ? null : o.id)} />
         ))}
       </div>
+      </>}
     </section>
   );
 }

@@ -1619,3 +1619,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .suivi-call { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 999px; background: #25D366; color: #fff; font-weight: 700; text-decoration: none; }
   .suivi-foot { color: var(--j-ink-3); font-size: 13px; text-align: center; margin-top: 12px; }
 }
+
+/* Studio d'essayage (tailleurs) */
+.studio-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .studio-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.studio-card { display: grid; gap: 4px; padding: 0; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; overflow: hidden; background: #fff; text-align: left; cursor: pointer; }
+.studio-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; background: #f3efe6; }
+.studio-card span { padding: 4px 8px 8px; font-size: 13px; font-weight: 600; }
+.studio-view { display: grid; gap: 8px; }
+.studio-big { width: 100%; max-width: 520px; border-radius: 16px; background: #f3efe6; cursor: zoom-in; transition: transform .2s; justify-self: center; }
+.studio-big.is-zoom { transform: scale(1.8); cursor: zoom-out; transform-origin: center top; }

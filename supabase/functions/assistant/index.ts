@@ -4,6 +4,7 @@
 // Le code Gemini partagé vient du dépôt GitHub, figé sur une version précise (le numéro après /jokko/).
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0d1d7d7853e712403d49a4e54c573a09c08c928f/server/assistant/interpret.ts";
 import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0d1d7d7853e712403d49a4e54c573a09c08c928f/server/assistant/live.ts";
 import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0d1d7d7853e712403d49a4e54c573a09c08c928f/server/assistant/schema.ts";
@@ -55,7 +56,7 @@ function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?
     .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null) })
     .then(() => undefined, () => undefined);
 }
-const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
+const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
 
 /** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
 const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -297,8 +298,62 @@ async function readCouture(mimeType: string, data: string): Promise<Record<strin
   throw new AssistantUpstreamError("lecture de la commande impossible", last || 502);
 }
 
+// ---------- Studio d'essayage : le client (selfie) habillé avec un modèle de la galerie ----------
+// Réservé aux tailleurs payants (type « image » compté par use_assistant). Le selfie n'est jamais stocké.
+const IMAGE_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image"];
+const TRYON_PROMPT =
+  "Image 1 : le client (une vraie personne). Image 2 : un modèle de vêtement. " +
+  "Crée une photo réaliste du client de l'image 1 portant EXACTEMENT la tenue de l'image 2 : même coupe, mêmes couleurs, même tissu, même broderie. " +
+  "Garde exactement son visage, sa couleur de peau, sa morphologie et ses cheveux : il doit se reconnaître. " +
+  "Photo en pied, pose naturelle, fond de studio uni beige clair, lumière douce. Petite signature discrète « Jokko » en bas à droite, aucun autre texte.";
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+async function tryOn(photo: string, photoType: string, modelId: string): Promise<{ data: string; mimeType: string }> {
+  const e = env();
+  const apiKey = e.apiKey?.trim();
+  if (!apiKey) throw new GeminiNotConfiguredError();
+  const { data: row } = await logger.from("couture_models").select("image_path, published").eq("id", modelId).maybeSingle();
+  if (!row?.published) throw new AssistantOutputError("modèle introuvable");
+  const file = await logger.storage.from("galerie").download(row.image_path);
+  if (file.error || !file.data) throw new AssistantUpstreamError("modèle illisible", 502);
+  const garment = toBase64(new Uint8Array(await file.data.arrayBuffer()));
+  let last = 0;
+  for (const model of IMAGE_MODELS) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: TRYON_PROMPT }, { inlineData: { mimeType: photoType, data: photo } }, { inlineData: { mimeType: file.data.type || "image/jpeg", data: garment } }] }],
+        generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "3:4", imageSize: "1K" } },
+      }),
+      signal: AbortSignal.timeout(90_000),
+    }).catch(() => null);
+    if (!res?.ok) {
+      last = res?.status ?? 0;
+      continue;
+    }
+    const out = await res.json().catch(() => null);
+    const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
+    if (!part) continue;
+    // JPEG plus léger pour les téléphones (≈ 150 Ko au lieu de 1,5 Mo) ; l'image d'origine si la conversion échoue.
+    try {
+      const img = await Image.decode(Uint8Array.from(atob(part.inlineData.data), (c) => c.charCodeAt(0)));
+      if (img.width > 1024) img.resize(1024, Image.RESIZE_AUTO);
+      return { data: toBase64(await img.encodeJPEG(82)), mimeType: "image/jpeg" };
+    } catch {
+      return { data: part.inlineData.data, mimeType: part.inlineData.mimeType || "image/png" };
+    }
+  }
+  throw new AssistantUpstreamError("essayage impossible", last || 502);
+}
+
 // ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
-const KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
@@ -321,6 +376,11 @@ function quotaMessage(q: Quota, kind: string): string {
       : "Ton forfait voix du mois est terminé. Jusqu'au mois prochain, écris ta demande à Jokko ou utilise les boutons de l'appli.";
   }
   if (kind === "voix") return "La voix claire est finie pour aujourd'hui. Jokko continue avec sa voix normale.";
+  if (kind === "image") {
+    return q.reason === "offre"
+      ? "L'essayage fait partie des offres Médium et Avancé. Choisis une offre dans « Mon offre » : la galerie reste ouverte."
+      : `Tu as fait tes ${q.limit} essayages d'aujourd'hui. Ça repart demain.${q.tier === "medium" ? " Avec l'offre Avancé, tu en as 10 par jour." : ""}`;
+  }
   if (kind === "stock") {
     return q.reason === "patron"
       ? "Seul le patron peut remplir le stock."
@@ -427,6 +487,17 @@ Deno.serve(async (req) => {
       const fields = await readCouture(b.data.mimeType, b.data.data);
       logCall(req, "vocal", b.data.lang ?? null, true);
       return send(req, 200, fields);
+    }
+    if (route === "essayage") {
+      const b = await body(req, MAX_AUDIO_BODY, z.object({
+        modelId: z.string().uuid(),
+        mimeType: z.string().regex(/^image\/(jpeg|png|webp)$/i),
+        photo: z.string().min(1000).max(MAX_AUDIO_BODY),
+      }));
+      if (!b.ok) return b.res;
+      const image = await tryOn(b.data.photo, b.data.mimeType, b.data.modelId);
+      logCall(req, "image", null, true);
+      return send(req, 200, image);
     }
     if (route === "live") {
       const b = await body(req, MAX_TEXT_BODY, liveRequestSchema);
