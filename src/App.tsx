@@ -85,7 +85,7 @@ import { clearVoicePreferred, setClearVoicePreferred } from "@/assistant/clearVo
 import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setGreetPreferred, setSpeedPreferred, type SpeechSpeed, speedPreferred, stopGreeting } from "@/assistant/greeting";
 import { noisePreferred, setNoisePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
-import { can, effectivePlan } from "@/data/plans";
+import { can } from "@/data/plans";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
 import { WaveSettings } from "@/components/jokko/WaveSettings";
@@ -267,8 +267,10 @@ function Num({ value, className = "" }: { value: number; className?: string }) {
 /** Jour (heure de Dakar = UTC) : sert à ne refuser le direct qu'une fois par jour. */
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
-/** Pendant l'essai gratuit, une conversation en direct est coupée au bout de 5 minutes. */
-const TRIAL_LIVE_MS = 5 * 60_000;
+/** Une conversation en direct est coupée au bout de 5 minutes (on peut en recommencer une) : Gemini facture chaque seconde ouverte. */
+const LIVE_MAX_MS = 5 * 60_000;
+/** Micro ouvert sans que personne ne parle : on coupe après 30 secondes (le silence est facturé aussi). */
+const LIVE_SILENCE_MS = 30_000;
 
 type AuthMode = "creer" | "entrer" | "oubli";
 
@@ -721,7 +723,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       const variant = quotaVariant(detail, patronRef.current);
       if (!variant) return;
       setQuotaBanner(variant);
-      if (detail.reason === "essai") liveRef.current?.stop();
+      if (detail.reason === "essai" || detail.reason === "echanges" || detail.reason === "pause" || detail.reason === "mois") liveRef.current?.stop();
       // Seulement si le commerçant vient d'appuyer (pas pour un préchargement en arrière-plan), et une fois par 10 min.
       const now = Date.now();
       if (now - lastTap.current > 20_000) return;
@@ -932,6 +934,12 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     }, TEXT_SESSION_IDLE_MS);
   }
 
+  const heardAt = useRef(0);
+  const silenceWatch = useRef<number | null>(null);
+  function stopSilenceWatch() {
+    if (silenceWatch.current !== null) window.clearInterval(silenceWatch.current);
+    silenceWatch.current = null;
+  }
   const quotaNote = useRef<string | null>(null);
   const quotaReason = useRef<string | undefined>(undefined);
   /** Jour où le direct a été refusé pour forfait : ensuite on passe directement en message vocal. */
@@ -965,6 +973,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               if (liveRef.current?.listening ?? microphone) setLive((current) => (current ? { ...current, phase } : current));
             },
             onUser: (raw) => {
+              heardAt.current = Date.now();
               const chunk = raw.replace(NOISE, "");
               if (!chunk.trim()) return;
               if (!LETTERS.test(chunk)) return;
@@ -973,6 +982,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               setLive((current) => (current && !turn.current.jokkoText ? { ...current, caption: turn.current.userText.trim() } : current));
             },
             onJokko: (chunk) => {
+              heardAt.current = Date.now();
               replies.current += 1;
               if (!turn.current.jokkoText) setWave((w) => w + 1);
               turn.current.jokkoText += chunk;
@@ -995,6 +1005,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
             onEnd: (reason, reconnect) => {
               const wasListening = liveRef.current?.listening ?? false;
               clearIdle();
+              stopSilenceWatch();
               liveRef.current = null;
               setLive(null);
               setStream(null);
@@ -1020,14 +1031,21 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         );
         liveRef.current = handle;
         if (handle.stream) setStream(handle.stream);
-        // Essai : une conversation en direct dure au plus 5 minutes (on peut en recommencer une).
-        if (effectivePlan(currentShop(profileRef.current)).trial) {
-          window.setTimeout(() => {
-            if (liveRef.current !== handle) return;
-            handle.stop();
-            fail("Pendant l’essai, une conversation dure 5 minutes au plus. Touche le micro pour en commencer une autre.");
-          }, TRIAL_LIVE_MS);
-        }
+        // Économie du crédit Gemini : 5 minutes au plus par conversation, et coupure après 30 s de silence micro ouvert.
+        window.setTimeout(() => {
+          if (liveRef.current !== handle) return;
+          handle.stop();
+          fail("Une conversation dure 5 minutes au plus. Touche le micro pour en commencer une autre.");
+        }, LIVE_MAX_MS);
+        heardAt.current = Date.now();
+        stopSilenceWatch();
+        silenceWatch.current = window.setInterval(() => {
+          if (liveRef.current !== handle) return stopSilenceWatch();
+          if (!handle.listening || Date.now() - heardAt.current < LIVE_SILENCE_MS) return;
+          stopSilenceWatch();
+          handle.stop();
+          fail("Jokko s’est mis en pause car personne ne parlait. Touche le micro pour reprendre.");
+        }, 5_000);
         return handle;
       } catch (error) {
         setLive(null);

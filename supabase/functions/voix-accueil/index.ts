@@ -5,7 +5,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { Mp3Encoder } from "npm:@breezystack/lamejs@1.2.7";
 
 const TOKEN_SHA256 = "3d62ab672ee789ec762874047c7022f06a9fde248998856fc002e31dd8da83c9";
-const MODELS = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-lite-tts", "gemini-2.5-flash-preview-tts"];
+// Les modèles 3.1 et 2.5 s'arrêtent le 17/11/2026.
+const MODELS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"];
 const READS_DIRECTIONS_ALOUD = /^gemini-3\.8/;
 const DIRECTION: Record<string, string> = {
   wo: "Dis en wolof de Dakar, clairement et lentement, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui présente un service :",

@@ -23,4 +23,16 @@ describe("forfait épuisé : quel message dire", () => {
     expect(quotaClipUrl("jour", "wo")).toMatch(/forfait-jour-fini-v1\.mp3$/);
     expect(quotaClipUrl("jour", "fr")).toMatch(/forfait-jour-fini-fr-v1\.mp3$/);
   });
+  it("gratuit : forfait du mois fini → voix + offres Médium / Avancé", () => {
+    expect(quotaVariant({ reason: "mois", tier: "gratuit" }, true)).toBe("mois");
+    expect(QUOTA_MESSAGES.mois.offers).toBe(true);
+    expect(quotaClipUrl("mois", "wo")).toMatch(/forfait-mois-fini-v1\.mp3$/);
+    expect(quotaVariant({ reason: "mois", tier: "gratuit" }, false)).toBe("vendeur");
+  });
+  it("pause des comptes gratuits : message du jour, avec les offres", () => {
+    expect(quotaVariant({ reason: "pause", tier: "gratuit" }, true)).toBe("jour");
+  });
+  it("voix claire épuisée : pas d'annonce (Jokko garde sa voix normale)", () => {
+    expect(quotaVariant({ reason: "voix", tier: "gratuit" }, true)).toBeNull();
+  });
 });

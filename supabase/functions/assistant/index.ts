@@ -112,8 +112,11 @@ function failure(req: Request, error: unknown): Response {
   }
   if (error instanceof AssistantUpstreamError || error instanceof LiveUnavailableError) {
     console.warn(`[jokko] Gemini indisponible${error.status ? ` (${error.status})` : ""}`);
-    const message = error.status === 429
-      ? "Le quota Gemini est atteint. Réessaie plus tard."
+    // 402 = crédit Gemini de CFC épuisé (Fallou est alerté sur la console) ; 429 = trop de demandes chez Google.
+    const message = error.status === 402
+      ? "Jokko se repose quelques minutes. Les boutons de l'appli marchent toujours : réessaie un peu plus tard."
+      : error.status === 429
+      ? "Jokko est très demandé en ce moment. Réessaie dans une minute."
       : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
     return send(req, 502, { error: error.code, message });
   }
@@ -123,7 +126,8 @@ function failure(req: Request, error: unknown): Response {
 
 
 // ---------- Voix claire : une phrase de Jokko lue avec la voix de la page d'accueil ----------
-const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-lite-tts"];
+// Google arrête gemini-3.1-flash-tts-preview le 17/11/2026 : on passe aux modèles 3.8.
+const TTS_MODELS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"];
 const READS_DIRECTIONS_ALOUD = /^gemini-3\.8/;
 const DIRECTION: Record<string, string> = {
   wo: "Dis en wolof de Dakar, clairement, à un rythme naturel et vif, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui t'aide au comptoir :",
@@ -137,6 +141,9 @@ function fromBase64(b64: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
+/** Dernier code d'erreur de la voix (402 = crédit épuisé), pour le journal gemini_calls. */
+let lastVoiceStatus = 0;
 
 async function speakSentence(text: string, language: string): Promise<{ pcm: Uint8Array; rate: number } | null> {
   const e = env();
@@ -158,7 +165,11 @@ async function speakSentence(text: string, language: string): Promise<{ pcm: Uin
       }),
       signal: AbortSignal.timeout(15_000),
     }).catch(() => null);
-    if (!res?.ok) continue;
+    if (!res?.ok) {
+      lastVoiceStatus = res?.status ?? 0;
+      console.warn(`[jokko] voix ${model} : échec ${res ? res.status : "réseau"}`);
+      continue;
+    }
     const json = await res.json().catch(() => null);
     const chunks: Uint8Array[] = [];
     let rate = 24000;
@@ -231,7 +242,7 @@ async function readStock(mode: string, mimeType: string, data: string): Promise<
 }
 
 // ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
-const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock" };
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
@@ -239,6 +250,15 @@ function quotaMessage(q: Quota, kind: string): string {
   if (q.reason === "essai") {
     return "Ton essai gratuit de la voix et de l'IA est terminé. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
   }
+  // Offre gratuite : plafond du mois atteint.
+  if (q.reason === "mois") {
+    return "Ton forfait gratuit du mois est terminé. Pour continuer à parler à Jokko, choisis l'offre Médium ou Avancé dans « Mon offre ». Les boutons de l'appli marchent toujours.";
+  }
+  // Plafond de sécurité des comptes gratuits et essais : pause jusqu'à demain.
+  if (q.reason === "pause") {
+    return "Jokko gratuit est en pause jusqu'à demain. Avec l'offre Médium ou Avancé, Jokko te répond toute la journée. Les boutons de l'appli marchent toujours.";
+  }
+  if (kind === "voix") return "La voix claire est finie pour aujourd'hui. Jokko continue avec sa voix normale.";
   if (kind === "stock") {
     return q.reason === "patron"
       ? "Seul le patron peut remplir le stock."
@@ -318,7 +338,7 @@ Deno.serve(async (req) => {
       const b = await body(req, MAX_TEXT_BODY, speakRequestSchema);
       if (!b.ok) return b.res;
       const clip = await speakSentence(b.data.text, b.data.language);
-      logCall(req, "voix", b.data.language, Boolean(clip), clip ? 200 : 502);
+      logCall(req, "voix", b.data.language, Boolean(clip), clip ? 200 : lastVoiceStatus || 502);
       if (!clip) return send(req, 502, { error: "voice_unavailable", message: "La voix ne répond pas pour le moment." });
       return new Response(clip.pcm, { status: 200, headers: { "Content-Type": `audio/l16;rate=${clip.rate}`, "Cache-Control": "no-store", ...cors(req) } });
     }

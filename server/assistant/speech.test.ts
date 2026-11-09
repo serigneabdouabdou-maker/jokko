@@ -30,7 +30,7 @@ async function collect(stream: AsyncIterable<{ pcm: Buffer; rate: number }>) {
 }
 
 describe("speakStream", () => {
-  it("diffuse le PCM de Gemini morceau par morceau et guide le ton en wolof", async () => {
+  it("diffuse le PCM de Gemini morceau par morceau (voix 3.8 : la phrase seule, sans consigne lue à voix haute)", async () => {
     const half = pcm.subarray(0, 2400).toString("base64");
     const synthesize = chunks({ data: half, mimeType: "audio/l16; rate=24000; channels=1" }, { data: half, mimeType: "audio/l16; rate=24000; channels=1" });
 
@@ -40,7 +40,7 @@ describe("speakStream", () => {
     expect(parts.every((p) => p.rate === 24000)).toBe(true);
     const request = vi.mocked(synthesize).mock.calls[0][0];
     expect(request).toMatchObject({ model: DEFAULT_TTS_MODEL, voice: DEFAULT_VOICE });
-    expect(request.prompt).toMatch(/wolof de Dakar.*Ma bind ko \?$/);
+    expect(request.prompt).toBe("Ñaari bidon huile, 15 000 F. Ma bind ko ?");
   });
 
   it("garde en mémoire une phrase déjà dite", async () => {
@@ -61,7 +61,7 @@ describe("speakStream", () => {
 
     expect(parts).toHaveLength(1);
     expect(synthesize.mock.calls.map(([r]) => [r.model, r.prompt])).toEqual([
-      [DEFAULT_TTS_MODEL, expect.stringContaining("wolof de Dakar")],
+      [DEFAULT_TTS_MODEL, "Riz bi, 12 sac la des."],
       [FALLBACK_TTS_MODEL, "Riz bi, 12 sac la des."],
     ]);
   });

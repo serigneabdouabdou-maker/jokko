@@ -270,7 +270,7 @@ const OFFER_ART: Record<WantedPlan, Art[]> = {
 };
 
 const OFFERS: { plan: WantedPlan; name: string; price: string; pitch: string; features: string[]; cta: string }[] = [
-  { plan: "gratuit", name: "Gratuit", price: "0 F", pitch: "Pour commencer seul dans sa boutique.", features: ["1 boutique, 1 utilisateur", "10 messages vocaux par jour, en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures WhatsApp"], cta: "Commencer gratuitement" },
+  { plan: "gratuit", name: "Gratuit", price: "0 F", pitch: "Pour commencer seul dans sa boutique.", features: ["1 boutique, 1 utilisateur", "30 messages vocaux par mois, en wolof et en français", "Ventes, stock, caisse et bilan", "Dettes et factures WhatsApp"], cta: "Commencer gratuitement" },
   { plan: "medium", name: "Médium", price: "4 000 F", pitch: "Pour la boutique avec des vendeurs.", features: ["Tout le Gratuit", "40 messages vocaux par jour", "Vendeurs, rôles et journal non effaçable", "Caisse par scan et étiquettes", "La boutique à distance + alertes", "Relances WhatsApp, import Excel"], cta: "Choisir Médium" },
   { plan: "avance", name: "Avancé", price: "8 000 F", pitch: "Pour le patron qui veut tout voir et grandir.", features: ["Tout le Médium", "Conversation en direct avec Jokko, mains libres", "Chat intelligent : une liste en vrac devient un panier", "Conseiller IA pour gagner plus", "Résumé du soir sur le téléphone", "Plusieurs boutiques"], cta: "Choisir Avancé" },
 ];

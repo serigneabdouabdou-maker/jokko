@@ -27,7 +27,7 @@ export const FEATURE_PLAN: Record<Feature, PlanName> = {
 };
 
 export const PLAN_FEATURES: Record<PlanName, string[]> = {
-  gratuit: ["1 boutique, 1 utilisateur", "10 messages vocaux par jour (wolof et français)", "Ventes, stock, caisse et bilan", "Dettes et factures"],
+  gratuit: ["1 boutique, 1 utilisateur", "30 messages vocaux par mois (wolof et français)", "Ventes, stock, caisse et bilan", "Dettes et factures"],
   medium: ["Tout le Gratuit", "40 messages vocaux par jour", "Vendeurs, rôles et journal", "Scanner et étiquettes", "À distance et alertes de sécurité", "Relances WhatsApp, import Excel, export"],
   avance: ["Tout le Médium", "Conversation en direct avec Jokko (40 échanges par jour)", "Chat intelligent (liste en vrac)", "Conseiller IA", "Résumé du soir en notification", "Plusieurs boutiques"],
 };

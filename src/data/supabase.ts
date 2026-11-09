@@ -279,13 +279,14 @@ export function phoneOf(session: Session | null): string {
   return session?.user.email?.split("@")[0] ?? "";
 }
 
-/** Un échange en direct avec Jokko : compté sur le serveur (la limite du jour joue à la conversation suivante). */
+/** Un échange en direct avec Jokko : compté sur le serveur ; au-delà de la limite du jour, la conversation est coupée. */
 export function countLiveExchange() {
   if (!assistantShop) return;
   void supabase.rpc("use_assistant", { p_shop: assistantShop, p_kind: "echange" }).then(
     ({ data }) => {
       const q = data as { ok?: boolean; reason?: string; tier?: string } | null;
-      if (q?.ok === false && q.reason === "essai") announceQuota({ reason: "essai", tier: q.tier, kind: "echange", route: "echange" });
+      // Limite atteinte au milieu d'une conversation : l'appli la coupe et le dit (essai fini, échanges du jour, pause).
+      if (q?.ok === false && (q.reason === "essai" || q.reason === "echanges" || q.reason === "pause")) announceQuota({ reason: q.reason, tier: q.tier, kind: "echange", route: "echange" });
     },
     () => undefined,
   );

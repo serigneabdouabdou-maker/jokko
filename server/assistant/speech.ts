@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import type { Language, SpeakRequest } from "./schema.ts";
 
-export const DEFAULT_TTS_MODEL = "gemini-3.1-flash-tts-preview";
+export const DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts";
 export const FALLBACK_TTS_MODEL = "gemini-3.8-flash-lite-tts";
 export const DEFAULT_VOICE = "Sulafat";
 const RETRY_STATUSES = new Set([429, 500, 503, 504]);

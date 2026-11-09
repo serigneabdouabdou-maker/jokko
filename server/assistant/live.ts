@@ -8,6 +8,8 @@ import type { ShopContext } from "./schema.ts";
 
 /** Gemini 3.8 Live : environ 3 fois plus rapide que 2.5 sur nos essais en wolof (0,9 s contre 3,3 s). */
 export const DEFAULT_LIVE_MODEL = "gemini-3.8-live";
+/** Modèles du direct arrêtés par Google : remplacés par DEFAULT_LIVE_MODEL même si le réglage les demande. */
+export const RETIRED_LIVE_MODELS = ["gemini-3.1-flash-live-preview", "gemini-2.5-flash-native-audio-preview-12-2025", "gemini-live-2.5-flash-preview", "gemini-2.0-flash-live-001"];
 export const DEFAULT_LIVE_VOICE = "Sulafat";
 const SESSION_MINUTES = 30;
 const START_SECONDS = 90;
@@ -289,7 +291,9 @@ export async function createLiveSession(
 ): Promise<LiveSession> {
   const apiKey = options.apiKey?.trim();
   if (!apiKey) throw new GeminiNotConfiguredError();
-  const model = options.model?.trim() || DEFAULT_LIVE_MODEL;
+  // Un réglage resté sur un modèle arrêté par Google (17/11/2026) ne doit pas faire taire Jokko.
+  const asked = options.model?.trim();
+  const model = asked && !RETIRED_LIVE_MODELS.includes(asked) ? asked : DEFAULT_LIVE_MODEL;
   const config = liveConfig(context, options.voice?.trim() || DEFAULT_LIVE_VOICE, options.speed ?? "normal");
   const now = Date.now();
   const expiresAt = new Date(now + SESSION_MINUTES * 60_000).toISOString();
