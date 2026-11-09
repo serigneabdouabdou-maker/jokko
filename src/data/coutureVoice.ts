@@ -1,4 +1,4 @@
-import { extractSpokenAmount, readFrenchNumber, readWolofNumber, spokenAmountToFrancs } from "../assistant/wolofNumbers";
+import { extractSpokenAmount, francsToWolof, readFrenchNumber, readWolofNumber, spokenAmountToFrancs, wolofNumber } from "../assistant/wolofNumbers";
 import { MEASURES, type NewCouture } from "./couture";
 
 /**
@@ -120,4 +120,37 @@ export function missingForOrder(input: NewCouture): string | null {
   if (!input.clientName.trim()) return "le nom du client";
   if (!input.garment.trim()) return "le modèle de l'habit (grand boubou, taille basse…)";
   return null;
+}
+
+const WOLOF_DAYS = ["dibéer", "altine", "talaata", "àllarba", "alxames", "àjjuma", "gaawu"];
+const FRENCH_DAYS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
+/**
+ * La commande lue à voix haute après l'enregistrement (une seule phrase = une seule voix claire),
+ * pour le tailleur qui ne lit pas : il vérifie à l'oreille. Montants en dërëm en wolof, en francs en français.
+ */
+export function coutureSummary(o: { number: string; clientName: string; garment: string; price: number; paid: number; dueAt?: string }, lang: string, now = new Date()): string {
+  const n = Number(o.number.replace(/\D/g, "")) || 0;
+  const rest = Math.max(0, o.price - o.paid);
+  const due = o.dueAt ? new Date(`${o.dueAt}T12:00:00`) : null;
+  const soon = due ? Math.round((due.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime()) / 86_400_000) : null;
+  const F = (x: number) => `${x.toLocaleString("fr-FR").replace(/[  ]/g, " ")} francs`;
+  if (lang === "fr") {
+    const day = due && soon !== null && soon >= 0 && soon < 7 ? FRENCH_DAYS[due.getDay()] : due ? due.toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+    return [
+      `C'est noté, commande numéro ${n}, ${o.clientName}, ${o.garment}`,
+      o.price ? `prix ${F(o.price)}` : "",
+      o.paid ? `avance ${F(o.paid)}` : "",
+      o.price ? `reste ${rest ? F(rest) : "rien"}` : "",
+      day ? `prêt pour ${day}` : "",
+    ].filter(Boolean).join(", ") + ".";
+  }
+  const day = due && soon !== null && soon >= 0 && soon < 7 ? WOLOF_DAYS[due.getDay()] : "";
+  return [
+    `Bind naa ko, nimero ${wolofNumber(n)}, ${o.clientName}, ${o.garment}`,
+    o.price ? `njëg li ${francsToWolof(o.price)}` : "",
+    o.paid ? `avance bi ${francsToWolof(o.paid)}` : "",
+    o.price ? (rest ? `des na ${francsToWolof(rest)}` : "des na dara") : "",
+    day ? `dina pare ${day}` : "",
+  ].filter(Boolean).join(", ") + ".";
 }

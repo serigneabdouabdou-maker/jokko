@@ -3,7 +3,9 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type CoutureOrder, type Lang, type Shop, money } from "@/model";
-import { readSpokenCouture } from "@/data/coutureVoice";
+import { coutureSummary, readSpokenCouture } from "@/data/coutureVoice";
+import { ClearSpeaker } from "@/assistant/clearVoice";
+import { audioContext, PcmPlayer } from "@/assistant/pcm";
 import { readCoutureAudio } from "@/data/coutureReader";
 import {
   addCouture,
@@ -27,6 +29,21 @@ import {
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
 const date = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+/** Lit la commande à voix haute (voix claire, une phrase) : le tailleur qui ne lit pas vérifie à l'oreille. */
+let speaker: ClearSpeaker | null = null;
+function readAloud(o: CoutureOrder, lang: Lang) {
+  try {
+    const context = audioContext();
+    if (context.state === "suspended") void context.resume().catch(() => undefined);
+    speaker?.reset();
+    speaker = new ClearSpeaker(new PcmPlayer(context), () => (lang === "fr" ? "fr" : "wo"), () => undefined);
+    speaker.add(coutureSummary(o, lang));
+    speaker.flush();
+  } catch {
+    // pas de son sur ce téléphone : la fiche reste à l'écran
+  }
+}
+
 const EMPTY = { clientName: "", phone: "", garment: "", fabric: "", price: "", advance: "", dueAt: "", note: "" };
 
 /**
@@ -119,6 +136,7 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
     setAdding(false);
     setVoiceNote("");
     setOpen(order.id);
+    readAloud(order, lang);
   }
 
   return (
@@ -177,14 +195,14 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
       <div className="list">
         {list.length === 0 && <p className="note">{filter === "cours" ? "Aucune commande en cours." : filter === "prets" ? "Aucun habit prêt." : "Aucune commande livrée."}</p>}
         {list.map((o) => (
-          <OrderRow key={o.id} o={o} shop={shop} commit={commit} open={open === o.id} toggle={() => setOpen(open === o.id ? null : o.id)} />
+          <OrderRow key={o.id} o={o} shop={shop} commit={commit} lang={lang} open={open === o.id} toggle={() => setOpen(open === o.id ? null : o.id)} />
         ))}
       </div>
     </section>
   );
 }
 
-function OrderRow({ o, shop, commit, open, toggle }: { o: CoutureOrder; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void }) {
+function OrderRow({ o, shop, commit, lang, open, toggle }: { o: CoutureOrder; shop: Shop; commit: (s: Shop) => void; lang: Lang; open: boolean; toggle: () => void }) {
   const [pay, setPay] = useState("");
   const [price, setPrice] = useState(o.price ? String(o.price) : "");
   const [copied, setCopied] = useState(false);
@@ -213,6 +231,9 @@ function OrderRow({ o, shop, commit, open, toggle }: { o: CoutureOrder; shop: Sh
       </div>
       {open && (
         <div style={{ display: "grid", gap: 8, width: "100%", flexBasis: "100%", marginTop: 8 }}>
+          <Button variant="outline" className="h-10 rounded-full px-4" style={{ justifySelf: "start" }} onClick={() => readAloud(o, lang)}>
+            <Icon name="voix" size="sm" /> Écouter la commande
+          </Button>
           <ol className="couture-steps" aria-label="Étapes">
             {STEPS.map((s) => (
               <li key={s} className={s === o.status ? "on" : STEPS.indexOf(s) < STEPS.indexOf(o.status) ? "done" : ""}>{STEP_LABEL[s]}</li>

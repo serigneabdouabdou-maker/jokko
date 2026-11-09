@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type Shop, seedShop } from "../model";
 import { type Entry, LiveDesk } from "../assistant/liveDesk";
-import { readSpokenCouture, spokenCm, spokenDue, spokenMoney } from "./coutureVoice";
+import { coutureSummary, readSpokenCouture, spokenCm, spokenDue, spokenMoney } from "./coutureVoice";
 import { ordersOf } from "./couture";
 
 // Lundi 9 novembre 2026, midi.
@@ -94,5 +94,18 @@ describe("outil couture du direct", () => {
     desk.handle({ name: "couture", args: { action: "commander", clientName: "Fatou Fall", habit: "taille basse" } });
     desk.handle({ name: "numero_client", args: { clientName: "Fatou Fall", numero: "78 123 45 67" } });
     expect(ordersOf(shop())[0].phone).toBe("781234567");
+  });
+});
+
+describe("commande lue à voix haute", () => {
+  const o = { number: "C-001", clientName: "Awa Diop", garment: "grand boubou", price: 25000, paid: 10000, dueAt: "2026-11-14" };
+  it("en wolof : montants en dërëm, jour en wolof, une seule phrase", () => {
+    expect(coutureSummary(o, "wo", NOW)).toBe("Bind naa ko, nimero benn, Awa Diop, grand boubou, njëg li juróomi junni, avance bi ñaari junni, des na ñetti junni, dina pare gaawu.");
+  });
+  it("en français : montants en francs", () => {
+    expect(coutureSummary(o, "fr", NOW)).toBe("C'est noté, commande numéro 1, Awa Diop, grand boubou, prix 25 000 francs, avance 10 000 francs, reste 15 000 francs, prêt pour samedi.");
+  });
+  it("sans prix : pas de reste inventé", () => {
+    expect(coutureSummary({ ...o, price: 0, paid: 0, dueAt: undefined }, "wo", NOW)).toBe("Bind naa ko, nimero benn, Awa Diop, grand boubou.");
   });
 });
