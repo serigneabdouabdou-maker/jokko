@@ -1826,3 +1826,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .st-upsell { display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: var(--st-bazin, #1B2559); color: #FFFDF7; }
 .st-upsell b { font-size: 16px; }
 .st-upsell p { margin: 0; font-size: 14px; opacity: 0.85; line-height: 1.45; }
+
+/* Compteur d'essai / gratuit (écran Parler) et résumé de valeur (Mon offre) */
+.forfait-chip { display: grid; gap: 4px; padding: 10px 14px; border-radius: 14px; background: var(--card, #fff); border: 1px solid color-mix(in srgb, currentColor 12%, transparent); margin-bottom: 10px; }
+.forfait-chip p { margin: 0; }
+.forfait-chip[data-tone="warn"] { border-color: #e8a33d; background: #fff7ea; }
+.forfait-chip[data-tone="bad"] { border-color: #d9534f; background: #fdeeee; }
+.forfait-chip button { justify-self: start; margin-top: 4px; }
+.value-recap { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #eef6ff; }
+.value-recap h3 { margin: 0 0 6px; font-size: 1rem; }
+.value-recap ul { margin: 0 0 6px; padding-left: 18px; }
+.plan-day { margin: -4px 0 6px; }

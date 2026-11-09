@@ -47,6 +47,14 @@ export async function trialLeft(shopId: string): Promise<TrialLeft | null> {
   return error || !data ? null : (data as TrialLeft);
 }
 
+/** Ce qu'il reste au commerçant : essai (au total) ou gratuit (ce mois). null pour une offre payante. */
+export type ForfaitReste = { offre: "essai" | "gratuit"; reste: Partial<Record<"echange" | "vocal" | "texte" | "image", { total: number; reste: number }>> };
+export async function forfaitReste(shopId: string): Promise<ForfaitReste | null> {
+  if (!shopId || shopId.startsWith("demo")) return null;
+  const { data, error } = await supabase.rpc("forfait_reste", { p_shop: shopId });
+  return error || !data ? null : (data as ForfaitReste);
+}
+
 /** Cahier des erreurs : une action, une annulation ou un « Jokko s'est trompé ». Hors ligne : on laisse tomber. */
 export function noteAssistant(shopId: string, lang: "wo" | "fr", kind: "action" | "annule" | "signale", said = "", understood = "") {
   if (!shopId || shopId.startsWith("demo")) return;

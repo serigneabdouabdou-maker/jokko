@@ -45,3 +45,22 @@ describe("conversation en direct", () => {
     expect(can(shop({ plan: "gratuit", until: null, trialUntil: null }), "direct", now)).toBe(false);
   });
 });
+
+describe("vente de l'offre", () => {
+  it("ramène le prix à la journée", async () => {
+    const { perDay } = await import("./plans");
+    expect(perDay(4000)).toBe(135);
+    expect(perDay(8000)).toBe(270);
+  });
+  it("résume ce que Jokko a fait sur 30 jours", async () => {
+    const { valueRecap } = await import("./plans");
+    const now = new Date("2026-11-09T12:00:00Z");
+    const sales = [
+      { id: "1", at: "2026-11-08T10:00:00Z", label: "riz", amount: 15000 },
+      { id: "2", at: "2026-11-08T11:00:00Z", label: "huile", amount: 2000 },
+      { id: "3", at: "2026-09-01T11:00:00Z", label: "vieux", amount: 9999 },
+    ];
+    const clients = [{ debt: 3000 }, { debt: 0 }, { debt: -500 }] as never[];
+    expect(valueRecap({ sales, clients }, now)).toEqual({ ventes: 2, montant: 17000, clients: 3, dettes: 3000, jours: 1 });
+  });
+});

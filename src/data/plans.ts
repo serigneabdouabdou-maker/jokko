@@ -27,7 +27,7 @@ export const FEATURE_PLAN: Record<Feature, PlanName> = {
 };
 
 export const PLAN_FEATURES: Record<PlanName, string[]> = {
-  gratuit: ["1 boutique, 1 utilisateur", "30 messages vocaux par mois (wolof et français)", "Ventes, stock, caisse et bilan", "Dettes et factures"],
+  gratuit: ["1 boutique, 1 utilisateur", "10 messages vocaux par mois (wolof et français)", "Ventes, stock, caisse et bilan", "Dettes et factures"],
   medium: ["Tout le Gratuit", "40 messages vocaux par jour", "Vendeurs, rôles et journal", "Scanner et étiquettes", "À distance et alertes de sécurité", "Relances WhatsApp, import Excel, export"],
   avance: ["Tout le Médium", "Conversation en direct avec Jokko (25 échanges par jour)", "Chat intelligent (liste en vrac)", "Conseiller IA", "Résumé du soir en notification", "Plusieurs entreprises", "Tailleurs : tout le Studio, nouveaux modèles et essayage (5 par jour)"],
 };
@@ -178,4 +178,28 @@ export async function adminSetPlan(shopId: string, plan: PlanName, until: string
 export async function adminSettings(waveLink: string, priceMedium: number, priceAvance: number): Promise<boolean> {
   const { error } = await supabase.rpc("admin_settings", { p_wave_link: waveLink.trim(), p_price_medium: priceMedium, p_price_avance: priceAvance });
   return !error;
+}
+
+/** Prix d'une offre ramené à la journée (30 jours), arrondi à 5 F : « 4 000 F par mois = 135 F par jour ». */
+export function perDay(monthly: number): number {
+  return Math.ceil(monthly / 30 / 5) * 5;
+}
+
+export type ValueRecap = { ventes: number; montant: number; clients: number; dettes: number; jours: number };
+
+/**
+ * Ce que Jokko a déjà fait pour la boutique (30 derniers jours), calculé sur le téléphone :
+ * montré au moment de choisir une offre, pour que le patron voie ce qu'il perdrait.
+ */
+export function valueRecap(shop: Pick<Shop, "sales" | "clients">, now = new Date()): ValueRecap {
+  const since = now.getTime() - 30 * 86_400_000;
+  const recent = shop.sales.filter((s) => new Date(s.at).getTime() >= since);
+  const days = new Set(recent.map((s) => s.at.slice(0, 10)));
+  return {
+    ventes: recent.length,
+    montant: recent.reduce((n, s) => n + (s.amount || 0), 0),
+    clients: shop.clients.length,
+    dettes: shop.clients.reduce((n, c) => n + Math.max(0, c.debt || 0), 0),
+    jours: days.size,
+  };
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ForfaitChip } from "@/components/jokko/Forfait";
 import type { Session } from "@supabase/supabase-js";
 import {
   type ChatMessage,
@@ -1452,6 +1453,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                   <Button className="h-11 rounded-full px-5" onClick={onDemo}><Icon name="boutique" size="sm" />Essayer la démo</Button>
                 </section>
               )}
+              {!demo && <ForfaitChip shop={shop} onPlans={patron ? () => setScreen("offre") : undefined} />}
               <section className="sheet talk">
                 <div className="sheet-head">
                   <h2>Parle à Jokko</h2>

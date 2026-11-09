@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ValueRecapCard } from "./Forfait";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import {
   myRequests,
   payOnline,
   paySubscriptionWave,
+  perDay,
   PLAN_FEATURES,
   PLAN_LABELS,
   requestSubscription,
@@ -208,6 +210,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
             <p className="note">Quand c’est fini, la voix s’arrête jusqu’au choix d’une offre. Les boutons de l’appli (ventes, stock, dettes, factures) marchent toujours.</p>
           </div>
         )}
+        {(current.trial || current.plan === "gratuit") && <ValueRecapCard shop={shop} priceMedium={price("medium")} />}
         {initialChoice && current.trial && (
           <p className="note">Bienvenue ! Tu as choisi l’offre <b>{PLAN_LABELS[initialChoice]}</b>. Tes 14 premiers jours sont offerts en Avancé : tu peux payer maintenant, ou plus tard avant la fin de l’essai.</p>
         )}
@@ -229,6 +232,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
           <article key={p} className={`plan-card${p === "avance" ? " featured" : ""}${current.plan === p ? " is-current" : ""}`}>
             <h3>{PLAN_LABELS[p]}</h3>
             <p className="plan-price num">{p === "gratuit" ? "0 F" : amount(price(p))}<small>{p === "gratuit" ? "" : " / mois"}</small></p>
+            {p !== "gratuit" && <p className="note plan-day">soit {amount(perDay(price(p)))} par jour</p>}
             <ul>{PLAN_FEATURES[p].map((f) => <li key={f}>{f}</li>)}</ul>
             {p !== "gratuit" && (
               <Button variant={p === "avance" ? "default" : "outline"} className="mt-auto h-11 rounded-full" disabled={Boolean(waitingReq?.declared_at)} onClick={() => start(p)}>
