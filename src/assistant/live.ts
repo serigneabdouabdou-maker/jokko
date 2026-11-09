@@ -8,6 +8,9 @@ import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRec
 import { AmountLedger, moneyAmountsSaid, wrongAmounts } from "./wolofNumbers";
 import { type SpeechSpeed, speedPreferred } from "./greeting";
 
+/** Rappel joint à chaque réponse d'outil : les nombres restent dans la langue de la phrase (pas de mélange wolof/français). */
+const LANGUE_DES_CHIFFRES = "Réponds dans la langue du commerçant. En wolof : nombres seulement avec les mots *_en_wolof, dits lentement, sans « F » ni chiffre français. En français : nombres en français, sans mot wolof.";
+
 export type LivePhase = "connexion" | "ecoute" | "parle";
 export type LiveToolCall = { id?: string; name?: string; args?: Record<string, unknown> };
 
@@ -239,7 +242,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
         id: call.id,
         name: call.name,
         response: addressed
-          ? remember(safeTool(handlers, { id: call.id, name: call.name, args: call.args }))
+          ? { ...remember(safeTool(handlers, { id: call.id, name: call.name, args: call.args })), langue: LANGUE_DES_CHIFFRES }
           : { statut: "ignore", message: "On ne t'a pas appelé « Jokko » : cette phrase ne t'était pas adressée. Ne dis rien." },
       })),
     });

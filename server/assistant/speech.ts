@@ -2,7 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { GeminiNotConfiguredError, redact } from "./interpret.ts";
 import type { Language, SpeakRequest } from "./schema.ts";
 
-export const DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts";
+// 3.1 jusqu'à son arrêt par Google (17/11/2026), puis la voix de secours 3.8 prend le relais.
+export const DEFAULT_TTS_MODEL = "gemini-3.1-flash-tts-preview";
 export const FALLBACK_TTS_MODEL = "gemini-3.8-flash-lite-tts";
 export const DEFAULT_VOICE = "Sulafat";
 const RETRY_STATUSES = new Set([429, 500, 503, 504]);
@@ -11,8 +12,8 @@ const TIMEOUT_MS = 20_000;
 const CACHE_LIMIT = 40;
 
 const DIRECTION: Record<Language, string> = {
-  wo: "Dis en wolof de Dakar, clairement, à un rythme naturel et vif, d'une voix chaleureuse, souriante et rassurante, comme un ami commerçant qui t'aide au comptoir :",
-  fr: "Dis en français, avec un léger accent sénégalais, clairement, à un rythme naturel et vif, d'une voix chaleureuse, souriante et rassurante :",
+  wo: "Dis en wolof de Dakar, d'une voix douce, calme et chaleureuse, à un rythme posé, comme un ami commerçant qui t'aide au comptoir. Prononce les nombres wolof lentement et distinctement, avec une petite pause avant le montant :",
+  fr: "Dis en français, avec un léger accent sénégalais, d'une voix douce, calme et chaleureuse, à un rythme posé. Prononce les nombres lentement et distinctement :",
   en: "Say in English with a light Senegalese accent, in a warm and calm voice, like a shopkeeper in Dakar:",
   fuc: "Dis en pulaar, d'une voix chaleureuse et calme, comme une commerçante au comptoir :",
 };
