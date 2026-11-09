@@ -73,6 +73,8 @@ import { Journal } from "@/components/jokko/Journal";
 import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
+import { SalesList } from "@/components/jokko/SalesList";
+import { clearTodaySales, todaySales } from "@/data/sales";
 import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
@@ -1504,7 +1506,15 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               </section>
             </div>
           )}
-          {screen === "ventes" && <MoneyList title="Ventes" rows={shop.sales.map((s) => [s.id, s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
+          {screen === "ventes" && (
+            <section className="sheet">
+              <div className="sheet-head">
+                <h2>Ventes</h2>
+                <span className="count num">{shop.sales.length}</span>
+              </div>
+              <SalesList shop={shop} commit={commit} canEdit={patron} sales={shop.sales} />
+            </section>
+          )}
           {screen === "offre" && patron && <Plans shop={shop} initialChoice={wantedPlan} onPlanUpdated={(plan) => plan && JSON.stringify(plan) !== JSON.stringify(shop.plan) && setProfile(replaceShop(profileRef.current, { ...currentShop(profileRef.current), plan }))} />}
           {priceSync && (
             <PriceSyncBanner
@@ -1722,6 +1732,7 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
 function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [counted, setCounted] = useState(String(expectedCash(shop)));
   const [closing, setClosing] = useState<"" | "envoi" | "ok" | "erreur">("");
+  const [clearing, setClearing] = useState(false);
   const expected = expectedCash(shop);
   const gap = (Number(counted) || 0) - expected;
   return (
@@ -1760,6 +1771,30 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}
+      </article>
+      <article className="sheet">
+        <div className="sheet-head">
+          <h2>Ventes d’aujourd’hui</h2>
+          <span className="count num">{todaySales(shop).length}</span>
+        </div>
+        <SalesList shop={shop} commit={commit} canEdit={canEdit} sales={todaySales(shop)} empty="Aucune vente aujourd’hui." />
+        {canEdit && todaySales(shop).length > 0 && (
+          <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+            <Button variant={clearing ? "destructive" : "outline"} className="h-11 rounded-full" onClick={() => {
+              if (!clearing) return setClearing(true);
+              commit(clearTodaySales(shop));
+              setClearing(false);
+            }}>
+              {clearing ? `Oui, effacer les ${todaySales(shop).length} ventes (${amount(daySales(shop))})` : "Vider la caisse du jour"}
+            </Button>
+            {clearing && (
+              <>
+                <small className="note">Toutes les ventes d’aujourd’hui seront effacées : les articles reviennent en stock, les dettes à crédit baissent, la caisse repart à zéro. Les dépenses ne changent pas.</small>
+                <Button variant="ghost" className="h-10 rounded-full" onClick={() => setClearing(false)}>Annuler</Button>
+              </>
+            )}
+          </div>
+        )}
       </article>
     </section>
   );
