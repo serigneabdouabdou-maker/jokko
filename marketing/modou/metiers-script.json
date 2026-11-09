@@ -3,28 +3,28 @@
   "slug": "metiers-1",
   "scene": "intro",
   "lang": "wo",
-  "text": "Salaam aleekum ! Man Modou laa. Ci sama bitig, Jokko moo may bind sama jaay, ci wolof.",
+  "text": "Salaam aleekum ! Man Modou laa. Ci sama bitig, Jokko moo bind sama jaay, ci wolof.",
   "fr": "Je suis Modou. Dans ma boutique, Jokko note mes ventes, en wolof."
  },
  {
   "slug": "metiers-2",
   "scene": "intro",
   "lang": "wo",
-  "text": "Waaye Jokko du ñeel bitig yi rekk : liggéey bu nekk am na sa Jokko.",
+  "text": "Waaye Jokko du ñeel bitig yi rekk : liggéey bu nekk am na Jokko.",
   "fr": "Mais Jokko n'est pas que pour les boutiques : chaque métier a son Jokko."
  },
  {
   "slug": "metiers-3",
   "scene": "pharmacie",
   "lang": "wo",
-  "text": "Pharmacie : Jokko dina la wax médicament yi date bi jege, balaa ñuy yàqu.",
+  "text": "Pharmacie : Jokko dina la wax médicament yi seen date jege, balaa ñuy yàqu.",
   "fr": "Pharmacie : Jokko prévient avant qu'un médicament ne périme."
  },
  {
   "slug": "metiers-4",
   "scene": "couture",
   "lang": "wo",
-  "text": "Tailleur : wax rekk mesures yi ak commande bi, Jokko bind. Sa kiliyaan gis na modèle bi ak suivi bi.",
+  "text": "Tailleur : wax rekk mesures yi ak commande bi, Jokko bind. Sa kiliyaan dina gis modèle bi ak suivi bi.",
   "fr": "Tailleur : dis les mesures et la commande, Jokko écrit. Ton client voit le modèle et le suivi."
  },
  {
@@ -38,7 +38,7 @@
   "slug": "metiers-6",
   "scene": "vetements",
   "lang": "wo",
-  "text": "Yére ak dàll : sa vitrine ci WhatsApp, sa kiliyaan yi gis say prix te commander.",
+  "text": "Yére ak dàll : sa vitrine ci WhatsApp, sa kiliyaan yi di gis say prix, te di commander.",
   "fr": "Vêtements et chaussures : ta vitrine sur WhatsApp, tes clients voient les prix et commandent."
  },
  {

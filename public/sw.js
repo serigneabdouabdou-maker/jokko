@@ -52,6 +52,8 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith(`${scope}console`)) return;
   // Page de téléchargement et application Android : jamais à la place de l'appli, jamais gardées.
   if (url.pathname.startsWith(`${scope}android`) || url.pathname.endsWith(".apk")) return;
+  // Vidéos (lecture par morceaux) : jamais gardées ici, le navigateur les lit directement.
+  if (url.pathname.startsWith(`${scope}media/`) || url.pathname.endsWith(".mp4")) return;
   if (request.mode === "navigate") event.respondWith(page(request));
   else event.respondWith(asset(request));
 });

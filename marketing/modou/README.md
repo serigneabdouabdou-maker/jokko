@@ -38,6 +38,7 @@
 | — | Intro (5 s) et fin TikTok (6,5 s) | `intro.html` (`?fin` pour la fin) | ✅ livré |
 | 3 | Pub de campagne « Wax rekk, Jokko bind » (A : Modou parle ; B : question), 9:16 et 4:5, bouton WhatsApp | `campagne.tpl.html` (`?b=1`) + `campagne-script.json` (24 s / 22 s) | ✅ livré |
 | 2 | Les offres : essai 14 jours, Gratuit, Médium, Avancé | `offres.tpl.html` + `offres-script.json` (1 min 06) | ✅ livré |
+| 4 | Modou présente Jokko métier par métier (photos IA de l'accueil) | `metiers.html` + `metiers-script.json` + `metiers-timing.json`, son : `audio/metiers_mix.py` (1 min 06) | ✅ livré le 9 nov. 2026, sur l'accueil (`public/media/jokko-metiers-v1.mp4`) |
 
 Idées d'épisodes suivants : Modou et le vendeur qui oublie de noter (alertes à distance) · Modou et les dettes (relance WhatsApp) · Modou installe son stock avec une photo de facture · Modou ouvre une deuxième boutique · Modou paie par Wave et reçoit son reçu · Modou au marché, il voit sa boutique depuis son téléphone.
 
@@ -53,3 +54,11 @@ Idées d'épisodes suivants : Modou et le vendeur qui oublie de noter (alertes �
 `render.mjs` utilise Playwright (Chromium) et ffmpeg.
 
 **Outil vidéo installé à chaque génération : video-shotcraft** (https://github.com/Vincentwei1021/video-shotcraft) — skill `video-shotcraft-jokko`. Effets de plans (`references/shots/`), règles d'esthétique, calage sur le rythme ; idéal pour les démos avec les vrais écrans de l'application. Si Remotion ne s'installe pas, refaire l'effet dans la page `window.seek(t)`.
+
+## Fabriquer sans accès direct au stockage (depuis le 9 nov. 2026)
+
+L'atelier de Claude ne joint pas le stockage Supabase. Voix et photos passent par :
+1. Fonction `accueil` (jeton `galerie_token`, appelée par SQL `net.http_post`) : `action: "voix"` → `galerie/accueil/voix/<slug>.wav` (Sulafat, 3 demandes à la fois au plus) ; sans action → photo 4:5 (une demande à la fois).
+2. Workflow GitHub `assets` (lancé par l'API : `POST /actions/workflows/assets.yml/dispatches`, champ `paths`) : dépose les fichiers sur la branche `atelier`, que l'on clone.
+3. Rendu : `node render.mjs` (Puppeteer + Chrome) ou `render.mjs` du dossier ; son : `python3 audio/metiers_mix.py <dossier voix> out.wav` (musique afro-pop maison, bruitages, voix au-dessus), puis `ffmpeg -af loudnorm=I=-14`.
+4. Deux fichiers : HD 1080 × 1920 pour les réseaux, web 720 × 1280 (≈ 3 Mo, `preload="none"`) pour le site.

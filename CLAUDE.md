@@ -92,6 +92,8 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - En haut de la page d'accueil (`MetierSlides.tsx`, styles `.ms` dans `landing.css`, à la place de l'ancienne scène du comptoir ; en premier sur téléphone) : alimentation, pharmacie, couture, quincaillerie, vêtements et chaussures, réparation. Une photo IA par métier, phrase dite, 3 fonctions, bouton qui pré-choisit le métier ; photo seule 1,6 s puis panneau blanc transparent qui monte avec les textes en foncé (mot clé surligné à la couleur du métier) ; défile seul toutes les 7,5 s, se met en pause au toucher, glisser pour changer.
 - Photos : fonction `accueil` (jeton `galerie_token`, appelée par SQL `net.http_post`) → `galerie/accueil/<métier>-v1.jpg` (4:5, 900 px, ≈ 200 Ko). **Une seule demande à la fois** (plusieurs = WORKER_RESOURCE_LIMIT). Pour changer une photo : nouvelle demande, puis `-v2` dans `MetierSlides.tsx`.
 
+- Vidéo « Jokko en 1 minute » (`LandingVideo.tsx`, juste après le diaporama) : épisode 4 de Modou (`marketing/modou/metiers.html`), fichier `public/media/jokko-metiers-v1.mp4` (720p, ≈ 3 Mo) + affiche `.jpg` ; rien n'est chargé avant le toucher ; le service worker ne garde jamais `/media/` ni les `.mp4`. Bouton « Partager sur WhatsApp » (lien `#video`).
+
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Dette remboursée (bouton « Il a payé » ou à la voix) : faire entrer l'argent dans la caisse du jour pour que la caisse du soir tombe juste. Fallou a dit « après on continue, tu me rappelles ».

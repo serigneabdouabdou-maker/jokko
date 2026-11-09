@@ -10,6 +10,7 @@ import "./landing.css";
 import { AppPrompt } from "@/components/jokko/Install";
 import { LandingMetiers } from "@/components/jokko/LandingMetiers";
 import { MetierSlides } from "@/components/jokko/MetierSlides";
+import { LandingVideo } from "@/components/jokko/LandingVideo";
 import { noteVisit } from "@/data/visits";
 
 /**
@@ -322,6 +323,8 @@ export function Landing({ onStart, langs }: { onStart: (mode: Mode) => void; lan
         </div>
         <MetierSlides onStart={() => onStart("creer")} />
       </section>
+
+      <LandingVideo />
 
       <LandingMetiers onStart={() => onStart("creer")} />
 
