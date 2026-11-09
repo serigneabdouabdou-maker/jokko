@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jokko — Modou présente les métiers</title>
+<!-- Épisode « Jokko pour chaque métier » (1 min, 9:16). Piloté par window.seek(t) pour le rendu image par image.
+     Voix : metiers-script.json (wolof validé par Fallou) ; minutage : metiers-timing.json (sinon estimation). -->
+<style>
+  @font-face { font-family: "Brico"; src: url(assets/Bricolage.ttf); font-weight: 200 800; }
+  @font-face { font-family: "Serif"; src: url(assets/InstrumentItalic.ttf); font-style: italic; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #FFFDF7; font-family: "Brico", sans-serif; }
+  * { box-sizing: border-box; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  /* ----- Ouverture et fin (crème Jokko) ----- */
+  #cream { background: radial-gradient(ellipse 80% 55% at 50% 38%, #FFF3CC 0%, #FFFDF7 62%); }
+  #logo { position: absolute; left: 390px; top: 520px; width: 300px; height: 300px; border-radius: 68px; box-shadow: 0 30px 60px -24px rgba(23,25,31,.45); }
+  .ring { position: absolute; left: 540px; top: 670px; border: 7px solid #F6B800; border-radius: 50%; transform: translate(-50%, -50%); }
+  #brand { position: absolute; left: 0; right: 0; top: 860px; text-align: center; font-weight: 800; font-size: 150px; letter-spacing: -5px; color: #17191F; }
+  #brandTag { position: absolute; left: 0; right: 0; top: 1050px; text-align: center; font-family: "Serif"; font-style: italic; font-size: 72px; color: #4A4D55; }
+  #brandTagFr { position: absolute; left: 0; right: 0; top: 1150px; text-align: center; font-size: 36px; color: #7A7D85; }
+  /* ----- Modou ----- */
+  #modouScene { background: linear-gradient(180deg, #F3DDB7 0%, #E7C795 100%); overflow: hidden; }
+  #modouScene .shelf { position: absolute; left: 60px; right: 60px; height: 22px; background: #8E5629; border-radius: 6px; }
+  #modouScene .goods { position: absolute; left: 90px; right: 90px; display: flex; justify-content: space-between; }
+  #modouScene .good { width: 92px; border-radius: 14px; }
+  #counter { position: absolute; left: 0; right: 0; top: 1240px; height: 680px; background: linear-gradient(180deg, #E68A2E, #C96F1C); }
+  #counterTop { position: absolute; left: 0; right: 0; top: 1220px; height: 40px; background: #B8743C; }
+  #sign { position: absolute; left: 240px; right: 240px; top: 1330px; height: 110px; border-radius: 18px; background: #17191F; color: #F6B800; display: grid; place-items: center; font-weight: 800; font-size: 54px; letter-spacing: 2px; }
+  #modouSvg { position: absolute; left: 0; top: 0; }
+  #nameTag { position: absolute; left: 70px; top: 150px; padding: 14px 30px; border-radius: 999px; background: #17191F; color: #fff; font-weight: 800; font-size: 44px; }
+  #nameTag b { color: #F6B800; }
+  /* mosaïque des métiers (« liggéey bu nekk ») */
+  .tile { position: absolute; width: 300px; height: 375px; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 50px -20px rgba(0,0,0,.55); border: 6px solid #fff; }
+  .tile img { width: 100%; height: 100%; object-fit: cover; }
+  /* ----- Scènes métiers ----- */
+  .scene { overflow: hidden; background: #0f2a20; }
+  .scene img.photo { position: absolute; left: 50%; top: 0; height: 100%; width: auto; max-width: none; transform-origin: 50% 40%; }
+  .scene .shadeTop { position: absolute; inset: 0 0 auto; height: 360px; background: linear-gradient(180deg, rgba(0,0,0,.45), transparent); }
+  .tag { position: absolute; left: 60px; top: 120px; display: inline-flex; align-items: center; gap: 16px; padding: 16px 30px; border-radius: 999px; background: rgba(255,255,255,.9); font-weight: 800; font-size: 40px; letter-spacing: 4px; text-transform: uppercase; color: #10251b; }
+  .tag i { width: 22px; height: 22px; border-radius: 50%; display: inline-block; }
+  .sweep { position: absolute; top: 0; bottom: 0; width: 1400px; left: -1400px; }
+  /* ----- Panneau blanc : sous-titres (wolof en grand, français en petit) ----- */
+  #panel { position: absolute; left: 44px; right: 44px; bottom: 120px; padding: 46px 48px 44px; border-radius: 44px; background: rgba(255,255,255,.88); backdrop-filter: blur(18px); box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); border: 2px solid rgba(255,255,255,.8); }
+  #wo { font-weight: 800; font-size: 62px; line-height: 1.1; letter-spacing: -1px; color: #10251b; min-height: 136px; }
+  #wo .w { display: inline-block; white-space: pre; }
+  #wo .hl { background-image: linear-gradient(transparent 60%, var(--acc) 60%, var(--acc) 92%, transparent 92%); background-repeat: no-repeat; padding: 0 4px; border-radius: 6px; }
+  #fr { margin-top: 18px; font-size: 34px; line-height: 1.3; color: #4a5d54; font-weight: 500; }
+  #chips { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
+  .chip { display: inline-flex; align-items: center; gap: 12px; padding: 12px 24px; border-radius: 999px; background: #fff; border: 3px solid var(--acc); font-weight: 700; font-size: 32px; color: #10251b; }
+  .chip i { width: 14px; height: 14px; border-radius: 50%; background: var(--acc); display: inline-block; }
+  #mic { position: absolute; right: 48px; top: -46px; width: 92px; height: 92px; border-radius: 50%; background: var(--acc); display: grid; place-items: center; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); }
+  #mic svg { width: 46px; height: 46px; }
+  /* ----- Fin ----- */
+  #end { background: radial-gradient(ellipse 80% 55% at 50% 30%, #FFF3CC 0%, #FFFDF7 62%); }
+  #endLogo { position: absolute; left: 430px; top: 250px; width: 220px; height: 220px; border-radius: 52px; }
+  #slogan { position: absolute; left: 60px; right: 60px; top: 540px; text-align: center; font-weight: 800; font-size: 118px; line-height: 1; letter-spacing: -4px; color: #17191F; }
+  #slogan em { font-family: "Serif"; font-style: italic; font-weight: 400; color: #E0A800; letter-spacing: 0; }
+  #sloganFr { position: absolute; left: 0; right: 0; top: 820px; text-align: center; font-size: 42px; color: #6a6d75; }
+  #dots { position: absolute; left: 0; right: 0; top: 930px; display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; padding: 0 80px; }
+  .mchip { padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 30px; color: #10251b; }
+  #url { position: absolute; left: 160px; right: 160px; top: 1180px; height: 140px; border-radius: 70px; background: #17191F; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 64px; }
+  #url b { color: #F6B800; }
+  #by { position: absolute; left: 0; right: 0; top: 1360px; text-align: center; font-size: 30px; color: #7a7d85; }
+  #endModou { position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+<div id="cream" class="layer">
+  <div id="rings"></div>
+  <img id="logo" src="assets/icon-512.png" alt="">
+  <div id="brand">Jokko</div>
+  <div id="brandTag">sa bitig dafay déglu</div>
+  <div id="brandTagFr">ta boutique qui écoute</div>
+</div>
+
+<div id="modouScene" class="layer">
+  <div class="shelf" style="top:520px"></div><div class="shelf" style="top:800px"></div>
+  <div class="goods" style="top:410px"><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span><span class="good" style="height:110px;background:#F4F1E8;border:4px solid #CFC6B2"></span></div>
+  <div class="goods" style="top:680px"><span class="good" style="height:120px;background:#F2B51D"></span><span class="good" style="height:120px;background:#F2B51D"></span><span class="good" style="height:100px;background:#2F7DC9"></span><span class="good" style="height:100px;background:#2F7DC9"></span><span class="good" style="height:120px;background:#F2B51D"></span><span class="good" style="height:100px;background:#2B9A66"></span></div>
+  <svg id="modouSvg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <g id="pBody">
+        <path d="M-150,40 Q-150,-80 -60,-108 L60,-108 Q150,-80 150,40 L150,260 L-150,260Z" class="robe"/>
+        <path d="M-60,-108 Q0,-40 60,-108 Q40,-80 0,-74 Q-40,-80 -60,-108Z" class="trim"/>
+        <path d="M-14,-80 L0,10 L14,-80" fill="none" class="trimLine" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="0" cy="30" r="6" class="trimDot"/><circle cx="0" cy="62" r="6" class="trimDot"/>
+        <rect x="-34" y="-150" width="68" height="56" rx="20" class="skin"/>
+      </g>
+      <g id="pHead">
+        <ellipse cx="-92" cy="-8" rx="16" ry="22" class="skin"/><ellipse cx="92" cy="-8" rx="16" ry="22" class="skin"/>
+        <path d="M-86,-40 Q-90,-130 0,-134 Q90,-130 86,-40 Q92,40 54,78 Q0,112 -54,78 Q-92,40 -86,-40Z" class="skin"/>
+        <path d="M-88,-36 Q-96,-142 0,-146 Q96,-142 88,-36 Q78,-90 40,-104 Q0,-90 -40,-104 Q-78,-90 -88,-36Z" class="hair"/>
+        <path class="beard" d="M-74,26 Q-70,86 0,104 Q70,86 74,26 Q60,70 0,78 Q-60,70 -74,26Z"/>
+      </g>
+    </defs>
+    <g id="modouPos" transform="translate(540,1180) scale(1.55)"><g id="modou"></g></g>
+  </svg>
+  <div id="counterTop"></div><div id="counter"></div>
+  <div id="sign">BOUTIQUE MODOU</div>
+  <div id="nameTag">Man <b>Modou</b> laa</div>
+  <div id="tiles"></div>
+</div>
+
+<div id="scenes"></div>
+
+<div id="end" class="layer">
+  <img id="endLogo" src="assets/icon-512.png" alt="">
+  <div id="slogan">Wax rekk,<br><em>Jokko bind.</em></div>
+  <div id="sloganFr">Parle, Jokko écrit.</div>
+  <div id="dots"></div>
+  <div id="url"><span>jokko<b>app</b>.com</span></div>
+  <div id="by">Une solution CFC – Cissé Family Company</div>
+</div>
+
+<div id="panel" style="--acc:#F6B800">
+  <div id="mic"><svg viewBox="0 0 24 24" fill="none" stroke="#10251b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></div>
+  <div id="wo"></div>
+  <div id="fr"></div>
+  <div id="chips"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const eio = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.6; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+// ---------- Métiers (même ordre que la voix) ----------
+const METIERS = {
+  pharmacie:     { label: "Pharmacie",     acc: "#3DDC84", focus: 0.50, chips: ["Lots et péremption", "Stock des médicaments", "Caisse du soir"], hl: ["date", "yàqu"] },
+  couture:       { label: "Couture",       acc: "#FF8FB1", focus: 0.74, chips: ["Mesures à la voix", "Studio d'essayage", "Lien de suivi"], hl: ["mesures", "modèle"] },
+  quincaillerie: { label: "Quincaillerie", acc: "#FF9F43", focus: 0.30, chips: ["Sacs, barres, mètres", "Crédits des chantiers", "Factures WhatsApp"], hl: ["stock"] },
+  vetements:     { label: "Vêtements",     acc: "#7FD6FF", focus: 0.52, chips: ["Stock par paire", "Vitrine WhatsApp", "Commandes"], hl: ["vitrine", "WhatsApp"] },
+  reparation:    { label: "Réparation",    acc: "#3DE0D0", focus: 0.62, chips: ["Pannes et pièces", "« C'est prêt »", "Bénéfice par réparation"], hl: ["pare"] },
+  alimentation:  { label: "Boutique",      acc: "#FFC93C", focus: 0.42, chips: ["Ventes à la voix", "Dettes des clients", "Alerte rupture"], hl: ["bind", "bor"] },
+};
+let SCRIPT = [], T = null;
+
+// ---------- Construction ----------
+const modou = (() => {
+  const c = { skin: "#6B4226", hair: "#1A1410", beard: "#1A1410", robe: "#2F7DC9", trim: "#F6B800", dot: "#F6B800" };
+  const root = $("modou"); const g = el("g", {}, root);
+  el("path", { d: "M0,0 Q-40,90 -30,200 L10,206 Q8,110 40,20Z", fill: c.robe, transform: "translate(118,-70)" }, g);
+  const body = el("g", {}, g); body.innerHTML = $("pBody").innerHTML;
+  const st = el("style", {}, g);
+  st.textContent = `#modou .skin{fill:${c.skin}} #modou .hair{fill:${c.hair}} #modou .beard{fill:${c.beard}} #modou .robe{fill:${c.robe}} #modou .trim{fill:${c.trim}} #modou .trimLine{stroke:${c.trim}} #modou .trimDot{fill:${c.dot}}`;
+  const head = el("g", { transform: "translate(0,-230)" }, g); head.innerHTML = $("pHead").innerHTML;
+  const eyes = el("g", {}, head);
+  el("ellipse", { cx: -34, cy: -18, rx: 13, ry: 15, fill: "#fff" }, eyes); el("ellipse", { cx: 34, cy: -18, rx: 13, ry: 15, fill: "#fff" }, eyes);
+  const pupL = el("circle", { cx: -34, cy: -16, r: 8, fill: "#1A1410" }, eyes), pupR = el("circle", { cx: 34, cy: -16, r: 8, fill: "#1A1410" }, eyes);
+  const lidL = el("rect", { x: -50, y: -36, width: 32, height: 0, fill: c.skin }, eyes), lidR = el("rect", { x: 18, y: -36, width: 32, height: 0, fill: c.skin }, eyes);
+  const browL = el("path", { stroke: c.hair, "stroke-width": 9, "stroke-linecap": "round", fill: "none" }, head);
+  const browR = el("path", { stroke: c.hair, "stroke-width": 9, "stroke-linecap": "round", fill: "none" }, head);
+  el("path", { d: "M-6,6 Q0,26 10,22", stroke: "#4A2C18", "stroke-width": 5, fill: "none", "stroke-linecap": "round" }, head);
+  const mouth = el("path", { fill: "#3A1A12", stroke: "#3A1A12", "stroke-width": 5, "stroke-linejoin": "round" }, head);
+  const arm = el("g", { transform: "translate(-118,-70)" }, g); const armRot = el("g", {}, arm);
+  el("path", { d: "M0,0 Q40,90 30,200 L-10,206 Q-8,110 -40,20Z", fill: c.robe }, armRot);
+  const hand = el("g", { transform: "translate(10,206)" }, armRot); el("circle", { r: 30, fill: c.skin }, hand);
+  hand.innerHTML += `<g transform="translate(0,-70) rotate(-8)"><rect x="-44" y="-86" width="88" height="172" rx="16" fill="#17191F"/><rect x="-36" y="-76" width="72" height="150" rx="10" fill="#FFFDF7"/><image href="assets/icon-512.png" x="-24" y="-40" width="48" height="48"/></g>`;
+  return { head, lidL, lidR, pupL, pupR, browL, browR, mouth, armRot };
+})();
+function face(p, t, mood, talk) {
+  const lift = 10 * mood;
+  p.browL.setAttribute("d", `M-58,${-52 - lift} Q-38,${-62 - lift} -16,${-52 - 10 * mood}`);
+  p.browR.setAttribute("d", `M16,${-52 - 10 * mood} Q38,${-62 - lift} 58,${-52 - lift}`);
+  const w = 34, curve = 24 * mood, open = 26 * talk;
+  if (open > 2) { p.mouth.setAttribute("d", `M${-w * .7},42 Q0,${42 + open * 2 + curve * .3} ${w * .7},42 Q0,40 ${-w * .7},42Z`); p.mouth.setAttribute("fill", "#3A1A12"); }
+  else { p.mouth.setAttribute("d", `M${-w},${44 - curve * .25} Q0,${44 + curve} ${w},${44 - curve * .25}`); p.mouth.setAttribute("fill", "none"); }
+  const ph = t % 3.7, bl = ph < 0.14 ? Math.sin((ph / 0.14) * Math.PI) : 0;
+  p.lidL.setAttribute("height", 32 * bl); p.lidR.setAttribute("height", 32 * bl);
+  p.head.setAttribute("transform", `translate(0,${-230 + Math.sin(t * 2.1) * 3}) rotate(${Math.sin(t * 1.3) * 2.5})`);
+}
+
+const rings = [0, 1, 2].map(() => { const d = document.createElement("div"); d.className = "ring"; $("rings").appendChild(d); return d; });
+const ORDER = ["pharmacie", "couture", "quincaillerie", "vetements", "reparation", "alimentation"];
+const tiles = ORDER.map((id, i) => {
+  const d = document.createElement("div"); d.className = "tile"; d.innerHTML = `<img src="assets/metiers/${id}.jpg" alt="">`;
+  $("tiles").appendChild(d); return d;
+});
+const TILE_POS = [[60, 150, -7], [390, 110, 4], [720, 160, -3], [60, 560, 5], [390, 520, -4], [720, 580, 6]];
+const scenes = {};
+for (const id of ORDER) {
+  const m = METIERS[id];
+  const s = document.createElement("div"); s.className = "layer scene";
+  s.innerHTML = `<img class="photo" src="assets/metiers/${id}.jpg" alt=""><div class="shadeTop"></div><div class="sweep" style="background:${m.acc}"></div><div class="tag"><i style="background:${m.acc}"></i>${m.label}</div>`;
+  $("scenes").appendChild(s);
+  scenes[id] = { root: s, img: s.querySelector(".photo"), sweep: s.querySelector(".sweep"), tag: s.querySelector(".tag") };
+}
+ORDER.forEach((id) => { const d = document.createElement("span"); d.className = "mchip"; d.textContent = METIERS[id].label; d.style.background = METIERS[id].acc; $("dots").appendChild(d); });
+
+// Sous-titres : la phrase wolof en morceaux courts (≈ 34 lettres), chacun pendant sa part de la durée.
+function chunks(text) {
+  const parts = text.replace(/\s+/g, " ").split(/(?<=[,.:!?;»])\s+/);
+  const out = []; let cur = "";
+  for (const p of parts) for (const w of p.split(" ")) {
+    if (/^[:;!?»]$/.test(w)) { if (cur) cur += " " + w; else if (out.length) out[out.length - 1] += " " + w; continue; }
+    if ((cur + " " + w).trim().length > 34 && cur) { out.push(cur.trim()); cur = ""; }
+    cur += " " + w;
+    if (/[.:!?]$/.test(w) && cur.trim().length > 14) { out.push(cur.trim()); cur = ""; }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+let shownKey = "";
+function renderCaption(seg, k, wordsIn, acc, hl) {
+  const key = seg.slug + "|" + k;
+  const parts = seg._chunks;
+  if (shownKey !== key) {
+    shownKey = key;
+    $("wo").innerHTML = parts[k].split(" ").map((w) => {
+      const plain = w.replace(/[^\p{L}]/gu, "");
+      const isHl = hl.some((h) => plain.toLowerCase() === h.toLowerCase());
+      return `<span class="w${isHl ? " hl" : ""}">${w} </span>`;
+    }).join("");
+    $("fr").textContent = seg.fr;
+  }
+  const ws = $("wo").children;
+  for (let i = 0; i < ws.length; i++) {
+    const kk = clamp((wordsIn - i * 0.07) / 0.28);
+    ws[i].style.opacity = eo(kk); ws[i].style.transform = `translateY(${(1 - eo(kk)) * 18}px)`;
+    if (ws[i].classList.contains("hl")) ws[i].style.backgroundSize = `${eo(clamp((wordsIn - 0.35 - i * 0.07) / 0.4)) * 100}% 100%`;
+  }
+}
+
+// ---------- Minutage ----------
+function estimate() {
+  const s = [], d = []; let t = 1.5;
+  for (const seg of SCRIPT) {
+    const dur = Math.max(2.6, seg.text.split(" ").length / 2.5);
+    s.push(t); d.push(dur); t += dur + (seg.scene !== SCRIPT[s.length]?.scene ? 0.9 : 0.35);
+  }
+  return { s, d, duration: t + 3.2 };
+}
+
+// ---------- seek ----------
+function frame(t) {
+  const n = SCRIPT.length, S = T.s, D = T.d;
+  const segAt = (() => { let k = -1; for (let i = 0; i < n; i++) if (t >= S[i] - 0.25) k = i; return k; })();
+  const seg = SCRIPT[Math.max(0, segAt)];
+  // bornes des scènes : début = 0,45 s avant la 1re phrase de la scène
+  const sceneStart = (name) => { const i = SCRIPT.findIndex((x) => x.scene === name); return i < 0 ? Infinity : S[i] - 0.45; };
+  const introEnd = sceneStart("pharmacie"), endStart = sceneStart("fin");
+
+  // 1) ouverture : logo (0 → 1,6 s)
+  const op = t < 1.6 ? 1 : 1 - eio((t - 1.6) / 0.5);
+  $("cream").style.opacity = op; $("cream").style.display = op > 0.001 ? "block" : "none";
+  const lp = back(clamp(t / 0.7)); $("logo").style.transform = `scale(${lp})`;
+  rings.forEach((r, i) => { const k = clamp((t - 0.2 - i * 0.25) / 1.1); const sz = 300 + k * 700; r.style.width = r.style.height = sz + "px"; r.style.opacity = (1 - k) * 0.8; });
+  [["brand", 0.35], ["brandTag", 0.6], ["brandTagFr", 0.75]].forEach(([id, d0]) => { const k = eo((t - d0) / 0.45); $(id).style.opacity = k; $(id).style.transform = `translateY(${(1 - k) * 40}px)`; });
+
+  // 2) Modou (1,6 s → introEnd) : il parle, puis la mosaïque des métiers arrive
+  const mIn = eio((t - 1.6) / 0.5), mOut = 1 - eio((t - introEnd) / 0.5);
+  const mOp = Math.min(mIn, mOut);
+  $("modouScene").style.opacity = mOp; $("modouScene").style.display = mOp > 0.001 ? "block" : "none";
+  if (mOp > 0) {
+    const talking = (segAt === 0 || segAt === 1) && t < S[segAt] + D[segAt];
+    const talk = talking ? clamp(0.25 + 0.75 * Math.abs(Math.sin(t * 11.3) * Math.sin(t * 4.1 + 1))) : 0;
+    face(modou, t, 0.9, talk);
+    modou.armRot.setAttribute("transform", `rotate(${-58 + Math.sin(t * 2.4) * 4})`);
+    const sink = eio((t - (S[1] ?? 99) + 0.1) / 0.6);
+    $("modouPos").setAttribute("transform", `translate(540,${1180 + (1 - eo((t - 1.7) / 0.7)) * 400 + sink * 230}) scale(${1.55 - 0.25 * sink})`);
+    const nk = back((t - 2.1) / 0.5); $("nameTag").style.transform = `scale(${clamp(nk, 0, 2)})`; $("nameTag").style.transformOrigin = "left center";
+    const t2 = S[1] ?? 99;
+    tiles.forEach((tl, i) => {
+      const k = back((t - t2 - 0.15 - i * 0.18) / 0.55), [x, y, r] = TILE_POS[i];
+      const gone = eio((t - introEnd + 0.6) / 0.6);
+      tl.style.left = x + "px"; tl.style.top = y + "px";
+      tl.style.opacity = clamp(k) * (1 - gone);
+      tl.style.transform = `translateY(${(1 - clamp(k)) * 220}px) rotate(${r * clamp(k)}deg) scale(${0.6 + 0.4 * clamp(k, 0, 1.2)})`;
+    });
+    const hideName = eio((t - t2) / 0.4); $("nameTag").style.opacity = 1 - hideName;
+  }
+
+  // 3) métiers : photo plein écran, balayage couleur, zoom lent vers la personne
+  ORDER.forEach((id, i) => {
+    const sc = scenes[id], m = METIERS[id];
+    const a = sceneStart(id), b = ORDER[i + 1] ? sceneStart(ORDER[i + 1]) : endStart;
+    const vis = t >= a - 0.1 && t < b + 0.6;
+    sc.root.style.display = vis ? "block" : "none";
+    if (!vis) return;
+    const k = clamp((t - a) / 0.6);
+    sc.root.style.clipPath = `inset(0 0 0 ${(1 - eio(k)) * 100}%)`;
+    sc.root.style.zIndex = 10 + i;
+    sc.sweep.style.left = `${lerp(-1400, 1100, eio(clamp((t - a + 0.05) / 0.75)))}px`;
+    const life = clamp((t - a) / Math.max(1, b - a + 0.6));
+    const z = 1.04 + 0.1 * life;
+    const imgW = 1920 * (900 / 1117) * z;
+    const maxShift = (imgW - 1080) / 2;
+    const fx = (0.5 - m.focus) * 2 * maxShift * (0.6 + 0.4 * life);
+    sc.img.style.transform = `translateX(calc(-50% + ${fx}px)) scale(${z})`;
+    const tk = back((t - a - 0.35) / 0.5); sc.tag.style.transform = `translateX(${(1 - clamp(tk)) * -500}px)`;
+  });
+
+  // 4) fin
+  const eOp = eio((t - endStart) / 0.5);
+  $("end").style.opacity = eOp; $("end").style.display = eOp > 0.001 ? "block" : "none";
+  $("end").style.zIndex = 30;
+  if (eOp > 0) {
+    const e = t - endStart;
+    $("endLogo").style.transform = `scale(${clamp(back(e / 0.6), 0, 1.3)})`;
+    [["slogan", 0.3], ["sloganFr", 0.7], ["dots", 1.1], ["url", 1.5], ["by", 1.9]].forEach(([id, d0]) => { const k = eo((e - d0) / 0.5); $(id).style.opacity = k; $(id).style.transform = `translateY(${(1 - k) * 50}px)`; });
+    [...$("dots").children].forEach((c, i) => { const k = back((e - 1.1 - i * 0.1) / 0.45); c.style.transform = `scale(${clamp(k, 0, 1.2)})`; });
+    const pulse = 1 + 0.03 * Math.sin(e * 5) * clamp(e - 2);
+    $("url").style.transform += ` scale(${pulse})`;
+  }
+
+  // 5) panneau des sous-titres (au-dessus de tout, sauf pendant le logo et la fin)
+  const p = $("panel");
+  const inCaption = segAt >= 0 && t < endStart + 0.1 && t > 2.0;
+  const pk = inCaption ? eio((t - Math.max(2.0, S[0] - 0.2)) / 0.5) : 0;
+  const pOut = eio((t - endStart + 0.4) / 0.4);
+  const pOp = Math.min(pk, 1 - pOut);
+  p.style.display = pOp > 0.001 ? "block" : "none"; p.style.zIndex = 40;
+  if (pOp > 0) {
+    const sceneId = seg.scene in METIERS ? seg.scene : "alimentation";
+    const m = METIERS[seg.scene] ?? { acc: "#F6B800", chips: [], hl: ["Jokko"] };
+    p.style.setProperty("--acc", m.acc);
+    p.style.opacity = pOp; p.style.transform = `translateY(${(1 - pOp) * 200}px)`;
+    const i = Math.max(0, segAt), parts = SCRIPT[i]._chunks;
+    const into = clamp((t - S[i]) / D[i]);
+    const k = Math.min(parts.length - 1, Math.floor(into * parts.length));
+    const kStart = S[i] + (k / parts.length) * D[i];
+    renderCaption(SCRIPT[i], k, t - kStart, m.acc, m.hl);
+    const chipsKey = seg.scene;
+    if ($("chips").dataset.key !== chipsKey) { $("chips").dataset.key = chipsKey; $("chips").innerHTML = (m.chips || []).map((c) => `<span class="chip"><i></i>${c}</span>`).join(""); }
+    const a = sceneStart(seg.scene);
+    [...$("chips").children].forEach((c, j) => { const ck = back((t - a - 1.4 - j * 0.25) / 0.45); c.style.opacity = clamp(ck); c.style.transform = `scale(${clamp(ck, 0, 1.2)})`; });
+    const talking = t >= S[i] && t < S[i] + D[i];
+    $("mic").style.transform = `scale(${1 + (talking ? 0.08 * Math.abs(Math.sin(t * 9)) : 0)})`;
+    void sceneId;
+  }
+}
+
+async function boot() {
+  SCRIPT = await (await fetch("metiers-script.json")).json();
+  SCRIPT.forEach((s) => { s._chunks = chunks(s.text); });
+  try { T = await (await fetch("metiers-timing.json")).json(); } catch { T = null; }
+  if (!T || !T.s || T.s.length !== SCRIPT.length) T = estimate();
+  window.DUR = T.duration;
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })));
+  frame(0); window.READY = true;
+  if (!location.search.includes("render")) { const t0 = performance.now(); const loop = () => { frame(((performance.now() - t0) / 1000) % T.duration); requestAnimationFrame(loop); }; loop(); }
+}
+window.seek = frame;
+boot();
+</script>
+</body>
+</html>
