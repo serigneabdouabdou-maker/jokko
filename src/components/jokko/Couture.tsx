@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { Studio } from "./Studio";
+import { type CoutureModel, galleryUrl } from "@/data/studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type CoutureOrder, type Lang, type Shop, money } from "@/model";
@@ -51,12 +51,23 @@ const EMPTY = { clientName: "", phone: "", garment: "", fabric: "", price: "", a
  * Atelier couture (tailleurs) : commandes sur mesure, classées par date promise.
  * Le client reçoit un lien pour suivre son habit (reçu → coupe → couture → finition → prêt → livré).
  */
-export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s: Shop) => void; lang?: Lang }) {
+export function Couture({ shop, commit, lang = "wo", draft = null, clearDraft, onStudio }: { shop: Shop; commit: (s: Shop) => void; lang?: Lang; draft?: CoutureModel | null; clearDraft?: () => void; onStudio?: () => void }) {
   const [adding, setAdding] = useState(false);
   const [voice, setVoice] = useState<"repos" | "ecoute" | "lecture">("repos");
   const [voiceNote, setVoiceNote] = useState("");
   const rec = useRef<MediaRecorder | null>(null);
-  const [tab, setTab] = useState<"commandes" | "studio">("commandes");
+  const [modelPath, setModelPath] = useState("");
+
+  // Arrivée depuis le Studio (« Je commande ce modèle ») : la fiche s'ouvre avec le modèle choisi.
+  useEffect(() => {
+    if (!draft) return;
+    setForm({ ...EMPTY, garment: draft.title, fabric: draft.fabric });
+    setMeasures({});
+    setModelPath(draft.image_path);
+    setAdding(true);
+    setVoiceNote("");
+    clearDraft?.();
+  }, [draft, clearDraft]);
   const [form, setForm] = useState(EMPTY);
   const [measures, setMeasures] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
@@ -131,10 +142,11 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
 
   function save() {
     if (!form.clientName.trim() || !form.garment.trim()) return;
-    const { shop: next, order } = addCouture(shop, { ...form, price: n(form.price), advance: n(form.advance), measures });
+    const { shop: next, order } = addCouture(shop, { ...form, price: n(form.price), advance: n(form.advance), measures, modelPath: modelPath || undefined });
     commit(next);
     setForm(EMPTY);
     setMeasures({});
+    setModelPath("");
     setAdding(false);
     setVoiceNote("");
     setOpen(order.id);
@@ -147,13 +159,7 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
         <h2>Atelier couture</h2>
         <b className="num sheet-total">{inProgress.length + ready.length} en cours</b>
       </div>
-      <div className="debt-actions" style={{ gap: 8, margin: "4px 0 8px" }}>
-        <Button variant={tab === "commandes" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setTab("commandes")}>Commandes</Button>
-        <Button variant={tab === "studio" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setTab("studio")}>
-          <Icon name="couture" size="sm" /> Studio d'essayage
-        </Button>
-      </div>
-      {tab === "studio" ? <Studio /> : <>
+
       <p className="note">
         {late ? `${late} commande${late > 1 ? "s" : ""} en retard. ` : ""}
         {owed ? `Reste à encaisser : ${money(owed)}.` : "Rien à encaisser."} Chaque client reçoit un lien pour suivre son habit.
@@ -162,6 +168,11 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
         <Button className="h-12 rounded-full px-5" variant={voice === "ecoute" ? "destructive" : "default"} disabled={voice === "lecture"} onClick={() => void dictate()}>
           <Icon name="micro" size="sm" /> {voice === "ecoute" ? "J'ai fini" : voice === "lecture" ? "Jokko écrit…" : "Dicter une commande"}
         </Button>
+        {onStudio && (
+          <Button variant="outline" className="h-10 rounded-full px-4" onClick={onStudio}>
+            <Icon name="photo" size="sm" /> Choisir un modèle
+          </Button>
+        )}
         <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouvelle commande
         </Button>
@@ -174,6 +185,12 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
 
       {adding && (
         <div className="list" style={{ gap: 8, display: "grid" }}>
+          {modelPath && (
+            <div className="couture-model">
+              <img src={galleryUrl(modelPath)} alt="Modèle choisi" />
+              <span>Modèle choisi dans le Studio<button type="button" className="link" onClick={() => setModelPath("")}>Retirer</button></span>
+            </div>
+          )}
           <Input className="h-11" placeholder="Nom du client" aria-label="Nom du client" list="couture-clients" value={form.clientName} onChange={(e) => pickClient(e.target.value)} />
           <datalist id="couture-clients">{shop.clients.map((c) => <option key={c.id} value={c.name} />)}</datalist>
           <Input className="h-11" inputMode="tel" placeholder="Téléphone du client (pour le lien de suivi)" aria-label="Téléphone du client" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -207,7 +224,6 @@ export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s:
           <OrderRow key={o.id} o={o} shop={shop} commit={commit} lang={lang} open={open === o.id} toggle={() => setOpen(open === o.id ? null : o.id)} />
         ))}
       </div>
-      </>}
     </section>
   );
 }
@@ -227,6 +243,7 @@ function OrderRow({ o, shop, commit, lang, open, toggle }: { o: CoutureOrder; sh
 
   return (
     <article className={left !== null && left < 0 && isOpen(o) ? "is-late" : ""} style={open ? { flexWrap: "wrap" } : undefined}>
+      {o.modelPath && <img className="couture-thumb" src={galleryUrl(o.modelPath.replace("modeles/", "vignettes/"))} alt="" onClick={toggle} />}
       <span onClick={toggle} style={{ cursor: "pointer" }}>
         <b>{o.number}</b> · {o.clientName} · {o.garment}
         <small>

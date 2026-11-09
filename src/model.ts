@@ -153,6 +153,8 @@ export type CoutureOrder = {
   note?: string;
   readyAt?: string;
   deliveredAt?: string;
+  /** Modèle choisi dans le Studio d'essayage (image de la galerie Jokko, montrée au client sur son lien de suivi). */
+  modelPath?: string;
 };
 
 export type Shortcut = { id: string; phrase: string; does: string };

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { supabase } from "@/data/supabase";
 import { STEP_LABEL, STEPS } from "@/data/couture";
+import { galleryUrl } from "@/data/studio";
 import type { CoutureStatus } from "@/model";
 
 type Suivi = {
@@ -15,6 +16,7 @@ type Suivi = {
   reste: number;
   pret_le: string | null;
   livre_le: string | null;
+  image?: string | null;
 };
 
 const day = (d: string) => new Date(d.length === 10 ? `${d}T12:00:00` : d).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
@@ -39,6 +41,7 @@ export function SuiviCouture({ token }: { token: string }) {
       <p className="suivi-shop">{data.boutique}</p>
       <h1>{data.etape === "pret" ? "Ton habit est prêt !" : data.etape === "livre" ? "Habit livré, merci !" : data.etape === "annule" ? "Commande annulée" : `Bonjour ${data.client}, ton habit avance`}</h1>
       <p className="note">Commande {data.numero} · {data.modele}</p>
+      {data.image && <img className="suivi-model" src={galleryUrl(data.image)} alt={`Modèle choisi : ${data.modele}`} />}
       {data.etape !== "annule" && (
         <ol className="suivi-steps">
           {STEPS.map((s, i) => (

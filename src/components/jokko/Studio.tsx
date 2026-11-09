@@ -7,7 +7,7 @@ import { CATEGORIES, type CoutureModel, galleryUrl, loadModels, shareImage, tryO
  * Studio d'essayage : la galerie de modèles signés Jokko. On touche un modèle, on le voit en grand,
  * puis « Essayer » : selfie du client → Jokko l'habille avec ce modèle (offres Médium et Avancé).
  */
-export function Studio() {
+export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
   const [models, setModels] = useState<CoutureModel[] | null>(null);
   const [cat, setCat] = useState<CoutureModel["category"]>("femme");
   const [open, setOpen] = useState<CoutureModel | null>(null);
@@ -47,7 +47,7 @@ export function Studio() {
   if (open) {
     const src = result ?? galleryUrl(open.image_path);
     return (
-      <div className="studio-view">
+      <div className="studio-view sheet">
         <Button variant="ghost" className="h-10 rounded-full px-3" onClick={() => show(null)}>← Galerie</Button>
         <h3>{open.title}</h3>
         {open.fabric && <p className="note">{open.fabric}</p>}
@@ -72,24 +72,37 @@ export function Studio() {
             <Button variant="ghost" className="h-12 rounded-full px-4" onClick={() => setResult(null)}>Voir le modèle</Button>
           )}
         </div>
+        {onOrder && (
+          <div className="studio-order">
+            <b>Ça lui plaît ?</b>
+            <Button className="h-14 rounded-full px-5 text-lg font-semibold" onClick={() => onOrder(open)}>
+              <Icon name="couture" size="sm" /> Je commande ce modèle
+            </Button>
+            <small className="note">Jokko ouvre la fiche de commande avec ce modèle : tu mets le client, ses mesures, le prix et l'avance. Le client reçoit son lien de suivi avec la photo du modèle.</small>
+          </div>
+        )}
         <input
           ref={camera}
           type="file"
           accept="image/*"
-          capture="user"
           hidden
           onChange={(e) => {
             void essayer(e.target.files?.[0]);
             e.target.value = "";
           }}
         />
-        <small className="note">Prends le client en photo de face, bien éclairé, en pied si possible. La photo n'est pas gardée. Essayage : offres Médium (3 par jour) et Avancé (10 par jour).</small>
+        <small className="note">Prends le client en photo (caméra de derrière, de la tête aux pieds, bien éclairé) ou choisis une photo déjà faite. La photo n'est pas gardée. Essayage : offres Médium (3 par jour) et Avancé (10 par jour).</small>
       </div>
     );
   }
 
   return (
-    <div>
+    <section className="sheet">
+      <div className="sheet-head">
+        <h2>Studio d'essayage</h2>
+        <b className="num sheet-total">{(models ?? []).length} modèles</b>
+      </div>
+      <p className="note">Touche un modèle pour le voir en grand, l'essayer sur ton client, puis le commander.</p>
       <div className="debt-actions" style={{ gap: 8, margin: "8px 0", flexWrap: "wrap" }}>
         {CATEGORIES.map((c) => (
           <Button key={c.id} variant={cat === c.id ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setCat(c.id)}>
@@ -107,6 +120,6 @@ export function Studio() {
           </button>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

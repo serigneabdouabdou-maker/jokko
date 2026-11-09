@@ -57,7 +57,7 @@ const toRow = {
   couture_orders: (o: CoutureOrder, shopId: string): Row => ({
     id: o.id, shop_id: shopId, at: o.at, number: o.number, client_id: opt(o.clientId), client_name: o.clientName, phone: o.phone,
     garment: o.garment, fabric: o.fabric, measures: o.measures, price: o.price, paid: o.paid, due_at: opt(o.dueAt), status: o.status,
-    token: o.token, note: o.note ?? "", ready_at: opt(o.readyAt), delivered_at: opt(o.deliveredAt),
+    token: o.token, note: o.note ?? "", ready_at: opt(o.readyAt), delivered_at: opt(o.deliveredAt), model_path: o.modelPath ?? "",
   }),
 };
 
@@ -478,6 +478,7 @@ function readCouture(r: Row): CoutureOrder {
   if (optStr(r.note)) order.note = str(r.note);
   if (optStr(r.ready_at)) order.readyAt = iso(r.ready_at);
   if (optStr(r.delivered_at)) order.deliveredAt = iso(r.delivered_at);
+  if (optStr(r.model_path)) order.modelPath = str(r.model_path);
   return order;
 }
 

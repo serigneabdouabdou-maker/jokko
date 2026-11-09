@@ -97,7 +97,7 @@ function paymentSale(o: CoutureOrder, amount: number, what: string) {
   return { id: uid("s"), at: todayStamp(), label: `Couture ${o.number} · ${o.garment} (${what})`, amount, clientId: o.clientId, payment: "especes" as const };
 }
 
-export type NewCouture = { clientName: string; phone?: string; garment: string; fabric?: string; measures?: Record<string, number | string>; price?: number; advance?: number; dueAt?: string; note?: string };
+export type NewCouture = { clientName: string; phone?: string; garment: string; fabric?: string; measures?: Record<string, number | string>; price?: number; advance?: number; dueAt?: string; note?: string; modelPath?: string };
 
 /** Nouvelle commande : le client, ses mesures (gardées pour la prochaine fois), le modèle, le prix et l'avance (elle entre en caisse). */
 export function addCouture(shop: Shop, input: NewCouture): { shop: Shop; order: CoutureOrder } {
@@ -123,6 +123,7 @@ export function addCouture(shop: Shop, input: NewCouture): { shop: Shop; order: 
     status: "recu",
     token: newToken(),
     ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    ...(input.modelPath ? { modelPath: input.modelPath } : {}),
   };
   const sales = advance > 0 ? [paymentSale(order, advance, "avance"), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, couture: [order, ...ordersOf(shop)] }, order };

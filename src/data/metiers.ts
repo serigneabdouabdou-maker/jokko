@@ -14,10 +14,10 @@ export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaille
 export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services";
 
 /** Écrans qui dépendent du métier (les autres sont communs à toutes les boutiques). */
-export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture"] as const;
+export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture", "studio"] as const;
 export type OptionalScreen = (typeof OPTIONAL_SCREENS)[number];
 /** Écran apporté par un module ajouté dans les réglages. */
-const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen>> = { atelier: "atelier", couture: "couture" };
+const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen[]>> = { atelier: ["atelier"], couture: ["studio", "couture"] };
 export const MODULES: { id: ModuleId; label: string; desc: string }[] = [
   { id: "atelier", label: "Atelier de réparation", desc: "Dépôts d'appareils, pannes, pièces posées, « c'est prêt » sur WhatsApp" },
   { id: "couture", label: "Atelier couture", desc: "Mesures des clients, commandes, essayages, « ton habit est prêt »" },
@@ -125,7 +125,7 @@ export const METIERS: Metier[] = [
     label: "Couture, tailleur",
     keywords: /tailleur|couture|couturi|atelier de couture|brodeur|broderie|styliste/i,
     units: ["pièce", "mètre", "yard", "ensemble"],
-    screens: ["couture", "stock"],
+    screens: ["studio", "couture", "stock"],
     conseiller:
       "TAILLEUR : regarde les commandes en retard (le client risque de partir), les avances trop faibles (demander au moins la moitié), " +
       "le reste à encaisser, les tissus et fournitures qui manquent avant la Tabaski et la Korité, et les meilleurs modèles (ceux qui rapportent le plus).",
@@ -215,8 +215,7 @@ export function modulesOf(activity: string | undefined | null, extra: readonly s
 export function screensOf(activity: string | undefined | null, extra: readonly string[] = []): Set<OptionalScreen> {
   const set = new Set<OptionalScreen>(metierOf(activity).screens);
   for (const id of modulesOf(activity, extra)) {
-    const screen = MODULE_SCREEN[id];
-    if (screen) set.add(screen);
+    for (const screen of MODULE_SCREEN[id] ?? []) set.add(screen);
   }
   return set;
 }

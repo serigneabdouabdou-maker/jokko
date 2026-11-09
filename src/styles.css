@@ -1629,3 +1629,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .studio-view { display: grid; gap: 8px; }
 .studio-big { width: 100%; max-width: 520px; border-radius: 16px; background: #f3efe6; cursor: zoom-in; transition: transform .2s; justify-self: center; }
 .studio-big.is-zoom { transform: scale(1.8); cursor: zoom-out; transform-origin: center top; }
+.suivi-model { width: 100%; max-width: 320px; border-radius: 16px; margin: 8px auto; display: block; background: #f3efe6; }
+.studio-order { display: grid; gap: 8px; padding: 12px; border-radius: 16px; background: #fffaf0; border: 1px solid rgba(0,0,0,.06); }
+.couture-model { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 14px; background: #fffaf0; }
+.couture-model img { width: 72px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; }
+.couture-model span { display: grid; gap: 2px; font-weight: 600; font-size: 14px; }
+.couture-thumb { width: 44px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; flex: none; cursor: pointer; }

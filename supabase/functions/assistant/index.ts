@@ -301,11 +301,13 @@ async function readCouture(mimeType: string, data: string): Promise<Record<strin
 // ---------- Studio d'essayage : le client (selfie) habillé avec un modèle de la galerie ----------
 // Réservé aux tailleurs payants (type « image » compté par use_assistant). Le selfie n'est jamais stocké.
 const IMAGE_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image"];
+// Consigne en anglais : le modèle d'image la suit mieux (essayage virtuel = virtual try-on).
 const TRYON_PROMPT =
-  "Image 1 : le client (une vraie personne). Image 2 : un modèle de vêtement. " +
-  "Crée une photo réaliste du client de l'image 1 portant EXACTEMENT la tenue de l'image 2 : même coupe, mêmes couleurs, même tissu, même broderie. " +
-  "Garde exactement son visage, sa couleur de peau, sa morphologie et ses cheveux : il doit se reconnaître. " +
-  "Photo en pied, pose naturelle, fond de studio uni beige clair, lumière douce. Petite signature discrète « Jokko » en bas à droite, aucun autre texte.";
+  "Virtual try-on. The FIRST image is the customer (a real person). The SECOND image is a fashion catalog photo of an outfit worn by a model. " +
+  "Generate ONE new photorealistic full-body photo of the CUSTOMER from the first image wearing EXACTLY the outfit from the second image " +
+  "(same cut, colors, fabric, embroidery and accessories such as the head scarf or cap). " +
+  "Keep the customer's real face, identity, skin tone, hair and body shape exactly as in the first image: it must clearly be the same person, not the catalog model. " +
+  "Natural standing pose, plain light beige studio background, soft light. Add only a small discreet 'Jokko' signature in the bottom right corner. No other text.";
 
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -338,8 +340,15 @@ async function tryOn(photo: string, photoType: string, modelId: string): Promise
       continue;
     }
     const out = await res.json().catch(() => null);
-    const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
-    if (!part) continue;
+    const parts = out?.candidates?.[0]?.content?.parts ?? [];
+    const part = parts.find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
+    if (!part) {
+      // Pas d'image : on note la raison (refus, filtre) sans aucune donnée du client.
+      console.warn(`[jokko] essayage ${model} : pas d'image (${out?.candidates?.[0]?.finishReason ?? "?"}) ${parts.map((p: { text?: string }) => p?.text ?? "").join(" ").slice(0, 160)}`);
+      last = 422;
+      continue;
+    }
+    console.log(`[jokko] essayage ${model} : image ${part.inlineData.mimeType ?? "?"} ${Math.round(part.inlineData.data.length / 1024)} Ko`);
     // JPEG plus léger pour les téléphones (≈ 150 Ko au lieu de 1,5 Mo) ; l'image d'origine si la conversion échoue.
     try {
       const img = await Image.decode(Uint8Array.from(atob(part.inlineData.data), (c) => c.charCodeAt(0)));

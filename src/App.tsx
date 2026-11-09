@@ -74,6 +74,8 @@ import { ScanCheckout } from "@/components/jokko/ScanCheckout";
 import { Labels } from "@/components/jokko/Labels";
 import { StockEntry } from "@/components/jokko/StockEntry";
 import { SalesList } from "@/components/jokko/SalesList";
+import { Studio } from "@/components/jokko/Studio";
+import type { CoutureModel } from "@/data/studio";
 import { ExpensesList } from "@/components/jokko/ExpensesList";
 import { clearTodaySales, todaySales } from "@/data/sales";
 import { PriceTool } from "@/components/jokko/PriceTool";
@@ -114,7 +116,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -123,6 +125,10 @@ const LANGS: Array<[Lang, string]> = [
 
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
+  // Écrans du métier en haut : le tailleur voit d'abord son Studio et ses commandes.
+  ["studio", "Studio"],
+  ["couture", "Couture"],
+  ["atelier", "Atelier"],
   ["distance", "À distance"],
   ["boutiques", "Mes boutiques"],
   ["conseiller", "Conseiller"],
@@ -132,8 +138,6 @@ const NAV: Array<[Screen, string]> = [
   ["stock", "Stock"],
   ["clients", "Clients"],
   ["factures", "Factures"],
-  ["couture", "Couture"],
-  ["atelier", "Atelier"],
   ["depenses", "Dépenses"],
   ["dettes", "Dettes"],
   ["caisse", "Caisse"],
@@ -157,6 +161,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   factures: "facture",
   atelier: "reparation",
   couture: "couture",
+  studio: "photo",
   depenses: "depense",
   dettes: "dette",
   caisse: "caisse",
@@ -668,6 +673,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     return w === "medium" || w === "avance" ? w : null;
   });
   useEffect(() => clearWantedPlan(), []);
+  /** Modèle choisi dans le Studio (« Je commande ce modèle ») : il ouvre la fiche de commande déjà remplie. */
+  const [coutureDraft, setCoutureDraft] = useState<CoutureModel | null>(null);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
@@ -1539,7 +1546,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
-          {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} />}
+          {screen === "studio" && <Studio onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
+          {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} canEdit={patron} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
