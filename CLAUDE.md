@@ -89,7 +89,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 ## Page d'accueil : diaporama des métiers (09/11/2026)
 
-- En haut de la page d'accueil (`MetierSlides.tsx`, styles `.ms` dans `landing.css`, à la place de l'ancienne scène du comptoir ; en premier sur téléphone) : alimentation, pharmacie, couture, quincaillerie, vêtements et chaussures, réparation. Une photo IA par métier, phrase dite, 3 fonctions, bouton qui pré-choisit le métier ; défile seul toutes les 5 s, se met en pause au toucher, glisser pour changer.
+- En haut de la page d'accueil (`MetierSlides.tsx`, styles `.ms` dans `landing.css`, à la place de l'ancienne scène du comptoir ; en premier sur téléphone) : alimentation, pharmacie, couture, quincaillerie, vêtements et chaussures, réparation. Une photo IA par métier, phrase dite, 3 fonctions, bouton qui pré-choisit le métier ; photo seule 1,6 s puis panneau blanc transparent qui monte avec les textes en foncé (mot clé surligné à la couleur du métier) ; défile seul toutes les 7,5 s, se met en pause au toucher, glisser pour changer.
 - Photos : fonction `accueil` (jeton `galerie_token`, appelée par SQL `net.http_post`) → `galerie/accueil/<métier>-v1.jpg` (4:5, 900 px, ≈ 200 Ko). **Une seule demande à la fois** (plusieurs = WORKER_RESOURCE_LIMIT). Pour changer une photo : nouvelle demande, puis `-v2` dans `MetierSlides.tsx`.
 
 ## À rappeler à Fallou (demandé le 09/11/2026)

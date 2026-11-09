@@ -17,7 +17,9 @@ const SLIDES: Slide[] = [
   { id: "vetements", img: "vetements", tag: "Vêtements et chaussures", title: ["Votre vitrine", "sur WhatsApp.", ""], color: "#7FD6FF", said: "« Il me reste combien de pantalons ? »", points: ["Stock par pièce et par paire", "Vitrine à partager", "Bénéfice de la semaine"], cta: "Ouvrir ma boutique" },
   { id: "reparation", img: "reparation", tag: "Réparation", title: ["Du dépôt au", "« c'est prêt ».", ""], color: "#3DE0D0", said: "« Awa dépose un iPhone, écran cassé »", points: ["Pannes et pièces posées", "Message « c'est prêt »", "Bénéfice par réparation"], cta: "Ouvrir mon atelier" },
 ];
-const EVERY = 6000;
+const EVERY = 7500;
+/** La photo se montre seule, puis le panneau blanc monte avec les textes. */
+const PHOTO_ALONE = 1600;
 
 /** La phrase dite s'écrit lettre par lettre, comme si le commerçant parlait. */
 function useTyped(text: string, off: boolean): string {
@@ -33,7 +35,7 @@ function useTyped(text: string, off: boolean): string {
         if (i >= text.length) window.clearInterval(timer);
       }, 38);
       stop = () => window.clearInterval(timer);
-    }, 650);
+    }, PHOTO_ALONE + 900);
     let stop = () => undefined as void;
     return () => { window.clearTimeout(start); stop(); };
   }, [text, off]);
