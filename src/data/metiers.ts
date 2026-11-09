@@ -12,6 +12,12 @@ export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaille
  * ni écran, ni outil de Jokko, ni consigne de Gemini.
  */
 export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services";
+
+/** Écrans qui dépendent du métier (les autres sont communs à toutes les boutiques). */
+export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture"] as const;
+export type OptionalScreen = (typeof OPTIONAL_SCREENS)[number];
+/** Écran apporté par un module ajouté dans les réglages. */
+const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen>> = { atelier: "atelier", couture: "couture" };
 export const MODULES: { id: ModuleId; label: string; desc: string }[] = [
   { id: "atelier", label: "Atelier de réparation", desc: "Dépôts d'appareils, pannes, pièces posées, « c'est prêt » sur WhatsApp" },
   { id: "couture", label: "Atelier couture", desc: "Mesures des clients, commandes, essayages, « ton habit est prêt »" },
@@ -32,6 +38,11 @@ export type Metier = {
   atelier: boolean;
   /** Dates de péremption suivies et alertes. */
   peremption: boolean;
+  /**
+   * Écrans propres à ce métier (en plus des écrans communs : parler, ventes, clients, dettes, caisse, dépenses,
+   * factures, bilan, équipe, journal, offre, réglages). Un écran absent d'ici n'apparaît pas dans le menu.
+   */
+  screens: OptionalScreen[];
   /** Autres modules donnés par ce métier (en plus de atelier / peremption / vivres ci-dessus). */
   modules?: ModuleId[];
   /** Ce que Gemini doit savoir de ce métier. */
@@ -48,6 +59,7 @@ export const METIERS: Metier[] = [
     label: "Alimentation générale, boutique de quartier",
     keywords: /aliment|boutique|epicer|superette|commerce general|grossiste|demi.?gros|riz|ceeb/i,
     units: ["sac", "bidon", "carton", "paquet", "kilo", "litre", "pièce", "boîte", "sachet"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
     atelier: false,
     peremption: true,
     consigne: "Alimentation générale : ventes au détail et en gros (sac, bidon, sachet), crédit des clients du quartier.",
@@ -59,6 +71,7 @@ export const METIERS: Metier[] = [
     label: "Réparation de téléphones et pièces détachées",
     keywords: /repar|répar|telephon|téléphon|portable|smartphone|piece.?detach|pièce|gsm|ecran|écran|informatique|ordinateur/i,
     units: ["pièce", "unité", "carton", "lot"],
+    screens: ["stock", "atelier", "distance", "boutiques", "conseiller"],
     atelier: true,
     peremption: false,
     consigne:
@@ -76,6 +89,7 @@ export const METIERS: Metier[] = [
     label: "Pharmacie, dépôt de médicaments",
     keywords: /pharma|medicament|médicament|officine|depot pharm/i,
     units: ["boîte", "plaquette", "flacon", "tube", "pièce", "carton"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
     atelier: false,
     peremption: true,
     consigne:
@@ -91,6 +105,7 @@ export const METIERS: Metier[] = [
     label: "Quincaillerie, matériaux",
     keywords: /quincaill|materiau|matériau|ciment|fer|peinture|plomberie|electricit|électricit/i,
     units: ["sac", "pièce", "barre", "mètre", "kilo", "litre", "pot", "carton", "rouleau"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
     atelier: false,
     peremption: false,
     consigne: "Quincaillerie : ciment, fer, peinture, plomberie, électricité ; ventes en gros et au détail (mètre, barre, kilo).",
@@ -102,6 +117,7 @@ export const METIERS: Metier[] = [
     label: "Couture, tailleur",
     keywords: /tailleur|couture|couturi|atelier de couture|brodeur|broderie|styliste/i,
     units: ["pièce", "mètre", "yard", "ensemble"],
+    screens: ["couture", "stock"],
     atelier: false,
     peremption: false,
     modules: ["couture"],
@@ -119,6 +135,7 @@ export const METIERS: Metier[] = [
     label: "Vêtements, tissus, chaussures",
     keywords: /vetement|vêtement|tissu|habit|chaussure|mode|bazin|wax|friperie|feug jaay/i,
     units: ["pièce", "mètre", "paire", "lot", "balle"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
     atelier: false,
     peremption: false,
     consigne: "Vêtements et tissus : pièces, mètres de tissu, paires ; ventes souvent à crédit.",
@@ -130,6 +147,7 @@ export const METIERS: Metier[] = [
     label: "Multiservice (impression, photocopie, transfert d'argent)",
     keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|secretariat|secrétariat/i,
     units: ["page", "copie", "pièce", "unité", "rame"],
+    screens: ["stock", "atelier", "distance", "conseiller"],
     atelier: true,
     peremption: false,
     modules: ["services"],
@@ -144,6 +162,7 @@ export const METIERS: Metier[] = [
     label: "Autre activité",
     keywords: /$^/,
     units: ["pièce", "unité", "carton", "paquet", "kilo", "litre"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
     atelier: false,
     peremption: false,
     consigne: "",
@@ -173,6 +192,25 @@ export function modulesOf(activity: string | undefined | null, extra: readonly s
   if (m.vivres) set.add("vivres");
   for (const id of extra) if (MODULES.some((x) => x.id === id)) set.add(id as ModuleId);
   return set;
+}
+
+/** Écrans propres à la boutique : ceux de son métier + ceux des modules ajoutés. */
+export function screensOf(activity: string | undefined | null, extra: readonly string[] = []): Set<OptionalScreen> {
+  const set = new Set<OptionalScreen>(metierOf(activity).screens);
+  for (const id of modulesOf(activity, extra)) {
+    const screen = MODULE_SCREEN[id];
+    if (screen) set.add(screen);
+  }
+  return set;
+}
+
+/** Nom d'un écran adapté au métier (ex. le stock d'un tailleur = ses tissus et fournitures). */
+export function screenLabel(activity: string | undefined | null, screen: string, fallback: string): string {
+  const id = metierOf(activity).id;
+  if (id === "couture" && screen === "stock") return "Tissus et fournitures";
+  if (id === "reparation" && screen === "stock") return "Pièces";
+  if (id === "pharmacie" && screen === "stock") return "Médicaments";
+  return fallback;
 }
 
 /** Ce que Gemini doit savoir d'un module ajouté à une boutique d'un autre métier. */

@@ -57,7 +57,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
 import { Couture } from "@/components/jokko/Couture";
-import { expiringSoon, metierOf, MODULES, modulesOf } from "@/data/metiers";
+import { expiringSoon, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
@@ -1348,14 +1348,18 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   }
 
   const prompts = metierOf(shop.activity).ex.prompts;
+  // Un métier = une appli : seuls les écrans de son métier (et des modules ajoutés) apparaissent.
+  const screens = screensOf(shop.activity, shop.modules);
+  const allowed = (id: Screen) =>
+    !(OPTIONAL_SCREENS as readonly string[]).includes(id) || screens.has(id as OptionalScreen) || (id === "atelier" && (shop.repairs?.length ?? 0) > 0) || (id === "couture" && (shop.couture?.length ?? 0) > 0);
   const busy = voice === "transcription" || voice === "comprehension";
   const role = roleIn(profile);
   const patron = role === "patron";
   patronRef.current = patron;
   // Un vendeur ne reste jamais sur une rubrique du patron (ex. après un changement de boutique).
   useEffect(() => {
-    if (!patron && PATRON_SCREENS.includes(screen)) setScreen("parler");
-  }, [patron, screen]);
+    if ((!patron && PATRON_SCREENS.includes(screen)) || !allowed(screen)) setScreen("parler");
+  }, [patron, screen, shop.activity, shop.modules?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="desk">
@@ -1365,8 +1369,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <span>Jokko</span>
         </div>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && (id !== "atelier" || modulesOf(shop.activity, shop.modules).has("atelier") || (shop.repairs?.length ?? 0) > 0) && (id !== "couture" || modulesOf(shop.activity, shop.modules).has("couture") || (shop.couture?.length ?? 0) > 0)).map(([id, label]) => (
-            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
+          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && allowed(id)).map(([id, label]) => (
+            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{screenLabel(shop.activity, id, label)}</span></button>
           ))}
         </nav>
         <div className="side-foot">
@@ -1579,13 +1583,13 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   return (
     <section className="sheet">
       <div className="sheet-head">
-        <h2>Stock</h2>
+        <h2>{screenLabel(shop.activity, "stock", "Stock")}</h2>
         {canEdit && (
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
             <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}><Icon name="micro" size="sm" />Ajouter en parlant</Button>
             <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}><Icon name="etiquette" size="sm" />Changer les prix</Button>
             {(modulesOf(shop.activity, shop.modules).has("peremption") || shop.products.some((p) => p.lots?.length)) && <Button variant={tool === "reception" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("reception")}><Icon name="scanner" size="sm" />Réception (dates)</Button>}
-            {can(shop, "etiquettes") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
+            {can(shop, "etiquettes") && screensOf(shop.activity, shop.modules).has("scanner") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
           </div>
         )}
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>

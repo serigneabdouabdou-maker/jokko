@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf } from "./metiers";
+import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf, screensOf } from "./metiers";
 
 describe("métiers", () => {
   it("reconnaît le métier, même écrit à la main", () => {
@@ -82,5 +82,26 @@ describe("appli hybride : modules par métier", () => {
     expect(m.has("inconnu" as never)).toBe(false);
     expect(metierInstruction("Alimentation", ["services"])).toContain("MODULE SERVICES");
     expect(metierInstruction("Alimentation")).not.toContain("MODULE SERVICES");
+  });
+});
+
+describe("un métier = une appli : les écrans", () => {
+  it("le tailleur n'a ni scanner, ni contrôle à distance, ni atelier de réparation", () => {
+    const s = screensOf("Couture, tailleur");
+    expect(s.has("couture")).toBe(true);
+    expect(s.has("stock")).toBe(true);
+    for (const x of ["scanner", "distance", "atelier", "boutiques", "conseiller"] as const) expect(s.has(x)).toBe(false);
+  });
+  it("l'alimentation n'a ni couture ni atelier", () => {
+    const s = screensOf("Alimentation");
+    expect(s.has("couture")).toBe(false);
+    expect(s.has("atelier")).toBe(false);
+    expect(s.has("scanner")).toBe(true);
+  });
+  it("un module ajouté apporte son écran", () => {
+    expect(screensOf("Alimentation", ["couture"]).has("couture")).toBe(true);
+  });
+  it("chaque métier a sa liste d'écrans", () => {
+    for (const m of METIERS) expect(Array.isArray(m.screens)).toBe(true);
   });
 });
