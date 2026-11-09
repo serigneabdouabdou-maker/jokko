@@ -50,6 +50,8 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Crédit Gemini vide : l'appli signale chaque direct coupé (`note_live_failure`) ; un seul 402 ouvre l'incident « Crédit Gemini (AI Studio) » (onglet Santé + notification), fermé au premier appel réussi.
 - Paiement Wave manuel (`wave_auto` = false) : le patron touche « J'ai payé » (`declare_subscription_paid`) → notification « Paiement Wave à vérifier » à Fallou ; il vérifie son Wave puis active dans la console. Les notifications arrivent sur le téléphone où « Activer les notifications » a été touché (console, onglet Activité).
+- Une seule demande en attente par boutique (index unique) ; « Mon offre » = fenêtre par étapes (durée → paiement → validation).
+- Offre activée ou refusée : le patron reçoit une notification (trigger `on_subscription_decided` → notify `kind: boutique`).
 
 ## Routine hebdomadaire
 
