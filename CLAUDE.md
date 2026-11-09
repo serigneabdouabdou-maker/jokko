@@ -70,7 +70,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Écran « Ma vitrine » (`Vitrine.tsx`, `src/data/vitrine.ts`) : le patron ouvre sa vitrine (`vitrine_save` crée le code court `nom-xxx`), choisit les articles montrés (`products.vitrine`, photo `products.photo_path` dans le stockage public `vitrine/<shop_id>/…`), et pour un tailleur les modèles du Studio (`vitrines.models`). Partage : statut WhatsApp, Facebook, lien à copier (bio TikTok / Instagram).
 - Page publique `jokkoapp.com/?v=<code>` (`VitrinePublic.tsx`, fonction `vitrine_public`) : articles et modèles, détail avec photo qui tourne, « Commander sur WhatsApp » vers `shops.phone` (message prérempli). Sans compte.
-- À faire : aperçu riche du lien dans WhatsApp (image + nom) = balises Open Graph servies par le Worker Cloudflare.
+- Aperçu des liens partagés (WhatsApp, Facebook, TikTok) : `worker/index.js` (Worker Cloudflare, `run_worker_first: ["/"]`) réécrit titre, description et image Open Graph pour `?v=` et `?modele=` (données via `vitrine_public` / `modele_public`, cache 5 min). Le reste du site reste servi tel quel depuis `dist`.
 
 ## À rappeler à Fallou (demandé le 09/11/2026)
 

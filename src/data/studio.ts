@@ -114,7 +114,7 @@ export async function shareImage(src: string, title: string): Promise<void> {
 
 export type StudioStats = {
   prix_image: number; prix_essayage: number; plafond_jour: number;
-  fabriques_jour: number; fabriques_mois: number; erreurs_jour: number; en_attente: number;
+  fabriques_jour: number; fabriques_mois: number; depense_jour?: number; depense_mois?: number; erreurs_jour: number; en_attente: number;
   essayages_jour: number; essayages_mois: number; galerie_total: number;
   par_rubrique: { category: string; occasion: string; n: number }[];
   jours: { jour: string; faits: number; erreurs: number }[];

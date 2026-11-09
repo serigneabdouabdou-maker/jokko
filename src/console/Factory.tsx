@@ -45,7 +45,7 @@ export function FactoryTab() {
   const price = stats.prix_image;
   const ages = AGES.filter((a) => (genre === "enfant" ? a.for === "enfant" : a.for === "adulte"));
   const ageOk = ages.some((a) => a.id === age) ? age : ages[0].id;
-  const spentToday = stats.fabriques_jour * price;
+  const spentToday = stats.depense_jour ?? stats.fabriques_jour * price;
   const leftToday = Math.max(0, stats.plafond_jour - spentToday);
   const tryonsToday = stats.essayages_jour * stats.prix_essayage;
   const minutes = Math.ceil((stats.en_attente + count) / 2) + 1;
@@ -64,7 +64,7 @@ export function FactoryTab() {
     <div className="cx-stack">
       <section className="cx-kpis">
         <article className="cx-kpi"><span>Fabriqués aujourd’hui</span><b className="num">{stats.fabriques_jour}</b><small>{F(spentToday)} · reste {F(leftToday)} avant le plafond</small></article>
-        <article className="cx-kpi"><span>Fabriqués ce mois</span><b className="num">{stats.fabriques_mois}</b><small>{F(stats.fabriques_mois * price)}</small></article>
+        <article className="cx-kpi"><span>Fabriqués ce mois</span><b className="num">{stats.fabriques_mois}</b><small>{F(stats.depense_mois ?? stats.fabriques_mois * price)}</small></article>
         <article className="cx-kpi" data-tone={stats.en_attente ? "warn" : "good"}><span>En attente</span><b className="num">{stats.en_attente}</b><small>{stats.en_attente ? `≈ ${Math.ceil(stats.en_attente / 2)} min · ${F(stats.en_attente * price)}` : "rien en cours"}</small></article>
         <article className="cx-kpi"><span>Essayages des tailleurs</span><b className="num">{stats.essayages_jour}</b><small>aujourd’hui ≈ {F(tryonsToday)} · ce mois {stats.essayages_mois}</small></article>
         <article className="cx-kpi" data-tone="good"><span>Modèles dans le Studio</span><b className="num">{stats.galerie_total}</b><small>visibles par tous les tailleurs</small></article>
