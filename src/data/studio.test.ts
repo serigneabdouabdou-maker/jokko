@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type CoutureModel, filterModels } from "./studio";
+import { type CoutureModel, filterModels, framesOf, modelLink } from "./studio";
 import { screenLabel, screensOf } from "./metiers";
 
 const m = (id: string, category: CoutureModel["category"], occasion: string, age: string, daysAgo = 30): CoutureModel => ({
@@ -20,5 +20,16 @@ describe("Studio", () => {
     expect(screensOf("Alimentation générale").has("studio")).toBe(false);
     expect(screenLabel("Couture, tailleur", "ventes", "Ventes")).toBe("Paiements");
     expect(screenLabel("Alimentation générale", "ventes", "Ventes")).toBe("Ventes");
+  });
+});
+
+describe("partage et rotation", () => {
+  it("face d'abord, puis profil et dos", () => {
+    expect(framesOf({ image_path: "modeles/a.jpg", views: ["vues/a-profil.jpg", "vues/a-dos.jpg"] })).toEqual(["modeles/a.jpg", "vues/a-profil.jpg", "vues/a-dos.jpg"]);
+    expect(framesOf({ image_path: "modeles/b.jpg" })).toEqual(["modeles/b.jpg"]);
+  });
+  it("le lien public garde l'atelier qui l'a envoyé", () => {
+    expect(modelLink("m1", "shop-1", "https://jokkoapp.com")).toBe("https://jokkoapp.com/?modele=m1&t=shop-1");
+    expect(modelLink("m1", undefined, "https://jokkoapp.com")).toBe("https://jokkoapp.com/?modele=m1");
   });
 });

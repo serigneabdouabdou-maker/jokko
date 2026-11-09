@@ -1549,7 +1549,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
-          {screen === "studio" && <Studio onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
+          {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} canEdit={patron} />}

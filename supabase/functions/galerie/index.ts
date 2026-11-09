@@ -81,6 +81,31 @@ async function jpeg(bytes: Uint8Array, width: number): Promise<{ data: Uint8Arra
   }
 }
 
+/** Même mannequin, même tenue, vu sous un autre angle (le modèle d'image garde la personne et l'habit de la photo donnée). */
+async function sideView(apiKey: string, front: Uint8Array, mime: string, angle: string): Promise<Uint8Array | null> {
+  let bin = "";
+  for (let i = 0; i < front.length; i += 0x8000) bin += String.fromCharCode(...front.subarray(i, i + 0x8000));
+  for (const model of IMAGE_MODELS) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [
+          { text: `Même photo de mode, même mannequin, même tenue exactement (coupe, couleurs, tissu, broderie, foulard ou bonnet), même fond beige et même lumière, mais le mannequin est vu ${angle}, en pied. Garde la petite signature « Jokko » en bas à droite, aucun autre texte.` },
+          { inlineData: { mimeType: mime, data: btoa(bin) } },
+        ] }],
+        generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "3:4", imageSize: "1K" } },
+      }),
+      signal: AbortSignal.timeout(90_000),
+    }).catch(() => null);
+    if (!res?.ok) continue;
+    const out = await res.json().catch(() => null);
+    const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
+    if (part) return fromBase64(part.inlineData.data);
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const body = (await req.json().catch(() => null)) as Record<string, string> | null;
@@ -88,7 +113,7 @@ Deno.serve(async (req) => {
   const { data: ok } = await admin.rpc("galerie_token_ok", { p_token: body.token });
   if (ok !== true) return json(401, { error: "jeton" });
   // File de la console admin : un modèle à la fois.
-  let job: { id: string; category: string; occasion: string; age: string } | null = null;
+  let job: { id: string; category: string; occasion: string; age: string; vues?: boolean } | null = null;
   if (body.action === "suivant") {
     const { data } = await admin.rpc("studio_next");
     job = Array.isArray(data) && data[0] ? data[0] : null;
@@ -110,6 +135,7 @@ Deno.serve(async (req) => {
   }
 
   let png: Uint8Array | null = null;
+  let mime = "image/png";
   let last = 0;
   for (const model of IMAGE_MODELS) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -130,15 +156,30 @@ Deno.serve(async (req) => {
     const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
     if (part) {
       png = fromBase64(part.inlineData.data);
+      mime = part.inlineData.mimeType || mime;
       break;
     }
   }
   if (!png) {
+    // Crédit vide (402) : noté dans le journal Gemini pour que l'onglet Santé de la console ouvre l'incident ; la fabrique se met en pause.
+    if (last === 402) await admin.from("gemini_calls").insert({ shop_id: null, kind: "image", lang: null, ok: false, status: 402 });
     await finish(null, `Gemini ${last || "réseau"}`);
     return json(502, { error: "image_indisponible", status: last });
   }
 
   const id = crypto.randomUUID();
+  // Modèles de la fabrique : 2 vues de plus (profil, dos) faites à partir de la photo de face, pour faire tourner le modèle.
+  const views: string[] = [];
+  if ((job && job.vues !== false) || body.vues === "oui") {
+    for (const [slug, angle] of [["profil", "de profil (vue de côté, tournée à 90 degrés vers la droite)"], ["dos", "de dos (vue de derrière)"]] as const) {
+      const extra = await sideView(apiKey, png, mime, angle);
+      if (!extra) continue;
+      const file = await jpeg(extra, 1024);
+      const path = `vues/${id}-${slug}.${file.type === "image/jpeg" ? "jpg" : "png"}`;
+      const up = await admin.storage.from("galerie").upload(path, file.data, { contentType: file.type, upsert: true });
+      if (!up.error) views.push(path);
+    }
+  }
   const [full, thumb] = [await jpeg(png, 1024), await jpeg(png, 360)];
   const ext = (t: string) => (t === "image/jpeg" ? "jpg" : "png");
   const imagePath = `modeles/${id}.${ext(full.type)}`;
@@ -151,12 +192,14 @@ Deno.serve(async (req) => {
   }
   const { error } = await admin.from("couture_models").insert({
     id, title: body.title, category, garment: body.garment ?? "", fabric: body.fabric ?? "", image_path: imagePath, thumb_path: thumbPath,
+    views,
     occasion: job?.occasion ?? body.occasion ?? "quotidien", age: job?.age || body.age || (category === "enfant" ? "enfant" : "adulte"),
   });
   if (error) {
     await finish(null, "base");
     return json(500, { error: "base", detail: error.message });
   }
+  await admin.from("gemini_calls").insert({ shop_id: null, kind: "image", lang: null, ok: true, status: 200 });
   await finish(id, null);
   return json(200, { id, image_path: imagePath, size: full.data.length, thumb: thumb.data.length });
 });

@@ -5,7 +5,7 @@
  */
 import { api, SUPABASE_URL, supabase } from "./supabase";
 
-export type CoutureModel = { id: string; title: string; category: "homme" | "femme" | "enfant"; garment: string; fabric: string; image_path: string; thumb_path: string | null; occasion?: string; age?: string; created_at?: string };
+export type CoutureModel = { id: string; title: string; category: "homme" | "femme" | "enfant"; garment: string; fabric: string; image_path: string; thumb_path: string | null; occasion?: string; age?: string; created_at?: string; views?: string[] };
 
 /** Rubriques du Studio (occasions de l'année au Sénégal). « nouveautes » = les modèles arrivés ces 14 derniers jours. */
 export const OCCASIONS: { id: string; label: string }[] = [
@@ -52,7 +52,7 @@ export const CATEGORIES: { id: CoutureModel["category"]; label: string }[] = [
 export const galleryUrl = (path: string) => `${SUPABASE_URL}/storage/v1/object/public/galerie/${path}`;
 
 export async function loadModels(): Promise<CoutureModel[]> {
-  const { data } = await supabase.from("couture_models").select("id, title, category, garment, fabric, image_path, thumb_path, occasion, age, created_at").order("created_at", { ascending: false }).limit(1000);
+  const { data } = await supabase.from("couture_models").select("id, title, category, garment, fabric, image_path, thumb_path, occasion, age, created_at, views").order("created_at", { ascending: false }).limit(1000);
   return (data ?? []) as CoutureModel[];
 }
 
@@ -146,4 +146,59 @@ export const FACTORY_KEYS = ["cout_image_galerie", "plafond_images_jour", "image
 export async function studioSetCap(cap: number): Promise<boolean> {
   const { error } = await supabase.rpc("studio_set_cap", { p_cap: cap });
   return !error;
+}
+
+// ---------- Partage d'un modèle (WhatsApp) ----------
+
+/** Les photos d'un modèle pour le faire tourner : face, puis profil et dos s'il les a. */
+export const framesOf = (m: Pick<CoutureModel, "image_path" | "views">) => [m.image_path, ...(m.views ?? [])];
+
+/** Lien public du modèle : le client l'ouvre sans compte et peut commander chez l'atelier qui l'a envoyé. */
+export const modelLink = (id: string, shopId?: string, origin = typeof window !== "undefined" ? window.location.origin : "https://jokkoapp.com") =>
+  `${origin}/?modele=${id}${shopId ? `&t=${encodeURIComponent(shopId)}` : ""}`;
+
+/** Envoie le modèle sur WhatsApp : la photo + le lien (partage du téléphone), sinon le lien seul dans WhatsApp. */
+export async function shareModel(m: CoutureModel, name: string, shopId?: string, shopName?: string): Promise<void> {
+  const link = modelLink(m.id, shopId);
+  const text = `${name}${shopName ? ` chez ${shopName}` : ""} : regarde ce modèle et commande-le ici 👉 ${link}`;
+  const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean };
+  try {
+    const blob = await (await fetch(galleryUrl(m.image_path))).blob();
+    const file = new File([blob], `jokko-${name.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.jpg`, { type: blob.type || "image/jpeg" });
+    if (nav.canShare?.({ files: [file] })) {
+      await nav.share({ files: [file], text, title: name });
+      return;
+    }
+  } catch {
+    // pas de partage de photo sur ce téléphone : on envoie le lien
+  }
+  if (nav.share) {
+    await nav.share({ text, title: name, url: link }).catch(() => undefined);
+    return;
+  }
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+}
+
+/** Enregistre la photo du modèle dans le téléphone. */
+export async function downloadModel(m: CoutureModel, name: string): Promise<void> {
+  try {
+    const blob = await (await fetch(galleryUrl(m.image_path))).blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jokko-${name.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch {
+    window.open(galleryUrl(m.image_path), "_blank", "noopener");
+  }
+}
+
+export type PublicModel = { id: string; titre: string; habit: string; tissu: string; image: string; vues: string[] | null; atelier: string | null; telephone: string | null };
+
+export async function loadPublicModel(id: string, shopId: string | null): Promise<PublicModel | null> {
+  const { data, error } = await supabase.rpc("modele_public", { p_id: id, p_shop: shopId });
+  return error || !data ? null : (data as PublicModel);
 }

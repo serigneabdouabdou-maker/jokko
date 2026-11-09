@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { AGES, CATEGORIES, type CoutureModel, filterModels, galleryUrl, isNew, loadModels, OCCASIONS, shareImage, tryOn } from "@/data/studio";
+import { AGES, CATEGORIES, type CoutureModel, downloadModel, filterModels, framesOf, galleryUrl, isNew, loadModels, OCCASIONS, shareImage, shareModel, tryOn } from "@/data/studio";
+import { Turntable } from "./Turntable";
 
 /**
  * Studio d'essayage : le lookbook des tailleurs.
@@ -14,7 +15,7 @@ const nameOf = (m: CoutureModel) => cap(m.garment || m.title.split(" · ")[0]);
 
 type Shot = "visage" | "pied" | "galerie";
 
-export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
+export function Studio({ onOrder, shopId, shopName }: { onOrder?: (m: CoutureModel) => void; shopId?: string; shopName?: string }) {
   const [models, setModels] = useState<CoutureModel[] | null>(null);
   const [cat, setCat] = useState<CoutureModel["category"]>("femme");
   const [occasion, setOccasion] = useState("tout");
@@ -32,7 +33,7 @@ export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
   const list = filterModels(all, cat, occasion, age);
   const [hero, ...rest] = list;
 
-  if (open) return <Cabine m={open} onBack={() => setOpen(null)} onOrder={onOrder} />;
+  if (open) return <Cabine m={open} onBack={() => setOpen(null)} onOrder={onOrder} shopId={shopId} shopName={shopName} />;
 
   return (
     <section className="st">
@@ -74,7 +75,7 @@ export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
 
       {hero && (
         <button type="button" className="st-hero" onClick={() => setOpen(hero)}>
-          <img src={galleryUrl(hero.image_path)} alt={nameOf(hero)} />
+          <img src={galleryUrl(hero.image_path)} alt={nameOf(hero)} className="tt-breathe" />
           <span className="st-hero-text">
             {isNew(hero) && <em>Nouveau</em>}
             <b>{nameOf(hero)}</b>
@@ -101,7 +102,7 @@ export function Studio({ onOrder }: { onOrder?: (m: CoutureModel) => void }) {
 }
 
 /** La cabine : le modèle en grand, l'essayage sur le client, puis la commande. */
-function Cabine({ m, onBack, onOrder }: { m: CoutureModel; onBack: () => void; onOrder?: (m: CoutureModel) => void }) {
+function Cabine({ m, onBack, onOrder, shopId, shopName }: { m: CoutureModel; onBack: () => void; onOrder?: (m: CoutureModel) => void; shopId?: string; shopName?: string }) {
   const [result, setResult] = useState<string | null>(null);
   const [view, setView] = useState<"modele" | "client">("modele");
   const [busy, setBusy] = useState(false);
@@ -123,7 +124,7 @@ function Cabine({ m, onBack, onOrder }: { m: CoutureModel; onBack: () => void; o
     setNote("");
   }
 
-  const src = view === "client" && result ? result : galleryUrl(m.image_path);
+  const frames = view === "client" && result ? [result] : framesOf(m).map(galleryUrl);
 
   return (
     <section className="st-cabine" aria-label={`Modèle : ${nameOf(m)}`}>
@@ -138,7 +139,7 @@ function Cabine({ m, onBack, onOrder }: { m: CoutureModel; onBack: () => void; o
       </div>
 
       <figure className={`st-stage${busy ? " is-busy" : ""}`}>
-        <img src={src} alt={view === "client" ? `Le client en ${nameOf(m)}` : nameOf(m)} className={zoom ? "is-zoom" : ""} onClick={() => setZoom((z) => !z)} />
+        <Turntable key={view} frames={frames} alt={view === "client" ? `Le client en ${nameOf(m)}` : nameOf(m)} zoom={zoom} onTap={() => setZoom((z) => !z)} />
         {busy && <span className="st-busy" role="status"><span className="st-thread" aria-hidden="true" />Jokko habille ton client…</span>}
       </figure>
 
@@ -168,8 +169,13 @@ function Cabine({ m, onBack, onOrder }: { m: CoutureModel; onBack: () => void; o
           <Icon name="photo" size="sm" /> {result ? "Essayer une autre photo" : "Essayer sur le client"}
         </button>
         {onOrder && <button type="button" className="st-order" onClick={() => onOrder(m)}>Je commande ce modèle</button>}
-        {result && view === "client" && (
-          <button type="button" className="st-share" onClick={() => void shareImage(result, nameOf(m))}><Icon name="whatsapp" size="sm" /> Envoyer au client</button>
+        {result && view === "client" ? (
+          <button type="button" className="st-share" onClick={() => void shareImage(result, nameOf(m))}><Icon name="whatsapp" size="sm" /> Envoyer l'essayage au client</button>
+        ) : (
+          <div className="st-share-row">
+            <button type="button" className="st-share" onClick={() => void shareModel(m, nameOf(m), shopId, shopName)}><Icon name="whatsapp" size="sm" /> Partager sur WhatsApp</button>
+            <button type="button" className="st-share" onClick={() => void downloadModel(m, nameOf(m))}><Icon name="sauvegarde" size="sm" /> Télécharger</button>
+          </div>
         )}
       </div>
       <p className="st-fine">La photo du client sert seulement à l'essayage : elle n'est pas gardée. Essayage avec les offres Médium (3 par jour) et Avancé (10 par jour).</p>

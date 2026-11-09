@@ -48,7 +48,7 @@ export function FactoryTab() {
   const spentToday = stats.fabriques_jour * price;
   const leftToday = Math.max(0, stats.plafond_jour - spentToday);
   const tryonsToday = stats.essayages_jour * stats.prix_essayage;
-  const minutes = Math.ceil((stats.en_attente + count) / 2);
+  const minutes = Math.ceil((stats.en_attente + count) / 2) + 1;
   const rubric = (c: string, o: string) => stats.par_rubrique.find((r) => r.category === c && r.occasion === o)?.n ?? 0;
   const recent = models.slice(0, 24);
 
@@ -73,7 +73,7 @@ export function FactoryTab() {
 
       <section className="cx-card">
         <h3>Fabriquer de nouveaux modèles</h3>
-        <p className="note">Choisis le genre, la rubrique et l’âge, puis combien. Chaque modèle est différent (coupe, tissu, couleur, broderie tirés au hasard). Prix : ≈ {F(price)} le modèle.</p>
+        <p className="note">Choisis le genre, la rubrique et l’âge, puis combien. Chaque modèle est différent (coupe, tissu, couleur, broderie tirés au hasard) et arrive avec 3 photos (face, profil, dos) pour le faire tourner dans le Studio. Prix : ≈ {F(price)} le modèle.</p>
         <div className="cx-inline" style={{ flexWrap: "wrap", gap: 6 }}>
           {GENRES.map((g) => <Button key={g.id} size="sm" variant={genre === g.id ? "default" : "outline"} onClick={() => setGenre(g.id)}>{g.label}</Button>)}
         </div>
