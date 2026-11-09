@@ -7,7 +7,7 @@ type Service = { target: string; label: string; last: Check | null; uptime: numb
 type Incident = { id: number; target: string; title: string; detail: string; opened_at: string; closed_at: string | null };
 type Bug = { id: number; app: string; page: string; message: string; source: string; count: number; first_at: string; last_at: string };
 type Step = { step: "connexion" | "inscription" | "sms" | "code_oublie"; total: number; ok: number; user: number; panne: number; reseau: number };
-type Health = { services: Service[]; gemini: { calls: number; fail: number }; parcours: Step[]; incidents: Incident[]; bugs: Bug[] };
+type Health = { services: Service[]; gemini: { calls: number; fail: number; credit_vide?: boolean; dernier_402?: string | null }; parcours: Step[]; incidents: Incident[]; bugs: Bug[] };
 const STEP_LABEL: Record<Step["step"], string> = { connexion: "Connexions", inscription: "Inscriptions", sms: "Codes SMS envoyés", code_oublie: "Codes oubliés" };
 
 const when = (iso: string) => new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -68,6 +68,14 @@ export function HealthTab() {
               </article>
             );
           })}
+          <article className="cx-service" data-state={data.gemini.credit_vide ? "bad" : "ok"}>
+            <header><i aria-hidden="true" />Crédit Gemini (AI Studio)</header>
+            <small>
+              {data.gemini.credit_vide
+                ? `ÉPUISÉ${data.gemini.dernier_402 ? ` depuis ${when(data.gemini.dernier_402)}` : ""} : Jokko ne parle plus. Recharge sur ai.studio/projects → Billing.`
+                : "OK : Google accepte les demandes."}
+            </small>
+          </article>
           <article className="cx-service" data-state={geminiBad ? "bad" : "ok"}>
             <header><i aria-hidden="true" />Réponses de Gemini</header>
             <small>{data.gemini.calls ? `${data.gemini.calls - data.gemini.fail} réussies sur ${data.gemini.calls} en 1 h` : "Aucun appel dans l'heure"}</small>

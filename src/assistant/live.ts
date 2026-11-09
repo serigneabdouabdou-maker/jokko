@@ -1,5 +1,5 @@
 import type { LiveServerMessage, Session } from "@google/genai";
-import { api } from "../data/supabase";
+import { api, noteLiveFailure } from "../data/supabase";
 import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
@@ -460,8 +460,16 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       config: session.config,
       callbacks: {
         onmessage,
-        onerror: () => finish(media ? "La conversation a été coupée. Relance le micro." : null),
-        onclose: (event: CloseEvent) => finish(event.code === 1000 || !media ? null : "La conversation a été coupée. Relance le micro."),
+        onerror: () => {
+          noteLiveFailure(0, "erreur");
+          finish(media ? "La conversation a été coupée. Relance le micro." : null);
+        },
+        onclose: (event: CloseEvent) => {
+          if (event.code !== 1000) noteLiveFailure(event.code, event.reason ?? "");
+          // Crédit Gemini de CFC épuisé : on le dit clairement au lieu de « coupée ».
+          const credit = /prepay|credit|billing|depleted/i.test(event.reason ?? "");
+          finish(event.code === 1000 || !media ? null : credit ? "Jokko se repose quelques minutes. Les boutons de l'appli marchent toujours : réessaie un peu plus tard." : "La conversation a été coupée. Relance le micro.");
+        },
       },
     });
   } catch {

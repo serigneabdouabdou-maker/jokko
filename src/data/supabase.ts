@@ -279,6 +279,12 @@ export function phoneOf(session: Session | null): string {
   return session?.user.email?.split("@")[0] ?? "";
 }
 
+/** Conversation en direct coupée par Google (crédit épuisé, quota…) : signalée à la console, onglet Santé. */
+export function noteLiveFailure(code: number, reason: string) {
+  if (!assistantShop) return;
+  void supabase.rpc("note_live_failure", { p_shop: assistantShop, p_code: code, p_reason: reason.slice(0, 300) }).then(() => undefined, () => undefined);
+}
+
 /** Un échange en direct avec Jokko : compté sur le serveur ; au-delà de la limite du jour, la conversation est coupée. */
 export function countLiveExchange() {
   if (!assistantShop) return;
