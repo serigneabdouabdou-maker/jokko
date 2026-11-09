@@ -59,3 +59,17 @@ describe("corriger une dépense", () => {
     expect(editExpense(shop, "e1", { amount: 1500 }).expenses[0].amount).toBe(1500);
   });
 });
+
+describe("corriger une dette", () => {
+  it("avance, correction, effacement", async () => {
+    const { payDebt, setDebt } = await import("./debts");
+    const base = seedShop();
+    const shop: Shop = { ...base, clients: [{ id: "c1", name: "Fatou", phone: "", debt: 10000, dueAt: new Date().toISOString() }] };
+    expect(payDebt(shop, "c1", 4000).clients[0].debt).toBe(6000);
+    const paid = payDebt(shop, "c1", 12000).clients[0];
+    expect(paid.debt).toBe(0);
+    expect(paid.dueAt).toBeUndefined();
+    expect(setDebt(shop, "c1", 7500).clients[0].debt).toBe(7500);
+    expect(setDebt(shop, "c1", 0).clients[0].debt).toBe(0);
+  });
+});

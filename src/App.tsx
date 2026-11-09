@@ -1541,7 +1541,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
-          {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
+          {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} canEdit={patron} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}
           {screen === "caisse" && <Cash shop={shop} commit={commit} canEdit={patron} />}
           {screen === "equipe" && patron && (can(shop, "vendeurs") ? <Team shop={shop} /> : <Upsell feature="vendeurs" title="Ajouter des vendeurs" onPlans={() => setScreen("offre")} />)}

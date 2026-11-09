@@ -58,3 +58,19 @@ export function setDueIn(shop: Shop, clientId: string, days: number, now = new D
   const dueAt = new Date(now.getTime() + days * DAY).toISOString();
   return { ...shop, clients: shop.clients.map((c) => (c.id === clientId ? { ...c, dueAt } : c)) };
 }
+
+/** Le client paie une partie (avance) ou tout : la dette baisse ; à 0, plus d'échéance. */
+export function payDebt(shop: Shop, clientId: string, paid: number): Shop {
+  const pay = Math.round(paid);
+  if (!(pay > 0)) return shop;
+  return setDebt(shop, clientId, Math.max(0, (shop.clients.find((c) => c.id === clientId)?.debt ?? 0) - pay));
+}
+
+/** Corrige la dette (erreur de calcul) : nouveau montant total. 0 = dette effacée. */
+export function setDebt(shop: Shop, clientId: string, debt: number): Shop {
+  const value = Math.max(0, Math.round(debt));
+  return {
+    ...shop,
+    clients: shop.clients.map((c) => (c.id !== clientId ? c : value > 0 ? { ...c, debt: value } : { ...c, debt: 0, dueAt: undefined })),
+  };
+}
