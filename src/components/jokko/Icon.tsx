@@ -79,6 +79,8 @@ import {
   X,
   Camera,
   Pencil,
+  ArrowLeft,
+  Images,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -148,6 +150,8 @@ export const ICONS = {
   moins: Minus,
   supprimer: Trash2,
   modifier: Pencil,
+  retour: ArrowLeft,
+  image: Images,
   annuler: Undo2,
   fermer: X,
   rafraichir: RefreshCw,

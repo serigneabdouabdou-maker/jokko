@@ -307,6 +307,7 @@ const TRYON_PROMPT =
   "Generate ONE new photorealistic full-body photo of the CUSTOMER from the first image wearing EXACTLY the outfit from the second image " +
   "(same cut, colors, fabric, embroidery and accessories such as the head scarf or cap). " +
   "Keep the customer's real face, identity, skin tone, hair and body shape exactly as in the first image: it must clearly be the same person, not the catalog model. " +
+  "If the first image is only a selfie (face or upper body), use exactly that face and create a natural matching full body for the same person. " +
   "Natural standing pose, plain light beige studio background, soft light. Add only a small discreet 'Jokko' signature in the bottom right corner. No other text.";
 
 function toBase64(bytes: Uint8Array): string {

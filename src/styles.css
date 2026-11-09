@@ -1620,29 +1620,98 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .suivi-foot { color: var(--j-ink-3); font-size: 13px; text-align: center; margin-top: 12px; }
 }
 
-/* Studio d'essayage (tailleurs) */
-.studio-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (min-width: 640px) { .studio-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.studio-card { display: grid; gap: 4px; padding: 0; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; overflow: hidden; background: #fff; text-align: left; cursor: pointer; }
-.studio-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; background: #f3efe6; }
-.studio-card span { padding: 4px 8px 8px; font-size: 13px; font-weight: 600; }
-.studio-view { display: grid; gap: 8px; }
-.studio-big { width: 100%; max-width: 520px; border-radius: 16px; background: #f3efe6; cursor: zoom-in; transition: transform .2s; justify-self: center; }
-.studio-big.is-zoom { transform: scale(1.8); cursor: zoom-out; transform-origin: center top; }
 .suivi-model { width: 100%; max-width: 320px; border-radius: 16px; margin: 8px auto; display: block; background: #f3efe6; }
-.studio-order { display: grid; gap: 8px; padding: 12px; border-radius: 16px; background: #fffaf0; border: 1px solid rgba(0,0,0,.06); }
 .couture-model { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 14px; background: #fffaf0; }
 .couture-model img { width: 72px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; }
 .couture-model span { display: grid; gap: 2px; font-weight: 600; font-size: 14px; }
 .couture-thumb { width: 44px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; flex: none; cursor: pointer; }
-.studio-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
-.studio-chips button { flex: none; border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 14px; }
-.studio-chips button.on { background: var(--j-ink); color: #fff; border-color: var(--j-ink); }
-.studio-chips small { opacity: .6; margin-left: 2px; }
-.studio-section { margin-top: 14px; }
-.studio-section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.studio-section-head h3 { font-size: 18px; margin: 0; }
-.studio-row { display: grid; grid-auto-flow: column; grid-auto-columns: 42%; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
-@media (min-width: 640px) { .studio-row { grid-auto-columns: 22%; } }
-.studio-row .studio-card { scroll-snap-align: start; }
-.studio-new { font-style: normal; font-size: 11px; background: var(--j-yellow); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
+
+/* ---------- Studio : le lookbook des tailleurs ----------
+   Bleu bazin pour la cabine, or des broderies pour l'action, ivoire pour la galerie. */
+.st, .st-cabine {
+  --st-bazin: #1B2559;
+  --st-bazin-2: #26336F;
+  --st-or: #E8B021;
+  --st-ivoire: #FFFDF7;
+  --st-encre: #17191F;
+  --st-trait: #E4E1D6;
+  --st-neuf: #127A5C;
+}
+.st { display: grid; gap: 14px; padding-bottom: 24px; }
+.st-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.st-head h2 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(34px, 9vw, 52px); letter-spacing: -0.035em; line-height: 0.95; margin: 0; }
+.st-head p { margin: 0; color: var(--j-ink-3); font-size: 14px; text-align: right; }
+
+.st-genre { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--st-trait); border-radius: 16px; padding: 4px; }
+.st-genre button { border: 0; background: transparent; border-radius: 12px; padding: 12px 0; font-weight: 700; font-size: 16px; color: var(--j-ink-2); min-height: 48px; }
+.st-genre button.on { background: var(--st-bazin); color: var(--st-ivoire); box-shadow: 0 6px 14px -8px rgba(27, 37, 89, 0.6); }
+
+.st-rubrics, .st-ages { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.st-rubrics::-webkit-scrollbar, .st-ages::-webkit-scrollbar { display: none; }
+.st-rubrics button { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--st-encre); background: transparent; border-radius: 999px; padding: 9px 16px; font-weight: 700; font-size: 15px; min-height: 44px; }
+.st-rubrics button span { font-weight: 500; font-size: 12px; opacity: 0.6; }
+.st-rubrics button.on { background: var(--st-encre); color: var(--st-ivoire); }
+.st-ages button { flex: none; border: 0; background: none; padding: 6px 2px; margin-right: 10px; font-size: 14px; color: var(--j-ink-3); border-bottom: 2px solid transparent; min-height: 36px; }
+.st-ages button.on { color: var(--st-encre); font-weight: 700; border-bottom-color: var(--st-or); }
+
+.st-empty { text-align: center; padding: 28px 12px; color: var(--j-ink-2); }
+.st-empty button { margin-top: 8px; border: 0; background: none; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* La vitrine : le premier modèle de la rubrique, en grand */
+.st-hero { position: relative; display: block; padding: 0; border: 0; border-radius: 26px; overflow: hidden; background: var(--st-bazin); text-align: left; aspect-ratio: 4 / 5; width: 100%; }
+.st-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.st-hero::after { content: ""; position: absolute; inset: 45% 0 0; background: linear-gradient(to top, rgba(27, 37, 89, 0.92), rgba(27, 37, 89, 0)); }
+.st-hero-text { position: absolute; left: 18px; right: 120px; bottom: 18px; z-index: 1; display: grid; gap: 2px; color: var(--st-ivoire); }
+.st-hero-text b { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; }
+.st-hero-text small { font-size: 14px; opacity: 0.85; }
+.st-hero-cta { position: absolute; right: 16px; bottom: 18px; z-index: 1; display: inline-flex; gap: 6px; align-items: center; background: var(--st-or); color: var(--st-encre); font-weight: 800; border-radius: 999px; padding: 11px 16px; }
+.st em, .st-cabine em { font-style: normal; font-size: 12px; font-weight: 700; color: #fff; background: var(--st-neuf); border-radius: 6px; padding: 2px 7px; justify-self: start; }
+
+/* La galerie : deux colonnes décalées, comme les pages d'un lookbook */
+.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 18px; }
+.st-grid .st-card:nth-child(even) { transform: translateY(28px); }
+.st-grid { padding-bottom: 28px; }
+@media (min-width: 720px) { .st-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .st-grid .st-card:nth-child(even) { transform: none; } .st-grid .st-card:nth-child(3n + 2) { transform: translateY(28px); } }
+.st-card { display: grid; gap: 3px; padding: 0; border: 0; background: none; text-align: left; color: var(--st-encre); }
+.st-frame { position: relative; display: block; border-radius: 18px; overflow: hidden; background: #EEE9DC; aspect-ratio: 3 / 4; }
+.st-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.st-frame em { position: absolute; top: 10px; left: 10px; }
+.st-card b { font-weight: 700; font-size: 15px; line-height: 1.2; margin-top: 6px; }
+.st-card small { color: var(--j-ink-3); font-size: 13px; line-height: 1.3; }
+.st-card:focus-visible, .st-hero:focus-visible { outline: 3px solid var(--st-or); outline-offset: 3px; }
+
+/* La cabine : fond bleu bazin, le modèle en grand, les actions en bas */
+.st-cabine { background: var(--st-bazin); color: var(--st-ivoire); border-radius: 28px; padding: 14px 14px 18px; display: grid; gap: 12px; margin: 0 -6px; }
+.st-cabine-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.st-back { display: inline-flex; gap: 6px; align-items: center; background: rgba(255, 255, 255, 0.1); color: var(--st-ivoire); border: 0; border-radius: 999px; padding: 9px 14px; font-weight: 600; min-height: 44px; }
+.st-switch { display: inline-flex; background: rgba(255, 255, 255, 0.1); border-radius: 999px; padding: 3px; }
+.st-switch button { border: 0; background: none; color: var(--st-ivoire); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14px; min-height: 40px; }
+.st-switch button.on { background: var(--st-ivoire); color: var(--st-bazin); }
+.st-stage { position: relative; margin: 0; border-radius: 22px; overflow: hidden; background: var(--st-bazin-2); aspect-ratio: 3 / 4; }
+.st-stage img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.35s ease; transform-origin: 50% 25%; animation: st-in 0.4s ease both; }
+.st-stage img.is-zoom { transform: scale(1.9); cursor: zoom-out; }
+.st-stage.is-busy img { filter: saturate(0.6) brightness(0.7); }
+@keyframes st-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+.st-busy { position: absolute; inset: auto 16px 16px; display: grid; gap: 10px; font-weight: 700; text-align: center; }
+.st-thread { height: 4px; border-radius: 4px; background: linear-gradient(90deg, transparent, var(--st-or), transparent); background-size: 50% 100%; background-repeat: no-repeat; animation: st-thread 1.3s linear infinite; }
+@keyframes st-thread { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+.st-caption h3 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 28px; letter-spacing: -0.02em; line-height: 1.05; margin: 0; color: var(--st-ivoire); }
+.st-caption p { margin: 4px 0 0; opacity: 0.8; }
+.st-note { margin: 0; background: rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 10px 12px; }
+.st-shots { display: grid; gap: 8px; }
+.st-shots button { display: flex; align-items: center; gap: 12px; text-align: left; background: var(--st-ivoire); color: var(--st-encre); border: 0; border-radius: 16px; padding: 12px 14px; min-height: 60px; }
+.st-shots button span { display: grid; gap: 1px; }
+.st-shots button small { color: var(--j-ink-3); font-size: 13px; }
+.st-actions { display: grid; gap: 8px; }
+.st-actions button { min-height: 54px; border-radius: 999px; font-weight: 800; font-size: 17px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; }
+.st-try { background: var(--st-or); color: var(--st-encre); }
+.st-try:disabled { opacity: 0.6; }
+.st-order { background: var(--st-ivoire); color: var(--st-bazin); }
+.st-share { background: transparent; color: var(--st-ivoire); border: 1.5px solid rgba(255, 255, 255, 0.4) !important; }
+.st-fine { margin: 0; font-size: 12px; opacity: 0.7; line-height: 1.45; }
+.st-cabine button:focus-visible { outline: 3px solid var(--st-or); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .st-stage img, .st-thread { animation: none; transition: none; } }
+/* Console : derniers modèles de la fabrique */
+.studio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.studio-card { display: grid; gap: 4px; font-size: 13px; }
+.studio-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: #eee9dc; }
