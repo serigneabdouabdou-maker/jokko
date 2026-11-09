@@ -107,7 +107,7 @@ const SPEED_LINE: Record<LiveSpeed, string> = {
 };
 
 /** Outils de Jokko réservés à un module : absents si la boutique n'a pas ce module (un métier = une appli). */
-const TOOL_MODULE: Record<string, string> = { reparation: "atelier" };
+const TOOL_MODULE: Record<string, string> = { reparation: "atelier", couture: "couture" };
 
 export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, speed: LiveSpeed = "normal"): LiveConnectConfig {
   const config = fullLiveConfig(context, voice, speed);
@@ -249,6 +249,41 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 resteEnDette: { type: Type.BOOLEAN, description: "rendre : vrai si le reste non payé va en dette du client." },
                 garantieJours: { type: Type.NUMBER, description: "deposer ou rendre : garantie en jours si le réparateur la donne." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },
+              },
+              required: ["action"],
+            },
+          },
+          {
+            name: "couture",
+            description:
+              "Atelier couture (tailleur) : prendre une commande dite à la voix (client, habit, tissu, mesures, prix, avance, date promise), passer une commande à une étape (coupe, couture, finition, prêt), encaisser un acompte, livrer l'habit, lire les mesures d'un client, ou lister les commandes. Le code lit les montants, les mesures et la date, et calcule le reste à payer.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING, enum: ["commander", "etape", "payer", "livrer", "mesures", "lister"], description: "commander : nouvelle commande ; etape : l'habit avance ; payer : acompte ; livrer : le client récupère l'habit ; mesures : lire les mesures connues d'un client ; lister : commandes en cours." },
+                numero: { type: Type.STRING, description: "etape, payer, livrer : numéro de la commande (« C-007 »), s'il est dit." },
+                clientName: { type: Type.STRING, description: "Nom du client, comme dit (« Awa Diop »)." },
+                telephone: { type: Type.STRING, description: "commander : numéro du client en chiffres, s'il est dit." },
+                habit: { type: Type.STRING, description: "commander : le modèle, mots du tailleur (« grand boubou brodé », « taille basse », « kaftan »)." },
+                tissu: { type: Type.STRING, description: "commander : le tissu (« bazin bleu apporté par le client », « 6 mètres de wax »)." },
+                mesures: {
+                  type: Type.OBJECT,
+                  description: "commander : les mesures dites, CHAQUE valeur avec les mots exacts du tailleur (« ñeent-fukk ak juróom », « 45 », « quarante-cinq »). Ce sont des CENTIMÈTRES, jamais des dërëm. Ne remplis que les mesures dites.",
+                  properties: {
+                    cou: { type: Type.STRING }, epaule: { type: Type.STRING }, poitrine: { type: Type.STRING }, taille: { type: Type.STRING },
+                    hanches: { type: Type.STRING }, manche: { type: Type.STRING, description: "longueur de manche (loxo)" }, bras: { type: Type.STRING, description: "tour de bras" },
+                    poignet: { type: Type.STRING }, haut: { type: Type.STRING, description: "longueur du haut" }, boubou: { type: Type.STRING, description: "longueur du boubou ou de la robe (gudd)" },
+                    pantalon: { type: Type.STRING, description: "longueur du pantalon ou de la jupe" }, cuisse: { type: Type.STRING, description: "tour de cuisse" }, bas: { type: Type.STRING, description: "bas du pantalon" },
+                  },
+                },
+                prixDit: { type: Type.STRING, description: "commander : le prix de l'habit, mots exacts (« juróomi junni », « 25 000 »)." },
+                avanceDit: { type: Type.STRING, description: "commander : l'avance payée maintenant, mots exacts." },
+                montantDit: { type: Type.STRING, description: "payer ou livrer : ce que le client paie maintenant, mots exacts." },
+                jour: { type: Type.STRING, description: "commander : jour promis, mots exacts (« gaawu », « samedi », « ëllëg », « avant la Tabaski »)." },
+                delaiJours: { type: Type.NUMBER, description: "commander : délai en jours si le tailleur dit un nombre de jours (« ci fukki fan » = 10)." },
+                etape: { type: Type.STRING, enum: ["coupe", "couture", "finition", "pret"], description: "etape : coupe (dagg), couture (ñaw), finition, pret (pare na)." },
+                remarque: { type: Type.STRING, description: "commander : détail du modèle (broderie dorée, col officier…)." },
+                heard: { type: Type.STRING, description: "La phrase du tailleur, mot pour mot." },
               },
               required: ["action"],
             },

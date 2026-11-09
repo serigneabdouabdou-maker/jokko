@@ -18,7 +18,7 @@ export function setAssistantShop(id: string) {
 }
 
 /** Appel d'une route Gemini de Jokko (fonction Supabase « assistant »), avec la session du commerçant. */
-export async function api(route: "status" | "interpret" | "listen" | "live" | "order" | "advice" | "speak" | "stock", init: RequestInit = {}): Promise<Response> {
+export async function api(route: "status" | "interpret" | "listen" | "live" | "order" | "advice" | "speak" | "stock" | "couture", init: RequestInit = {}): Promise<Response> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const headers = new Headers(init.headers);

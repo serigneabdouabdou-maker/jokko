@@ -57,7 +57,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Le métier choisi à l'inscription (`src/data/metiers.ts`) règle **toute** l'appli : écrans, outils de Jokko (direct), consignes de Gemini, exemples, unités.
 - Une fonction d'un autre métier n'apparaît **jamais** (l'alimentation ne voit ni couture ni cabine d'essayage ; la pharmacie ne voit pas les vivres). Les écrans communs (ventes, stock, clients, dettes, caisse, factures, offre, réglages) restent partout.
-- Atelier couture livré le 09/11/2026 : `src/data/couture.ts`, écran `Couture.tsx`, table `couture_orders`, mesures dans `clients.measures`, page publique `?suivi=<code>` (`Suivi.tsx`, fonction `suivi_couture`). À faire : outil vocal couture pour Jokko, indicatif pays (Mali, Côte d'Ivoire…) dans `whatsappLink` (aujourd'hui 9 chiffres = Sénégal).
+- Atelier couture livré le 09/11/2026 : `src/data/couture.ts`, écran `Couture.tsx`, table `couture_orders`, mesures dans `clients.measures`, page publique `?suivi=<code>` (`Suivi.tsx`, fonction `suivi_couture`). Commande à la voix (livrée le 09/11/2026) : outil `couture` du direct (`liveDesk.ts`) et bouton « Dicter une commande » (route `couture` de la fonction `assistant`, comptée en vocal) ; lecture des montants (dërëm), mesures (cm, jamais dërëm) et jours dans `src/data/coutureVoice.ts`. À faire : indicatif pays (Mali, Côte d'Ivoire…) dans `whatsappLink` (aujourd'hui 9 chiffres = Sénégal).
 - Tailleur : Atelier couture (mesures à la voix, commandes, avance/reste, suivi, rappel « habit prêt ») + Studio d'essayage. Les images IA ne s'ouvrent qu'aux tailleurs **payants** (rien d'avancé par CFC) et entrent, avec leur accord, dans la galerie commune signée Jokko.
 
 ## Routine hebdomadaire

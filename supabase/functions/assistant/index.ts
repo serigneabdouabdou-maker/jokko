@@ -55,7 +55,7 @@ function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?
     .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null) })
     .then(() => undefined, () => undefined);
 }
-const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
+const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
 
 /** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
 const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -242,8 +242,63 @@ async function readStock(mode: string, mimeType: string, data: string): Promise<
   throw new AssistantUpstreamError("lecture du stock impossible", last || 502);
 }
 
+// ---------- Commande de couture dictée (tailleurs qui ne savent pas écrire) ----------
+// Gemini recopie les mots du tailleur dans des cases ; l'appli lit les montants (dërëm), les mesures (cm) et la date,
+// puis le tailleur vérifie avant d'enregistrer.
+const MEASURE_KEYS = ["cou", "epaule", "poitrine", "taille", "hanches", "manche", "bras", "poignet", "haut", "boubou", "pantalon", "cuisse", "bas"];
+const COUTURE_PROMPT =
+  "Un tailleur sénégalais dicte une commande de couture (wolof, français ou les deux mélangés). Remplis les cases avec SES MOTS EXACTS, sans traduire et sans convertir aucun nombre " +
+  "(garde « ñeent-fukk ak juróom », « juróomi junni » tels quels ; les nombres dits en français peuvent être écrits en chiffres). " +
+  "clientName = nom du client ; telephone = numéro en chiffres s'il est dit ; habit = le modèle (grand boubou, taille basse, kaftan…) ; tissu = le tissu ; " +
+  "mesures = chaque mesure dite, dans la bonne case (cou, epaule, poitrine, taille, hanches, manche = longueur de manche, bras = tour de bras, poignet, haut = longueur du haut, " +
+  "boubou = longueur du boubou ou de la robe, pantalon = longueur du pantalon ou de la jupe, cuisse, bas = bas du pantalon) ; prixDit = prix de l'habit ; avanceDit = avance payée ; " +
+  "jour = jour promis tel que dit (gaawu, samedi, ëllëg…) ; remarque = détails (broderie, col…) ; transcription = toute la phrase mot pour mot. " +
+  "Laisse vide ce qui n'est pas dit. N'invente rien. Si c'est inaudible, mets seulement transcription = (inaudible).";
+const S = { type: "STRING" };
+const COUTURE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    transcription: S, clientName: S, telephone: S, habit: S, tissu: S, prixDit: S, avanceDit: S, jour: S, remarque: S,
+    mesures: { type: "OBJECT", properties: Object.fromEntries(MEASURE_KEYS.map((k) => [k, S])) },
+  },
+  required: ["transcription"],
+};
+
+async function readCouture(mimeType: string, data: string): Promise<Record<string, unknown>> {
+  const e = env();
+  const apiKey = e.apiKey?.trim();
+  if (!apiKey) throw new GeminiNotConfiguredError();
+  const models = [e.model?.trim() || "gemini-3.5-flash", "gemini-flash-lite-latest"];
+  let last = 0;
+  for (const model of models) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: COUTURE_PROMPT }, { inlineData: { mimeType, data } }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 2048, responseMimeType: "application/json", responseSchema: COUTURE_SCHEMA },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => null);
+    if (!res) continue;
+    if (!res.ok) {
+      last = res.status;
+      continue;
+    }
+    const json = await res.json().catch(() => null);
+    const raw = (json?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p?.text ?? "").join("").trim();
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+    } catch {
+      // réponse illisible : on essaie le modèle suivant
+    }
+  }
+  throw new AssistantUpstreamError("lecture de la commande impossible", last || 502);
+}
+
 // ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
-const KIND: Record<string, string> = { live: "direct", listen: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
@@ -361,6 +416,17 @@ Deno.serve(async (req) => {
       const text = await readStock(b.data.mode, b.data.mimeType, b.data.data);
       logCall(req, "stock", b.data.lang ?? null, true);
       return send(req, 200, { text });
+    }
+    if (route === "couture") {
+      const b = await body(req, MAX_AUDIO_BODY, z.object({
+        mimeType: z.string().regex(/^audio\/[a-z0-9.+-]+$/i).max(60),
+        data: z.string().min(16).max(MAX_AUDIO_BODY),
+        lang: z.string().max(4).optional(),
+      }));
+      if (!b.ok) return b.res;
+      const fields = await readCouture(b.data.mimeType, b.data.data);
+      logCall(req, "vocal", b.data.lang ?? null, true);
+      return send(req, 200, fields);
     }
     if (route === "live") {
       const b = await body(req, MAX_TEXT_BODY, liveRequestSchema);

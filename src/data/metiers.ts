@@ -137,7 +137,13 @@ export const METIERS: Metier[] = [
       "Une commande = un client, ses mesures, le modèle, le tissu (apporté par le client ou vendu par l'atelier), le prix, l'avance, la date promise. " +
       "Étapes : reçu → coupe → couture → finition → prêt → livré. Le reste à payer = prix − avance (calculé par l'outil). " +
       "Mesures en centimètres (poitrine, taille, hanches, épaule, manche, longueur, cou, tour de bras). " +
-      "Il vend aussi du tissu au mètre et des fournitures (fil, boutons). Les pics de travail : Tabaski, Korité, mariages.",
+      "Il vend aussi du tissu au mètre et des fournitures (fil, boutons). Les pics de travail : Tabaski, Korité, mariages. " +
+      "BEAUCOUP DE TAILLEURS NE SAVENT PAS ÉCRIRE : tout passe par la voix, avec l'outil couture. " +
+      "Une commande dite (« Awa Diop, grand boubou bazin, poitrine ñeent-fukk ak juróom, prix juróomi junni, avance ñaari junni, gaawu ») : appelle couture « commander » TOUT DE SUITE avec les mots exacts dans chaque case, sans demander de confirmation. " +
+      "Il manque seulement le client ou l'habit : demande-le, une seule question. Le prix, l'avance, les mesures et la date peuvent manquer. " +
+      "MESURES = CENTIMÈTRES, JAMAIS DËRËM : « ñeent-fukk ak juróom » pour une mesure = 45 cm. Seuls le prix, l'avance et les paiements sont de l'argent (en dërëm). " +
+      "Mots wolof : dagg = couper (étape coupe), ñaw = coudre (étape couture), pare na = c'est prêt, jël = le client récupère (livrer), natt = mesurer, gudd = long ; « avance », « mesure », « manche » se disent souvent en français. " +
+      "Après l'enregistrement, dis le numéro C-… (à écrire sur le tissu) et le reste à payer avec les mots de l'outil.",
     vivres: false,
     ex: { stock: "« 30 mètres de bazin à 3 500 ; 20 bobines de fil ; 100 boutons »", search: "bazin, wax, fil…", invoice: "« Facture Awa, grand boubou, 25 000 »", prompts: ["Commande d'Awa : grand boubou, 25 000, avance 10 000", "Quels habits sont prêts ?", "Mesures de Moussa", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice de la semaine"], units: "mètre, pièce, ensemble…" },
   },
@@ -227,7 +233,7 @@ export function screenLabel(activity: string | undefined | null, screen: string,
 /** Ce que Gemini doit savoir d'un module ajouté à une boutique d'un autre métier. */
 const MODULE_CONSIGNE: Record<ModuleId, string> = {
   atelier: "MODULE ATELIER DE RÉPARATION : la boutique répare aussi des appareils (outil reparation : dépôt, pièces, acompte, rendu).",
-  couture: "MODULE COUTURE : la boutique coud aussi sur mesure (commandes, mesures des clients, avance, date promise).",
+  couture: "MODULE COUTURE : la boutique coud aussi sur mesure (outil couture : commande dite à la voix, mesures en centimètres jamais en dërëm, avance, étape, livraison).",
   peremption: "MODULE PÉREMPTION : certains articles ont des dates de péremption suivies par lot.",
   vivres: "",
   services: "MODULE SERVICES : photocopies, impression et transfert d'argent sont vendus comme des services (une vente sans stock).",

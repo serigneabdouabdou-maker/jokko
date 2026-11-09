@@ -42,6 +42,9 @@ describe("conversation en direct", () => {
     const tools = (ctx: typeof shopContext) => (liveConfig(ctx).tools?.[0] as { functionDeclarations: { name: string }[] }).functionDeclarations.map((d) => d.name);
     expect(tools({ ...shopContext, activity: "Réparation de téléphones et pièces détachées" })).toContain("reparation");
     expect(tools({ ...shopContext, activity: "Alimentation", modules: ["atelier"] })).toContain("reparation");
+    // Tailleur : l'outil couture (commande à la voix), sans l'outil de réparation.
+    expect(tools({ ...shopContext, activity: "Couture, tailleur" })).toContain("couture");
+    expect(tools({ ...shopContext, activity: "Couture, tailleur" })).not.toContain("reparation");
     expect(config.contextWindowCompression).toEqual({ slidingWindow: {} });
     expect(config.realtimeInputConfig?.automaticActivityDetection?.silenceDurationMs).toBe(800);
     expect(config.inputAudioTranscription).toEqual({});

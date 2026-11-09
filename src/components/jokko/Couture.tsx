@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type CoutureOrder, type Shop, money } from "@/model";
+import { type CoutureOrder, type Lang, type Shop, money } from "@/model";
+import { readSpokenCouture } from "@/data/coutureVoice";
+import { readCoutureAudio } from "@/data/coutureReader";
 import {
   addCouture,
   byUrgency,
@@ -31,8 +33,11 @@ const EMPTY = { clientName: "", phone: "", garment: "", fabric: "", price: "", a
  * Atelier couture (tailleurs) : commandes sur mesure, classées par date promise.
  * Le client reçoit un lien pour suivre son habit (reçu → coupe → couture → finition → prêt → livré).
  */
-export function Couture({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+export function Couture({ shop, commit, lang = "wo" }: { shop: Shop; commit: (s: Shop) => void; lang?: Lang }) {
   const [adding, setAdding] = useState(false);
+  const [voice, setVoice] = useState<"repos" | "ecoute" | "lecture">("repos");
+  const [voiceNote, setVoiceNote] = useState("");
+  const rec = useRef<MediaRecorder | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [measures, setMeasures] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
@@ -50,6 +55,61 @@ export function Couture({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     if (Object.keys(known).length) setMeasures(Object.fromEntries(Object.entries(known).map(([k, v]) => [k, String(v)])));
   }
 
+  /** Le tailleur dit toute la commande ; Jokko remplit la fiche, il vérifie et touche « Enregistrer ». */
+  async function dictate() {
+    if (rec.current) {
+      rec.current.stop();
+      return;
+    }
+    let media: MediaStream;
+    try {
+      media = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setVoiceNote("Le micro n'est pas autorisé. Autorise-le dans les réglages du téléphone.");
+      return;
+    }
+    const chunks: Blob[] = [];
+    const mimeType = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
+    const recorder = new MediaRecorder(media, mimeType ? { mimeType } : undefined);
+    const limit = window.setTimeout(() => recorder.state !== "inactive" && recorder.stop(), 60_000);
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.onstop = async () => {
+      window.clearTimeout(limit);
+      media.getTracks().forEach((t) => t.stop());
+      rec.current = null;
+      setVoice("lecture");
+      setVoiceNote("Jokko écrit la commande…");
+      const heard = await readCoutureAudio(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }), lang);
+      setVoice("repos");
+      if (!heard.ok) {
+        setVoiceNote(heard.message);
+        return;
+      }
+      const { input, unclear } = readSpokenCouture(heard.fields);
+      const known = knownMeasures(shop, input.clientName);
+      setForm({
+        clientName: input.clientName,
+        phone: input.phone ?? "",
+        garment: input.garment,
+        fabric: input.fabric ?? "",
+        price: input.price ? String(input.price) : "",
+        advance: input.advance ? String(input.advance) : "",
+        dueAt: input.dueAt ?? "",
+        note: input.note ?? "",
+      });
+      setMeasures(Object.fromEntries(Object.entries({ ...known, ...(input.measures ?? {}) }).map(([k, v]) => [k, String(v)])));
+      setAdding(true);
+      const missing = [!input.clientName && "le nom du client", !input.garment && "le modèle", ...unclear].filter(Boolean);
+      setVoiceNote(`J'ai entendu : « ${heard.transcript} ». ${missing.length ? `À compléter : ${missing.join(", ")}. ` : ""}Vérifie la fiche, puis touche « Enregistrer la commande ».`);
+    };
+    recorder.start();
+    rec.current = recorder;
+    setVoice("ecoute");
+    setVoiceNote(lang === "fr"
+      ? "Je t'écoute… Dis le client, l'habit, le tissu, les mesures, le prix, l'avance et le jour. Puis touche « J'ai fini »."
+      : "Maa ngi lay déglu… Wax kiliyaan bi, yére bi, mesure yi, njëg li, avance bi ak bis bi. Bu noppee, bësal « J'ai fini ».");
+  }
+
   function save() {
     if (!form.clientName.trim() || !form.garment.trim()) return;
     const { shop: next, order } = addCouture(shop, { ...form, price: n(form.price), advance: n(form.advance), measures });
@@ -57,6 +117,7 @@ export function Couture({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     setForm(EMPTY);
     setMeasures({});
     setAdding(false);
+    setVoiceNote("");
     setOpen(order.id);
   }
 
@@ -71,13 +132,18 @@ export function Couture({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         {owed ? `Reste à encaisser : ${money(owed)}.` : "Rien à encaisser."} Chaque client reçoit un lien pour suivre son habit.
       </p>
       <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
-        <Button className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
+        <Button className="h-12 rounded-full px-5" variant={voice === "ecoute" ? "destructive" : "default"} disabled={voice === "lecture"} onClick={() => void dictate()}>
+          <Icon name="micro" size="sm" /> {voice === "ecoute" ? "J'ai fini" : voice === "lecture" ? "Jokko écrit…" : "Dicter une commande"}
+        </Button>
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouvelle commande
         </Button>
         <Button variant={filter === "cours" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("cours")}>En cours</Button>
         <Button variant={filter === "prets" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("prets")}>Prêts ({ready.length})</Button>
         <Button variant={filter === "livres" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("livres")}>Livrés</Button>
       </div>
+
+      {voiceNote && <p className="note" role="status">{voiceNote}</p>}
 
       {adding && (
         <div className="list" style={{ gap: 8, display: "grid" }}>

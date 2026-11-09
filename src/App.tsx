@@ -1528,7 +1528,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
-          {screen === "couture" && <Couture shop={shop} commit={commit} />}
+          {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} />}
           {screen === "depenses" && <MoneyList title="Dépenses" rows={shop.expenses.map((s) => [s.id, s.kind === "perte" ? `${s.label} (perte de stock)` : s.kind === "achat" ? `${s.label} (achat de marchandise)` : s.label, amount(s.amount), new Date(s.at).toLocaleString("fr-FR")])} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}

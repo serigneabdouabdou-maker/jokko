@@ -7,6 +7,8 @@ import { buildShopContext, type DraftAction, type DraftActionType } from "./clie
 import type { LiveToolCall } from "./live";
 import { Basket } from "./basket";
 import { debtWords } from "./debtMode";
+import { addCouture, deliverCouture, findCouture, isOpen as coutureOpen, knownMeasures, MEASURES, ordersOf as coutureOrders, payCouture, remaining as coutureRest, setStep, STEP_LABEL } from "../data/couture";
+import { missingForOrder, readSpokenCouture, spokenMoney } from "../data/coutureVoice";
 import { addRepair, deliverRepair, findRepair, markRepaired, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName } from "./wolofNames";
 
@@ -147,6 +149,87 @@ export class LiveDesk {
       const rest = Math.max(0, r.price - r.paid);
       this.commit(shop, after, `Réparation ${r.number} rendue · payé ${fr(amount)}${rest ? ` · reste ${fr(rest)} en dette` : ""}`, heard, { callId, amount: amount || undefined });
       return { statut: "enregistre", ticket: r.number, paye: W(amount), reste_en_dette: rest ? W(rest) : null, benefice: W(repairProfit(r)) };
+    }
+    return { statut: "outil_inconnu" };
+  }
+
+  /** Outil « couture » : commandes du tailleur dites à la voix (commande, étape, acompte, livraison, mesures). */
+  private couture(args: Record<string, unknown>, callId?: string): Record<string, unknown> {
+    const shop = this.deps.getShop();
+    const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const heard = text(args.heard);
+    const W = (n: number) => ({ francs: n, wolof: francsToWolof(n) });
+    const action = text(args.action);
+    if (action === "lister") {
+      const open = coutureOrders(shop).filter(coutureOpen);
+      const ready = open.filter((o) => o.status === "pret");
+      return {
+        statut: "liste",
+        nombre_en_cours: open.length,
+        nombre_prets: ready.length,
+        commandes: open.slice(0, 20).map((o) => ({ numero: o.number, client: o.clientName, habit: o.garment, etape: STEP_LABEL[o.status], date_promise: o.dueAt ?? null, reste: W(coutureRest(o)) })),
+        consigne: open.length ? "Dis combien de commandes sont en cours et combien sont prêtes, puis les plus urgentes (client, habit, étape)." : "Dis qu'aucune commande n'est en cours.",
+      };
+    }
+    if (action === "mesures") {
+      const name = text(args.clientName);
+      const known = name ? knownMeasures(shop, name) : {};
+      const list = MEASURES.filter((m) => known[m.key]).map((m) => ({ mesure: m.label, cm: known[m.key] }));
+      return list.length
+        ? { statut: "mesures", client: name, mesures: list, consigne: "Lis chaque mesure (nom et centimètres), une par une. Les mesures sont des centimètres : dis le nombre tel quel, jamais en dërëm." }
+        : { statut: "incomplet", besoin: `aucune mesure enregistrée pour ${name || "ce client"}` };
+    }
+    if (action === "commander") {
+      const read = readSpokenCouture({
+        clientName: text(args.clientName), telephone: text(args.telephone), habit: text(args.habit), tissu: text(args.tissu),
+        mesures: (args.mesures && typeof args.mesures === "object" ? args.mesures : {}) as Record<string, unknown>,
+        prixDit: text(args.prixDit), avanceDit: text(args.avanceDit), jour: text(args.jour),
+        delaiJours: typeof args.delaiJours === "number" ? args.delaiJours : undefined, remarque: text(args.remarque),
+      });
+      const missing = missingForOrder(read.input);
+      if (missing) return { statut: "incomplet", besoin: missing };
+      if (read.unclear.length) return { ...NOT_UNDERSTOOD, pas_clair: read.unclear, consigne: `N'enregistre rien. Redemande seulement : ${read.unclear.join(", ")}.` };
+      const { shop: after, order } = addCouture(shop, read.input);
+      this.commit(shop, after, `Couture ${order.number} · ${order.clientName} · ${order.garment}${order.price ? ` · ${fr(order.price)}` : ""}${order.paid ? ` · avance ${fr(order.paid)}` : ""}`, heard, { callId, amount: order.paid || undefined });
+      return {
+        statut: "enregistre",
+        numero: order.number,
+        client: order.clientName,
+        habit: order.garment,
+        mesures_notees: Object.keys(read.input.measures ?? {}).length,
+        prix: order.price ? W(order.price) : null,
+        avance: order.paid ? W(order.paid) : null,
+        reste: W(coutureRest(order)),
+        date_promise: order.dueAt ?? null,
+        consigne: `Dis le numéro ${order.number} (à écrire sur le tissu), le client, puis le reste à payer (reste.wolof en wolof).${order.price ? "" : " Le prix n'est pas encore fixé."}${order.phone ? "" : " Demande le numéro du client pour son lien de suivi (outil numero_client)."}`,
+      };
+    }
+    const ref = text(args.numero) || text(args.clientName);
+    const found = ref ? findCouture(shop, ref) : undefined;
+    if (!found) return { statut: "incomplet", besoin: "le numéro de la commande (C-…) ou le nom du client" };
+    if (action === "etape") {
+      const step = text(args.etape) as "coupe" | "couture" | "finition" | "pret";
+      if (!["coupe", "couture", "finition", "pret"].includes(step)) return { statut: "incomplet", besoin: "l'étape : coupe, couture, finition ou prêt" };
+      const after = setStep(shop, found.id, step);
+      if (!after) return { statut: "incomplet", besoin: "une commande encore en cours" };
+      this.commit(shop, after, `Couture ${found.number} · ${found.clientName} : ${STEP_LABEL[step]}`, heard, { callId });
+      return {
+        statut: "enregistre", numero: found.number, client: found.clientName, etape: STEP_LABEL[step], reste: W(coutureRest(found)),
+        consigne: step === "pret" ? "Dis que l'habit est prêt, et que le bouton « Prévenir sur WhatsApp » de l'Atelier couture envoie le message au client." : "Dis l'étape en quelques mots.",
+      };
+    }
+    if (action === "payer" || action === "livrer") {
+      const saidAmount = text(args.montantDit);
+      const amount = saidAmount ? spokenMoney(saidAmount) : action === "livrer" ? 0 : null;
+      if (amount === null) return NOT_UNDERSTOOD;
+      const after = action === "payer" ? payCouture(shop, found.id, amount) : deliverCouture(shop, found.id, amount);
+      if (!after) return action === "payer" ? NOT_UNDERSTOOD : { statut: "incomplet", besoin: "une commande pas encore livrée" };
+      const o = coutureOrders(after).find((x) => x.id === found.id)!;
+      const debt = action === "livrer" ? Math.max(0, o.price - o.paid) : 0;
+      this.commit(shop, after, `Couture ${o.number} · ${o.clientName} · ${action === "payer" ? "acompte" : "livré, payé"} ${fr(amount)}${debt ? ` · reste ${fr(debt)} en dette` : ""}`, heard, { callId, amount: amount || undefined });
+      return action === "payer"
+        ? { statut: "enregistre", numero: o.number, client: o.clientName, paye: W(amount), reste: W(coutureRest(o)) }
+        : { statut: "enregistre", numero: o.number, client: o.clientName, paye: W(amount), reste_en_dette: debt ? W(debt) : null };
     }
     return { statut: "outil_inconnu" };
   }
@@ -378,6 +461,10 @@ export class LiveDesk {
       return this.repair(args, call.id);
     }
 
+    if (call.name === "couture") {
+      return this.couture(args, call.id);
+    }
+
     if (call.name === "numero_client") {
       const shop = this.deps.getShop();
       const name = typeof args.clientName === "string" ? args.clientName.trim() : "";
@@ -390,7 +477,12 @@ export class LiveDesk {
       const client = found.item && !nameClash(found.item.name, name) ? found.item : undefined;
       if (found.ambiguous.length) return { statut: "incomplet", besoin: `quel client : ${found.ambiguous.map((c) => c.name).join(" ou ")} ?` };
       if (!client) return { statut: "incomplet", besoin: "le client : il doit déjà être dans le cahier (enregistre d'abord sa dette ou sa facture)" };
-      const after = { ...shop, clients: shop.clients.map((c) => (c.id === client.id ? { ...c, phone: phone.digits } : c)) };
+      const after = {
+        ...shop,
+        clients: shop.clients.map((c) => (c.id === client.id ? { ...c, phone: phone.digits } : c)),
+        // Commandes de couture en cours du client : son lien de suivi peut maintenant partir sur WhatsApp.
+        ...(shop.couture ? { couture: shop.couture.map((o) => (o.clientId === client.id && !o.phone ? { ...o, phone: phone.digits } : o)) } : {}),
+      };
       this.commit(shop, after, `Numéro de ${client.name} : ${phone.shown}`, heard, { callId: call.id });
       return {
         statut: "enregistre",
