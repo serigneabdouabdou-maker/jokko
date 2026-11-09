@@ -6,6 +6,7 @@ import { type Shop, money } from "@/model";
 import { supabase } from "@/data/supabase";
 import { loadShops, type LoadClient } from "@/data/sync";
 import { buildInsights, insightsForAdvisor } from "@/data/insights";
+import { expiringSoon } from "@/data/metiers";
 import { type Advice, askAdvisor } from "@/assistant/client";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
@@ -37,7 +38,7 @@ export function Advisor({ shop: local }: { shop: Shop }) {
   async function ask(withQuestion: boolean) {
     setBusy(true);
     setNote("");
-    const result = await askAdvisor(insightsForAdvisor(insights, shop.name, shop.activity), withQuestion ? question : null);
+    const result = await askAdvisor(insightsForAdvisor(insights, shop.name, shop.activity, expiringSoon(shop.products, 60).map((p) => ({ nom: p.name, quantite: p.lotQty, jours_restants: p.daysLeft, ...(p.lotRef ? { lot: p.lotRef } : {}) }))), withQuestion ? question : null);
     setBusy(false);
     if (result.ok) setAdvice(result.data);
     else setNote(result.message);

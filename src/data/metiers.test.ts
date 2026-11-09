@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf, screensOf } from "./metiers";
+import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf, screensOf, conseillerInstruction } from "./metiers";
 
 describe("métiers", () => {
   it("reconnaît le métier, même écrit à la main", () => {
@@ -103,5 +103,15 @@ describe("un métier = une appli : les écrans", () => {
   });
   it("chaque métier a sa liste d'écrans", () => {
     for (const m of METIERS) expect(Array.isArray(m.screens)).toBe(true);
+  });
+});
+
+describe("Conseiller par métier", () => {
+  it("pharmacie : rotation et péremption, jamais de conseil médical", () => {
+    const c = conseillerInstruction("Pharmacie du marché");
+    expect(c).toContain("rotation RAPIDE");
+    expect(c).toContain("PÉREMPTION");
+    expect(c).toContain("jamais de conseil médical");
+    expect(screensOf("Pharmacie").has("conseiller")).toBe(true);
   });
 });

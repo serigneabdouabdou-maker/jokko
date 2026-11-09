@@ -221,7 +221,17 @@ export function findingsOf(i: Insights, shop: Shop): Finding[] {
 }
 
 /** Version compacte du diagnostic envoyée au conseiller IA (pas de numéros de téléphone). */
-export function insightsForAdvisor(i: Insights, shopName: string, activity: string) {
+/** Vitesse de vente d'un article : rapide (bientôt épuisé), normale, lente (rarement vendu) ou dormante (jamais / plus vendu). */
+export function rotationOf(p: ProductInsight): "rapide" | "normale" | "lente" | "dormante" {
+  if (p.sold30 <= 0) return p.idleDays === null || p.idleDays >= 60 ? "dormante" : "lente";
+  if (p.daysLeft !== null && p.daysLeft <= 10) return "rapide";
+  if ((p.idleDays ?? 0) >= 21 || (p.daysLeft !== null && p.daysLeft >= 120)) return "lente";
+  return "normale";
+}
+
+export type ExpiringLot = { nom: string; quantite: number; jours_restants: number; lot?: string };
+
+export function insightsForAdvisor(i: Insights, shopName: string, activity: string, expiring: ExpiringLot[] = []) {
   return {
     boutique: shopName,
     activite: activity,
@@ -244,7 +254,10 @@ export function insightsForAdvisor(i: Insights, shopName: string, activity: stri
       .slice()
       .sort((a, b) => b.revenue30 - a.revenue30)
       .slice(0, 40)
-      .map((p) => ({ nom: p.name, unite: p.unit, vendu_30j: p.sold30, ventes_30j: p.revenue30, benefice_30j: p.profit30, marge_pct: p.marginPct, stock: p.stock, jours_de_stock: p.daysLeft, a_commander: p.reorder, jours_sans_vente: p.idleDays })),
+      .map((p) => ({ nom: p.name, unite: p.unit, vendu_30j: p.sold30, ventes_30j: p.revenue30, benefice_30j: p.profit30, marge_pct: p.marginPct, stock: p.stock, jours_de_stock: p.daysLeft, a_commander: p.reorder, jours_sans_vente: p.idleDays, rotation: rotationOf(p), stock_au_prix_achat: p.stockValueAtCost })),
+    // Articles qui ne se vendent plus (souvent hors des 40 meilleurs) : argent immobilisé.
+    dormants: i.products.filter((p) => p.stock > 0 && rotationOf(p) === "dormante").slice(0, 20).map((p) => ({ nom: p.name, stock: p.stock, jours_sans_vente: p.idleDays, stock_au_prix_achat: p.stockValueAtCost })),
+    ...(expiring.length ? { peremption: expiring.slice(0, 30) } : {}),
     constats: i.findings.map((x) => ({ niveau: x.level, titre: x.title, detail: x.detail, action: x.action })),
   };
 }

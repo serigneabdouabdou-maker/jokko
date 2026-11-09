@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Sale, Shop } from "../model";
 import { buildInsights, insightsForAdvisor } from "./insights";
+import { rotationOf } from "./insights";
 
 const NOW = new Date("2026-10-31T18:00:00Z");
 const daysAgo = (d: number, h = 10) => new Date(NOW.getTime() - d * 86_400_000 + (h - 18) * 3_600_000).toISOString();
@@ -62,5 +63,15 @@ describe("diagnostic du conseiller", () => {
     const sent = JSON.stringify(insightsForAdvisor(i, "Boutique Awa", "Alimentation"));
     expect(sent).toContain("constats");
     expect(sent).not.toContain("770000000");
+  });
+});
+
+describe("rotation des articles (Conseiller)", () => {
+  const base = { id: "x", name: "x", unit: "boîte", revenue30: 0, profit30: null, marginPct: null, stock: 10, reorder: 0, stockValueAtCost: null };
+  it("rapide, normale, lente, dormante", () => {
+    expect(rotationOf({ ...base, sold30: 30, daysLeft: 5, idleDays: 0 })).toBe("rapide");
+    expect(rotationOf({ ...base, sold30: 10, daysLeft: 30, idleDays: 1 })).toBe("normale");
+    expect(rotationOf({ ...base, sold30: 1, daysLeft: 300, idleDays: 25 })).toBe("lente");
+    expect(rotationOf({ ...base, sold30: 0, daysLeft: null, idleDays: null })).toBe("dormante");
   });
 });

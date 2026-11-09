@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
 import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
+import { conseillerInstruction } from "../../src/data/metiers.ts";
 import { ADVICE_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
@@ -129,7 +130,9 @@ export async function understandOrder(request: InterpretRequest, options: Interp
 
 /** Conseiller : explique le diagnostic et propose des actions (modèle standard, plus réfléchi que le léger). */
 export async function advise(request: AdviceRequest, options: InterpretOptions): Promise<Advice> {
-  return run(options, adviceSchema, adviceJsonSchema(), buildAdvicePrompt(request.diagnostic, request.question), undefined, ADVICE_INSTRUCTION);
+  // Conseils propres au métier (pharmacie : rotation, péremption ; tailleur : retards, avances…).
+  const activity = typeof request.diagnostic.activite === "string" ? request.diagnostic.activite : "";
+  return run(options, adviceSchema, adviceJsonSchema(), buildAdvicePrompt(request.diagnostic, request.question), undefined, ADVICE_INSTRUCTION + conseillerInstruction(activity));
 }
 
 async function run<T extends z.ZodType>(

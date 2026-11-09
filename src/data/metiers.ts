@@ -43,6 +43,8 @@ export type Metier = {
    * factures, bilan, équipe, journal, offre, réglages). Un écran absent d'ici n'apparaît pas dans le menu.
    */
   screens: OptionalScreen[];
+  /** Ce que le Conseiller IA doit regarder en priorité pour ce métier (conseils de gestion, jamais de santé). */
+  conseiller?: string;
   /** Autres modules donnés par ce métier (en plus de atelier / peremption / vivres ci-dessus). */
   modules?: ModuleId[];
   /** Ce que Gemini doit savoir de ce métier. */
@@ -90,6 +92,12 @@ export const METIERS: Metier[] = [
     keywords: /pharma|medicament|médicament|officine|depot pharm/i,
     units: ["boîte", "plaquette", "flacon", "tube", "pièce", "carton"],
     screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
+    conseiller:
+      "PHARMACIE : conseils de GESTION uniquement, jamais de conseil médical, de posologie ni de remplacement d'un médicament par un autre. " +
+      "Regarde en priorité : (1) les produits à rotation RAPIDE (peu de jours de stock) : ne jamais tomber en rupture, commander à temps chez le grossiste répartiteur ; " +
+      "(2) les produits LENTS ou DORMANTS (beaucoup de jours sans vente) : moins en commander, ne plus racheter avant d'avoir écoulé ; " +
+      "(3) la PÉREMPTION : les lots qui périment bientôt (liste peremption) à écouler en premier (premier périmé, premier sorti) ou à négocier en retour avec le grossiste avant la date ; " +
+      "(4) l'argent immobilisé dans le stock lent ; (5) les marges par produit et les dettes des clients.",
     atelier: false,
     peremption: true,
     consigne:
@@ -118,6 +126,9 @@ export const METIERS: Metier[] = [
     keywords: /tailleur|couture|couturi|atelier de couture|brodeur|broderie|styliste/i,
     units: ["pièce", "mètre", "yard", "ensemble"],
     screens: ["couture", "stock"],
+    conseiller:
+      "TAILLEUR : regarde les commandes en retard (le client risque de partir), les avances trop faibles (demander au moins la moitié), " +
+      "le reste à encaisser, les tissus et fournitures qui manquent avant la Tabaski et la Korité, et les meilleurs modèles (ceux qui rapportent le plus).",
     atelier: false,
     peremption: false,
     modules: ["couture"],
@@ -261,4 +272,10 @@ export function expiringSoon<T extends { expiresAt?: string; stock: number; lots
     )
     .filter((p) => p.daysLeft <= days)
     .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+/** Consigne du Conseiller IA pour le métier de la boutique (vide si rien de particulier). */
+export function conseillerInstruction(activity: string | undefined | null): string {
+  const m = metierOf(activity);
+  return m.conseiller ? `\n\nMÉTIER DE CETTE BOUTIQUE\n- ${m.conseiller}\n- SANTÉ : jamais de conseil médical, de dose ou d'avis de santé, pour aucune boutique.` : "\n\n- SANTÉ : jamais de conseil médical, de dose ou d'avis de santé.";
 }
