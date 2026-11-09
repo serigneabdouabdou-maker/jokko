@@ -18,3 +18,18 @@ describe("console CFC", () => {
     expect(growth(5000, 0)).toBeNull();
   });
 });
+
+describe("relances d'essai", () => {
+  it("met le numéro au format international", async () => {
+    const { intlPhone } = await import("./guard");
+    expect(intlPhone("77 567 47 25")).toBe("221775674725");
+    expect(intlPhone("221775674725")).toBe("221775674725");
+    expect(intlPhone("123")).toBeNull();
+  });
+  it("prépare un message WhatsApp avec ses vraies ventes", async () => {
+    const { relanceMessage } = await import("./guard");
+    const m = relanceMessage({ nom: "Boutique Awa", raison: "fini", ventes: 12 });
+    expect(m).toContain("Ton essai gratuit de Jokko est terminé");
+    expect(m).toContain("12 ventes");
+  });
+});

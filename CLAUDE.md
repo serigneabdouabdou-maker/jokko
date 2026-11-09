@@ -79,6 +79,8 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Gratuit après l'essai ≈ 70 F/mois max : 10 vocaux, 20 écrits, 20 voix, 2 stock par mois (3 / 5 / 10 / 1 par jour) ; `plafond_gratuit_jour` 300 F.
 - Pousser à l'abonnement, honnêtement (jamais de faux chiffres ni de fausse urgence) : compteur « Il te reste… » sur l'écran Parler (`Forfait.tsx` → `forfait_reste`), bouton « Garder Jokko sans limite » quand il reste ≤ 20 % ou ≤ 3 jours d'essai ; dans « Mon offre », « Ce que Jokko a fait pour toi » (ses vraies ventes, clients, dettes sur 30 jours, `valueRecap`) et le prix par jour (`perDay` : Médium 135 F/jour).
 
+- Essais à appeler : `private.trial_watch()` (dans `guard_watch`, toutes les 5 min) inscrit dans `relances` chaque essai fini, épuisé (échanges + vocaux) ou fini dans moins de 2 jours, et notifie Fallou (nom, ventes, téléphone ; 5 notifications max par passage). Console, onglet « À appeler » (`src/console/Relances.tsx`, `relances_list` / `relance_mark`) : Appeler, WhatsApp avec message prêt (`relanceMessage`), puis A payé / À rappeler / Pas intéressé ; taux de conversion affiché.
+
 ## Vitrine (livrée le 09/11/2026, tous les métiers)
 
 - Écran « Ma vitrine » (`Vitrine.tsx`, `src/data/vitrine.ts`) : le patron ouvre sa vitrine (`vitrine_save` crée le code court `nom-xxx`), choisit les articles montrés (`products.vitrine`, photo `products.photo_path` dans le stockage public `vitrine/<shop_id>/…`), et pour un tailleur les modèles du Studio (`vitrines.models`). Partage : statut WhatsApp, Facebook, lien à copier (bio TikTok / Instagram).
