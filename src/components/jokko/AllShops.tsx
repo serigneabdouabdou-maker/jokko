@@ -13,7 +13,7 @@ const qty = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(
 
 type View = "resume" | "stock" | "dettes";
 
-/** « Toutes mes boutiques » (patron, offre Avancé) : les boutiques côte à côte, l'inventaire général, les dettes, les transferts. */
+/** « Toutes mes entreprises » (patron, offre Avancé) : les boutiques côte à côte, l'inventaire général, les dettes, les transferts. */
 export function AllShops({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const mine = useMemo(() => profile.shops.filter((s) => roleIn(profile, s.id) === "patron"), [profile]);
   const [shops, setShops] = useState<Shop[]>(mine);
@@ -49,8 +49,8 @@ export function AllShops({ profile, setProfile }: { profile: Profile; setProfile
   if (mine.length < 2) {
     return (
       <section className="sheet all-shops">
-        <h2>Toutes mes boutiques</h2>
-        <p className="note">Tu as une seule boutique. Crée la deuxième dans Réglages → Mes boutiques : ici, tu les verras côte à côte.</p>
+        <h2>Toutes mes entreprises</h2>
+        <p className="note">Tu as une seule entreprise. Crée la deuxième dans Réglages → Mes entreprises : ici, tu les verras côte à côte.</p>
       </section>
     );
   }
@@ -64,7 +64,7 @@ export function AllShops({ profile, setProfile }: { profile: Profile; setProfile
 
   return (
     <section className="sheet all-shops">
-      <h2>Toutes mes boutiques</h2>
+      <h2>Toutes mes entreprises</h2>
       <p className="note">{state === "charge" ? "Mise à jour…" : state === "local" ? "Pas de connexion : chiffres de ce téléphone." : `${shops.length} boutiques · mis à jour à l'instant`}</p>
       <div className="seg" role="tablist">
         {([["resume", "Aujourd’hui"], ["stock", "Inventaire général"], ["dettes", "Dettes"]] as [View, string][]).map(([id, label]) => (
@@ -102,7 +102,7 @@ export function AllShops({ profile, setProfile }: { profile: Profile; setProfile
 
       {view === "stock" && (
         <>
-          <p className="note">Chaque article, le stock de chaque boutique et le total. Touche « Transférer » pour envoyer de la marchandise d’une boutique à une autre (sans fausse vente).</p>
+          <p className="note">Chaque article, le stock de chaque entreprise et le total. Touche « Transférer » pour envoyer de la marchandise d’une entreprise à une autre (sans fausse vente).</p>
           <div className="all-table-wrap">
             <table className="all-table">
               <thead><tr><th>Article</th>{shops.map((s) => <th key={s.id}>{s.name}</th>)}<th>Total</th><th /></tr></thead>
@@ -148,7 +148,7 @@ export function AllShops({ profile, setProfile }: { profile: Profile; setProfile
   );
 }
 
-/** Envoyer du stock d'une boutique à une autre : une seule opération au serveur. */
+/** Envoyer du stock d'une entreprise à une autre : une seule opération au serveur. */
 function Transfer({ row, shops, onClose, onDone }: { row: StockRow; shops: Shop[]; onClose: () => void; onDone: () => Promise<void> }) {
   const sources = shops.filter((s) => (row.perShop[s.id]?.stock ?? 0) > 0);
   const [from, setFrom] = useState(sources[0]?.id ?? "");
@@ -173,7 +173,7 @@ function Transfer({ row, shops, onClose, onDone }: { row: StockRow; shops: Shop[
         meme: "Choisis deux boutiques différentes.",
         quantite: "Mets une quantité.",
         patron: "Il faut être le patron des deux boutiques.",
-        article: "Cet article n’existe plus dans cette boutique. Rafraîchis la page.",
+        article: "Cet article n’existe plus dans cette entreprise. Rafraîchis la page.",
       };
       return setNote(why[r.reason ?? ""] ?? "Transfert impossible.");
     }
@@ -185,7 +185,7 @@ function Transfer({ row, shops, onClose, onDone }: { row: StockRow; shops: Shop[
   return (
     <div className="install-settings transfer">
       <h3>Transférer : {row.name} ({row.unit})</h3>
-      {sources.length === 0 ? <p className="note">Aucune boutique n’a de stock de cet article.</p> : (
+      {sources.length === 0 ? <p className="note">Aucune entreprise n’a de stock de cet article.</p> : (
         <>
           <label className="field">
             <span className="text-sm font-medium">De</span>

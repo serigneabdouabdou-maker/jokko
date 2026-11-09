@@ -296,7 +296,7 @@ function InvoiceSettings({ shop, commit, onClose }: { shop: Shop; commit: (s: Sh
     <div className="product-editor">
       <b>Ce qui s'imprime en haut et en bas de tes factures</b>
       <div className="grid-2">
-        {field("name", "Nom de la boutique / entreprise", "Boutique Awa")}
+        {field("name", "Nom de l’entreprise", "Boutique Awa, Atelier Awa…")}
         {field("phone", "Téléphone", "77 123 45 67")}
       </div>
       <div className="grid-2">

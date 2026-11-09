@@ -8,7 +8,7 @@ import { supabase } from "@/data/supabase";
 import { flushNow } from "@/data/store";
 import { metierOf } from "@/data/metiers";
 
-/** Supprime une boutique au serveur (le patron qui l'a créée, en retapant son nom). */
+/** Supprime une entreprise au serveur (le patron qui l'a créée, en retapant son nom). */
 async function deleteShop(shopId: string, name: string): Promise<string | null> {
   try {
     await flushNow();
@@ -16,18 +16,18 @@ async function deleteShop(shopId: string, name: string): Promise<string | null> 
     if (error) return "Pas de connexion internet. Réessaie.";
     const r = data as { ok: boolean; reason?: string };
     if (r.ok) return null;
-    if (r.reason === "nom") return "Le nom ne correspond pas. Tape exactement le nom de la boutique.";
-    if (r.reason === "derniere") return "C’est ta seule boutique : on ne peut pas la supprimer.";
-    if (r.reason === "proprietaire") return "Seul le patron qui a créé cette boutique peut la supprimer.";
-    return "Cette boutique n’existe plus.";
+    if (r.reason === "nom") return "Le nom ne correspond pas. Tape exactement le nom de l'entreprise.";
+    if (r.reason === "derniere") return "C’est ta seule entreprise : on ne peut pas la supprimer.";
+    if (r.reason === "proprietaire") return "Seul le patron qui a créé cette entreprise peut la supprimer.";
+    return "Cette entreprise n’existe plus.";
   } catch {
     return "Pas de connexion internet. Réessaie.";
   }
 }
 
 /**
- * Patron : créer une boutique (avec un vrai nom, pas une copie automatique) et supprimer une boutique créée par erreur.
- * Plusieurs boutiques = offre Avancé (vérifié aussi par le serveur).
+ * Patron : créer une entreprise (avec un vrai nom, pas une copie automatique) et supprimer une entreprise créée par erreur.
+ * Plusieurs entreprises = offre Avancé (vérifié aussi par le serveur).
  */
 export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile; setProfile: (p: Profile) => void; canAdd: boolean }) {
   const shop = profile.shops.find((s) => s.id === profile.shopId) ?? profile.shops[0];
@@ -40,7 +40,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   if (!shop) return null;
-  // Jamais de mélange : on ne reprend les articles que pour une boutique du même métier.
+  // Jamais de mélange : on ne reprend les articles que pour une entreprise du même métier.
   const sameMetier = metierOf(activity).id === metierOf(shop.activity).id;
   const copy = copyProducts && sameMetier;
 
@@ -69,7 +69,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
 
   return (
     <div className="install-settings shop-manager">
-      <h3>Mes boutiques</h3>
+      <h3>Mes entreprises</h3>
       <ul className="shop-list">
         {profile.shops.map((s) => (
           <li key={s.id} className={s.id === shop.id ? "on" : ""}>
@@ -85,9 +85,9 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
       {mode === "" && (
         <div className="row">
           {canAdd ? (
-            <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => { setMode("creer"); setNote(""); }}>Nouvelle boutique</Button>
+            <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => { setMode("creer"); setNote(""); }}>Nouvelle entreprise</Button>
           ) : (
-            <p className="note">Plusieurs boutiques : c’est dans l’offre Avancé (« Mon offre »).</p>
+            <p className="note">Plusieurs entreprises : c’est dans l’offre Avancé (« Mon offre »).</p>
           )}
           {profile.shops.length > 1 && (
             <Button variant="ghost" className="h-11 rounded-full px-5 text-red-700" onClick={() => { setMode("supprimer"); setNote(""); setTyped(""); }}>Supprimer « {shop.name} »</Button>
@@ -103,7 +103,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
             if (name.trim()) create();
           }}
         >
-          <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la nouvelle boutique (ex. Boutique Médina)" aria-label="Nom de la nouvelle boutique" autoFocus />
+          <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de la nouvelle entreprise (ex. Boutique Médina)" aria-label="Nom de la nouvelle entreprise" autoFocus />
           <Input className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville ou quartier" aria-label="Ville" />
           <MetierCards value={activity} onChange={setActivity} compact />
           {sameMetier ? (
@@ -112,11 +112,11 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
               <span>Reprendre les articles et les prix de « {shop.name} » (stock à zéro)</span>
             </label>
           ) : (
-            <p className="note">Autre métier : la nouvelle boutique démarre vide, sans les articles de « {shop.name} ».</p>
+            <p className="note">Autre métier : la nouvelle entreprise démarre vide, sans les articles de « {shop.name} ».</p>
           )}
-          <p className="note">Chaque boutique a son propre stock, sa caisse, ses ventes et ses dettes. Tu passes de l’une à l’autre en touchant son nom ci-dessus.</p>
+          <p className="note">Chaque entreprise a son propre stock, sa caisse, ses ventes et ses dettes. Tu passes de l’une à l’autre en touchant son nom ci-dessus.</p>
           <div className="row">
-            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim()}>Créer la boutique</Button>
+            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim()}>Créer l'entreprise</Button>
             <Button type="button" variant="ghost" className="h-11 rounded-full px-5" onClick={() => setMode("")}>Annuler</Button>
           </div>
         </form>
@@ -125,9 +125,9 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
       {mode === "supprimer" && (
         <div className="fields shop-delete">
           <p className="note" data-tone="error">
-            <b>Attention :</b> la boutique « {shop.name} » va disparaître de Jokko pour toi et tes vendeurs : stock, ventes, dettes, factures. Si c’était une erreur, CFC peut la récupérer.
+            <b>Attention :</b> l'entreprise « {shop.name} » va disparaître de Jokko pour toi et tes vendeurs : stock, ventes, dettes, factures. Si c’était une erreur, CFC peut la récupérer.
           </p>
-          <Input className="h-11" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Tape « ${shop.name} » pour confirmer`} aria-label="Nom de la boutique à supprimer" />
+          <Input className="h-11" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Tape « ${shop.name} » pour confirmer`} aria-label="Nom de l'entreprise à supprimer" />
           <div className="row">
             <Button variant="destructive" className="h-11 rounded-full px-5" disabled={busy || typed.trim().toLowerCase() !== shop.name.trim().toLowerCase()} onClick={() => void remove()}>
               {busy ? "Suppression…" : "Supprimer définitivement"}

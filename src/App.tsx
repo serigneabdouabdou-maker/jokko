@@ -131,7 +131,7 @@ const NAV: Array<[Screen, string]> = [
   ["couture", "Couture"],
   ["atelier", "Atelier"],
   ["distance", "À distance"],
-  ["boutiques", "Mes boutiques"],
+  ["boutiques", "Mes entreprises"],
   ["conseiller", "Conseiller"],
   ["scanner", "Scanner"],
   ["bilan", "Bilan"],
@@ -629,14 +629,14 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
             </div>
           </div>
           <div className="field">
-            <Label htmlFor="shop">Nom de la boutique</Label>
-            <Input id="shop" className="h-11" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Boutique Awa" />
+            <Label htmlFor="shop">Nom de l’entreprise</Label>
+            <Input id="shop" className="h-11" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder={metierOf(activity).id === "couture" ? "Atelier Awa Couture" : "Boutique Awa, Pharmacie du Marché…"} />
           </div>
           <div className="field">
             <Label htmlFor="city">Quartier ou ville</Label>
             <Input id="city" className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pikine" />
           </div>
-          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim() || !activity.trim()} onClick={finish}>Ouvrir la boutique</Button>
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim() || !activity.trim()} onClick={finish}>Créer mon entreprise</Button>
         </div>
       </section>
     </main>
@@ -1413,8 +1413,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           </div>
         )}
 
-        {/* Le Studio est une vitrine de modèles : pas de chiffres de caisse ni de dettes en haut. */}
-        {screen !== "studio" && <section className="stats" aria-label="Chiffres du jour">
+        {/* Chaque écran reste sur son sujet : les chiffres du jour (caisse, paiements, dépenses, dettes) sont seulement dans « Caisse ». */}
+        {screen === "caisse" && <section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
             <span className="stat-label"><Icon name="caisse" size="sm" />Caisse attendue</span>
             <Num value={expectedCash(shop)} className="stat-big" />
@@ -1835,12 +1835,12 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
               // L'autre métier devient une NOUVELLE boutique, avec son propre stock, sa caisse, ses clients et ses dettes.
               if (before.id !== after.id && used) {
                 if (!can(shop, "boutiques")) {
-                  setMetierNote(`« ${shop.name} » a déjà ses données de ${before.label}. Pour ${after.label}, il faut une deuxième boutique, séparée (offre Avancé, dans « Mon offre ») : rien ne se mélange.`);
+                  setMetierNote(`« ${shop.name} » a déjà ses données de ${before.label}. Pour ${after.label}, il faut une deuxième entreprise, séparée (offre Avancé, dans « Mon offre ») : rien ne se mélange.`);
                   return;
                 }
                 const fresh = newShop(`${shop.name} – ${after.label}`, activity, shop.city);
                 setProfile({ ...profile, shops: [...profile.shops, fresh], shopId: fresh.id });
-                setMetierNote(`✓ Nouvelle boutique « ${fresh.name} » créée pour ${after.label}, avec ses propres données. « ${shop.name} » garde les siennes. Change de boutique dans « Mes boutiques ».`);
+                setMetierNote(`✓ Nouvelle entreprise « ${fresh.name} » créée pour ${after.label}, avec ses propres données. « ${shop.name} » garde les siennes. Change d'entreprise dans « Mes entreprises ».`);
                 setChangingMetier(false);
                 return;
               }
@@ -1849,7 +1849,7 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
             }}
           />}
           {metierNote && <p className="note jk-notice" role="status">{metierNote}</p>}
-          <p className="note">Une boutique = un métier. Jokko s'y adapte : écrans, vocabulaire, exemples, unités. Les fonctions des autres métiers n'apparaissent pas.</p>
+          <p className="note">Une entreprise = un métier. Jokko s'y adapte : écrans, vocabulaire, exemples, unités. Les fonctions des autres métiers n'apparaissent pas.</p>
           <ModulesSetting shop={shop} onChange={(modules) => setProfile(replaceShop(profile, { ...shop, modules }))} />
         </div>
       )}
