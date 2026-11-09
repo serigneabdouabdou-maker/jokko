@@ -38,7 +38,7 @@ describe("corriger une vente", () => {
 
   it("vente à crédit supprimée : la dette du client baisse", () => {
     const base = seedShop();
-    const client = { id: "c-test", name: "Awa", debt: 5000 };
+    const client = { id: "c-test", name: "Awa", phone: "", debt: 5000 };
     const shop: Shop = { ...base, clients: [client], sales: [{ id: "s1", at: new Date().toISOString(), label: "Riz", amount: 5000, payment: "credit", clientId: "c-test" }, ...base.sales] };
     expect(removeSale(shop, "s1").clients[0].debt).toBe(0);
   });
