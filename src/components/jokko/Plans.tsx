@@ -13,6 +13,7 @@ import {
   freshPlan,
   checkOnline,
   checkSubscriptionWave,
+  declarePaid,
   myRequests,
   payOnline,
   paySubscriptionWave,
@@ -55,6 +56,8 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState<TrialLeft | null>(null);
+  const [txId, setTxId] = useState("");
+  const [declared, setDeclared] = useState<string | null>(null);
   // Paiement automatique : l'agrégateur (tous les moyens) d'abord, sinon Wave Business de CFC, sinon vérification à la main.
   const online = info?.paydunya ? "paydunya" : info?.wave_auto ? "wave" : null;
 
@@ -218,7 +221,29 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
               </ol>
               {qr && <img className="wave-qr" src={qr} alt="QR code Wave de CFC" width={240} height={240} />}
               <Button className="h-11 rounded-full" onClick={() => window.open(waveLinkFor(info.wave_link!, pending.amount), "_blank", "noopener")}>Ouvrir Wave</Button>
-              <p className="note">Ton offre est activée dès que CFC a vu le paiement (en général dans la journée). Tu n'as rien d'autre à faire.</p>
+              {declared === pending.id ? (
+                <p className="note"><Icon name="ok" size="sm" className="jk-ok" /> Merci ! CFC est prévenu et active ton offre dès qu'il voit le paiement (en général dans l'heure).</p>
+              ) : (
+                <>
+                  <p className="note">Après avoir payé dans Wave, reviens ici et touche « J'ai payé » : CFC est prévenu tout de suite.</p>
+                  <Input className="h-11" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="N° de transaction Wave (facultatif)" />
+                  <Button
+                    className="h-12 rounded-full font-semibold"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      void declarePaid(pending.id, txId).then((ok) => {
+                        setBusy(false);
+                        if (ok) setDeclared(pending.id);
+                        else setNote("Pas de connexion internet. Réessaie.");
+                      });
+                    }}
+                  >
+                    J’ai payé
+                  </Button>
+                  {note && <p className="note" data-tone="error">{note}</p>}
+                </>
+              )}
             </>
           ) : (
             <p className="note">Le lien de paiement n'est pas encore prêt. Contacte CFC : cfallou26@gmail.com, avec la référence <b>{pending.reference}</b>.</p>

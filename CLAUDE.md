@@ -46,6 +46,11 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Les admins (`platform_admins`) ne sont jamais limités, mais leur usage est compté : tester en texte pour économiser.
 - SQL de référence : `supabase/migrations/`.
 
+## Santé et paiements (depuis le 09/11/2026)
+
+- Crédit Gemini vide : l'appli signale chaque direct coupé (`note_live_failure`) ; un seul 402 ouvre l'incident « Crédit Gemini (AI Studio) » (onglet Santé + notification), fermé au premier appel réussi.
+- Paiement Wave manuel (`wave_auto` = false) : le patron touche « J'ai payé » (`declare_subscription_paid`) → notification « Paiement Wave à vérifier » à Fallou ; il vérifie son Wave puis active dans la console. Les notifications arrivent sur le téléphone où « Activer les notifications » a été touché (console, onglet Activité).
+
 ## Routine hebdomadaire
 
 1. Ouvrir l'onglet « Erreurs de Jokko » (7 jours) : taux wolof et français.

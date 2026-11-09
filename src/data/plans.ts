@@ -135,6 +135,12 @@ export async function checkSubscriptionWave(requestId: string): Promise<"active"
   }
 }
 
+/** Paiement Wave manuel : « J'ai payé » → CFC reçoit une notification pour vérifier et activer. */
+export async function declarePaid(requestId: string, transaction: string): Promise<boolean> {
+  const { error } = await supabase.rpc("declare_subscription_paid", { p_request: requestId, p_transaction: transaction });
+  return !error;
+}
+
 export async function myRequests(shopId: string): Promise<SubscriptionRequest[]> {
   const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, paid_at, paid_via, transaction_id, receipt_url").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
   return (data ?? []) as SubscriptionRequest[];
