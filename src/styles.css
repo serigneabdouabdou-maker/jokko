@@ -1204,6 +1204,11 @@
   .legal-sheet p { font-size: 15px; line-height: 1.55; margin: 0 0 8px; }
   .legal-foot { color: var(--j-ink-3); font-size: 13px; margin: 20px 0 14px !important; }
   @media (min-width: 720px) { .legal-scrim { align-items: center; padding: 32px; } .legal-sheet { border-radius: 24px; } }
+  .plan-steps { display: flex; flex-direction: column; gap: 12px; }
+  .plan-stepper { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+  .plan-stepper li { flex: 1; text-align: center; padding: 8px 4px; border-radius: 999px; background: var(--j-soft); color: var(--j-ink-3); }
+  .plan-stepper li.on { background: var(--j-ink); color: var(--j-white); }
+  .plan-stepper li.done { color: var(--j-ink); }
 }
 
 /* Installation et notifications */

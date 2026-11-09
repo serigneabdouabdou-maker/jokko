@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,10 @@ export function Upsell({ feature, title, onPlans }: { feature: Feature; title: s
   );
 }
 
+type Step = "duree" | "payer" | "attente";
+const STEP_ORDER: Record<Step, number> = { duree: 0, payer: 1, attente: 2 };
+type Pending = { id: string; reference: string; amount: number; plan: "medium" | "avance" };
+
 /** Écran « Mon offre » (patron) : offre actuelle, essai, choix d'une offre et paiement par le lien Wave de CFC. */
 export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Shop; onPlanUpdated: (plan: Shop["plan"]) => void; initialChoice?: "medium" | "avance" | null }) {
   const current = effectivePlan(shop);
@@ -50,14 +54,16 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   const [choice, setChoice] = useState<"medium" | "avance" | null>(initialChoice);
   const [months, setMonths] = useState(1);
   const [payer, setPayer] = useState("");
-  const [pending, setPending] = useState<{ id: string; reference: string; amount: number } | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [activated, setActivated] = useState<string | null>(null);
   const [qr, setQr] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState<TrialLeft | null>(null);
   const [txId, setTxId] = useState("");
-  const [declared, setDeclared] = useState<string | null>(null);
+  /** Parcours en une seule fenêtre : durée → paiement → validation par CFC. */
+  const [step, setStep] = useState<Step | null>(null);
+  const ordering = useRef(false);
   // Paiement automatique : l'agrégateur (tous les moyens) d'abord, sinon Wave Business de CFC, sinon vérification à la main.
   const online = info?.paydunya ? "paydunya" : info?.wave_auto ? "wave" : null;
 
@@ -74,6 +80,10 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
   useEffect(() => {
     void refresh();
   }, [shop.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Arrivée depuis l'inscription avec une offre choisie : la fenêtre de paiement s'ouvre directement.
+  useEffect(() => {
+    if (initialChoice) setStep("duree");
+  }, [initialChoice]);
 
   // Retour de Wave (ou paiement en cours) : on demande l'état quelques fois ; l'offre s'active dès que Wave confirme.
   const waiting = requests.filter((r) => r.status === "en_attente").map((r) => r.id).join(",");
@@ -87,6 +97,7 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
         if ((await (online === "paydunya" ? checkOnline(id) : checkSubscriptionWave(id))) === "active") {
           setActivated(id);
           setPending(null);
+          setStep(null);
           void refresh();
           return;
         }
@@ -115,17 +126,60 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
 
   const price = (p: "medium" | "avance") => (p === "medium" ? info?.price_medium : info?.price_avance) ?? (p === "medium" ? 4000 : 8000);
 
+  // Une demande déjà en attente : on la reprend au lieu d'en créer une autre.
+  const waitingReq = requests.find((r) => r.status === "en_attente") ?? null;
+
+  function start(p: "medium" | "avance") {
+    setNote("");
+    if (waitingReq?.declared_at) return openWaiting(waitingReq);
+    setChoice(p);
+    setMonths(waitingReq && waitingReq.plan === p ? waitingReq.months : 1);
+    setPending(null);
+    setStep("duree");
+  }
+
+  function openWaiting(r: SubscriptionRequest) {
+    setNote("");
+    setChoice(r.plan);
+    setMonths(r.months);
+    setPending({ id: r.id, reference: r.reference, amount: r.amount, plan: r.plan });
+    setStep(r.declared_at ? "attente" : "payer");
+  }
+
+  function close() {
+    setStep(null);
+    setNote("");
+  }
+
   async function order() {
-    if (!choice) return;
+    // Un seul envoi, même si on touche plusieurs fois très vite.
+    if (!choice || ordering.current) return;
+    ordering.current = true;
     setBusy(true);
     setNote("");
     const r = await requestSubscription(shop.id, choice, months, payer);
     setBusy(false);
+    ordering.current = false;
     if (!r.ok) return setNote(r.message);
-    setPending({ id: r.id, reference: r.reference, amount: r.amount });
+    setPending({ id: r.id, reference: r.reference, amount: r.amount, plan: r.plan ?? choice });
     void refresh();
+    // Déjà déclarée payée : on attend la validation, rien d'autre à faire.
+    if (r.declared) return setStep("attente");
+    setStep("payer");
     // Paiement automatique : on ouvre Wave tout de suite.
     if (online) await payWave(r.id);
+  }
+
+  async function declare() {
+    if (!pending || ordering.current) return;
+    ordering.current = true;
+    setBusy(true);
+    const ok = await declarePaid(pending.id, txId);
+    setBusy(false);
+    ordering.current = false;
+    if (!ok) return setNote("Pas de connexion internet. Réessaie.");
+    setStep("attente");
+    void refresh();
   }
 
   const plans: PlanName[] = ["gratuit", "medium", "avance"];
@@ -159,6 +213,17 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
         )}
       </div>
 
+      {waitingReq && step === null && (
+        <div className="sheet plan-pay" role="status">
+          <h3>{waitingReq.declared_at ? "Paiement en cours de vérification" : "Demande en attente de paiement"}</h3>
+          <p className="note">
+            Offre <b>{PLAN_LABELS[waitingReq.plan]}</b> · {waitingReq.months} mois · <b className="num">{amount(waitingReq.amount)}</b> · réf <b>{waitingReq.reference}</b>.{" "}
+            {waitingReq.declared_at ? "CFC vérifie ton paiement et active ton offre (en général dans l'heure)." : "Tu n'as pas encore payé."}
+          </p>
+          <Button className="h-12 rounded-full font-semibold" onClick={() => openWaiting(waitingReq)}>{waitingReq.declared_at ? "Voir" : "Continuer le paiement"}</Button>
+        </div>
+      )}
+
       <div className="plan-grid">
         {plans.map((p) => (
           <article key={p} className={`plan-card${p === "avance" ? " featured" : ""}${current.plan === p ? " is-current" : ""}`}>
@@ -166,26 +231,13 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
             <p className="plan-price num">{p === "gratuit" ? "0 F" : amount(price(p))}<small>{p === "gratuit" ? "" : " / mois"}</small></p>
             <ul>{PLAN_FEATURES[p].map((f) => <li key={f}>{f}</li>)}</ul>
             {p !== "gratuit" && (
-              <Button variant={choice === p ? "default" : "outline"} className="mt-auto h-11 rounded-full" onClick={() => { setChoice(p); setPending(null); }}>
-                {current.plan === p && !current.trial ? "Prolonger" : "Choisir"}
+              <Button variant={p === "avance" ? "default" : "outline"} className="mt-auto h-11 rounded-full" disabled={Boolean(waitingReq?.declared_at)} onClick={() => start(p)}>
+                {waitingReq?.declared_at ? "Paiement en vérification" : current.plan === p && !current.trial ? "Prolonger" : "Choisir"}
               </Button>
             )}
           </article>
         ))}
       </div>
-
-      {choice && !pending && (
-        <div className="sheet plan-order">
-          <h3>Offre {PLAN_LABELS[choice]}</h3>
-          <div className="pay-modes">
-            {[1, 3, 6, 12].map((m) => <button key={m} type="button" className={months === m ? "on" : ""} onClick={() => setMonths(m)}>{m} mois</button>)}
-          </div>
-          <Input className="h-11" inputMode="tel" value={payer} onChange={(e) => setPayer(e.target.value)} placeholder="Numéro Wave qui va payer (facultatif)" />
-          <p className="plan-total">Total : <b className="num">{amount(price(choice) * months)}</b></p>
-          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void order()}>{busy ? "Un instant…" : online === "paydunya" ? "Payer : Wave, Orange Money, carte…" : "Payer avec Wave"}</Button>
-          {note && <p className="note" data-tone="error">{note}</p>}
-        </div>
-      )}
 
       {activated && (
         <div className="sheet plan-pay" role="status">
@@ -194,60 +246,75 @@ export function Plans({ shop, onPlanUpdated, initialChoice = null }: { shop: Sho
         </div>
       )}
 
-      {pending && online && (
-        <div className="sheet plan-pay">
-          <h3>Paiement · {amount(pending.amount)}</h3>
-          <p className="note">
-            {online === "paydunya"
-              ? <>La page de paiement s’ouvre : choisis <b>Wave, Orange Money, Free Money ou ta carte</b>, et paie <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>
-              : <>Wave va s’ouvrir : confirme le paiement de <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>}{" "}
-            Ton offre s’active toute seule dès que le paiement est confirmé, de jour comme de nuit.
-          </p>
-          {info?.paydunya_mode === "test" && online === "paydunya" && <p className="note" data-tone="error">Mode test : aucun vrai argent n’est prélevé.</p>}
-          <Button className="h-12 rounded-full font-semibold" disabled={busy} onClick={() => void payWave(pending.id)}>{busy ? "Ouverture…" : online === "paydunya" ? "Ouvrir la page de paiement" : "Ouvrir Wave"}</Button>
-          {note && <p className="note" data-tone="error">{note}</p>}
-        </div>
-      )}
+      {step && (
+        <div className="legal-scrim" role="dialog" aria-modal="true" aria-labelledby="pay-title" onClick={close}>
+          <article className="legal-sheet plan-steps" onClick={(e) => e.stopPropagation()}>
+            <header className="legal-head">
+              <h2 id="pay-title">{step === "attente" ? "C’est noté !" : `Offre ${PLAN_LABELS[(pending?.plan ?? choice) || "medium"]}`}</h2>
+              <Button variant="outline" className="h-10 rounded-full px-4" onClick={close}>Fermer</Button>
+            </header>
+            <ol className="plan-stepper" aria-label="Étapes">
+              {(["duree", "payer", "attente"] as const).map((s, i) => (
+                <li key={s} className={step === s ? "on" : STEP_ORDER[s] < STEP_ORDER[step] ? "done" : ""}>{i + 1}. {s === "duree" ? "Durée" : s === "payer" ? "Paiement" : "Validation"}</li>
+              ))}
+            </ol>
 
-      {pending && !online && (
-        <div className="sheet plan-pay">
-          <h3>Paiement Wave · {amount(pending.amount)}</h3>
-          {info?.wave_link ? (
-            <>
-              <ol className="install-steps">
-                <li>Scanne ce code avec ton appli <b>Wave</b>, ou touche « Ouvrir Wave ».</li>
-                <li>Paie <b>{amount(pending.amount)}</b> à <b>CFC – Cisse Family Company</b>.</li>
-                <li>Dans le message du paiement, écris la référence <b className="plan-ref">{pending.reference}</b>.</li>
-              </ol>
-              {qr && <img className="wave-qr" src={qr} alt="QR code Wave de CFC" width={240} height={240} />}
-              <Button className="h-11 rounded-full" onClick={() => window.open(waveLinkFor(info.wave_link!, pending.amount), "_blank", "noopener")}>Ouvrir Wave</Button>
-              {declared === pending.id ? (
-                <p className="note"><Icon name="ok" size="sm" className="jk-ok" /> Merci ! CFC est prévenu et active ton offre dès qu'il voit le paiement (en général dans l'heure).</p>
-              ) : (
+            {step === "duree" && choice && (
+              <>
+                <p className="note">Combien de mois ?</p>
+                <div className="pay-modes">
+                  {[1, 2, 3, 6, 12].map((m) => <button key={m} type="button" className={months === m ? "on" : ""} onClick={() => setMonths(m)}>{m} mois</button>)}
+                </div>
+                <Input className="h-11" inputMode="tel" value={payer} onChange={(e) => setPayer(e.target.value)} placeholder="Numéro Wave qui va payer (facultatif)" />
+                <p className="plan-total">Total : <b className="num">{amount(price(choice) * months)}</b></p>
+                <Button className="h-12 w-full rounded-full font-semibold" disabled={busy} onClick={() => void order()}>{busy ? "Un instant…" : "Suivant : payer"}</Button>
+                {note && <p className="note" data-tone="error">{note}</p>}
+              </>
+            )}
+
+            {step === "payer" && pending && online && (
+              <>
+                <p className="note">
+                  {online === "paydunya"
+                    ? <>La page de paiement s’ouvre : choisis <b>Wave, Orange Money, Free Money ou ta carte</b>, et paie <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>
+                    : <>Wave va s’ouvrir : confirme le paiement de <b>{amount(pending.amount)}</b> à <b>CFC – Cissé Family Company</b>.</>}{" "}
+                  Ton offre s’active toute seule dès que le paiement est confirmé, de jour comme de nuit.
+                </p>
+                {info?.paydunya_mode === "test" && online === "paydunya" && <p className="note" data-tone="error">Mode test : aucun vrai argent n’est prélevé.</p>}
+                <Button className="h-12 w-full rounded-full font-semibold" disabled={busy} onClick={() => void payWave(pending.id)}>{busy ? "Ouverture…" : online === "paydunya" ? "Ouvrir la page de paiement" : "Ouvrir Wave"}</Button>
+                {note && <p className="note" data-tone="error">{note}</p>}
+              </>
+            )}
+
+            {step === "payer" && pending && !online && (
+              info?.wave_link ? (
                 <>
-                  <p className="note">Après avoir payé dans Wave, reviens ici et touche « J'ai payé » : CFC est prévenu tout de suite.</p>
+                  <p className="plan-total">À payer : <b className="num">{amount(pending.amount)}</b> · réf <b className="plan-ref">{pending.reference}</b></p>
+                  <ol className="install-steps">
+                    <li>Scanne ce code avec ton appli <b>Wave</b>, ou touche « Ouvrir Wave ».</li>
+                    <li>Paie <b>{amount(pending.amount)}</b> à <b>CFC – Cisse Family Company</b>.</li>
+                    <li>Dans le message du paiement, écris la référence <b className="plan-ref">{pending.reference}</b>.</li>
+                    <li>Reviens ici et touche <b>« J’ai payé »</b>.</li>
+                  </ol>
+                  {qr && <img className="wave-qr" src={qr} alt="QR code Wave de CFC" width={240} height={240} />}
+                  <Button variant="outline" className="h-11 w-full rounded-full" onClick={() => window.open(waveLinkFor(info.wave_link!, pending.amount), "_blank", "noopener")}>Ouvrir Wave</Button>
                   <Input className="h-11" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="N° de transaction Wave (facultatif)" />
-                  <Button
-                    className="h-12 rounded-full font-semibold"
-                    disabled={busy}
-                    onClick={() => {
-                      setBusy(true);
-                      void declarePaid(pending.id, txId).then((ok) => {
-                        setBusy(false);
-                        if (ok) setDeclared(pending.id);
-                        else setNote("Pas de connexion internet. Réessaie.");
-                      });
-                    }}
-                  >
-                    J’ai payé
-                  </Button>
+                  <Button className="h-12 w-full rounded-full font-semibold" disabled={busy} onClick={() => void declare()}>{busy ? "Un instant…" : "J’ai payé"}</Button>
                   {note && <p className="note" data-tone="error">{note}</p>}
                 </>
-              )}
-            </>
-          ) : (
-            <p className="note">Le lien de paiement n'est pas encore prêt. Contacte CFC : cfallou26@gmail.com, avec la référence <b>{pending.reference}</b>.</p>
-          )}
+              ) : (
+                <p className="note">Le lien de paiement n'est pas encore prêt. Contacte CFC : cfallou26@gmail.com, avec la référence <b>{pending.reference}</b>.</p>
+              )
+            )}
+
+            {step === "attente" && pending && (
+              <>
+                <p className="note"><Icon name="ok" size="sm" className="jk-ok" /> Merci ! CFC est prévenu. Il vérifie ton paiement de <b className="num">{amount(pending.amount)}</b> (réf <b>{pending.reference}</b>) et active ton offre, en général dans l’heure.</p>
+                <p className="note">Tu n’as rien d’autre à faire. Tu verras « offre activée » ici dès que c’est fait.</p>
+                <Button className="h-12 w-full rounded-full font-semibold" onClick={close}>Compris</Button>
+              </>
+            )}
+          </article>
         </div>
       )}
 

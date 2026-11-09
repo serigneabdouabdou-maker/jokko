@@ -66,12 +66,13 @@ export async function subscriptionInfo(): Promise<SubscriptionInfo | null> {
   return error || !data ? null : (data as SubscriptionInfo);
 }
 
-export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string; paid_at?: string | null; paid_via?: string | null; transaction_id?: string | null; receipt_url?: string | null };
+export type SubscriptionRequest = { id: string; plan: "medium" | "avance"; months: number; amount: number; reference: string; status: "en_attente" | "active" | "refusee"; created_at: string; declared_at?: string | null; paid_at?: string | null; paid_via?: string | null; transaction_id?: string | null; receipt_url?: string | null };
 
-export async function requestSubscription(shopId: string, plan: "medium" | "avance", months: number, payer: string): Promise<{ ok: true; id: string; reference: string; amount: number } | { ok: false; message: string }> {
+/** Une seule demande en attente par boutique : le serveur renvoie celle qui existe déjà (même référence). */
+export async function requestSubscription(shopId: string, plan: "medium" | "avance", months: number, payer: string): Promise<{ ok: true; id: string; reference: string; amount: number; plan?: "medium" | "avance"; declared: boolean } | { ok: false; message: string }> {
   const { data, error } = await supabase.rpc("request_subscription", { p_shop: shopId, p_plan: plan, p_months: months, p_payer: payer });
   if (error || !data) return { ok: false, message: /patron/.test(error?.message ?? "") ? "Seul le patron peut choisir l'offre." : "Demande impossible pour le moment. Vérifie la connexion." };
-  return { ok: true, id: data.id, reference: data.reference, amount: data.amount };
+  return { ok: true, id: data.id, reference: data.reference, amount: data.amount, plan: data.plan, declared: data.declare === true };
 }
 
 async function waveCall(route: "abonnement" | "abonnement-check", body: unknown): Promise<{ ok: boolean; data: Record<string, unknown> | null }> {
@@ -142,7 +143,7 @@ export async function declarePaid(requestId: string, transaction: string): Promi
 }
 
 export async function myRequests(shopId: string): Promise<SubscriptionRequest[]> {
-  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, paid_at, paid_via, transaction_id, receipt_url").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
+  const { data } = await supabase.from("subscription_requests").select("id, plan, months, amount, reference, status, created_at, declared_at, paid_at, paid_via, transaction_id, receipt_url").eq("shop_id", shopId).order("created_at", { ascending: false }).limit(20);
   return (data ?? []) as SubscriptionRequest[];
 }
 
