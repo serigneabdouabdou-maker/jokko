@@ -39,8 +39,10 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Crédit Gemini **prépayé** (AI Studio → Billing) : à 0, Google renvoie 402 et Jokko se tait. `private.credit_watch()` (toutes les 5 min) alerte Fallou sur la console : crédit vide, plafond gratuit atteint, dépense du jour > `alerte_cout_jour`.
 - Tous les chiffres sont dans `private.app_config` (pas dans le code) : `quota_<offre>_<type>` (par jour), `gratuit_mois_<type>` (par mois), `essai_total_<type>`, `plafond_gratuit_jour` (F/jour, gratuits + essais → raison `pause`), `cout_<type>`.
 - Types comptés par `use_assistant` : direct, echange (bloqué en cours de conversation à la limite), vocal, texte, conseil, stock, voix (voix claire, une phrase = 1).
+- Offres payantes : budget Gemini par boutique et par mois (`budget_medium_mois` 3 000 F, `budget_avance_mois` 6 000 F) → raison `budget` : plus de voix, l'écrit continue jusqu'à 125 %. Alerte console « Budget du mois atteint » (bon moment pour appeler le client).
+- Avancé : 25 échanges en direct par jour (`quota_avance_echange`).
 - Direct : 5 min max par conversation, coupé après 30 s de silence (`App.tsx`).
-- Messages vocaux de forfait : `src/assistant/quotaVoice.ts` (fichiers `media/voix/phrases/forfait-*-v1.mp3`). Le wolof de `forfait-mois-fini` est à faire valider par Fallou.
+- Messages vocaux de forfait : `src/assistant/quotaVoice.ts` (fichiers `media/voix/phrases/forfait-*-v1.mp3`). Le wolof de `forfait-mois-fini` et `forfait-budget-mois` est à faire valider par Fallou.
 - Les admins (`platform_admins`) ne sont jamais limités, mais leur usage est compté : tester en texte pour économiser.
 - SQL de référence : `supabase/migrations/`.
 

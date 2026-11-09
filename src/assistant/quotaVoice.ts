@@ -8,16 +8,18 @@ import { recordedUrl } from "./recorded";
 /** Ce que le serveur renvoie quand il refuse (402). */
 export type QuotaRefusal = { reason?: string; tier?: string; kind?: string };
 
-export type QuotaVariant = "essai" | "mois" | "jour" | "jour-max" | "vendeur";
+export type QuotaVariant = "essai" | "mois" | "budget" | "jour" | "jour-max" | "vendeur";
 
 /** Quel message dire (null = pas un forfait épuisé : par exemple une fonction hors de l'offre). */
 export function quotaVariant(refusal: QuotaRefusal, isPatron: boolean): QuotaVariant | null {
   const reason = refusal.reason ?? "";
   // « mois » : offre gratuite, plafond du mois atteint. « pause » : plafond de sécurité des comptes gratuits, jusqu'à demain.
-  if (reason !== "essai" && reason !== "quota" && reason !== "echanges" && reason !== "mois" && reason !== "pause") return null;
+  // « budget » : offre payante, budget Gemini du mois de la boutique atteint (l'écrit continue).
+  if (reason !== "essai" && reason !== "quota" && reason !== "echanges" && reason !== "mois" && reason !== "pause" && reason !== "budget") return null;
   if (!isPatron) return "vendeur";
   if (reason === "essai") return "essai";
   if (reason === "mois") return "mois";
+  if (reason === "budget") return "budget";
   return refusal.tier === "avance" ? "jour-max" : "jour";
 }
 
@@ -33,6 +35,12 @@ export const QUOTA_MESSAGES: Record<QuotaVariant, { wo: string; fr: string; slug
     wo: "Sa forfait gratuit bu weer wi jeex na. Ngir wéy di wax ak Jokko, tànnal offre Médium walla offre Avancé. Maa ngi lay won offre yi.",
     fr: "Votre forfait gratuit du mois est épuisé. Pour continuer à parler avec Jokko, choisissez l'offre Médium ou l'offre Avancé. Je vous montre les offres.",
     offers: true,
+  },
+  budget: {
+    slug: "forfait-budget-mois",
+    wo: "Sa forfait bu weer wi jeex na. Ba weer wiy ñëw, mën nga bind walla jëfandikoo bouton yi.",
+    fr: "Votre forfait voix du mois est épuisé. Jusqu'au mois prochain, vous pouvez écrire ou utiliser les boutons de l'application.",
+    offers: false,
   },
   jour: {
     slug: "forfait-jour-fini",

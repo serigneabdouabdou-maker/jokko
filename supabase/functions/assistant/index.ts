@@ -259,6 +259,12 @@ function quotaMessage(q: Quota, kind: string): string {
   if (q.reason === "pause") {
     return "Jokko gratuit est en pause jusqu'à demain. Avec l'offre Médium ou Avancé, Jokko te répond toute la journée. Les boutons de l'appli marchent toujours.";
   }
+  // Offre payante : budget Gemini du mois de la boutique atteint. L'écrit continue jusqu'au mois prochain.
+  if (q.reason === "budget") {
+    return kind === "texte"
+      ? "Jokko a beaucoup travaillé pour ta boutique ce mois-ci. Il reprend le mois prochain. Les boutons de l'appli marchent toujours."
+      : "Ton forfait voix du mois est terminé. Jusqu'au mois prochain, écris ta demande à Jokko ou utilise les boutons de l'appli.";
+  }
   if (kind === "voix") return "La voix claire est finie pour aujourd'hui. Jokko continue avec sa voix normale.";
   if (kind === "stock") {
     return q.reason === "patron"

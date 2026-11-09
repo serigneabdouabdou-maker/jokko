@@ -723,7 +723,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       const variant = quotaVariant(detail, patronRef.current);
       if (!variant) return;
       setQuotaBanner(variant);
-      if (detail.reason === "essai" || detail.reason === "echanges" || detail.reason === "pause" || detail.reason === "mois") liveRef.current?.stop();
+      if (detail.reason === "essai" || detail.reason === "echanges" || detail.reason === "pause" || detail.reason === "mois" || detail.reason === "budget") liveRef.current?.stop();
       // Seulement si le commerçant vient d'appuyer (pas pour un préchargement en arrière-plan), et une fois par 10 min.
       const now = Date.now();
       if (now - lastTap.current > 20_000) return;

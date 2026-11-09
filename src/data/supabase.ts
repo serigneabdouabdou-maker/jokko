@@ -286,7 +286,7 @@ export function countLiveExchange() {
     ({ data }) => {
       const q = data as { ok?: boolean; reason?: string; tier?: string } | null;
       // Limite atteinte au milieu d'une conversation : l'appli la coupe et le dit (essai fini, échanges du jour, pause).
-      if (q?.ok === false && (q.reason === "essai" || q.reason === "echanges" || q.reason === "pause")) announceQuota({ reason: q.reason, tier: q.tier, kind: "echange", route: "echange" });
+      if (q?.ok === false && (q.reason === "essai" || q.reason === "echanges" || q.reason === "pause" || q.reason === "budget")) announceQuota({ reason: q.reason, tier: q.tier, kind: "echange", route: "echange" });
     },
     () => undefined,
   );
