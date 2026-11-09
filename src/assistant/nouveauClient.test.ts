@@ -131,6 +131,54 @@ describe("dette d'un client qui doit déjà : ajouter ou total ?", () => {
   });
 });
 
+describe("cahier des erreurs (04–05/11/2026) : ajout ou total d'après les mots, pas d'après le modèle", () => {
+  function withDebt() {
+    const s = setup(["Fatou Ndiaye"]);
+    s.desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "ñeenti junni", heard: "Fatou Ndiaye jël na bor ñeenti junni" } });
+    expect(s.shop().clients[0].debt).toBe(20000);
+    return s;
+  }
+
+  it("« Fatou Ndiaye me doit 15 000 » et le modèle a choisi « ajout » : Jokko demande quand même", () => {
+    const { desk, shop } = withDebt();
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "15 000", heard: "Fatou Ndiaye me doit 15 000 francs." } }) as Record<string, unknown>;
+    expect(r.statut).toBe("ajout_ou_total");
+    expect(shop().clients[0].debt).toBe(20000);
+  });
+
+  it("« c'est 15 000 » : la dette devient 15 000 (avant : 35 000 par erreur)", () => {
+    const { desk, shop } = withDebt();
+    desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "15 000", heard: "c'est 15 000" } });
+    expect(shop().clients[0].debt).toBe(15000);
+  });
+
+  it("« Soxna Ndiaye, c'est 10000 francs » / « c'est 10 000 tout court » : total, pas d'ajout", () => {
+    const { desk, shop } = withDebt();
+    desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "ajout", montantDit: "10 000", heard: "c'est 10 000 tout court" } });
+    expect(shop().clients[0].debt).toBe(10000);
+  });
+
+  it("après la question, la réponse « waaw » garde le choix du modèle (pas de question en boucle)", () => {
+    const { desk, shop } = withDebt();
+    desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", montantDit: "15 000", heard: "Fatou Ndiaye me doit 15 000 francs" } });
+    const r = desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", modeDette: "total", montantDit: "15 000", heard: "Fatou Ndiaye me doit 15 000 francs" } }) as Record<string, unknown>;
+    expect(r.statut).toBe("enregistre");
+    expect(shop().clients[0].debt).toBe(15000);
+  });
+
+  it("« dieul na fi ñenti junni bor » : elle a pris encore → ajout", () => {
+    const { desk, shop } = withDebt();
+    desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", montantDit: "ñenti junni", heard: "Fatou Ndiaye dieul na fi ñenti junni bor" } });
+    expect(shop().clients[0].debt).toBe(40000);
+  });
+
+  it("correction « ñaari junni ak ñeent fukk, dindiil ñeent fukk yi » : la dette devient 10 000", () => {
+    const { desk, shop } = withDebt();
+    desk.handle({ name: "enregistrer", args: { type: "debt_add", clientName: "Fatou Ndiaye", montantDit: "ñaari junni ak ñeent fukk, dindiil ñeent fukk yi", heard: "Fatou Ndiaye danga bind ñaari junni ak ñeent fukk, dindiil ñeent fukk yi" } });
+    expect(shop().clients[0].debt).toBe(10000);
+  });
+});
+
 describe("réparations à la voix (outil reparation)", () => {
   it("dépôt → réparé → rendu, bénéfice calculé par le code", () => {
     let shop: Shop = {

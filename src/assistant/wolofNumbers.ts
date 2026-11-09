@@ -226,12 +226,29 @@ function splitBig(text: string): { big: number; rest: number } | null {
   return { big, rest };
 }
 
+/** « X, dindil Y » / « X, enlève Y » : les deux morceaux (X avant le mot, Y après), ou null. */
+const REMOVAL = /[,;.]?\s*\b(?:dindi(?:il|l|lal)?|dindil|enl[eè]ve(?:r|z)?|retire(?:r|z)?)\b/;
+function splitRemoval(t: string): [string, string] | null {
+  const m = REMOVAL.exec(t);
+  if (!m || m.index === 0) return null;
+  const left = t.slice(0, m.index).trim();
+  const right = t.slice(m.index + m[0].length).trim();
+  return left && right ? [left, right] : null;
+}
+
 /**
  * Montant dit par le commerçant → francs CFA.
  * Nombres wolof : dërëm (×5). Chiffres ou mots français : francs.
  */
 export function spokenAmountToFrancs(text: string): SpokenAmount | null {
   const t = text.toLowerCase();
+  // Correction dite au comptoir : « ñaari junni ak ñeent fukk, dindil ñeent fukk yi » = le premier montant moins le second.
+  const removal = splitRemoval(t);
+  if (removal) {
+    const a = spokenAmountToFrancs(removal[0]);
+    const b = spokenAmountToFrancs(removal[1]);
+    if (a && b && a.francs > b.francs) return { francs: a.francs - b.francs, derem: a.derem !== null && b.derem !== null ? a.derem - b.derem : null, unit: a.unit };
+  }
   const explicitDerem = /d[eë]r[eë]m|dorom/.test(t);
   const wolof = readWolofNumber(t);
   if (wolof !== null && (explicitDerem || !FRENCH_MONEY.test(t))) {
@@ -330,6 +347,12 @@ const MONEY_WORDS = new Set(["derem", "dorom", "deurem", "francs", "franc", "f",
  * Renvoie null si aucun montant clair n'est trouvé.
  */
 export function extractSpokenAmount(text: string): SpokenAmount | null {
+  const removal = splitRemoval(text.toLowerCase());
+  if (removal) {
+    const a = extractSpokenAmount(removal[0]) ?? spokenAmountToFrancs(removal[0]);
+    const b = spokenAmountToFrancs(removal[1]) ?? extractSpokenAmount(removal[1]);
+    if (a && b && a.francs > b.francs) return { francs: a.francs - b.francs, derem: a.derem !== null && b.derem !== null ? a.derem - b.derem : null, unit: a.unit };
+  }
   const words = clean(text);
   // 1. Chiffres et nombres français : « 2 500 », « 15 000 F », « 2 millions », « vingt mille »
   //    (un nombre suivi d'une unité de quantité — « 2 sacs » — n'est pas de l'argent)

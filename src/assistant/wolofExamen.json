@@ -187,6 +187,11 @@
       "dit": "téeméeru junni",
       "francs": 500000,
       "source": "corpus : téeméeru"
+    },
+    {
+      "dit": "ñaari junni ak ñeent fukk, dindiil ñeent fukk yi",
+      "francs": 10000,
+      "source": "cahier des erreurs 04/11/2026 (correction « dindil »)"
     }
   ],
   "pas_argent": [
@@ -769,6 +774,59 @@
       {
         "dit": "Ibrahima Ba",
         "nouveau": true
+      }
+    ]
+  },
+  "dettes": {
+    "_lisezmoi": "Dette d'un client qui doit déjà : « ajout », « total », ou null = Jokko doit demander. Phrases du cahier des erreurs.",
+    "phrases": [
+      {
+        "dit": "c'est 15 000",
+        "mode": "total",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "Soxna Ndiaye, c'est 10000 francs",
+        "mode": "total",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "c'est 10 000 tout court",
+        "mode": "total",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "Fatou Ndiaye me doit 15 000 francs.",
+        "mode": null,
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "Soxna Ndiaye dieul na fi ñenti junni bor",
+        "mode": "ajout",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "Fatou Ndiaye dafa jël boru ñetti junni",
+        "mode": "ajout",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "Fatou Fall ñëw na ba ma lébbal ko 30 000",
+        "mode": "ajout",
+        "source": "cahier des erreurs 05/11/2026"
+      },
+      {
+        "dit": "Sokhna Ndiaye danga bind ñaari junni ak ñeent fukk, dindiil ñeent fukk yi",
+        "mode": "total",
+        "source": "cahier des erreurs 04/11/2026"
+      },
+      {
+        "dit": "bor bi lépp ñaari junni la",
+        "mode": "total"
+      },
+      {
+        "dit": "yokkal ñetti junni",
+        "mode": "ajout"
       }
     ]
   }

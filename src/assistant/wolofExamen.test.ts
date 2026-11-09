@@ -8,6 +8,7 @@ import examen from "./wolofExamen.json";
 import { extractSpokenAmount, francsToWolof, moneyAmountsSaid, spokenAmountToFrancs, wrongAmounts } from "./wolofNumbers";
 import { nameClash, pickByName } from "./wolofNames";
 import { sameSound } from "./wolofSpelling";
+import { debtWords } from "./debtMode";
 
 type Echec = { dit: string; attendu: unknown; obtenu: unknown };
 
@@ -97,9 +98,20 @@ function ecritures(): Echec[] {
   return ko;
 }
 
+/** Dette : « ajout », « total », ou null (Jokko demande). « mixte » compte comme null. */
+function dettes(): Echec[] {
+  const ko: Echec[] = [];
+  for (const q of examen.dettes.phrases) {
+    const w = debtWords(q.dit);
+    const got = w === "mixte" ? null : w;
+    if (got !== q.mode) ko.push({ dit: q.dit, attendu: q.mode ?? "demander", obtenu: got ?? "demander" });
+  }
+  return ko;
+}
+
 describe("examen de wolof", () => {
   it("score au-dessus du seuil", () => {
-    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], "nouveaux clients": [nouveauxClients(), examen.nouveaux_clients.phrases.length], "Jokko dit le montant": [dire(), examen.dire.montants.length * 2 + examen.dire.garde_fou.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length] } as const;
+    const parts = { argent: [argent(), examen.argent.length], "pas d'argent": [pasArgent(), examen.pas_argent.length], articles: [articles(), examen.articles.phrases.length], clients: [clients(), examen.clients.phrases.length], "nouveaux clients": [nouveauxClients(), examen.nouveaux_clients.phrases.length], "Jokko dit le montant": [dire(), examen.dire.montants.length * 2 + examen.dire.garde_fou.length], écritures: [ecritures(), examen.ecritures.pareils.length + examen.ecritures.differents.length], dettes: [dettes(), examen.dettes.phrases.length] } as const;
     let total = 0, ok = 0;
     const lignes: string[] = [];
     for (const [nom, [ko, n]] of Object.entries(parts)) {

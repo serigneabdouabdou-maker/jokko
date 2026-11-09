@@ -6,6 +6,7 @@ import { extractSpokenAmount, francsToWolof, settleAmounts, spokenAmountToFrancs
 import { buildShopContext, type DraftAction, type DraftActionType } from "./client";
 import type { LiveToolCall } from "./live";
 import { Basket } from "./basket";
+import { debtWords } from "./debtMode";
 import { addRepair, deliverRepair, findRepair, markRepaired, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName } from "./wolofNames";
 
@@ -53,6 +54,8 @@ export class LiveDesk {
   history: Entry[] = [];
   /** Panier de plusieurs articles, récapitulé avant d'être enregistré. */
   basket = new Basket();
+  /** Clients à qui Jokko vient de demander « ajout ou total ? » : leur réponse (choix du modèle) est respectée. */
+  private askedDebt = new Set<string>();
   private deps: DeskDeps;
 
   constructor(deps: DeskDeps) {
@@ -160,6 +163,7 @@ export class LiveDesk {
     const prior = action.type === "debt_add" && !action.debtMode && action.clientId ? before.clients.find((c) => c.id === action.clientId) : undefined;
     if (prior && prior.debt > 0 && action.amount) {
       const add = action.amount;
+      this.askedDebt.add(prior.id);
       return {
         ok: false,
         besoin: `de savoir : ${prior.name} doit déjà ${fr(prior.debt)} (${francsToWolof(prior.debt)}). J'ajoute ${fr(add)} (total ${fr(prior.debt + add)}), ou sa dette totale est ${fr(add)} ?`,
@@ -282,6 +286,15 @@ export class LiveDesk {
       if (action.type !== "stock_adjust" && !fixAmounts(action, args, heardText)) return NOT_UNDERSTOOD;
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
+      // Dette : « ajout » ou « total » d'après les mots du commerçant, pas d'après le modèle.
+      // Rien de clair avec un montant (« Fatou me doit 15 000 ») : on laisse le code poser la question.
+      if (action.type === "debt_add" && heard) {
+        const words = debtWords(heard);
+        const answered = action.clientId ? this.askedDebt.has(action.clientId) : false;
+        if (words === "ajout" || words === "total") action.debtMode = words;
+        else if (words === null && !answered && extractSpokenAmount(heard)) action.debtMode = null;
+        if (answered && action.debtMode && action.clientId) this.askedDebt.delete(action.clientId);
+      }
       const product = action.productId ? this.deps.getShop().products.find((p) => p.id === action.productId) : undefined;
       if (product && (action.type === "sale" || action.type === "stock_adjust" || action.type === "purchase") && unitKind(action.unit, product) === "inconnue") {
         const units = [product.unit, product.retail?.unit].filter(Boolean).join(" ou ");
