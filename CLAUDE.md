@@ -34,6 +34,16 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Corpus wolof publics pour trouver des écritures et des mots (pas pour entraîner Gemini) : ALFFA (`getalp/ALFFA_PUBLIC`), Kallaama (`gauthelo/kallaama-speech-dataset`, CC-BY-4.0), WolBanking77 (`abdoukarim/wolbanking77`, CC-BY-4.0), Common Voice wolof (`Galsenaicommunity/Wolof-Common-Voice`, CC-BY-SA). Catalogue : `papasega/african-speech-mcp`. Un mot nouveau donné à Gemini (`wolofLexicon.ts`) doit d'abord être validé par Fallou.
 - Cahier des erreurs : `note_assistant` (actions, annulations, « Jokko s'est trompé ») → console, onglet « Erreurs de Jokko ». Objectif : **moins de 10 % d'erreurs en wolof**.
 
+## Économie du crédit Gemini (depuis le 09/11/2026)
+
+- Crédit Gemini **prépayé** (AI Studio → Billing) : à 0, Google renvoie 402 et Jokko se tait. `private.credit_watch()` (toutes les 5 min) alerte Fallou sur la console : crédit vide, plafond gratuit atteint, dépense du jour > `alerte_cout_jour`.
+- Tous les chiffres sont dans `private.app_config` (pas dans le code) : `quota_<offre>_<type>` (par jour), `gratuit_mois_<type>` (par mois), `essai_total_<type>`, `plafond_gratuit_jour` (F/jour, gratuits + essais → raison `pause`), `cout_<type>`.
+- Types comptés par `use_assistant` : direct, echange (bloqué en cours de conversation à la limite), vocal, texte, conseil, stock, voix (voix claire, une phrase = 1).
+- Direct : 5 min max par conversation, coupé après 30 s de silence (`App.tsx`).
+- Messages vocaux de forfait : `src/assistant/quotaVoice.ts` (fichiers `media/voix/phrases/forfait-*-v1.mp3`). Le wolof de `forfait-mois-fini` est à faire valider par Fallou.
+- Les admins (`platform_admins`) ne sont jamais limités, mais leur usage est compté : tester en texte pour économiser.
+- SQL de référence : `supabase/migrations/`.
+
 ## Routine hebdomadaire
 
 1. Ouvrir l'onglet « Erreurs de Jokko » (7 jours) : taux wolof et français.
