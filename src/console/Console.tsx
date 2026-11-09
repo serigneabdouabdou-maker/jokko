@@ -465,7 +465,7 @@ function Overview({ dash, shops, usage, onGo }: { dash: Dashboard; shops: Consol
               ))}
             </ul>
           )}
-          <p className="note">Limites par jour : Gratuit 10 vocaux · Médium 40 vocaux · Avancé 40 échanges en direct + 80 vocaux · Essai (au total, pas par jour) : 5 vocaux + 5 échanges en direct, puis Jokko propose l’offre à voix haute.</p>
+          <p className="note">Limites par jour : Gratuit 5 vocaux (30 par mois) · Médium 40 vocaux · Avancé 25 échanges en direct + 80 vocaux · Essai (au total, pas par jour) : 5 vocaux + 5 échanges en direct, puis Jokko propose l’offre à voix haute.</p>
         </section>
       )}
 
