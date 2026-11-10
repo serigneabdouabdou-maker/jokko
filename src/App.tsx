@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Cuisine } from "@/components/jokko/Cuisine";
 import { ForfaitChip } from "@/components/jokko/Forfait";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -120,7 +121,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "vitrine" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "cuisine" | "vitrine" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -130,6 +131,7 @@ const LANGS: Array<[Lang, string]> = [
 const NAV: Array<[Screen, string]> = [
   ["parler", "Parler"],
   // Écrans du métier en haut : le tailleur voit d'abord son Studio et ses commandes.
+  ["cuisine", "Cuisine"],
   ["studio", "Studio"],
   ["couture", "Couture"],
   ["atelier", "Atelier"],
@@ -167,6 +169,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   atelier: "reparation",
   couture: "couture",
   studio: "photo",
+  cuisine: "cuisine",
   vitrine: "boutique",
   depenses: "depense",
   dettes: "dette",
@@ -1557,6 +1560,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
+          {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}

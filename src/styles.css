@@ -1837,3 +1837,30 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .value-recap h3 { margin: 0 0 6px; font-size: 1rem; }
 .value-recap ul { margin: 0 0 6px; padding-left: 18px; }
 .plan-day { margin: -4px 0 6px; }
+
+/* Cuisine / Fournées : un toucher = une portion vendue */
+.cz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.cz-card { display: grid; border-radius: 18px; background: var(--j-white, #fff); border: 1px solid var(--j-line); overflow: hidden; }
+.cz-card[data-out="true"] { opacity: 0.6; }
+.cz-sell { display: grid; gap: 4px; padding: 14px 14px 10px; text-align: left; background: none; border: 0; cursor: pointer; font: inherit; color: inherit; }
+.cz-sell:active:not(:disabled) { background: var(--j-wash); }
+.cz-name { font-weight: 750; font-size: 16px; line-height: 1.2; }
+.cz-price { font-weight: 800; font-size: 18px; }
+.cz-left { justify-self: start; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #e8f7ee; color: #17663c; }
+.cz-left[data-tone="low"] { background: #fff4dc; color: #8a5a00; }
+.cz-left[data-tone="out"] { background: #fdeaea; color: #a52a2a; }
+.cz-sold { font-size: 12.5px; color: var(--j-ink-2); }
+.cz-prep-btn { border-top: 1px solid var(--j-line); border-radius: 0; }
+.cz-prep { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--j-line); align-items: center; }
+.cz-units { display: flex; flex-wrap: wrap; gap: 6px; }
+.cz-block { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--j-line); }
+.cz-block h3 { font-size: 17px; margin-bottom: 4px; }
+.cz-line { display: flex; gap: 8px; }
+.cz-result { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--j-wash); }
+.cz-result [data-tone="ok"] { color: #17663c; }
+.cz-result [data-tone="bad"] { color: #a52a2a; }
+.cz-rank { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.cz-rank li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--j-line); }
+.cz-check { display: flex; gap: 10px; align-items: center; }
+.cz-flash { color: #17663c; font-weight: 600; }
+.cz-empty { padding: 14px; border-radius: 14px; background: var(--j-wash); margin-top: 8px; }

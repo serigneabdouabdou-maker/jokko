@@ -1,4 +1,4 @@
-import { Hammer, type LucideIcon, Pill, Printer, Scissors, Shirt, ShoppingBasket, Smartphone, Store } from "lucide-react";
+import { Croissant, Hammer, type LucideIcon, Pill, Printer, Scissors, Shirt, ShoppingBasket, Smartphone, Store, UtensilsCrossed } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ICON_STROKE } from "./Icon";
 import { METIERS, type MetierId, metierOf } from "@/data/metiers";
@@ -34,6 +34,18 @@ export const METIER_LOOK: Record<MetierId, { icon: LucideIcon; title: string; su
     title: "Couture",
     sub: "Tailleur, atelier de couture",
     setup: ["Mesures des clients, à la voix", "Commandes, avances, date promise", "Message « ton habit est prêt » sur WhatsApp"],
+  },
+  restauration: {
+    icon: UtensilsCrossed,
+    title: "Restauration",
+    sub: "Restaurant, dibiterie, jus",
+    setup: ["Plats du jour : préparés, vendus, restes", "Coût et bénéfice de chaque plat", "Dépenses du marché et crédit des habitués"],
+  },
+  boulangerie: {
+    icon: Croissant,
+    title: "Boulangerie",
+    sub: "Pain, pâtisserie",
+    setup: ["Fournées : sorties, vendues, invendus", "Pain livré aux boutiques à crédit", "Farine et prix de revient du pain"],
   },
   vetements: {
     icon: Shirt,

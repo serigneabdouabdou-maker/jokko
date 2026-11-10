@@ -66,6 +66,13 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Changer le métier d'une boutique déjà utilisée crée une NOUVELLE boutique (offre Avancé) : jamais de données mélangées.
 - Tailleur : Atelier couture (mesures à la voix, commandes, avance/reste, suivi, rappel « habit prêt ») + Studio d'essayage. Les images IA ne s'ouvrent qu'aux tailleurs **payants** (rien d'avancé par CFC) et entrent, avec leur accord, dans la galerie commune signée Jokko.
 
+## Restauration et boulangerie (livrées le 10/11/2026)
+
+- Métiers `restauration` (restaurant, dibiterie, fast-food, jus, petit-déjeuner) et `boulangerie` dans `src/data/metiers.ts` ; module `cuisine` (ajoutable à une autre boutique dans les réglages).
+- Écran « Plats du jour » / « Fournées » (`Cuisine.tsx`, calculs `src/data/cuisine.ts`) : un plat = un article (unité plat, portion, verre, bouteille, baguette…) dont le stock = portions préparées qui restent ; un toucher = 1 portion vendue (`sellDish`) ; « Préparer / Fournée » ajoute ; « Combien me coûte un plat ? » (ingrédients ÷ portions → `cost`) ; classement 7 jours par bénéfice ; fin de service = restes frais en perte (`endService`, dépense `perte`).
+- Gemini : noms de plats et de jus courants dans la consigne (ceebu jën, yassa, mafé, dibi, bissap, bouye…) ; vivres wolof aussi pour la restauration. Boulangerie : pain livré aux boutiques à crédit = vente à crédit (dette).
+- Après un changement de `src/data/metiers.ts` : redéployer `assistant` avec le nouveau numéro de version GitHub dans ses imports (sinon Gemini garde l'ancienne liste des métiers).
+
 ## Garde-fou du budget (livré le 09/11/2026)
 
 - Images IA : essai = **1 essayage au total** (`essai_total_image`), Médium 0, Avancé 5/jour (`quota_avance_image`). Hors Avancé, le Studio montre seulement 20 modèles + invitation à l'offre Avancé ; les nouveaux modèles sont réservés à l'Avancé.

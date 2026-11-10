@@ -81,6 +81,7 @@ import {
   Pencil,
   ArrowLeft,
   Images,
+  UtensilsCrossed,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -115,6 +116,7 @@ export const ICONS = {
   numerique: CodeXml,
   ia: Sparkles,
   reparation: Wrench,
+  cuisine: UtensilsCrossed,
   couture: Scissors,
   accessoire: Headphones,
   ecole: School,

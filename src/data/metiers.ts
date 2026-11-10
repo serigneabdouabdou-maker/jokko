@@ -4,26 +4,27 @@
  * Pas d'import avec « @/ » : ce fichier est aussi lu par le serveur (consignes de Gemini).
  */
 
-export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "couture" | "vetements" | "multiservice" | "autre";
+export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "couture" | "vetements" | "restauration" | "boulangerie" | "multiservice" | "autre";
 
 /**
  * Modules : morceaux de l'appli propres à un métier. Le métier choisi donne ses modules ; le patron peut en ajouter
  * d'un autre métier dans les réglages (ex. boutique + transfert d'argent). Un module absent n'apparaît nulle part :
  * ni écran, ni outil de Jokko, ni consigne de Gemini.
  */
-export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services";
+export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services" | "cuisine";
 
 /** Écrans qui dépendent du métier (les autres sont communs à toutes les boutiques). */
-export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture", "studio"] as const;
+export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture", "studio", "cuisine"] as const;
 export type OptionalScreen = (typeof OPTIONAL_SCREENS)[number];
 /** Écran apporté par un module ajouté dans les réglages. */
-const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen[]>> = { atelier: ["atelier"], couture: ["studio", "couture"] };
+const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen[]>> = { atelier: ["atelier"], couture: ["studio", "couture"], cuisine: ["cuisine"] };
 export const MODULES: { id: ModuleId; label: string; desc: string }[] = [
   { id: "atelier", label: "Atelier de réparation", desc: "Dépôts d'appareils, pannes, pièces posées, « c'est prêt » sur WhatsApp" },
   { id: "couture", label: "Atelier couture", desc: "Mesures des clients, commandes, essayages, « ton habit est prêt »" },
   { id: "peremption", label: "Dates de péremption", desc: "Lots, dates, alertes avant que ça périme" },
   { id: "vivres", label: "Vivres en wolof", desc: "Jokko comprend ceeb, diw, suukar… (riz, huile, sucre)" },
   { id: "services", label: "Services et transfert", desc: "Photocopies, impression, transfert d'argent vendus comme services" },
+  { id: "cuisine", label: "Plats et boissons", desc: "Plats du jour, coût de chaque plat, restes de fin de service" },
 ];
 
 export type Metier = {
@@ -160,6 +161,45 @@ export const METIERS: Metier[] = [
     ex: { stock: "« 20 pantalons à 7 500, achetés à 5 000 ; 30 mètres de bazin ; 10 paires de chaussures »", search: "pantalon, bazin, chaussures…", invoice: "« Facture Awa, 5 mètres de bazin »", prompts: ["Il me reste combien de pantalons ?", "Ajoute une vente de 15 000", "Qui me doit de l'argent ?", "Caisse du jour", "Relance Awa", "Bénéfice de la semaine"], units: "pièce, mètre, paire…" },
   },
   {
+    id: "restauration",
+    label: "Restaurant, dibiterie, fast-food, jus",
+    keywords: /restau|resto|dibiter|dibi|fast.?food|gargote|tangana|cantine|traiteur|grillade|jus|bissap|bouye|petit.?dej|dejeuner|déjeuner|fataya|shawarma|pizza|cafe touba|café touba|ndambe|ndambé|thiebou|ceebu/i,
+    units: ["plat", "portion", "sandwich", "verre", "bouteille", "sachet", "kilo", "litre", "sac", "pièce"],
+    screens: ["cuisine", "stock", "distance", "boutiques", "conseiller"],
+    atelier: false,
+    peremption: false,
+    modules: ["cuisine"],
+    conseiller: "les plats qui rapportent le plus et le moins (prix moins coût du plat), les restes jetés en fin de service, les dépenses du marché comparées aux ventes du jour",
+    consigne:
+      "Restauration (restaurant, dibiterie, fast-food, vente de jus, petit-déjeuner) : les articles du menu sont des plats et des boissons vendus à la portion ; " +
+      "le riz, l'huile, la viande, le poisson et les légumes achetés au marché sont des ingrédients (stock au sac, au kilo, au litre) ou des dépenses du marché. " +
+      "Une commande dite (« deux yassa poulet ak ñetti bissap », « 3 dibi ak 2 coca ») = une vente par plat, au prix du menu, calculée par l'outil. " +
+      "« J'ai préparé 40 plats de ceebu jën » = ajouter 40 au stock de ce plat. « Marché 25 000 » = une dépense du marché. " +
+      "Plats courants : ceebu jën (thiéboudienne), yassa, mafé, domoda, thiou, soupou kandja, dibi (viande grillée), dibi hausa, poulet braisé, chawarma, fataya, pastels, ndambé, sandwich, thiakry, lakh. " +
+      "Jus courants : bissap, bouye (pain de singe), gingembre, ditax, tamarin ; café Touba. " +
+      "Les clients habitués mangent parfois à crédit : c'est une dette à son nom. Le coût d'un plat se calcule dans l'écran Cuisine.",
+    vivres: true,
+    ex: { stock: "« Yassa poulet 1 500 le plat ; bissap 500 la bouteille ; 2 sacs de riz achetés à 18 000 »", search: "yassa, bissap, riz…", invoice: "« Facture Moussa, 10 plats de ceebu jën, 15 000 »", prompts: ["J'ai vendu 2 yassa et 3 bissap", "J'ai préparé 40 plats de ceebu jën", "Marché 25 000", "Quel plat rapporte le plus ?", "Qui me doit de l'argent ?", "Caisse du jour"], units: "plat, portion, bouteille…" },
+  },
+  {
+    id: "boulangerie",
+    label: "Boulangerie, pâtisserie",
+    keywords: /boulang|patiss|pâtiss|pain|baguette|croissant|four a pain|four à pain/i,
+    units: ["baguette", "pain", "croissant", "pièce", "sac", "kilo", "carton", "sachet"],
+    screens: ["cuisine", "stock", "distance", "boutiques", "conseiller"],
+    atelier: false,
+    peremption: false,
+    modules: ["cuisine"],
+    conseiller: "les invendus de chaque jour, les boutiques livrées à crédit qui paient en retard, le prix de la farine comparé au prix du pain",
+    consigne:
+      "Boulangerie : pain, baguettes, croissants et pâtisseries sortis par fournée ; ingrédients : farine (sacs de 50 kg), levure, sucre, gaz ou bois. " +
+      "« Fournée de 300 baguettes » = ajouter 300 au stock des baguettes. Beaucoup de pain est livré aux boutiques du quartier À CRÉDIT : " +
+      "« Boutique Modou a pris 100 baguettes à crédit » = une vente à crédit au nom de cette boutique (une dette), payée plus tard. " +
+      "Le pain rendu le soir (invendus) se passe en perte avec la fin de service dans l'écran Fournées.",
+    vivres: false,
+    ex: { stock: "« Baguette 150 ; croissant 300 ; 5 sacs de farine achetés à 17 500 »", search: "baguette, croissant, farine…", invoice: "« Facture Boutique Modou, 100 baguettes »", prompts: ["Fournée de 300 baguettes", "Boutique Modou a pris 100 baguettes à crédit", "Qui me doit de l'argent ?", "Il me reste combien de farine ?", "Caisse du jour", "Bénéfice de la semaine"], units: "baguette, pain, sac…" },
+  },
+  {
     id: "multiservice",
     label: "Multiservice (impression, photocopie, transfert d'argent)",
     keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|secretariat|secrétariat/i,
@@ -228,6 +268,10 @@ export function screenLabel(activity: string | undefined | null, screen: string,
   if (id === "couture" && screen === "ventes") return "Paiements";
   if (id === "reparation" && screen === "stock") return "Pièces";
   if (id === "pharmacie" && screen === "stock") return "Médicaments";
+  if (id === "restauration" && screen === "stock") return "Ingrédients et boissons";
+  if (id === "restauration" && screen === "cuisine") return "Plats du jour";
+  if (id === "boulangerie" && screen === "stock") return "Farine et ingrédients";
+  if (id === "boulangerie" && screen === "cuisine") return "Fournées";
   return fallback;
 }
 
@@ -238,6 +282,7 @@ const MODULE_CONSIGNE: Record<ModuleId, string> = {
   peremption: "MODULE PÉREMPTION : certains articles ont des dates de péremption suivies par lot.",
   vivres: "",
   services: "MODULE SERVICES : photocopies, impression et transfert d'argent sont vendus comme des services (une vente sans stock).",
+  cuisine: "MODULE PLATS ET BOISSONS : la boutique vend aussi des plats ou des boissons à la portion (« j'ai préparé 30 plats » = ajouter au stock du plat).",
 };
 
 /** Bloc des consignes de Gemini pour le métier de la boutique (règle de santé pour tous). */

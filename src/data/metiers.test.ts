@@ -42,8 +42,22 @@ describe("métiers", () => {
 });
 
 describe("mode strict : une boutique = un métier", () => {
-  it("seule l'alimentation reçoit le vocabulaire des vivres", () => {
-    expect(METIERS.filter((m) => m.vivres).map((m) => m.id)).toEqual(["alimentation"]);
+  it("seules l'alimentation et la restauration reçoivent le vocabulaire des vivres", () => {
+    // Un restaurant achète riz, huile et sucre au marché : ceeb, diw, suukar lui servent aussi.
+    expect(METIERS.filter((m) => m.vivres).map((m) => m.id)).toEqual(["alimentation", "restauration"]);
+  });
+
+  it("restaurant et boulangerie : écran Cuisine, jamais la couture ni l'atelier", () => {
+    for (const a of ["Restaurant, dibiterie, fast-food, jus", "Boulangerie, pâtisserie"]) {
+      const screens = screensOf(a);
+      expect(screens.has("cuisine")).toBe(true);
+      expect(screens.has("couture")).toBe(false);
+      expect(screens.has("atelier")).toBe(false);
+    }
+    expect(metierOf("dibiterie chez Ablaye").id).toBe("restauration");
+    expect(metierOf("vente de jus bissap").id).toBe("restauration");
+    expect(metierOf("boulangerie du marché").id).toBe("boulangerie");
+    expect(screensOf("Alimentation générale, boutique de quartier").has("cuisine")).toBe(false);
   });
 
   it("les exemples d'une pharmacie ne parlent ni de riz ni d'huile", () => {
