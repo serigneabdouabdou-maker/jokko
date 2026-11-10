@@ -115,6 +115,11 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Vidéo « Jokko en 1 minute » (`LandingVideo.tsx`, juste après le diaporama) : épisode 4 de Modou (`marketing/modou/metiers.html`), fichier `public/media/jokko-metiers-v2.mp4` (720p, ≈ 4 Mo, 1 min 21 : 8 métiers dont restaurant et boulangerie) + affiche `.jpg` ; rien n'est chargé avant le toucher ; le service worker ne garde jamais `/media/` ni les `.mp4`. Bouton « Partager sur WhatsApp » (lien `#video`).
 
+## Affiches publicitaires photo (10/11/2026)
+
+- Fonction `accueil`, action `affiche` (`id`, `prompt`, `ratio`) : le vrai logo (`brand/officiel/jokko-teams-icon-1024.png`, lu sur GitHub) est donné à Gemini comme modèle → `galerie/marketing/<id>.jpg` (2K, ≈ 3 Mo, sans retouche). Une demande à la fois. Récupérer avec le workflow `assets.yml` (chemins séparés par des **virgules**).
+- Série 1 : car-rapide, boutique, ndiaga-ndiaye, moto, panneau, famille (4:5, slogan « Wax rekk, Jokko bind », commerçant en boubou bleu à broderie jaune comme Modou).
+
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Suppression d'un achat de marchandise : retirer aussi les articles du stock (garder l'article et la quantité sur chaque achat).

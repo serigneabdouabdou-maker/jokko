@@ -2,6 +2,7 @@
 // Appelée seulement par le serveur (jeton interne galerie_token, jamais affiché).
 // POST { token, id, prompt } → galerie/accueil/<id>-v1.jpg (900 px de large, JPEG ≈ 120 Ko).
 // POST { token, action: "plat", id, prompt } → vitrine/catalogue/<id>.jpg (photo carrée du catalogue des plats, 640 px).
+// POST { token, action: "affiche", id, prompt, ratio } → galerie/marketing/<id>.<png|jpg> (affiche publicitaire avec le vrai logo Jokko donné en modèle, 2K, sans retouche).
 // POST { token, action: "voix", id, text, lang } → galerie/accueil/voix/<id>.wav (voix Sulafat, wolof ou français, pour les vidéos).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
@@ -92,6 +93,47 @@ async function plat(body: Record<string, string>, apiKey: string): Promise<Respo
   return json(502, { error: "gemini", status: last });
 }
 
+// Affiches publicitaires : le vrai logo Jokko est donné à Gemini comme modèle, pour qu'il le recopie fidèlement.
+const LOGO_URL = "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/main/brand/officiel/jokko-teams-icon-1024.png";
+const AD_STYLE =
+  "Photorealistic high-end advertising photograph, award-winning outdoor campaign, shot on a full-frame camera, natural warm Dakar light, rich vivid colors, sharp detail, authentic Senegalese people and places. " +
+  "Brand: Jokko, a voice assistant app for Senegalese shopkeepers. Use EXACTLY the attached logo (dark navy rounded square #0A1F44 with a white letter J and two stacked bright blue bars) next to the word 'Jokko' in bold white or navy sans-serif. " +
+  "Brand colors: navy #0A1F44, bright blue #4F8BFF, yellow #F6B800, white. Any text must be spelled exactly as given, nothing else written. No watermark.";
+async function affiche(body: Record<string, string>, apiKey: string): Promise<Response> {
+  if (!/^[a-z0-9-]{3,40}$/.test(body.id ?? "") || !body.prompt || body.prompt.length > 1200) return json(400, { error: "invalid_request" });
+  const ratio = ["4:5", "9:16", "1:1", "16:9", "3:4"].includes(body.ratio) ? body.ratio : "4:5";
+  const logo = await fetch(LOGO_URL).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+  if (!logo) return json(502, { error: "logo" });
+  let bin = ""; const bytes = new Uint8Array(logo);
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const logoB64 = btoa(bin);
+  let last = 0;
+  for (const model of IMAGE_MODELS) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ inlineData: { mimeType: "image/png", data: logoB64 } }, { text: `${body.prompt} ${AD_STYLE}` }] }],
+        generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio, imageSize: "2K" } },
+      }),
+      signal: AbortSignal.timeout(120_000),
+    }).catch(() => null);
+    last = res?.status ?? 0;
+    await admin.from("gemini_calls").insert({ shop_id: null, kind: "image", ok: Boolean(res?.ok), status: last || 502 });
+    if (!res?.ok) continue;
+    const out = await res.json().catch(() => null);
+    const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
+    if (!part) continue;
+    // Pas de décodage ici (image 2K trop lourde pour la fonction) : on garde le fichier tel que Gemini l'envoie.
+    const mime: string = part.inlineData.mimeType || "image/png";
+    const raw = Uint8Array.from(atob(part.inlineData.data), (c) => c.charCodeAt(0));
+    const path = `marketing/${body.id}.${mime.includes("jpeg") ? "jpg" : "png"}`;
+    const up = await admin.storage.from("galerie").upload(path, raw, { contentType: mime, upsert: true, cacheControl: "3600" });
+    if (up.error) return json(500, { error: "stockage" });
+    return json(200, { path, ko: Math.round(raw.length / 1024), model });
+  }
+  return json(502, { error: "gemini", status: last });
+}
+
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 Deno.serve(async (req) => {
@@ -104,6 +146,7 @@ Deno.serve(async (req) => {
   if (!apiKey) return json(503, { error: "gemini_not_configured" });
   if (body.action === "voix") return voix(body, apiKey);
   if (body.action === "plat") return plat(body, apiKey);
+  if (body.action === "affiche") return affiche(body, apiKey);
   if (!/^[a-z-]{3,30}$/.test(body.id ?? "") || !body.prompt) return json(400, { error: "invalid_request" });
 
   let last = 0;
