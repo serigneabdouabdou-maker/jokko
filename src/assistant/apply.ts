@@ -149,7 +149,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     // Un retrait qui n'est pas une vente (gâté, cassé, volé, manquant) est une perte, au prix d'achat.
     const loss = delta < 0 && product.cost !== undefined && removed > 0 ? Math.round(removed * product.cost) : 0;
     const expenses = loss
-      ? [{ id: uid("e"), at: todayStamp(), label: action.label?.trim() || `Perte ${product.name}`, amount: loss, kind: "perte" as const }, ...shop.expenses]
+      ? [{ id: uid("e"), at: todayStamp(), label: action.label?.trim() || `Perte ${product.name}`, amount: loss, kind: "perte" as const, productId: product.id, qty: removed }, ...shop.expenses]
       : shop.expenses;
     return {
       shop: { ...shop, products: shop.products.map((p) => (p.id === product.id ? { ...p, stock } : p)), expenses },
@@ -272,7 +272,7 @@ function applyPurchase(shop: Shop, action: DraftAction, found: Product | undefin
   const products = found ? shop.products.map((p) => (p.id === found.id ? product : p)) : [...shop.products, product];
   const label = `Achat ${qtyLabel(qty)} ${unit} ${product.name}`;
   return {
-    shop: { ...shop, products, expenses: [{ id: uid("e"), at: todayStamp(), label, amount: paid, kind: "achat" }, ...shop.expenses] },
+    shop: { ...shop, products, expenses: [{ id: uid("e"), at: todayStamp(), label, amount: paid, kind: "achat", productId: product.id, qty: roundQty(baseQty) }, ...shop.expenses] },
     amount: paid,
     summary: `Achat · ${qtyLabel(qty)} ${unit} ${product.name} · ${qty !== 1 ? `${qtyLabel(qty)} × ${money(Math.round(price))} = ` : ""}${money(paid)} · stock ${qtyLabel(product.stock)} ${product.unit}${found ? "" : " · nouvel article : mets son prix de vente dans Stock"}`,
   };

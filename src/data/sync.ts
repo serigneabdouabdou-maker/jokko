@@ -44,7 +44,7 @@ const toRow = {
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
     cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes", ticket: opt(s.ticket),
   }),
-  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense" }),
+  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense", product_id: opt(e.productId), qty: opt(e.qty) }),
   invoices: (i: Invoice, shopId: string): Row => ({
     id: i.id, shop_id: shopId, number: i.number, at: i.at, client_id: i.clientId, amount: i.amount, status: i.status,
     lines: i.lines ?? [], due_at: opt(i.dueAt), pdf_path: opt(i.pdfPath),
@@ -447,6 +447,8 @@ export function rowsToShop(rows: ShopRows): Shop {
       rows.expenses.map((r) => {
         const expense: Expense = { id: str(r.id), at: iso(r.at), label: str(r.label), amount: num(r.amount) };
         if (r.kind === "perte" || r.kind === "achat") expense.kind = r.kind;
+        if (r.product_id) expense.productId = str(r.product_id);
+        if (num(r.qty) > 0) expense.qty = num(r.qty);
         return expense;
       }),
     ),

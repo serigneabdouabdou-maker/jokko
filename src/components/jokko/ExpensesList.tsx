@@ -3,7 +3,7 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Expense, type Shop, money } from "@/model";
-import { editExpense, removeExpense } from "@/data/sales";
+import { editExpense, removeExpense, stockDelta } from "@/data/sales";
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, ""));
 const KIND: Record<string, string> = { perte: " (perte de stock)", achat: " (achat de marchandise)" };
@@ -28,7 +28,14 @@ function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; comm
   const [mode, setMode] = useState<"" | "modifier" | "supprimer">("");
   const [label, setLabel] = useState(e.label);
   const [price, setPrice] = useState(String(e.amount));
-  const stockNote = e.kind === "achat" || e.kind === "perte" ? " Le stock ne change pas : corrige-le dans Stock si besoin." : "";
+  const delta = stockDelta(e);
+  const product = e.productId ? shop.products.find((p) => p.id === e.productId) : undefined;
+  const qty = (n: number) => String(Math.round(n * 1000) / 1000).replace(".", ",");
+  const stockNote = delta && product
+    ? delta < 0
+      ? ` ${qty(-delta)} ${product.unit} ${product.name} sortent aussi du stock.`
+      : ` ${qty(delta)} ${product.unit} ${product.name} reviennent dans le stock.`
+    : e.kind === "achat" || e.kind === "perte" ? " Le stock ne change pas : corrige-le dans Stock si besoin." : "";
   return (
     <article style={{ flexWrap: "wrap" }}>
       <span>

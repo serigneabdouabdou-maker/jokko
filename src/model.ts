@@ -108,7 +108,11 @@ export const PAYMENT_LABELS: Record<Payment, string> = { especes: "Espèces", wa
  * kind « achat » : marchandise achetée pour le stock. L'argent sort de la caisse, mais ce n'est pas
  * une dépense du bénéfice : le coût compte quand l'article est vendu.
  */
-export type Expense = { id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" | "achat" };
+export type Expense = {
+  id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" | "achat";
+  /** Achat ou perte d'un article : lequel, et combien d'unités de gros (pour remettre le stock juste si on supprime). */
+  productId?: string; qty?: number;
+};
 
 export type InvoiceLine = { label: string; qty: number; unit: string; unitPrice: number; productId?: string };
 

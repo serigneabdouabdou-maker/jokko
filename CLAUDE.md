@@ -85,6 +85,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Scanner (grandes boutiques, `ScanCheckout.tsx`) : douchette USB (câble OTG) ou Bluetooth en mode clavier (HID), codes-barres et QR ; une lecture = frappes très rapides + Entrée, reconnue même si le curseur est resté dans « Argent reçu » ou « Cherche » (horodatage des touches `e.timeStamp`, le champ est remis comme avant). Testé : 51 lectures d'affilée → 46 lignes, total juste, un seul ticket de 65 lignes. Monnaie : « Compte juste » + billets rapides, « Reçu / Rendu » imprimés sur le ticket.
 - Articles retirés avant encaissement (livré le 10/11/2026) : Scanner et Plats du jour gardent la plus grande quantité vue par article (`src/data/voids.ts`, crochet `useCartVoids.ts`) ; à l'encaissement, à « Vider » ou en quittant l'écran, ce qui manque est noté dans `cart_voids` (qui, quoi, combien ; jamais modifiable ni effaçable, `created_by` = vrai compte). Ticket Z et écran Caisse : « 7 articles retirés (… F) : 6 par Awa » ; pour le patron, liste « Retraits du jour » (heure, vendeur, articles, somme ; un geste = une ligne, `voidEvents`). Chaque soir 20 h 31, `private.voids_watch()` (cron `jokko-retraits-soir`) prévient le patron si un vendeur retire ≥ 5 articles et > 3 × sa moyenne des 14 jours.
 - Dettes remboursées (livré le 10/11/2026) : « Il a payé » (avec Espèces / Wave / Orange Money) et `debt_payment` à la voix notent un remboursement (`addRepayment`, table `debt_payments`, jamais plus que la dette). Espèces → caisse attendue (`dayRepaid` dans `expectedCash`, ligne « + Dettes remboursées ») ; ticket Z « Dettes remboursees » par paiement, écart juste. Corriger / effacer une dette n'est pas un paiement.
+- Achat supprimé = stock juste (livré le 10/11/2026) : chaque achat (`applyPurchase`) et chaque perte à la voix gardent `expenses.product_id` + `qty` (unités de gros). `removeExpense` : achat → articles retirés du stock (jamais sous 0), perte → articles remis ; le message de confirmation le dit. Anciennes lignes sans article : le stock ne bouge pas.
 - Imprimante conseillée : thermique Bluetooth 58 mm (≈ 15 000 à 25 000 F à Dakar, hypothèse) ; 80 mm pour les supérettes à gros débit.
 
 ## Garde-fou du budget (livré le 09/11/2026)
@@ -122,7 +123,6 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
-- Suppression d'un achat de marchandise : retirer aussi les articles du stock (garder l'article et la quantité sur chaque achat).
 - Tailleurs : « Ajouter mes modèles » (photos de ses créations dans sa galerie, essayables par ses clients).
 
 ## Routine hebdomadaire

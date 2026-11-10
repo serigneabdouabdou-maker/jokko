@@ -1,4 +1,4 @@
-import { type Sale, type Shop, isToday } from "../model";
+import { type Expense, type Sale, type Shop, isToday } from "../model";
 import { roundQty } from "../assistant/apply";
 
 /**
@@ -62,9 +62,28 @@ export function clearTodaySales(shop: Shop): Shop {
 
 // ---------- Dépenses ----------
 
-/** Supprime une dépense : l'argent revient dans la caisse du jour. (Un achat ou une perte ne change pas le stock.) */
+/**
+ * Supprime une dépense : l'argent revient dans la caisse du jour.
+ * Achat de marchandise supprimé : les articles sortent du stock (jamais sous 0).
+ * Perte supprimée (erreur) : les articles reviennent dans le stock.
+ * Anciennes lignes sans article noté : le stock ne bouge pas (à corriger dans Stock).
+ */
 export function removeExpense(shop: Shop, id: string): Shop {
-  return { ...shop, expenses: shop.expenses.filter((e) => e.id !== id) };
+  const e = shop.expenses.find((x) => x.id === id);
+  const expenses = shop.expenses.filter((x) => x.id !== id);
+  const delta = stockDelta(e);
+  if (!e?.productId || !delta) return { ...shop, expenses };
+  return {
+    ...shop,
+    expenses,
+    products: shop.products.map((p) => (p.id === e.productId ? { ...p, stock: Math.max(0, Math.round((p.stock + delta) * 1000) / 1000) } : p)),
+  };
+}
+
+/** Ce que la suppression change au stock : − pour un achat, + pour une perte, 0 sinon. */
+export function stockDelta(e: Pick<Expense, "kind" | "productId" | "qty"> | undefined): number {
+  if (!e?.productId || !e.qty || !(e.qty > 0)) return 0;
+  return e.kind === "achat" ? -e.qty : e.kind === "perte" ? e.qty : 0;
 }
 
 /** Corrige le montant ou le nom d'une dépense. */
