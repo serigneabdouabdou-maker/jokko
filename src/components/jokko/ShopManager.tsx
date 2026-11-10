@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { newShop, type Profile, type Shop } from "@/model";
+import { newShop, type Profile, type Shop, uid } from "@/model";
 import { supabase } from "@/data/supabase";
 import { flushNow } from "@/data/store";
 import { shopWithMetier } from "@/data/metiers";
@@ -35,6 +35,8 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
   const [name, setName] = useState("");
   const [city, setCity] = useState(shop?.city ?? "");
   const [activity, setActivity] = useState("");
+  const [branch, setBranch] = useState(false);
+  const [copyProducts, setCopyProducts] = useState(true);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -43,8 +45,10 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
   const taken = activity ? shopWithMetier(profile.shops, activity, profile.roles) : undefined;
 
   function create() {
-    if (taken || !activity) return;
-    const created: Shop = newShop(name.trim(), activity.trim(), city.trim());
+    if (!activity || (taken && !branch)) return;
+    const fresh: Shop = newShop(name.trim(), activity.trim(), city.trim());
+    // Deuxième point de vente du même métier (offre Avancé) : mêmes articles et prix si demandé, stock à zéro ; clients, caisse et dettes à part.
+    const created: Shop = taken && branch && copyProducts ? { ...fresh, products: taken.products.map((p) => ({ ...p, id: uid("p"), stock: 0 })) } : fresh;
     setProfile({ ...profile, shops: [...profile.shops, created], shopId: created.id });
     setMode("");
     setName("");
@@ -104,16 +108,28 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
           <Input className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville ou quartier" aria-label="Ville" />
           <MetierCards value={activity} onChange={setActivity} compact />
           {taken ? (
-            <p className="note" data-tone="error">
-              Tu as déjà « {taken.name} » pour ce métier. Un numéro = une seule entreprise par métier.{" "}
-              <button type="button" className="link" onClick={() => { setProfile({ ...profile, shopId: taken.id }); setMode(""); }}>Ouvrir « {taken.name} »</button>
-            </p>
+            <div className="fields">
+              <p className="note">
+                Tu as déjà « {taken.name} » pour ce métier.{" "}
+                <button type="button" className="link" onClick={() => { setProfile({ ...profile, shopId: taken.id }); setMode(""); }}>Ouvrir « {taken.name} »</button>
+              </p>
+              <label className="row">
+                <input type="checkbox" checked={branch} onChange={(e) => setBranch(e.target.checked)} />
+                <span>C'est une <b>autre boutique</b> du même métier (un deuxième point de vente). Ses ventes, sa caisse et ses clients restent à part ; tu vois tout depuis ton compte patron.</span>
+              </label>
+              {branch && (
+                <label className="row">
+                  <input type="checkbox" checked={copyProducts} onChange={(e) => setCopyProducts(e.target.checked)} />
+                  <span>Reprendre les articles et les prix de « {taken.name} » (stock à zéro)</span>
+                </label>
+              )}
+            </div>
           ) : (
             <p className="note">La nouvelle entreprise démarre vide : ses articles, ses clients et sa caisse sont à part.</p>
           )}
           <p className="note">Chaque entreprise a son propre stock, sa caisse, ses ventes et ses dettes. Tu passes de l’une à l’autre en touchant son nom ci-dessus.</p>
           <div className="row">
-            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim() || !activity || Boolean(taken)}>Créer l'entreprise</Button>
+            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim() || !activity || (Boolean(taken) && !branch)}>Créer l'entreprise</Button>
             <Button type="button" variant="ghost" className="h-11 rounded-full px-5" onClick={() => setMode("")}>Annuler</Button>
           </div>
         </form>

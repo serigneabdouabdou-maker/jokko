@@ -14,3 +14,13 @@ end $$;
 update public.shops set activity = 'Alimentation générale, boutique de quartier'
 where id = 'shop-297bfd96-0316-49da-83e7-089c5c90cf46' and activity = 'Couture, tailleur'
   and not exists (select 1 from public.sales where shop_id = 'shop-297bfd96-0316-49da-83e7-089c5c90cf46');
+
+-- Même jour, demande de Fallou : avec l'offre Avancé, un patron peut ouvrir 2 ou 3 boutiques du même métier (points de vente),
+-- contrôlées depuis son compte. Le serveur ne bloque donc que le changement de métier vers un métier déjà pris (doublon par erreur) ;
+-- la création d'une autre boutique reste soumise à l'offre Avancé (règle déjà en place).
+do $$
+declare d text := pg_get_functiondef('private.shop_plan_guard()'::regprocedure);
+begin
+  d := replace(d, '(tg_op = ''INSERT'' or new.activity is distinct from old.activity)', '(tg_op = ''UPDATE'' and new.activity is distinct from old.activity)');
+  execute d;
+end $$;
