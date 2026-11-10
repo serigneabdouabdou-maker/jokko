@@ -201,7 +201,12 @@ export type Shop = {
   repairs?: Repair[];
   /** Commandes de couture (tailleurs) ; absent pour une boutique qui n'en fait pas. */
   couture?: CoutureOrder[];
+  /** Articles retirés du panier avant encaissement (contrôle des caisses) ; jamais modifiés. */
+  voids?: CartVoid[];
 };
+
+/** Article scanné ou touché puis retiré avant d'encaisser : qui, quoi, combien. */
+export type CartVoid = { id: string; at: string; productId: string; label: string; qty: number; amount: number; by: string; where: "scanner" | "cuisine" };
 
 export type Profile = {
   /** Compte Supabase propriétaire de ce profil (sur ce téléphone). */

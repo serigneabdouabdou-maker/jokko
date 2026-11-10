@@ -10,6 +10,7 @@ import { deliver, deliveriesToday, returnItems, setTournee, tourneeClients } fro
 import { vitrinePhotoUrl } from "@/data/vitrine";
 import { receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
+import { useCartVoids } from "./useCartVoids";
 import { metierOf } from "@/data/metiers";
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -21,7 +22,7 @@ const PAY: Payment[] = ["especes", "wave", "om", "credit"];
  * Catalogue Jokko : plats, jus et pains connus avec leur photo, il suffit de mettre son prix.
  * Boulangerie : tournée du matin (livré à crédit en un toucher, pain rendu le soir).
  */
-export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
+export function Cuisine({ shop, commit, canEdit, by }: { shop: Shop; commit: (s: Shop) => void; canEdit: boolean; by: string }) {
   const metier = metierOf(shop.activity).id;
   const bakery = metier === "boulangerie";
   const W = bakery
@@ -34,6 +35,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
   const catalogue = catalogueFor(metier).filter((c) => !onMenu(shop, c));
 
   const [cart, setCart] = useState<CartLine[]>([]);
+  const voids = useCartVoids(cart, shop, commit, by, "cuisine");
   const [pay, setPay] = useState<Payment>("especes");
   const [clientId, setClientId] = useState("");
   const [newClient, setNewClient] = useState("");
@@ -73,7 +75,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
     }
     const done = checkout(s, cart, pay, cid);
     if (!done) return;
-    commit(done.shop);
+    commit(voids.settle(done.shop, cart));
     const r = done.shop.sales[0] ? receiptFor(done.shop, done.shop.sales[0]) : null;
     setPaid({ text: `✓ Encaissé ${money(done.amount ?? total)} · ${PAYMENT_LABELS[pay]}${r ? ` · ${r.title}` : ""}`, receipt: r });
     if (r) setReceipt(r);
@@ -165,7 +167,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
               {!clientId && <Input className="h-10" placeholder="ou nouveau client" value={newClient} onChange={(e) => setNewClient(e.target.value)} aria-label="Nouveau client" />}
             </div>
           )}
-          <button type="button" className="link cz-clear" onClick={() => setCart([])}>Vider la commande</button>
+          <button type="button" className="link cz-clear" onClick={() => { voids.clear(); setCart([]); }}>Vider la commande</button>
         </div>
       )}
 

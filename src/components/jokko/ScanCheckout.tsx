@@ -12,6 +12,7 @@ import { WavePay } from "@/components/jokko/WavePay";
 import { metierOf } from "@/data/metiers";
 import { receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
+import { useCartVoids } from "./useCartVoids";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -23,8 +24,9 @@ type Notice = { tone: "ok" | "bad" | "info"; text: string };
  * Caisse par scan : caméra du téléphone ou douchette Bluetooth (elle tape le code comme un clavier, puis Entrée).
  * Chaque scan ajoute l'article au panier ; « Encaisser » enregistre les ventes, baisse le stock et monte la caisse.
  */
-export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: Shop) => void; role: Role }) {
+export function ScanCheckout({ shop, commit, role, by }: { shop: Shop; commit: (s: Shop) => void; role: Role; by: string }) {
   const [lines, setLines] = useState<CartLine[]>([]);
+  const voids = useCartVoids(lines, shop, commit, by, "scanner");
   const [receipt, setReceipt] = useState<{ title: string; text: string } | null>(null);
   const [code, setCode] = useState("");
   const [search, setSearch] = useState("");
@@ -125,7 +127,7 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
       setNotice({ tone: "bad", text: payment === "credit" ? "Choisis le client qui prend à crédit." : "Le panier est vide." });
       return;
     }
-    commit(applied.shop);
+    commit(voids.settle(applied.shop, paidLines));
     const cash = paidWith === "especes" && received && toNum(received) >= (applied.amount ?? 0) ? { recu: toNum(received), rendu: toNum(received) - (applied.amount ?? 0) } : undefined;
     if (applied.shop.sales[0]) setReceipt(receiptFor(applied.shop, applied.shop.sales[0], cash));
     setLines([]);
@@ -204,7 +206,7 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
       <article className="sheet scan-cart">
         <div className="sheet-head">
           <h2>Panier</h2>
-          {lines.length > 0 && <Button variant="ghost" className="h-9 rounded-full px-3" onClick={() => setLines([])}>Vider</Button>}
+          {lines.length > 0 && <Button variant="ghost" className="h-9 rounded-full px-3" onClick={() => { voids.clear(); setLines([]); }}>Vider</Button>}
         </div>
         {lines.length === 0 ? (
           <p className="note">Scanne un article pour commencer.</p>
@@ -222,7 +224,7 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
                   </span>
                   <span className="cart-qty">
                     <button type="button" aria-label="Moins" onClick={() => setLines((l) => setQty(l, i, l[i].qty - 1))}><Icon name="moins" size="sm" /></button>
-                    <input className="num" inputMode="decimal" aria-label={`Quantité ${p.name}`} value={String(line.qty).replace(".", ",")} onChange={(e) => {
+                    <input className="num" inputMode="decimal" aria-label={`Quantité ${p.name}`} value={String(line.qty).replace(".", ",")} onFocus={() => voids.typing(true)} onBlur={() => voids.typing(false)} onChange={(e) => {
                       const q = toNum(e.target.value);
                       if (Number.isFinite(q)) setLines((l) => setQty(l, i, q));
                     }} />

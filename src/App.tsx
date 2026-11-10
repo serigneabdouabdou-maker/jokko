@@ -1557,12 +1557,12 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "boutiques" && patron && (can(shop, "boutiques") ? <AllShops profile={profile} setProfile={setProfile} /> : <Upsell feature="boutiques" title="Toutes mes boutiques" onPlans={() => setScreen("offre")} />)}
           {screen === "distance" && patron && (can(shop, "distance") ? <Remote profile={profile} /> : <Upsell feature="distance" title="Voir la boutique à distance" onPlans={() => setScreen("offre")} />)}
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
-          {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
+          {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} by={profile.owner || profile.phone} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
-          {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} />}
+          {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
@@ -1784,6 +1784,11 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         }}>{closing === "envoi" ? "Envoi…" : "Clôturer la caisse"}</Button>
         <Button variant="outline" className="h-11 rounded-full" onClick={() => setZ(true)}><Icon name="imprimer" size="sm" /> Ticket Z (clôture du jour)</Button>
         {zr.missing.length > 0 && <p className="note" data-tone="error">Tickets manquants aujourd'hui : n° {zr.missing.join(", ")}. Ils ont été effacés après coup : compare avec les tickets papier.</p>}
+        {zr.voids.count > 0 && (
+          <p className="note" data-tone={zr.voids.count >= 5 ? "error" : undefined}>
+            {zr.voids.count} article{zr.voids.count > 1 ? "s" : ""} retiré{zr.voids.count > 1 ? "s" : ""} du panier aujourd'hui ({money(zr.voids.amount)}) : {zr.voids.byPerson.map((p) => `${p.count} par ${p.name}`).join(", ")}.
+          </p>
+        )}
         {z && <Receipt title="Ticket Z" text={zText(shop, zr, Number(counted) || 0)} onClose={() => setZ(false)} />}
         {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}

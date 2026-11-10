@@ -1,4 +1,5 @@
 import { type Payment, PAYMENT_LABELS, type Sale, type Shop } from "../model.ts";
+import { type VoidDay, voidsOfDay } from "./voids.ts";
 
 /**
  * Tickets de caisse (10/11/2026) : chaque encaissement reçoit un numéro qui se suit dans la journée (1, 2, 3…).
@@ -75,10 +76,12 @@ export type ZReport = {
   /** Ventes sans numéro (anciennes ventes, ou faites avant les tickets). */
   untracked: number;
   expenses: number;
+  /** Articles retirés du panier avant encaissement, par vendeur. */
+  voids: VoidDay;
 };
 
 /** Ticket Z : la clôture de la journée. */
-export function zReport(shop: Pick<Shop, "sales" | "expenses">, now = new Date()): ZReport {
+export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids">, now = new Date()): ZReport {
   const day = localDay(now);
   const sales = shop.sales.filter((s) => dayOfSale(s) === day);
   const nums = [...new Set(sales.filter((s) => s.ticket).map((s) => s.ticket as number))].sort((a, b) => a - b);
@@ -91,6 +94,7 @@ export function zReport(shop: Pick<Shop, "sales" | "expenses">, now = new Date()
     total: sales.reduce((a, s) => a + s.amount, 0), byPayment,
     untracked: sales.filter((s) => !s.ticket).reduce((a, s) => a + s.amount, 0),
     expenses: shop.expenses.filter((e) => localDay(new Date(e.at)) === day).reduce((a, e) => a + e.amount, 0),
+    voids: voidsOfDay(shop, now),
   };
 }
 
@@ -104,6 +108,8 @@ export function zText(shop: Pick<Shop, "name">, z: ZReport, counted?: number): s
   for (const p of ["especes", "wave", "om", "credit"] as Payment[]) if (z.byPayment[p]) out.push(row(plain(PAYMENT_LABELS[p]), f(z.byPayment[p])));
   if (z.untracked) out.push(row("Sans ticket", f(z.untracked)));
   out.push(row("TOTAL VENTES", f(z.total)), row("Depenses", f(z.expenses)));
+  out.push(line, row("Articles retires", z.voids.count ? `${z.voids.count} (${f(z.voids.amount)})` : "aucun"));
+  for (const p of z.voids.byPerson.slice(0, 6)) out.push(row(`  ${plain(p.name).slice(0, 16)}`, `${p.count} art.`));
   if (counted !== undefined) out.push(line, row("Especes comptees", f(counted)), row("Ecart", f(counted - (z.byPayment.especes - z.expenses))));
   out.push(line, center(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })));
   return out.join("\n");
