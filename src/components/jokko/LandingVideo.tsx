@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { Icon } from "@/components/jokko/Icon";
 
-const SRC = "/media/jokko-metiers-v1.mp4";
-const POSTER = "/media/jokko-metiers-v1.jpg";
+const SRC = "/media/jokko-metiers-v2.mp4";
+const POSTER = "/media/jokko-metiers-v2.jpg";
 
 /**
  * « Jokko en 1 minute » : l'épisode de Modou qui présente chaque métier (voix wolof, sous-titres français).
@@ -15,17 +15,17 @@ export function LandingVideo() {
   return (
     <section className="lv" id="video" aria-labelledby="lv-title">
       <div className="lv-copy">
-        <p className="eyebrow">Jokko en 1 minute</p>
+        <p className="eyebrow">Jokko en vidéo</p>
         <h2 id="lv-title">Modou vous présente Jokko, <em className="accent">métier par métier.</em></h2>
-        <p className="lede">Pharmacie, couture, quincaillerie, vêtements, réparation, boutique : écoutez Jokko en wolof, avec les sous-titres en français.</p>
+        <p className="lede">Pharmacie, couture, quincaillerie, vêtements, réparation, restaurant, boulangerie, boutique : écoutez Jokko en wolof, avec les sous-titres en français.</p>
         <a className="lv-share" href={share} target="_blank" rel="noopener"><Icon name="partager" size="sm" /> Partager sur WhatsApp</a>
       </div>
       <div className="lv-frame">
         <video ref={ref} src={SRC} poster={POSTER} preload="none" playsInline controls={playing} onPlay={() => setPlaying(true)} onEnded={() => setPlaying(false)} aria-label="Vidéo : Modou présente Jokko pour chaque métier" />
         {!playing && (
-          <button type="button" className="lv-play" onClick={() => { setPlaying(true); void ref.current?.play(); }} aria-label="Lire la vidéo (1 minute, avec le son)">
+          <button type="button" className="lv-play" onClick={() => { setPlaying(true); void ref.current?.play(); }} aria-label="Lire la vidéo (1 minute 20, avec le son)">
             <span className="lv-play-btn"><Icon name="lecture" /></span>
-            <span className="lv-play-text">Regarder · 1 min · avec le son</span>
+            <span className="lv-play-text">Regarder · 1 min 20 · avec le son</span>
           </button>
         )}
       </div>

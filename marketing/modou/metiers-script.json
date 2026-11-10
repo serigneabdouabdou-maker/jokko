@@ -49,6 +49,20 @@
   "fr": "Réparation : chaque téléphone suivi jusqu'au message « c'est prêt »."
  },
  {
+  "slug": "metiers-10",
+  "scene": "restauration",
+  "lang": "wo",
+  "text": "Restaurant ak jus : ñaari yassa ak ñetti bissap, Jokko bind, te xam na ñaata la sa plat di jar.",
+  "fr": "Restaurant et jus : deux yassa et trois bissap, Jokko note, et sait combien te coûte chaque plat."
+ },
+ {
+  "slug": "metiers-11",
+  "scene": "boulangerie",
+  "lang": "wo",
+  "text": "Boulangerie : mburu mi nga jox bitig yi ci bor, ak mi ñu la delloo, Jokko topp na lépp.",
+  "fr": "Boulangerie : le pain livré à crédit aux boutiques et le pain rendu, Jokko suit tout."
+ },
+ {
   "slug": "metiers-8",
   "scene": "alimentation",
   "lang": "wo",

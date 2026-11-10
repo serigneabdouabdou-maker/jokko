@@ -30,7 +30,7 @@
   #nameTag { position: absolute; left: 70px; top: 150px; padding: 14px 30px; border-radius: 999px; background: #17191F; color: #fff; font-weight: 800; font-size: 44px; }
   #nameTag b { color: #F6B800; }
   /* mosaïque des métiers (« liggéey bu nekk ») */
-  .tile { position: absolute; width: 300px; height: 375px; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 50px -20px rgba(0,0,0,.55); border: 6px solid #fff; }
+  .tile { position: absolute; width: 230px; height: 288px; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 50px -20px rgba(0,0,0,.55); border: 6px solid #fff; }
   .tile img { width: 100%; height: 100%; object-fit: cover; }
   /* ----- Scènes métiers ----- */
   .scene { overflow: hidden; background: #0f2a20; }
@@ -136,6 +136,8 @@ const METIERS = {
   quincaillerie: { label: "Quincaillerie", acc: "#FF9F43", focus: 0.30, chips: ["Sacs, barres, mètres", "Crédits des chantiers", "Factures WhatsApp"], hl: ["stock"] },
   vetements:     { label: "Vêtements",     acc: "#7FD6FF", focus: 0.52, chips: ["Stock par paire", "Vitrine WhatsApp", "Commandes"], hl: ["vitrine", "WhatsApp"] },
   reparation:    { label: "Réparation",    acc: "#3DE0D0", focus: 0.62, chips: ["Pannes et pièces", "« C'est prêt »", "Bénéfice par réparation"], hl: ["pare"] },
+  restauration:  { label: "Restaurant",    acc: "#FF6B5A", focus: 0.30, chips: ["Plats du jour", "Coût de chaque plat", "Commande en ticket"], hl: ["yassa", "bissap", "plat"] },
+  boulangerie:   { label: "Boulangerie",   acc: "#E8B04A", focus: 0.55, chips: ["Tournée du matin", "Pain livré à crédit", "Retours du soir"], hl: ["mburu", "bor"] },
   alimentation:  { label: "Boutique",      acc: "#FFC93C", focus: 0.42, chips: ["Ventes à la voix", "Dettes des clients", "Alerte rupture"], hl: ["bind", "bor"] },
 };
 let SCRIPT = [], T = null;
@@ -176,12 +178,12 @@ function face(p, t, mood, talk) {
 }
 
 const rings = [0, 1, 2].map(() => { const d = document.createElement("div"); d.className = "ring"; $("rings").appendChild(d); return d; });
-const ORDER = ["pharmacie", "couture", "quincaillerie", "vetements", "reparation", "alimentation"];
+const ORDER = ["pharmacie", "couture", "quincaillerie", "vetements", "reparation", "restauration", "boulangerie", "alimentation"];
 const tiles = ORDER.map((id, i) => {
   const d = document.createElement("div"); d.className = "tile"; d.innerHTML = `<img src="assets/metiers/${id}.jpg" alt="">`;
   $("tiles").appendChild(d); return d;
 });
-const TILE_POS = [[60, 150, -7], [390, 110, 4], [720, 160, -3], [60, 560, 5], [390, 520, -4], [720, 580, 6]];
+const TILE_POS = [[70, 110, -7], [425, 80, 4], [780, 120, -3], [70, 420, 5], [425, 390, -4], [780, 430, 6], [245, 720, -5], [605, 700, 4]];
 const scenes = {};
 for (const id of ORDER) {
   const m = METIERS[id];
@@ -262,7 +264,7 @@ function frame(t) {
     face(modou, t, 0.9, talk);
     modou.armRot.setAttribute("transform", `rotate(${-58 + Math.sin(t * 2.4) * 4})`);
     const sink = eio((t - (S[1] ?? 99) + 0.1) / 0.6);
-    $("modouPos").setAttribute("transform", `translate(540,${1180 + (1 - eo((t - 1.7) / 0.7)) * 400 + sink * 230}) scale(${1.55 - 0.25 * sink})`);
+    $("modouPos").setAttribute("transform", `translate(540,${1180 + (1 - eo((t - 1.7) / 0.7)) * 400 + sink * 330}) scale(${1.55 - 0.25 * sink})`);
     const nk = back((t - 2.1) / 0.5); $("nameTag").style.transform = `scale(${clamp(nk, 0, 2)})`; $("nameTag").style.transformOrigin = "left center";
     const t2 = S[1] ?? 99;
     tiles.forEach((tl, i) => {

@@ -135,9 +135,9 @@ def scene_start(name):
     return None
 put(fx, 0.0, whoosh(0.5), 0.10); put(fx, 0.25, chime([523.25, 659.25, 783.99, 1046.5], 1.8), 0.16)
 put(fx, 1.55, whoosh(0.6), 0.10)
-for i in range(6):
-    put(fx, S[1] + 0.15 + i * 0.18, pop(700 + i * 90), 0.16, pan=(-0.4 + i * 0.16))
-for name in ["pharmacie", "couture", "quincaillerie", "vetements", "reparation", "alimentation"]:
+for i in range(8):
+    put(fx, S[1] + 0.15 + i * 0.18, pop(700 + i * 90), 0.16, pan=(-0.4 + i * 0.11))
+for name in ["pharmacie", "couture", "quincaillerie", "vetements", "reparation", "restauration", "boulangerie", "alimentation"]:
     a = scene_start(name)
     put(fx, a - 0.15, whoosh(0.7), 0.16)
     put(fx, a + 0.35, pop(1200), 0.10)
