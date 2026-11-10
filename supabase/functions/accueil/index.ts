@@ -1,6 +1,7 @@
 // Jokko — images de la page d'accueil (diaporama des métiers), fabriquées une fois par Gemini.
 // Appelée seulement par le serveur (jeton interne galerie_token, jamais affiché).
 // POST { token, id, prompt } → galerie/accueil/<id>-v1.jpg (900 px de large, JPEG ≈ 120 Ko).
+// POST { token, action: "plat", id, prompt } → vitrine/catalogue/<id>.jpg (photo carrée du catalogue des plats, 640 px).
 // POST { token, action: "voix", id, text, lang } → galerie/accueil/voix/<id>.wav (voix Sulafat, wolof ou français, pour les vidéos).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
@@ -60,6 +61,37 @@ async function voix(body: Record<string, string>, apiKey: string): Promise<Respo
   return json(502, { error: "gemini", status: last });
 }
 
+// Catalogue des plats, jus et pains : photo culinaire carrée, fond clair, pour le menu et la vitrine des commerçants.
+const FOOD_STYLE =
+  "Professional appetizing food photography for a modern menu, square format, centered, soft natural daylight, " +
+  "shallow depth of field, warm and fresh colors, clean light wooden table, simple soft background, high detail, realistic. " +
+  "No people, no hands, no text, no letters, no logos, no watermark.";
+async function plat(body: Record<string, string>, apiKey: string): Promise<Response> {
+  if (!/^[a-z0-9-]{3,40}$/.test(body.id ?? "") || !body.prompt || body.prompt.length > 600) return json(400, { error: "invalid_request" });
+  let last = 0;
+  for (const model of IMAGE_MODELS) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: `${body.prompt}. ${FOOD_STYLE}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1", imageSize: "1K" } } }),
+      signal: AbortSignal.timeout(100_000),
+    }).catch(() => null);
+    last = res?.status ?? 0;
+    await admin.from("gemini_calls").insert({ shop_id: null, kind: "image", ok: Boolean(res?.ok), status: last || 502 });
+    if (!res?.ok) continue;
+    const out = await res.json().catch(() => null);
+    const part = (out?.candidates?.[0]?.content?.parts ?? []).find((p: { inlineData?: { data?: string } }) => p?.inlineData?.data);
+    if (!part) continue;
+    const img = await Image.decode(Uint8Array.from(atob(part.inlineData.data), (c) => c.charCodeAt(0)));
+    img.resize(640, 640);
+    const jpeg = await img.encodeJPEG(80);
+    const path = `catalogue/${body.id}.jpg`;
+    const up = await admin.storage.from("vitrine").upload(path, jpeg, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+    if (up.error) return json(500, { error: "stockage" });
+    return json(200, { path, ko: Math.round(jpeg.length / 1024), model });
+  }
+  return json(502, { error: "gemini", status: last });
+}
+
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 Deno.serve(async (req) => {
@@ -71,6 +103,7 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
   if (!apiKey) return json(503, { error: "gemini_not_configured" });
   if (body.action === "voix") return voix(body, apiKey);
+  if (body.action === "plat") return plat(body, apiKey);
   if (!/^[a-z-]{3,30}$/.test(body.id ?? "") || !body.prompt) return json(400, { error: "invalid_request" });
 
   let last = 0;

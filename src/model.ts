@@ -72,6 +72,8 @@ export type Client = {
   dueAt?: string;
   /** Mesures du client en cm (tailleurs) : reprises à chaque nouvelle commande. */
   measures?: Record<string, number>;
+  /** Boulangerie : ce que cette boutique cliente prend chaque matin (livré à crédit en un toucher). */
+  tournee?: { productId: string; qty: number }[];
 };
 
 export type Sale = {

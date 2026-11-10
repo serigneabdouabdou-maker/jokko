@@ -38,7 +38,7 @@ const toRow = {
     photo_path: p.photoPath ?? null,
     vitrine: p.vitrine ?? false,
   }),
-  clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt), measures: c.measures ?? {} }),
+  clients: (c: Client, shopId: string): Row => ({ id: c.id, shop_id: shopId, name: c.name, phone: c.phone, debt: c.debt, due_at: opt(c.dueAt), measures: c.measures ?? {}, tournee: c.tournee ?? [] }),
   sales: (s: Sale, shopId: string): Row => ({
     id: s.id, shop_id: shopId, at: s.at, label: s.label, amount: s.amount,
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
@@ -408,6 +408,8 @@ export function rowsToShop(rows: ShopRows): Shop {
       if (due) client.dueAt = iso(due);
       const measures = readMeasures(r.measures);
       if (Object.keys(measures).length) client.measures = measures;
+      const tournee = Array.isArray(r.tournee) ? (r.tournee as { productId?: unknown; qty?: unknown }[]).filter((t) => typeof t?.productId === "string" && Number(t.qty) > 0).map((t) => ({ productId: String(t.productId), qty: Number(t.qty) })) : [];
+      if (tournee.length) client.tournee = tournee;
       return client;
     }),
     sales: byAtDesc(
