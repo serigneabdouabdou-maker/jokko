@@ -71,19 +71,32 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
   useEffect(() => {
     let buffer = "";
     let lastAt = 0;
+    let startAt = 0;
+    let snap = "";
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      const now = Date.now();
+      const target = e.target as HTMLInputElement | null;
+      if (target?.id === "scan-code") return; // le champ de la douchette gère lui-même la lecture
+      const typing = !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      // Heure où la touche a été frappée (pas celle où le téléphone a fini de la traiter) : juste même si l'écran est chargé.
+      const now = e.timeStamp;
       if (now - lastAt > 80) buffer = "";
+      // Début d'une lecture : on note l'heure et ce qu'il y avait dans le champ (pour le remettre).
+      if (!buffer && e.key !== "Enter") { startAt = now; snap = typing ? target.value : ""; }
       lastAt = now;
       if (e.key === "Enter") {
-        if (buffer.length >= 4) handleCode(buffer);
+        // Une douchette tape très vite (moins de 40 ms par caractère) : à la main, c'est beaucoup plus lent.
+        const fast = buffer.length >= 4 && (now - startAt) / buffer.length < 40;
+        if (fast && (!typing || buffer.length >= 6)) {
+          e.preventDefault();
+          if (typing && target.id === "scan-received") setReceived(snap);
+          if (typing && target.id === "scan-search") setSearch(snap);
+          handleCode(buffer);
+        }
         buffer = "";
       } else if (e.key.length === 1) buffer += e.key;
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [handleCode]);
 
   useEffect(() => () => scanRef.current?.stop(), []);
@@ -113,7 +126,8 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
       return;
     }
     commit(applied.shop);
-    if (applied.shop.sales[0]) setReceipt(receiptFor(applied.shop, applied.shop.sales[0]));
+    const cash = paidWith === "especes" && received && toNum(received) >= (applied.amount ?? 0) ? { recu: toNum(received), rendu: toNum(received) - (applied.amount ?? 0) } : undefined;
+    if (applied.shop.sales[0]) setReceipt(receiptFor(applied.shop, applied.shop.sales[0], cash));
     setLines([]);
     setReceived("");
     setPayment("especes");
@@ -236,6 +250,10 @@ export function ScanCheckout({ shop, commit, role }: { shop: Shop; commit: (s: S
           <div className="field">
             <Label htmlFor="scan-received">Argent reçu (pour la monnaie)</Label>
             <Input id="scan-received" className="num h-11" inputMode="numeric" value={received} onChange={(e) => setReceived(e.target.value)} placeholder="ex. 10000" />
+            <div className="cash-quick">
+              <button type="button" onClick={() => setReceived(String(total))}>Compte juste</button>
+              {[1000, 2000, 5000, 10000, 20000, 50000].filter((b) => b > total).slice(0, 3).map((b) => <button key={b} type="button" onClick={() => setReceived(String(b))}>{amount(b)}</button>)}
+            </div>
             {change !== null && Number.isFinite(change) && (
               <p className={`scan-change${change < 0 ? " is-bad" : ""}`}>{change < 0 ? `Il manque ${amount(-change)}` : `Rends ${amount(change)}`}</p>
             )}

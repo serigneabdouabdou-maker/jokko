@@ -34,7 +34,7 @@ const row = (left: string, right: string) => { const r = right.slice(0, W); cons
 const line = "-".repeat(W);
 
 /** Texte du ticket client, 32 caractères par ligne (imprimante 58 mm), sans accents (lisible sur toutes les imprimantes). */
-export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients">, sales: Sale[]): string {
+export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients">, sales: Sale[], cash?: { recu: number; rendu: number }): string {
   if (!sales.length) return "";
   const first = sales[0];
   const day = dayOfSale(first);
@@ -55,7 +55,9 @@ export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "nin
       out.push(row(`  ${qty} x ${f(s.amount / qty)}`, f(s.amount)));
     } else out.push(row(name, f(s.amount)));
   }
-  out.push(line, row("TOTAL", f(total)), row("Paiement", plain(PAYMENT_LABELS[payment])));
+  const articles = sales.reduce((a, s) => a + (s.qty ?? 1), 0);
+  out.push(line, row(`${sales.length} ligne${sales.length > 1 ? "s" : ""}, ${Number.isInteger(articles) ? articles : articles.toFixed(2)} article${articles > 1 ? "s" : ""}`, ""), row("TOTAL", f(total)), row("Paiement", plain(PAYMENT_LABELS[payment])));
+  if (cash) out.push(row("Recu", f(cash.recu)), row("Rendu", f(cash.rendu)));
   if (client) out.push(row("Client", plain(client.name)));
   out.push(line, center("Merci et a bientot !"), center("Jokko - jokkoapp.com"));
   return out.join("\n");
@@ -124,8 +126,8 @@ export function escposBase64(text: string): string {
 export const rawbtLink = (text: string) => `intent:base64,${escposBase64(text)}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
 /** Ticket d'une vente : toutes les lignes du même encaissement (ou la vente seule si elle n'a pas de numéro). */
-export function receiptFor(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients" | "sales">, sale: Sale): { title: string; text: string } {
+export function receiptFor(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients" | "sales">, sale: Sale, cash?: { recu: number; rendu: number }): { title: string; text: string } {
   const day = dayOfSale(sale);
   const lines = sale.ticket ? ticketSales(shop, sale.ticket, day) : [sale];
-  return { title: sale.ticket ? `Ticket ${ticketLabel(sale.ticket, day)}` : "Ticket", text: receiptText(shop, lines.length ? lines : [sale]) };
+  return { title: sale.ticket ? `Ticket ${ticketLabel(sale.ticket, day)}` : "Ticket", text: receiptText(shop, lines.length ? lines : [sale], cash) };
 }
