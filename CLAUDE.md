@@ -64,6 +64,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Nouveaux modèles = 3 vues (face, profil, dos) : `couture_models.views`, `studio_queue.vues` ; `cout_image_galerie` = 60 F, `images_par_minute` = 2. Studio : `Turntable.tsx` (glisser pour tourner, « respiration » de 4 % sur une seule photo). Partage : bouton « Partager sur WhatsApp » (photo + lien `?modele=<id>&t=<shop>`) et « Télécharger » ; page publique `ModelePublic.tsx` (fonction `modele_public`) avec « Commander chez <atelier> » sur WhatsApp.
 - Crédit Gemini vide pendant la fabrique : la galerie note le 402 dans `gemini_calls`, la file se met en pause (`studio_tick`) et les modèles refusés reviennent en attente.
 - Changer le métier d'une boutique déjà utilisée crée une NOUVELLE boutique (offre Avancé) : jamais de données mélangées.
+- **Un numéro = une seule entreprise par métier** (règle de Fallou, 10/11/2026) : si le métier choisi existe déjà, l'appli ouvre cette entreprise (`shopWithMetier`) au lieu d'en créer une ; le serveur refuse aussi le doublon (`private.shop_plan_guard`, message « une entreprise par métier », abandonné par la synchro). Chaque entreprise garde ses données à part (`shop_id`).
 - Tailleur : Atelier couture (mesures à la voix, commandes, avance/reste, suivi, rappel « habit prêt ») + Studio d'essayage. Les images IA ne s'ouvrent qu'aux tailleurs **payants** (rien d'avancé par CFC) et entrent, avec leur accord, dans la galerie commune signée Jokko.
 
 ## Restauration et boulangerie (livrées le 10/11/2026)

@@ -129,3 +129,14 @@ describe("Conseiller par métier", () => {
     expect(screensOf("Pharmacie").has("conseiller")).toBe(true);
   });
 });
+
+describe("une entreprise par métier", () => {
+  it("retrouve l'entreprise du patron qui a déjà ce métier", async () => {
+    const { shopWithMetier } = await import("./metiers");
+    const shops = [{ id: "a", activity: "Couture, tailleur" }, { id: "b", activity: "Alimentation générale, boutique de quartier" }, { id: "c", activity: "Pharmacie" }];
+    expect(shopWithMetier(shops, "Couture, tailleur", {}, "b")?.id).toBe("a");
+    expect(shopWithMetier(shops, "Couture, tailleur", {}, "a")).toBeUndefined();
+    expect(shopWithMetier(shops, "Pharmacie", { c: "vendeur" })).toBeUndefined();
+    expect(shopWithMetier(shops, "Restaurant, dibiterie, fast-food, jus", {})).toBeUndefined();
+  });
+});

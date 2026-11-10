@@ -354,3 +354,10 @@ describe("loadShops", () => {
     expect(message).toMatch(/JWT expired/);
   });
 });
+
+describe("une entreprise par métier", () => {
+  it("le refus du serveur est abandonné, pas réessayé sans fin", async () => {
+    const { isRefusal } = await import("./sync");
+    expect(isRefusal("une entreprise par métier : ce numéro a déjà une entreprise pour cette activité")).toBe(true);
+  });
+});

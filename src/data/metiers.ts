@@ -331,3 +331,12 @@ export function conseillerInstruction(activity: string | undefined | null): stri
   const m = metierOf(activity);
   return m.conseiller ? `\n\nMÉTIER DE CETTE BOUTIQUE\n- ${m.conseiller}\n- SANTÉ : jamais de conseil médical, de dose ou d'avis de santé, pour aucune boutique.` : "\n\n- SANTÉ : jamais de conseil médical, de dose ou d'avis de santé.";
 }
+
+/**
+ * Règle de CFC (10/11/2026) : un numéro = une seule entreprise par métier. Chaque entreprise garde ses données à part.
+ * Rend l'entreprise du patron qui a déjà ce métier (hors `exceptId`), ou undefined.
+ */
+export function shopWithMetier<S extends { id: string; activity?: string }>(shops: readonly S[], activity: string, roles: Record<string, string> | undefined, exceptId?: string): S | undefined {
+  const id = metierOf(activity).id;
+  return shops.find((s) => s.id !== exceptId && roles?.[s.id] !== "vendeur" && metierOf(s.activity).id === id);
+}

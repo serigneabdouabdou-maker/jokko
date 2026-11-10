@@ -59,7 +59,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
 import { Couture } from "@/components/jokko/Couture";
-import { expiringSoon, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf } from "@/data/metiers";
+import { expiringSoon, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf, shopWithMetier } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
@@ -1843,6 +1843,14 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
             onChange={(activity) => {
               const before = metierOf(shop.activity);
               const after = metierOf(activity);
+              // Un numéro = une entreprise par métier : si ce métier existe déjà, on ouvre cette entreprise (rien n'est créé ni mélangé).
+              const existing = before.id !== after.id ? shopWithMetier(profile.shops, activity, profile.roles) : undefined;
+              if (existing) {
+                setProfile({ ...profile, shopId: existing.id });
+                setMetierNote(`✓ Tu as déjà « ${existing.name} » pour ${after.label} : je l'ouvre, avec ses données. « ${shop.name} » garde les siennes.`);
+                setChangingMetier(false);
+                return;
+              }
               const used = shop.products.length + shop.sales.length + shop.clients.length + (shop.couture?.length ?? 0) + (shop.repairs?.length ?? 0) > 0;
               // Jamais de mélange : une boutique déjà utilisée garde son métier et ses données.
               // L'autre métier devient une NOUVELLE boutique, avec son propre stock, sa caisse, ses clients et ses dettes.

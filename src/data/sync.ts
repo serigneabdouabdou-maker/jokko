@@ -164,7 +164,7 @@ export type FlushResult = { sent: number; pending: number; error: string | null;
 
 /** Refus définitif du serveur (droits) : réessayer ne servirait à rien et bloquerait toute la file. */
 export function isRefusal(error: string): boolean {
-  return /row-level security|permission denied|42501|violates check constraint|offre Avancé requise/i.test(error);
+  return /row-level security|permission denied|42501|violates check constraint|offre Avancé requise|une entreprise par métier/i.test(error);
 }
 
 export const QUEUE_KEY = "jokko.sync.v1";
