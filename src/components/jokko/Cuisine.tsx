@@ -120,7 +120,10 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
 
       {cart.length > 0 && (
         <div className="cz-ticket" role="region" aria-label="Commande en cours">
-          <h3>Commande</h3>
+          <div className="cz-ticket-head">
+            <h3>Commande</h3>
+            <Button className="h-11 rounded-full px-5 cz-pay" onClick={encaisser}>Encaisser {money(total)}</Button>
+          </div>
           <ul>
             {cart.map((l, i) => {
               const p = shop.products.find((x) => x.id === l.productId);
@@ -150,10 +153,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
               {!clientId && <Input className="h-10" placeholder="ou nouveau client" value={newClient} onChange={(e) => setNewClient(e.target.value)} aria-label="Nouveau client" />}
             </div>
           )}
-          <div className="debt-actions" style={{ gap: 8, marginTop: 10 }}>
-            <Button className="h-11 rounded-full px-5" onClick={encaisser}>Encaisser {money(total)}</Button>
-            <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setCart([])}>Vider</Button>
-          </div>
+          <button type="button" className="link cz-clear" onClick={() => setCart([])}>Vider la commande</button>
         </div>
       )}
 
