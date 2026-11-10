@@ -11,10 +11,12 @@ type Slide = { id: MetierId; img: string; tag: string; title: [string, string, s
 
 const SLIDES: Slide[] = [
   { id: "alimentation", img: "alimentation", tag: "Boutique", title: ["Ceeb, diw, suukar :", "Jokko", "comprend."], color: "#FFC93C", said: "« Jaay naa ñaari kilo ceeb »", points: ["Ventes à la voix", "Dettes des clients", "Alerte avant la rupture"], cta: "Ouvrir ma boutique" },
+  { id: "restauration", img: "restauration", tag: "Restaurant et jus", title: ["Chaque plat compté,", "chaque franc", "gagné."], color: "#FF6B5A", said: "« Ñaari yassa ak ñetti bissap »", points: ["Plats du jour", "Coût de chaque plat", "Restes de fin de service"], cta: "Ouvrir mon restaurant" },
   { id: "pharmacie", img: "pharmacie", tag: "Pharmacie", title: ["Aucune boîte ne", "périme", "en silence."], color: "#3DDC84", said: "« Quels produits périment bientôt ? »", points: ["Lots et péremption", "Stock des médicaments", "Caisse du soir"], cta: "Ouvrir ma pharmacie" },
   { id: "couture", img: "couture", tag: "Couture", title: ["Mesures et commandes,", "à la voix.", ""], color: "#FF8FB1", said: "« Grand boubou pour Awa, avance 10 000 »", points: ["Studio d'essayage", "Avance et reste", "Lien de suivi pour le client"], cta: "Ouvrir mon atelier" },
   { id: "quincaillerie", img: "quincaillerie", tag: "Quincaillerie", title: ["Chaque sac de ciment", "compté.", ""], color: "#FF9F43", said: "« Il me reste combien de ciment ? »", points: ["Stock en sacs, barres, mètres", "Crédits des chantiers", "Factures WhatsApp"], cta: "Ouvrir ma quincaillerie" },
   { id: "vetements", img: "vetements", tag: "Vêtements et chaussures", title: ["Votre vitrine", "sur WhatsApp.", ""], color: "#7FD6FF", said: "« Il me reste combien de pantalons ? »", points: ["Stock par pièce et par paire", "Vitrine à partager", "Bénéfice de la semaine"], cta: "Ouvrir ma boutique" },
+  { id: "boulangerie", img: "boulangerie", tag: "Boulangerie", title: ["Fournées, crédits,", "invendus :", "tout est suivi."], color: "#E8B04A", said: "« Fournée de 300 baguettes »", points: ["Pain livré à crédit", "Invendus du soir", "Farine en stock"], cta: "Ouvrir ma boulangerie" },
   { id: "reparation", img: "reparation", tag: "Réparation", title: ["Du dépôt au", "« c'est prêt ».", ""], color: "#3DE0D0", said: "« Awa dépose un iPhone, écran cassé »", points: ["Pannes et pièces posées", "Message « c'est prêt »", "Bénéfice par réparation"], cta: "Ouvrir mon atelier" },
 ];
 const EVERY = 7500;
