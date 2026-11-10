@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Receipt } from "@/components/jokko/Receipt";
 import { zReport, zText } from "@/data/tickets";
+import { voidEvents } from "@/data/voids";
 import { Cuisine } from "@/components/jokko/Cuisine";
 import { ForfaitChip } from "@/components/jokko/Forfait";
 import type { Session } from "@supabase/supabase-js";
@@ -1747,6 +1748,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
   const [clearing, setClearing] = useState(false);
   const [z, setZ] = useState(false);
   const zr = zReport(shop);
+  const voidList = voidEvents(shop);
   const expected = expectedCash(shop);
   const gap = (Number(counted) || 0) - expected;
   return (
@@ -1788,6 +1790,21 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           <p className="note" data-tone={zr.voids.count >= 5 ? "error" : undefined}>
             {zr.voids.count} article{zr.voids.count > 1 ? "s" : ""} retiré{zr.voids.count > 1 ? "s" : ""} du panier aujourd'hui ({money(zr.voids.amount)}) : {zr.voids.byPerson.map((p) => `${p.count} par ${p.name}`).join(", ")}.
           </p>
+        )}
+        {canEdit && voidList.length > 0 && (
+          <details className="voids-day">
+            <summary>Retraits du jour ({voidList.length})</summary>
+            <ul>
+              {voidList.map((e) => (
+                <li key={`${e.at}-${e.by}`}>
+                  <span className="num">{new Date(e.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span><b>{e.by}</b> · {e.items.map((i) => `${String(i.qty).replace(".", ",")} ${i.label}`).join(", ")}{e.where === "cuisine" ? " · commande" : ""}</span>
+                  <b className="num">{money(e.amount)}</b>
+                </li>
+              ))}
+            </ul>
+            <p className="note">Compare l'heure avec la caméra de la boutique ou avec ce que dit le client.</p>
+          </details>
         )}
         {z && <Receipt title="Ticket Z" text={zText(shop, zr, Number(counted) || 0)} onClose={() => setZ(false)} />}
         {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}

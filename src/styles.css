@@ -1893,3 +1893,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .cz-paid { border-color: #2B9A66; background: #eefaf3; color: #14532d; }
 .cash-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .cash-quick button { height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-white, #fff); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Caisse : retraits du jour, un par geste */
+.voids-day { margin-top: 8px; border: 1px solid var(--line, #e5e5e5); border-radius: 12px; padding: 8px 12px; background: var(--card, #fff); }
+.voids-day summary { font-weight: 600; cursor: pointer; padding: 4px 0; }
+.voids-day ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.voids-day li { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px dashed var(--line, #e5e5e5); font-size: 0.92rem; }

@@ -70,3 +70,20 @@ export function voidsOfDay(shop: Pick<Shop, "voids">, now = new Date()): VoidDay
     byPerson: [...people.values()].sort((a, b) => b.count - a.count),
   };
 }
+
+export type VoidEvent = { at: string; by: string; where: CartVoid["where"]; items: { label: string; qty: number }[]; amount: number };
+
+/** Les retraits du jour, un par geste (un encaissement, un « Vider »), le plus récent d'abord. */
+export function voidEvents(shop: Pick<Shop, "voids">, now = new Date()): VoidEvent[] {
+  const day = localDay(now);
+  const events = new Map<string, VoidEvent>();
+  for (const v of shop.voids ?? []) {
+    if (localDay(new Date(v.at)) !== day) continue;
+    const key = `${v.at}|${v.by}`;
+    const e = events.get(key) ?? { at: v.at, by: v.by, where: v.where, items: [], amount: 0 };
+    e.items.push({ label: v.label, qty: v.qty });
+    e.amount += v.amount;
+    events.set(key, e);
+  }
+  return [...events.values()].sort((a, b) => b.at.localeCompare(a.at));
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Shop } from "../model.ts";
 import { addToCart, checkout, setQty } from "./checkout";
-import { addVoids, bumpPeak, type Peak, voidsFrom, voidsOfDay } from "./voids";
+import { addVoids, bumpPeak, type Peak, voidEvents, voidsFrom, voidsOfDay } from "./voids";
 import { zReport, zText } from "./tickets";
 import { childRows, rowsToShop } from "./sync";
 
@@ -63,5 +63,21 @@ describe("articles retirés du panier", () => {
       cart_voids: rows.map((r) => ({ ...r, qty: String(r.qty) })),
     });
     expect(back.voids?.[0]).toMatchObject({ by: "Awa", qty: 1.5, where: "cuisine", label: "Riz (kg)" });
+  });
+});
+
+describe("liste des retraits du jour", () => {
+  it("un geste = une ligne, la plus récente en haut, hier exclu", () => {
+    const t1 = new Date(); t1.setHours(10, 12, 0, 0);
+    const t2 = new Date(); t2.setHours(18, 5, 0, 0);
+    let s = base();
+    s = addVoids(s, voidsFrom(s, { "lait|0": 2 }, [], "Awa", "scanner", t1));
+    s = addVoids(s, voidsFrom(s, { "lait|0": 1, "riz|1": 2 }, [], "Moussa", "scanner", t2));
+    s = addVoids(s, voidsFrom(s, { "lait|0": 9 }, [], "Awa", "scanner", new Date(Date.now() - 3 * 86_400_000)));
+    const list = voidEvents(s);
+    expect(list).toHaveLength(2);
+    expect(list[0]).toMatchObject({ by: "Moussa", amount: 2050 });
+    expect(list[0].items).toHaveLength(2);
+    expect(list[1]).toMatchObject({ by: "Awa", amount: 2500, items: [{ label: "Lait Vitalait", qty: 2 }] });
   });
 });
