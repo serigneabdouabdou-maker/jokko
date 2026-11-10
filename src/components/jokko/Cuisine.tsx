@@ -52,6 +52,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
   const [ret, setRet] = useState<{ clientId: string; productId: string; qty: string } | null>(null);
   const [note, setNote] = useState("");
   const [receipt, setReceipt] = useState<{ title: string; text: string } | null>(null);
+  const [paid, setPaid] = useState<{ text: string; receipt: { title: string; text: string } | null } | null>(null);
 
   const flash = (text: string) => { setNote(text); window.setTimeout(() => setNote(""), 4000); };
   const total = cartTotal(shop, cart);
@@ -73,8 +74,9 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
     const done = checkout(s, cart, pay, cid);
     if (!done) return;
     commit(done.shop);
-    flash(`✓ ${done.summary}`);
-    if (done.shop.sales[0]) setReceipt(receiptFor(done.shop, done.shop.sales[0]));
+    const r = done.shop.sales[0] ? receiptFor(done.shop, done.shop.sales[0]) : null;
+    setPaid({ text: `✓ Encaissé ${money(done.amount ?? total)} · ${PAYMENT_LABELS[pay]}${r ? ` · ${r.title}` : ""}`, receipt: r });
+    if (r) setReceipt(r);
     setCart([]); setPay("especes"); setClientId(""); setNewClient("");
   }
 
@@ -96,7 +98,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
           const inCart = cart.find((l) => l.productId === d.id)?.qty ?? 0;
           return (
             <article key={d.id} className="cz-card" data-in={inCart > 0}>
-              <button type="button" className="cz-sell" onClick={() => setCart(addToCart(cart, d.id, false))} aria-label={`Ajouter 1 ${d.name} à la commande`}>
+              <button type="button" className="cz-sell" onClick={() => { setPaid(null); setCart(addToCart(cart, d.id, false)); }} aria-label={`Ajouter 1 ${d.name} à la commande`}>
                 {img ? <img className="cz-img" src={img} alt="" loading="lazy" /> : <span className="cz-img cz-img-empty"><Icon name="cuisine" /></span>}
                 {inCart > 0 && <span className="cz-badge num">{inCart}</span>}
                 <span className="cz-name">{d.name}</span>
@@ -117,6 +119,16 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
           );
         })}
       </div>
+
+      {paid && cart.length === 0 && (
+        <div className="cz-ticket cz-paid" role="status">
+          <b>{paid.text}</b>
+          <div className="cz-units" style={{ marginTop: 8 }}>
+            {paid.receipt && <Button size="sm" onClick={() => setReceipt(paid.receipt)}>Voir le ticket</Button>}
+            <Button size="sm" variant="outline" onClick={() => setPaid(null)}>Nouvelle commande</Button>
+          </div>
+        </div>
+      )}
 
       {cart.length > 0 && (
         <div className="cz-ticket" role="region" aria-label="Commande en cours">

@@ -46,7 +46,7 @@ export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "nin
   if (shop.address || shop.city) out.push(center(plain([shop.address, shop.city].filter(Boolean).join(", "))));
   if (shop.phone) out.push(center(`Tel ${plain(shop.phone)}`));
   if (shop.ninea) out.push(center(`NINEA ${plain(shop.ninea)}`));
-  out.push(line, row(`Ticket ${plain(ticketLabel(first.ticket ?? 0, day)).replace("N° ", "")}`, time), line);
+  out.push(line, row(`Ticket n ${String(first.ticket ?? 0).padStart(4, "0")}`, `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)} ${time}`), line);
   for (const s of sales) {
     const qty = s.qty ?? 1;
     const name = plain(s.label);

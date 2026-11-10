@@ -1890,3 +1890,4 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .cz-ticket-head h3 { margin: 0; }
 .cz-pay { font-weight: 800; }
 .cz-clear { margin-top: 8px; font-size: 13px; }
+.cz-paid { border-color: #2B9A66; background: #eefaf3; color: #14532d; }

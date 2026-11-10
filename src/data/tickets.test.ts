@@ -47,3 +47,12 @@ describe("tickets de caisse", () => {
     expect(bytes).toContain("A\nB\n");
   });
 });
+
+describe("ligne du numéro", () => {
+  it("la date complète et l'heure tiennent sur la ligne", () => {
+    const s = checkout(base(), [{ productId: "yassa", retail: false, qty: 1 }], "especes")!.shop;
+    const head = receiptText(s, s.sales).split("\n").find((l) => l.startsWith("Ticket"))!;
+    expect(head).toMatch(/^Ticket n 0001\s+\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
+    expect(head.length).toBeLessThanOrEqual(32);
+  });
+});

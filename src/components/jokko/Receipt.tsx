@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Icon } from "./Icon";
 import { rawbtLink } from "@/data/tickets";
@@ -19,7 +20,8 @@ export function Receipt({ text, title, onClose }: { text: string; title: string;
     w.focus();
     w.print();
   }
-  return (
+  // Toujours au-dessus de tout l'écran (jamais coincé dans un écran animé, sinon il s'ouvre hors de vue).
+  return createPortal(
     <div className="rc-backdrop" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
       <div className="rc-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="rc-head">
@@ -40,6 +42,7 @@ export function Receipt({ text, title, onClose }: { text: string; title: string;
         </div>
         {isAndroid() && <p className="note">Imprimante Bluetooth : installe une fois l'appli gratuite « RawBT » (Play Store) et choisis ton imprimante dedans.</p>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
