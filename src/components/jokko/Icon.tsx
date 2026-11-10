@@ -82,6 +82,7 @@ import {
   ArrowLeft,
   Images,
   UtensilsCrossed,
+  Printer,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -117,6 +118,7 @@ export const ICONS = {
   ia: Sparkles,
   reparation: Wrench,
   cuisine: UtensilsCrossed,
+  imprimer: Printer,
   couture: Scissors,
   accessoire: Headphones,
   ecole: School,

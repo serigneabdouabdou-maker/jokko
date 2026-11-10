@@ -1877,3 +1877,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .cz-select { height: 40px; border-radius: 10px; border: 1px solid var(--j-line); padding: 0 10px; background: var(--j-white, #fff); font: inherit; min-width: 140px; }
 .cz-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .cz-tour { flex-wrap: wrap; align-items: center; }
+
+/* Ticket de caisse (aperçu 58 mm) */
+.rc-backdrop { position: fixed; inset: 0; z-index: 80; background: rgba(10, 14, 20, 0.55); display: grid; place-items: end center; padding: 12px; }
+.rc-sheet { width: min(100%, 420px); max-height: 92vh; overflow: auto; background: var(--j-white, #fff); border-radius: 22px; padding: 16px; display: grid; gap: 12px; box-shadow: 0 -10px 40px rgba(0,0,0,.3); }
+.rc-head { display: flex; justify-content: space-between; align-items: center; }
+.rc-head h3 { margin: 0; font-size: 17px; }
+.rc-paper { margin: 0 auto; width: 100%; max-width: 300px; padding: 14px 12px; background: #fffef8; border: 1px dashed #c9c3b0; border-radius: 6px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; color: #17191F; box-shadow: 0 6px 18px -10px rgba(0,0,0,.35); }
+.rc-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+@media (min-width: 700px) { .rc-backdrop { place-items: center; } }

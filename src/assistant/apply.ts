@@ -1,4 +1,5 @@
 import { type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
+import { nextTicket } from "../data/tickets.ts";
 import type { DraftAction } from "./client";
 
 /** amount : montant en francs de l'écriture (pour le redire en wolof). */
@@ -111,7 +112,7 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     const cost = product?.cost !== undefined && baseQty ? Math.round(baseQty * product.cost) : undefined;
     const unit = product ? (retail ? retail.unit : product.unit) : undefined;
     const label = product?.name ?? (action.label?.trim() || action.productName?.trim() || "Vente");
-    const sale: Sale = { id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id };
+    const sale: Sale = { id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id, ticket: nextTicket(shop) };
     if (cost !== undefined) sale.cost = cost;
     if (retail) sale.retail = true;
     if (unit) sale.unit = unit;

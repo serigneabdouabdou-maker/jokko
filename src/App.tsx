@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Receipt } from "@/components/jokko/Receipt";
+import { zReport, zText } from "@/data/tickets";
 import { Cuisine } from "@/components/jokko/Cuisine";
 import { ForfaitChip } from "@/components/jokko/Forfait";
 import type { Session } from "@supabase/supabase-js";
@@ -1743,6 +1745,8 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
   const [counted, setCounted] = useState(String(expectedCash(shop)));
   const [closing, setClosing] = useState<"" | "envoi" | "ok" | "erreur">("");
   const [clearing, setClearing] = useState(false);
+  const [z, setZ] = useState(false);
+  const zr = zReport(shop);
   const expected = expectedCash(shop);
   const gap = (Number(counted) || 0) - expected;
   return (
@@ -1778,6 +1782,9 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           // Démo : la clôture est seulement simulée (rien n'est envoyé).
           setClosing(isDemoShop(shop) || (await saveCashCount(shop.id, expected, Number(counted) || 0)) ? "ok" : "erreur");
         }}>{closing === "envoi" ? "Envoi…" : "Clôturer la caisse"}</Button>
+        <Button variant="outline" className="h-11 rounded-full" onClick={() => setZ(true)}><Icon name="imprimer" size="sm" /> Ticket Z (clôture du jour)</Button>
+        {zr.missing.length > 0 && <p className="note" data-tone="error">Tickets manquants aujourd'hui : n° {zr.missing.join(", ")}. Ils ont été effacés après coup : compare avec les tickets papier.</p>}
+        {z && <Receipt title="Ticket Z" text={zText(shop, zr, Number(counted) || 0)} onClose={() => setZ(false)} />}
         {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}

@@ -8,6 +8,8 @@ import { addFromCatalogue, cataloguePath, catalogueFor, onMenu } from "@/data/ca
 import { addToCart, type CartLine, cartTotal, checkout, setQty } from "@/data/checkout";
 import { deliver, deliveriesToday, returnItems, setTournee, tourneeClients } from "@/data/tournee";
 import { vitrinePhotoUrl } from "@/data/vitrine";
+import { receiptFor } from "@/data/tickets";
+import { Receipt } from "./Receipt";
 import { metierOf } from "@/data/metiers";
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -49,6 +51,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
   const [tour, setTour] = useState({ client: "", productId: "", qty: "" });
   const [ret, setRet] = useState<{ clientId: string; productId: string; qty: string } | null>(null);
   const [note, setNote] = useState("");
+  const [receipt, setReceipt] = useState<{ title: string; text: string } | null>(null);
 
   const flash = (text: string) => { setNote(text); window.setTimeout(() => setNote(""), 4000); };
   const total = cartTotal(shop, cart);
@@ -71,6 +74,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
     if (!done) return;
     commit(done.shop);
     flash(`✓ ${done.summary}`);
+    if (done.shop.sales[0]) setReceipt(receiptFor(done.shop, done.shop.sales[0]));
     setCart([]); setPay("especes"); setClientId(""); setNewClient("");
   }
 
@@ -82,6 +86,7 @@ export function Cuisine({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sho
       </div>
       <p className="note">Touche les photos pour faire la commande, puis encaisse. Tu peux aussi le dire à Jokko : {W.say}.</p>
       {note && <p className="note cz-flash" role="status">{note}</p>}
+      {receipt && <Receipt title={receipt.title} text={receipt.text} onClose={() => setReceipt(null)} />}
 
       {dishes.length === 0 && <div className="cz-empty"><p>Ton menu est vide. Choisis tes {W.items} dans le catalogue Jokko ci-dessous et mets ton prix : c'est tout.</p></div>}
 

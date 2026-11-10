@@ -77,10 +77,12 @@ export function checkout(shop: Shop, lines: CartLine[], payment: Payment, client
   }
   if (!ids.length) return null;
   const mine = new Set(ids);
+  // Un encaissement = un seul ticket : toutes les lignes prennent le numéro de la première.
+  const ticket = current.sales.find((s) => s.id === ids[0])?.ticket;
   const total = current.sales.filter((s) => mine.has(s.id)).reduce((a, s) => a + s.amount, 0);
   current = {
     ...current,
-    sales: current.sales.map((s) => (mine.has(s.id) ? { ...s, ...(payment !== "especes" ? { payment } : {}), ...(client ? { clientId: client.id } : {}) } : s)),
+    sales: current.sales.map((s) => (mine.has(s.id) ? { ...s, ...(ticket ? { ticket } : {}), ...(payment !== "especes" ? { payment } : {}), ...(client ? { clientId: client.id } : {}) } : s)),
   };
   if (payment === "credit" && client) {
     const dueAt = client.debt > 0 && client.dueAt ? client.dueAt : new Date(Date.now() + 30 * DAY).toISOString();

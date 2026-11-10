@@ -93,6 +93,8 @@ export type Sale = {
   payment?: Payment;
   /** Paiement Wave sans API : vérifié par le patron dans son appli Wave (lu sur le serveur) */
   checked?: boolean;
+  /** Numéro du ticket de caisse dans la journée (toutes les lignes d'un même encaissement ont le même). */
+  ticket?: number;
 };
 
 export type Payment = "especes" | "wave" | "om" | "credit";

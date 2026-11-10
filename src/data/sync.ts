@@ -42,7 +42,7 @@ const toRow = {
   sales: (s: Sale, shopId: string): Row => ({
     id: s.id, shop_id: shopId, at: s.at, label: s.label, amount: s.amount,
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
-    cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes",
+    cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes", ticket: opt(s.ticket),
   }),
   expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense" }),
   invoices: (i: Invoice, shopId: string): Row => ({
@@ -428,6 +428,8 @@ export function rowsToShop(rows: ShopRows): Shop {
         if (unit) sale.unit = unit;
         if (r.payment === "wave" || r.payment === "om" || r.payment === "credit") sale.payment = r.payment;
         if (r.checked === true) sale.checked = true;
+        const ticket = optNum(r.ticket);
+        if (ticket) sale.ticket = ticket;
         return sale;
       }),
     ),
