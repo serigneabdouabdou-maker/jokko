@@ -1,4 +1,4 @@
-import type { CartVoid, Client, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
+import type { CartVoid, Client, Repayment, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -7,7 +7,7 @@ export type Row = Record<string, unknown>;
 export type Op = { table: string; kind: "upsert" | "delete"; id: string; row?: Row };
 
 /** Tables filles, dans l'ordre d'envoi des upserts (parents avant enfants). */
-export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs", "couture_orders", "cart_voids"] as const;
+export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs", "couture_orders", "cart_voids", "debt_payments"] as const;
 export type ChildTable = (typeof CHILD_TABLES)[number];
 const TABLE_ORDER: string[] = ["shops", ...CHILD_TABLES];
 
@@ -64,6 +64,9 @@ const toRow = {
   cart_voids: (v: CartVoid, shopId: string): Row => ({
     id: v.id, shop_id: shopId, at: v.at, product_id: v.productId, label: v.label, qty: v.qty, amount: v.amount, by_name: v.by, place: v.where,
   }),
+  debt_payments: (r: Repayment, shopId: string): Row => ({
+    id: r.id, shop_id: shopId, at: r.at, client_id: r.clientId, client_name: r.clientName, amount: r.amount, payment: r.payment,
+  }),
 };
 
 /** Lignes d'une table fille pour une boutique. */
@@ -79,6 +82,7 @@ export function childRows(shop: Shop, table: ChildTable): Row[] {
     case "repairs": return (shop.repairs ?? []).map((x) => toRow.repairs(x, shop.id));
     case "couture_orders": return (shop.couture ?? []).map((x) => toRow.couture_orders(x, shop.id));
     case "cart_voids": return (shop.voids ?? []).map((x) => toRow.cart_voids(x, shop.id));
+    case "debt_payments": return (shop.repayments ?? []).map((x) => toRow.debt_payments(x, shop.id));
   }
 }
 
@@ -306,6 +310,7 @@ export type ShopRows = {
   repairs?: Row[];
   couture_orders?: Row[];
   cart_voids?: Row[];
+  debt_payments?: Row[];
 };
 
 /** numeric / bigint peuvent arriver en string. */
@@ -466,7 +471,13 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(rows.repairs?.length ? { repairs: byAtDesc(rows.repairs.map(readRepair)) } : {}),
     ...(rows.couture_orders?.length ? { couture: byAtDesc(rows.couture_orders.map(readCouture)) } : {}),
     ...(rows.cart_voids?.length ? { voids: byAtDesc(rows.cart_voids.map(readVoid)) } : {}),
+    ...(rows.debt_payments?.length ? { repayments: byAtDesc(rows.debt_payments.map(readRepayment)) } : {}),
   };
+}
+
+function readRepayment(r: Row): Repayment {
+  const p = str(r.payment);
+  return { id: str(r.id), at: iso(r.at), clientId: str(r.client_id), clientName: str(r.client_name), amount: num(r.amount), payment: p === "wave" || p === "om" ? p : "especes" };
 }
 
 function readVoid(r: Row): CartVoid {
@@ -584,6 +595,7 @@ export async function loadShops(client: LoadClient, shopIds?: string[]): Promise
       repairs: pick("repairs", id),
       couture_orders: pick("couture_orders", id),
       cart_voids: pick("cart_voids", id),
+      debt_payments: pick("debt_payments", id),
     });
   });
 }

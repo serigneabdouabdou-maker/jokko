@@ -13,6 +13,7 @@ import {
   type Shop,
   currentShop,
   dayCashSales,
+  dayRepaid,
   dayExpenses,
   daySales,
   debtors,
@@ -1760,6 +1761,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         <dl className="cash-calc">
           <div><dt>Fond du matin</dt><dd className="num">{amount(shop.openingCash)}</dd></div>
           <div><dt>+ Ventes en espèces</dt><dd className="num">{amount(dayCashSales(shop))}</dd></div>
+          {dayRepaid(shop) > 0 && <div><dt>+ Dettes remboursées</dt><dd className="num">{amount(dayRepaid(shop))}</dd></div>}
           <div><dt>− Dépenses</dt><dd className="num">{amount(dayExpenses(shop))}</dd></div>
         </dl>
         {daySales(shop) !== dayCashSales(shop) && (

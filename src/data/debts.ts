@@ -1,4 +1,4 @@
-import type { Client, Lang, Shop } from "../model";
+import { addRepayment, type Client, type Lang, type Repayment, type Shop } from "../model";
 import { francsToWolof } from "../assistant/wolofNumbers";
 
 /** Dettes : échéances, retards et messages de relance WhatsApp. */
@@ -60,11 +60,15 @@ export function setDueIn(shop: Shop, clientId: string, days: number, now = new D
 }
 
 /** Le client paie une partie (avance) ou tout : la dette baisse ; à 0, plus d'échéance. */
-export function payDebt(shop: Shop, clientId: string, paid: number): Shop {
-  const pay = Math.round(paid);
-  if (!(pay > 0)) return shop;
-  return setDebt(shop, clientId, Math.max(0, (shop.clients.find((c) => c.id === clientId)?.debt ?? 0) - pay));
+export function payDebt(shop: Shop, clientId: string, paid: number, payment: Repayment["payment"] = "especes", now = new Date()): Shop {
+  const client = shop.clients.find((c) => c.id === clientId);
+  // On n'encaisse jamais plus que la dette : le reste est rendu au client.
+  const pay = Math.min(Math.round(paid), client?.debt ?? 0);
+  if (!client || !(pay > 0)) return shop;
+  return addRepayment(setDebt(shop, clientId, client.debt - pay), client, pay, payment, now);
 }
+
+export { addRepayment };
 
 /** Corrige la dette (erreur de calcul) : nouveau montant total. 0 = dette effacée. */
 export function setDebt(shop: Shop, clientId: string, debt: number): Shop {

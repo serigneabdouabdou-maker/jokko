@@ -1,4 +1,4 @@
-import { type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
+import { addRepayment, type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
 import { nextTicket } from "../data/tickets.ts";
 import type { DraftAction } from "./client";
 
@@ -161,15 +161,18 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
   if (action.type === "debt_payment") {
     if (!known || !amount) return null;
     const debt = Math.max(0, known.debt - amount);
+    const cleared: Shop = {
+      ...shop,
+      clients: shop.clients.map((c) => {
+        if (c.id !== known.id) return c;
+        // Dette soldée : plus d'échéance.
+        return debt > 0 ? { ...c, debt } : { ...c, debt, dueAt: undefined };
+      }),
+    };
+    // L'argent remboursé entre dans la caisse du jour (jamais plus que la dette).
+    const repaid = Math.min(amount, known.debt);
     return {
-      shop: {
-        ...shop,
-        clients: shop.clients.map((c) => {
-          if (c.id !== known.id) return c;
-          // Dette soldée : plus d'échéance.
-          return debt > 0 ? { ...c, debt } : { ...c, debt, dueAt: undefined };
-        }),
-      },
+      shop: repaid > 0 ? addRepayment(cleared, known, repaid, "especes") : cleared,
       amount,
       summary: `${known.name} a payé ${money(amount)} · reste ${money(debt)}`,
     };

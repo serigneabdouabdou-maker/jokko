@@ -203,7 +203,12 @@ export type Shop = {
   couture?: CoutureOrder[];
   /** Articles retirés du panier avant encaissement (contrôle des caisses) ; jamais modifiés. */
   voids?: CartVoid[];
+  /** Dettes remboursées : l'argent entre dans la caisse du jour (espèces) ou chez Wave / Orange Money. */
+  repayments?: Repayment[];
 };
+
+/** Un client rembourse tout ou partie de sa dette. */
+export type Repayment = { id: string; at: string; clientId: string; clientName: string; amount: number; payment: Exclude<Payment, "credit"> };
 
 /** Article scanné ou touché puis retiré avant d'encaisser : qui, quoi, combien. */
 export type CartVoid = { id: string; at: string; productId: string; label: string; qty: number; amount: number; by: string; where: "scanner" | "cuisine" };
@@ -376,8 +381,19 @@ export function dayCashSales(shop: Shop): number {
   return shop.sales.filter((s) => isToday(s.at) && (s.payment ?? "especes") === "especes").reduce((a, s) => a + s.amount, 0);
 }
 
+/** Note un remboursement de dette : il entre dans la caisse du jour (espèces) et sur le ticket Z. */
+export function addRepayment(shop: Shop, client: Pick<Client, "id" | "name">, amount: number, payment: Repayment["payment"] = "especes", now = new Date()): Shop {
+  const r: Repayment = { id: uid("rb"), at: now.toISOString(), clientId: client.id, clientName: client.name, amount: Math.round(amount), payment };
+  return { ...shop, repayments: [r, ...(shop.repayments ?? [])] };
+}
+
+/** Dettes remboursées aujourd'hui (par défaut : en espèces, ce qui entre dans le tiroir). */
+export function dayRepaid(shop: Pick<Shop, "repayments">, payment: Repayment["payment"] | "all" = "especes"): number {
+  return (shop.repayments ?? []).filter((r) => isToday(r.at) && (payment === "all" || r.payment === payment)).reduce((a, r) => a + r.amount, 0);
+}
+
 export function expectedCash(shop: Shop): number {
-  return shop.openingCash + dayCashSales(shop) - dayExpenses(shop);
+  return shop.openingCash + dayCashSales(shop) + dayRepaid(shop) - dayExpenses(shop);
 }
 
 export function lowStock(shop: Shop): Product[] {

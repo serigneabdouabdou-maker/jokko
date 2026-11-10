@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { type Client, type Lang, type Shop, money, todayStamp, uid } from "@/model";
+import { type Client, type Lang, PAYMENT_LABELS, type Shop, money, todayStamp, uid } from "@/model";
 import { debtList, payDebt, reminderMessage, setDebt, setDueIn, whatsappLink } from "@/data/debts";
 
 const dateFr = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -82,7 +82,9 @@ const num = (v: string) => Number(v.replace(/[^\d]/g, ""));
 function DebtTools({ client, shop, commit, canEdit }: { client: Client; shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [mode, setMode] = useState<"" | "payer" | "modifier" | "supprimer">("");
   const [value, setValue] = useState("");
+  const [how, setHow] = useState<"especes" | "wave" | "om">("especes");
   const open = (m: typeof mode) => {
+    setHow("especes");
     setMode(m);
     setValue(m === "modifier" ? String(client.debt) : "");
   };
@@ -107,9 +109,15 @@ function DebtTools({ client, shop, commit, canEdit }: { client: Client; shop: Sh
             <Input className="h-11 num" inputMode="numeric" autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder={`Il doit ${money(client.debt)}`} />
           </label>
           {paid > 0 && <small className="note">{paid >= client.debt ? "Dette soldée : elle disparaît de la liste." : `Il restera ${money(client.debt - paid)}.`}</small>}
+          <div className="debt-actions" role="radiogroup" aria-label="Payé comment ?" style={{ gap: 6, flexWrap: "wrap" }}>
+            {(["especes", "wave", "om"] as const).map((p) => (
+              <Button key={p} size="sm" role="radio" aria-checked={how === p} variant={how === p ? "default" : "outline"} className="rounded-full" onClick={() => setHow(p)}>{PAYMENT_LABELS[p]}</Button>
+            ))}
+          </div>
+          {how === "especes" && <small className="note">L'argent entre dans la caisse du jour.</small>}
           <div className="debt-actions" style={{ gap: 8, flexWrap: "wrap" }}>
-            <Button className="h-11 rounded-full px-5" disabled={!(paid > 0)} onClick={() => done(payDebt(shop, client.id, paid))}><Icon name="sauvegarde" size="sm" /> Enregistrer</Button>
-            <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => done(payDebt(shop, client.id, client.debt))}>Il a tout payé</Button>
+            <Button className="h-11 rounded-full px-5" disabled={!(paid > 0)} onClick={() => done(payDebt(shop, client.id, paid, how))}><Icon name="sauvegarde" size="sm" /> Enregistrer</Button>
+            <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => done(payDebt(shop, client.id, client.debt, how))}>Il a tout payé</Button>
             <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setMode("")}>Annuler</Button>
           </div>
         </>

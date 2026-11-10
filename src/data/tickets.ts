@@ -76,12 +76,20 @@ export type ZReport = {
   /** Ventes sans numéro (anciennes ventes, ou faites avant les tickets). */
   untracked: number;
   expenses: number;
+  /** Dettes remboursées aujourd'hui, par moyen de paiement (hors ventes). */
+  repaid: { especes: number; wave: number; om: number };
   /** Articles retirés du panier avant encaissement, par vendeur. */
   voids: VoidDay;
 };
 
+function repaidOn(shop: Pick<Shop, "repayments">, day: string) {
+  const out = { especes: 0, wave: 0, om: 0 };
+  for (const r of shop.repayments ?? []) if (localDay(new Date(r.at)) === day) out[r.payment] += r.amount;
+  return out;
+}
+
 /** Ticket Z : la clôture de la journée. */
-export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids">, now = new Date()): ZReport {
+export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids" | "repayments">, now = new Date()): ZReport {
   const day = localDay(now);
   const sales = shop.sales.filter((s) => dayOfSale(s) === day);
   const nums = [...new Set(sales.filter((s) => s.ticket).map((s) => s.ticket as number))].sort((a, b) => a - b);
@@ -94,6 +102,7 @@ export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids">, now = 
     total: sales.reduce((a, s) => a + s.amount, 0), byPayment,
     untracked: sales.filter((s) => !s.ticket).reduce((a, s) => a + s.amount, 0),
     expenses: shop.expenses.filter((e) => localDay(new Date(e.at)) === day).reduce((a, e) => a + e.amount, 0),
+    repaid: repaidOn(shop, day),
     voids: voidsOfDay(shop, now),
   };
 }
@@ -107,10 +116,16 @@ export function zText(shop: Pick<Shop, "name">, z: ZReport, counted?: number): s
   out.push(line);
   for (const p of ["especes", "wave", "om", "credit"] as Payment[]) if (z.byPayment[p]) out.push(row(plain(PAYMENT_LABELS[p]), f(z.byPayment[p])));
   if (z.untracked) out.push(row("Sans ticket", f(z.untracked)));
-  out.push(row("TOTAL VENTES", f(z.total)), row("Depenses", f(z.expenses)));
+  out.push(row("TOTAL VENTES", f(z.total)));
+  const repaid = z.repaid.especes + z.repaid.wave + z.repaid.om;
+  if (repaid) {
+    out.push(row("Dettes remboursees", f(repaid)));
+    for (const p of ["especes", "wave", "om"] as const) if (z.repaid[p]) out.push(row(`  ${plain(PAYMENT_LABELS[p])}`, f(z.repaid[p])));
+  }
+  out.push(row("Depenses", f(z.expenses)));
   out.push(line, row("Articles retires", z.voids.count ? `${z.voids.count} (${f(z.voids.amount)})` : "aucun"));
   for (const p of z.voids.byPerson.slice(0, 6)) out.push(row(`  ${plain(p.name).slice(0, 16)}`, `${p.count} art.`));
-  if (counted !== undefined) out.push(line, row("Especes comptees", f(counted)), row("Ecart", f(counted - (z.byPayment.especes - z.expenses))));
+  if (counted !== undefined) out.push(line, row("Especes comptees", f(counted)), row("Ecart", f(counted - (z.byPayment.especes + z.repaid.especes - z.expenses))));
   out.push(line, center(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })));
   return out.join("\n");
 }
