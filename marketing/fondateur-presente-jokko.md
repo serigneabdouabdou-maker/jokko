@@ -15,3 +15,5 @@ Compte Higgsfield de l'essai ≠ ancien compte : les anciennes photos de son vis
 
 Logo importé : media `9f11b97e-3491-466d-9038-1fec769de380`. Logo 3D : image à générer (refusée 2× pour limite de jobs simultanés : Higgsfield n'accepte qu'un job à la fois en ce moment).
 Méthode lèvres : Seedance 2.5 `mode: omni_reference`, `image_references` = photo de Fallou + image clé du bureau, `audio_references` = voix `fond-N` importée (media_import_url de l'URL publique Supabase).
+
+Voix importées dans Higgsfield (audio_references) : fond-1 `85c0f7f2-9bbf-4cc4-805c-26dce6504501`, fond-2 `4380ba8f-f650-49fb-a024-a9df6c7080b2`, fond-3 `d085a8a1-57cb-4a21-a92c-0aa4299f2477`, fond-4 `6fc29a9a-714e-4ffb-acbb-be96e27e4cdb`, fond-5 `fef8406d-9e87-480e-a3fb-ad8625b82633`, fond-6 `2801c579-ccb0-4dae-9483-d7e94a27de04`, fond-7 (wolof) `ef611b69-0cdf-4fbc-93aa-c35c3198a6ba`.
