@@ -62,3 +62,17 @@ L'atelier de Claude ne joint pas le stockage Supabase. Voix et photos passent pa
 2. Workflow GitHub `assets` (lancé par l'API : `POST /actions/workflows/assets.yml/dispatches`, champ `paths`) : dépose les fichiers sur la branche `atelier`, que l'on clone.
 3. Rendu : `node render.mjs` (Puppeteer + Chrome) ou `render.mjs` du dossier ; son : `python3 audio/metiers_mix.py <dossier voix> out.wav` (musique afro-pop maison, bruitages, voix au-dessus), puis `ffmpeg -af loudnorm=I=-14`.
 4. Deux fichiers : HD 1080 × 1920 pour les réseaux, web 720 × 1280 (≈ 3 Mo, `preload="none"`) pour le site.
+
+## Modou et Ibou en vrai (photoréaliste, Higgsfield, depuis le 11 nov. 2026)
+
+Même fiche que ci-dessus, en version photo/vidéo réaliste. Toujours donner ces deux fiches comme `image_references` pour garder les mêmes visages :
+
+| Personnage | Fiche (job Higgsfield) |
+|---|---|
+| Modou | `517618bf-87d4-4a08-a3e3-c25326d0331f` (boubou bleu `#2F7DC9`, broderie jaune, barbe courte) |
+| Ibou | `65f50a3a-b813-4a89-a9a0-d3428bf0aa94` (boubou vert, col blanc, kufi blanc) |
+
+- Vidéo test (15 s, 9:16, Seedance 2.0, 720p, sans paroles) : `7a5010a6-dc43-4623-b584-d9218b5a9f35`.
+- Méthode : clips **sans paroles** (ambiance + musique) ; la voix wolof vient de Gemini (Sulafat) **après validation de Fallou**, puis est donnée à Seedance en `audio_references` pour faire parler les personnages.
+- Essai gratuit Higgsfield (illimité) jusqu'au 13/11/2026 23 h 50 : Seedance 2.0 jusqu'à 720p et 15 s, Seedance 2.5 en 480p jusqu'à 30 s, images Nano Banana Pro 2K. Après : 10 crédits seulement, toujours annoncer le prix avant.
+- L'atelier de Claude ne peut pas télécharger les fichiers Higgsfield (cloudfront bloqué) : Fallou les télécharge depuis son compte Higgsfield.
