@@ -11,7 +11,7 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 3 | Ibou entre | « Modou, laisse le cahier. Jëlal Jokko : wax rekk, mu bind ! » | — | — | à faire |
 | 4 | Modou parle au téléphone | « Jaay naa ñaari kilo sukar ak benn litre diw. » | — | — | à faire |
 | 5 | Vraie appli : vente enregistrée | — | capture `app-vente.mp4` (branche `atelier-film`) → media `d328f13f-165e-419e-8e85-2deae5371cf0` | — | prêt |
-| 6 | Restaurant : Awa encaisse, ticket | « Ñaari yassa, benn bissap… ticket bi génn na ! » | `3a173357-1de4-4263-ac05-a08390ed9d2e` | — | image prête |
+| 6 | Restaurant : Awa encaisse, ticket | « Ñaari yassa, benn bissap… ticket bi génn na ! » | `3a173357-1de4-4263-ac05-a08390ed9d2e` | `5a0376c1-3d2c-4ba4-af03-9ba081a55bd7` | ✅ fait (sans paroles) |
 | 7 | Supérette : scanner, ticket | — | `1be932e0-8b27-48ec-8bd1-7903ab1c613c` | — | image prête |
 | 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | — | image prête |
 | 9 | Rue : car rapide Jokko, moto | — | — | — | à faire |
