@@ -1,0 +1,170 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:"Brico";src:url(Bricolage.ttf);font-weight:200 800;}
+  @font-face{font-family:"Serif";src:url(InstrumentItalic.ttf);font-style:italic;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Brico",sans-serif;color:#fff}
+  .stage{position:absolute;inset:0;perspective:1800px}
+  .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,20,.5) 0%,rgba(5,10,20,0) 20%),linear-gradient(0deg,rgba(5,10,20,.92) 0%,rgba(5,10,20,.45) 32%,rgba(5,10,20,0) 52%)}
+  .tag{position:absolute;top:70px;left:64px;display:flex;align-items:center;gap:16px;opacity:0}
+  .tag img{height:64px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.6))}
+  .tag span{font-size:24px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.85)}
+  /* titres */
+  .copy{position:absolute;left:64px;right:64px;bottom:170px}
+  .kick{display:flex;align-items:center;gap:16px;font-size:28px;font-weight:800;letter-spacing:6px;text-transform:uppercase;color:#4FC3F7;margin-bottom:20px;overflow:hidden}
+  .kick .bar{width:0;height:5px;border-radius:3px;background:#D3403A;flex:none}
+  .kick i,.ln i{display:block;font-style:normal}
+  .title{font-size:92px;font-weight:800;line-height:.98;letter-spacing:-3px;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+  .title em{font-family:"Serif";font-style:italic;font-weight:400;color:#4FC3F7;letter-spacing:0}
+  .ln{overflow:hidden;display:block;padding-bottom:6px}
+  .sub{margin-top:22px;font-size:34px;font-weight:600;color:rgba(255,255,255,.86);line-height:1.3;max-width:900px;overflow:hidden}
+  .sub i{display:block;font-style:normal}
+  .center .copy{bottom:auto;top:50%;transform:translateY(-50%);text-align:center}
+  .center .kick{justify-content:center}
+  .center .title{font-size:100px}
+  /* plein écran marque */
+  .full{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse 90% 60% at 50% 42%,#123457 0%,#0A1A2E 55%,#050B16 100%)}
+  .full .rays{position:absolute;inset:-20%;background:conic-gradient(from 0deg at 50% 42%,transparent 0 10deg,rgba(79,195,247,.06) 14deg,transparent 22deg 60deg,rgba(79,195,247,.05) 66deg,transparent 74deg 130deg,rgba(211,64,58,.05) 136deg,transparent 144deg 200deg,rgba(79,195,247,.06) 206deg,transparent 214deg 290deg,rgba(79,195,247,.04) 296deg,transparent 304deg)}
+  .full .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(79,195,247,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(79,195,247,.07) 1px,transparent 1px);background-size:90px 90px;-webkit-mask-image:radial-gradient(ellipse 70% 50% at 50% 45%,#000 0%,transparent 75%)}
+  .full .logo{position:relative;width:860px;filter:drop-shadow(0 40px 60px rgba(0,0,0,.55))}
+  .full .logo img{width:100%;display:block}
+  .full .sweep{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 48%,transparent 60%);mix-blend-mode:overlay;-webkit-mask-image:url(cfc.png);-webkit-mask-size:100% 100%}
+  .full .line{margin-top:60px;font-family:"Serif";font-style:italic;font-size:52px;color:#E9F4FB;text-align:center;overflow:hidden}
+  .full .line i{display:block}
+  .chips{margin-top:54px;display:flex;flex-direction:column;gap:20px;align-items:center}
+  .chip{display:flex;align-items:center;gap:18px;background:rgba(255,255,255,.07);border:2px solid rgba(79,195,247,.35);border-radius:999px;padding:18px 34px;font-size:34px;font-weight:700;backdrop-filter:blur(6px)}
+  .chip .d{width:16px;height:16px;border-radius:50%;background:#4FC3F7}
+  .chip:nth-child(2) .d{background:#D3403A}
+  /* carte produit */
+  .card{position:absolute;left:60px;right:60px;bottom:150px;border-radius:44px;padding:40px 44px 44px;background:rgba(9,16,28,.78);border:2px solid rgba(255,255,255,.12);
+    box-shadow:0 60px 100px -40px rgba(0,0,0,.8);backdrop-filter:blur(14px);transform-style:preserve-3d;display:none}
+  .card .accent{position:absolute;left:0;top:44px;bottom:44px;width:8px;border-radius:0 6px 6px 0}
+  .card .head{display:flex;align-items:center;gap:30px}
+  .card .lg{width:170px;height:170px;border-radius:38px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;box-shadow:0 20px 40px -18px rgba(0,0,0,.6)}
+  .card .lg img{width:100%;height:100%;object-fit:contain}
+  .card .lg.banner img{object-fit:cover}
+  .card .lg.dark{background:#17191F}
+  .card .lg.dark img{width:72%;height:72%}
+  .card .k{font-size:24px;font-weight:800;letter-spacing:5px;text-transform:uppercase;opacity:.9}
+  .card h2{font-size:78px;font-weight:800;letter-spacing:-2.5px;line-height:1}
+  .card p{margin-top:28px;font-size:36px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.9)}
+  .feats{margin-top:28px;display:flex;flex-wrap:wrap;gap:14px}
+  .feat{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:999px;padding:13px 24px;font-size:28px;font-weight:700}
+  .feat .d{width:13px;height:13px;border-radius:50%}
+  .url{margin-top:30px;display:inline-flex;align-items:center;gap:12px;font-size:34px;font-weight:800;padding:14px 28px;border-radius:999px;color:#0A1A2E}
+  /* fin */
+  .end .row{margin-top:70px;display:flex;gap:30px}
+  .end .row .lg{width:180px;height:180px;border-radius:40px;background:#fff;display:grid;place-items:center;overflow:hidden;box-shadow:0 24px 50px -20px rgba(0,0,0,.7)}
+  .end .row .lg img{width:100%;height:100%;object-fit:contain}
+  .end .row .lg.banner img{object-fit:cover}
+  .end .row .lg.dark{background:#17191F}.end .row .lg.dark img{width:72%;height:72%}
+  .end .wa{margin-top:80px;display:flex;align-items:center;gap:18px;background:#25D366;color:#06301A;font-size:46px;font-weight:800;padding:22px 44px;border-radius:999px}
+  .end .wa svg{width:48px;height:48px}
+  .end .sign{margin-top:34px;font-size:30px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:1px}
+</style></head>
+<body>
+<div class="stage" id="stage">
+  <div class="shade" id="shade"></div>
+  <div class="tag" id="tag"><img src="cfc.png"><span id="tagt">Cissé Family Company</span></div>
+  <div class="copy" id="copy"><div class="kick"><span class="bar" id="bar"></span><i id="kick"></i></div>
+    <div class="title"><span class="ln"><i id="l1"></i></span><span class="ln"><i id="l2"></i></span></div>
+    <div class="sub"><i id="sub"></i></div></div>
+
+  <div class="card" id="card"><div class="accent" id="acc"></div>
+    <div class="head"><div class="lg" id="clg"><img id="cimg"></div><div><div class="k" id="ck"></div><h2 id="cname"></h2></div></div>
+    <p id="ctext"></p><div class="feats" id="feats"></div><div class="url" id="curl"></div></div>
+
+  <div class="full" id="full"><div class="rays" id="rays"></div><div class="grid"></div>
+    <div class="logo" id="logo"><img src="cfc.png"><div class="sweep" id="sweep"></div></div>
+    <div class="line"><i id="fline"></i></div>
+    <div class="chips" id="chips"></div>
+    <div class="row" id="row"></div>
+    <div class="wa" id="wa" style="display:none"><svg viewBox="0 0 24 24" fill="#06301A"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.1z"/></svg><span>77 567 47 25</span></div>
+    <div class="sign" id="sign" style="display:none">Fallou Cissé · fondateur de CFC</div>
+  </div>
+</div>
+<script>
+const P=JSON.parse(decodeURIComponent(location.hash.slice(1)||'{}'));
+const $=id=>document.getElementById(id);
+const mode=P.mode||'text', DUR=P.dur||5;
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const seg=(t,a,b)=>clamp((t-a)/(b-a));
+const ease=x=>1-Math.pow(1-x,4);                       // sortie douce
+const expo=x=>x>=1?1:1-Math.pow(2,-10*x);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const LOGOS={jokko:{src:'jokko.png',cls:'dark'},sb:{src:'sb.png',cls:''},sm:{src:'sm.png',cls:'banner'}};
+
+$('kick').textContent=P.kick||''; $('l1').innerHTML=P.l1||''; $('l2').innerHTML=P.l2?'<em>'+P.l2+'</em>':''; $('sub').textContent=P.sub||'';
+if(!P.kick) $('bar').style.display='none';
+if(mode==='center') document.body.classList.add('center');
+if(P.noshade) $('shade').style.display='none';
+if(P.notag) $('tag').style.display='none';
+
+if(mode==='card'){
+  $('card').style.display='block'; $('copy').style.display='none';
+  const L=LOGOS[P.logo]; $('cimg').src=L.src; $('clg').className='lg '+L.cls;
+  $('acc').style.background=P.color; $('ck').textContent=P.kick||''; $('ck').style.color=P.light||P.color;
+  $('cname').textContent=P.name; $('ctext').textContent=P.text||'';
+  (P.feats||[]).forEach(f=>{const e=document.createElement('div');e.className='feat';e.innerHTML='<span class="d" style="background:'+(P.light||P.color)+'"></span>'+f;$('feats').appendChild(e);});
+  $('curl').textContent=P.url||''; $('curl').style.background=P.light||P.color; if(!P.url) $('curl').style.display='none';
+}
+if(mode==='logo'||mode==='end'){
+  $('full').style.display='flex'; $('copy').style.display='none'; $('shade').style.display='none'; $('tag').style.display='none';
+  $('fline').textContent=P.line||'';
+  (P.chips||[]).forEach(c=>{const e=document.createElement('div');e.className='chip';e.innerHTML='<span class="d"></span>'+c;$('chips').appendChild(e);});
+  if(mode==='end'){
+    document.getElementById('full').classList.add('end');
+    $('logo').style.width='640px';
+    ['jokko','sb','sm'].forEach(k=>{const L=LOGOS[k];const e=document.createElement('div');e.className='lg '+L.cls;e.innerHTML='<img src="'+L.src+'">';$('row').appendChild(e);});
+    $('wa').style.display='flex'; $('sign').style.display='block';
+  }
+}
+
+function seek(t){
+  const out=1-ease(seg(t,DUR-0.45,DUR));                // sortie générale
+  // signature CFC en haut
+  $('tag').style.opacity=ease(seg(t,0.2,0.9))*out;
+  $('tag').style.transform=`translateY(${-16*(1-ease(seg(t,0.2,0.9)))}px)`;
+  // titres (lignes qui montent)
+  const k=ease(seg(t,0.25,0.95)), a=ease(seg(t,0.45,1.15)), b=ease(seg(t,0.62,1.32)), s=ease(seg(t,0.9,1.6));
+  $('bar').style.width=(64*expo(seg(t,0.15,0.8)))+'px';
+  $('kick').style.transform=`translateY(${110*(1-k)}%)`;
+  $('l1').style.transform=`translateY(${110*(1-a)}%)`;
+  $('l2').style.transform=`translateY(${110*(1-b)}%)`;
+  $('sub').style.transform=`translateY(${110*(1-s)}%)`;
+  $('copy').style.opacity=out;
+  const drift=1+0.015*seg(t,0,DUR);
+  if(mode!=='card'&&mode!=='logo'&&mode!=='end') $('copy').style.transform=(mode==='center'?'translateY(-50%) ':'')+`scale(${drift})`;
+  // carte produit : arrive en 3D, flotte, chips en cascade
+  if(mode==='card'){
+    const e=eio(seg(t,0.15,1.05)); const T=2*Math.PI;
+    const ry=-24*(1-e)+2.2*Math.sin(T*t/4.2)*e, rx=16*(1-e)+1.6*Math.sin(T*t/3.3+1)*e;
+    const ty=420*(1-e)+6*Math.sin(T*t/2.8)*e;
+    $('card').style.transform=`translateY(${ty}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    $('card').style.opacity=clamp(e*1.6)*out;
+    const lgs=ease(seg(t,0.55,1.15)); $('clg').style.transform=`scale(${0.6+0.4*lgs}) rotate(${-10*(1-lgs)}deg)`;
+    $('ctext').style.opacity=ease(seg(t,0.9,1.5)); $('ctext').style.transform=`translateY(${24*(1-ease(seg(t,0.9,1.5)))}px)`;
+    [...$('feats').children].forEach((f,i)=>{const x=ease(seg(t,1.2+i*0.14,1.7+i*0.14));f.style.opacity=x;f.style.transform=`translateY(${20*(1-x)}px) scale(${0.92+0.08*x})`;});
+    const u=ease(seg(t,1.7,2.2)); $('curl').style.opacity=u; $('curl').style.transform=`scale(${0.85+0.15*u})`;
+  }
+  // logo plein écran
+  if(mode==='logo'||mode==='end'){
+    const r=expo(seg(t,0.1,1.3));
+    $('full').style.opacity=ease(seg(t,0,0.35))*(mode==='end'?1:out);
+    $('rays').style.transform=`rotate(${t*6}deg)`;
+    $('logo').style.transform=`perspective(1400px) translateZ(${-260*(1-r)}px) rotateX(${14*(1-r)+1.2*Math.sin(t*1.3)}deg) rotateY(${-10*(1-r)+2*Math.sin(t*0.9)}deg)`;
+    $('logo').style.filter=`blur(${10*(1-r)}px) drop-shadow(0 40px 60px rgba(0,0,0,.55))`;
+    $('logo').style.opacity=clamp(r*1.4);
+    const sw=seg(t,1.0,2.2); $('sweep').style.transform=`translateX(${-120+240*sw}%)`; $('sweep').style.opacity=sw>0&&sw<1?1:0;
+    const l=ease(seg(t,1.2,1.9)); $('fline').style.transform=`translateY(${110*(1-l)}%)`;
+    [...$('chips').children].forEach((c,i)=>{const x=ease(seg(t,1.7+i*0.3,2.3+i*0.3));c.style.opacity=x;c.style.transform=`translateY(${30*(1-x)}px)`;});
+    [...$('row').children].forEach((c,i)=>{const x=ease(seg(t,1.5+i*0.18,2.1+i*0.18));c.style.opacity=x;c.style.transform=`translateY(${40*(1-x)}px) scale(${0.8+0.2*x})`;});
+    const w=ease(seg(t,2.3,2.9)); $('wa').style.opacity=w; $('wa').style.transform=`scale(${0.85+0.15*w})`;
+    $('sign').style.opacity=ease(seg(t,2.8,3.4));
+  }
+}
+window.seek=seek;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r;})))).then(()=>{seek(0);window.READY=true;});
+</script>
+</body></html>
