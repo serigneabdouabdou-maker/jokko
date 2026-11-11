@@ -9,7 +9,7 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 1 | Accroche : drone sur Sandaga, coup de sabar | — | `e6d37269-a0a4-4b27-950e-68b076c18ab2` | `968cd0d0-f91d-4b1d-b132-f4d2da4c93d0` | ✅ fait |
 | 2 | Nuit, Modou et son cahier | « Cahier bi dafa ma sonal ! Xaalis bi du mat. » | — | `2b8ef018-85dc-4b93-97e2-f698535edc1f` (test paroles wolof natives) | ✅ fait, à écouter par Fallou |
 | 3 | Ibou entre | « Modou, laisse le cahier. Jëlal Jokko : wax rekk, mu bind ! » | — | `1b3c23f6-5b45-42d0-9602-56d66e3671dd` | ✅ fait, à écouter |
-| 4 | Modou parle au téléphone | « Jaay naa ñaari kilo sukar ak benn litre diw. » | — | `d17ca627-fbcc-43c4-b5ed-fa6314f55434` | en cours |
+| 4 | Modou parle au téléphone | « Jaay naa ñaari kilo sukar ak benn litre diw. » | — | `d17ca627-fbcc-43c4-b5ed-fa6314f55434` | ✅ fait, à écouter |
 | 5 | Vraie appli : vente enregistrée | — | capture `app-vente.mp4` (branche `atelier-film`) → media `d328f13f-165e-419e-8e85-2deae5371cf0` | — | prêt |
 | 6 | Restaurant : Awa encaisse, ticket | « Ñaari yassa, benn bissap… ticket bi génn na ! » | `3a173357-1de4-4263-ac05-a08390ed9d2e` | `5a0376c1-3d2c-4ba4-af03-9ba081a55bd7` | ✅ fait (sans paroles) |
 | 7 | Supérette : scanner, ticket | — | `1be932e0-8b27-48ec-8bd1-7903ab1c613c` | `12dcb316-99a0-4094-94cd-4f5a74c5e33c` | ✅ fait |
