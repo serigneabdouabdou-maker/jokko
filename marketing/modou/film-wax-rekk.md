@@ -31,3 +31,21 @@ Notes
 - Monté dans la sandbox Higgsfield (gratuite) : coupes franches, sous-titres wolof en grand (Montserrat ExtraBold) + français en jaune, vraie appli en accéléré ×2, carte de fin (logo, « Wax rekk, Jokko bind », « Essai 14 jours gratuit », jokkoapp.com).
 - Musique : `bed.mp3` (afrobeat + sabar fabriqué en numpy, 112 BPM, branche `atelier-film`), baissée sous les paroles (4–22 s et 52–60 s).
 - Paroles : voix wolof natives de Seedance. Contrôle Whisper : les phrases sont là, mais « 14 jours » de l'appel final sonne peu clair → le sous-titre l'écrit. **Wolof à valider à l'oreille par Fallou avant publication.**
+
+## Version 2 : voix off française documentaire (11/11/2026, 06 h 10) — décision de Fallou
+
+Fallou : « le wolof n'est pas bon » → voix off **française** façon documentaire (Gemini, voix **Charon**), personnages muets, et à la fin le slogan wolof dit par Fallou : **« Jokko moo koy yor »** (sur la carte de fin).
+
+Texte (enregistré, `galerie/accueil/voix/doc-v1…v8.wav`) :
+1. Dakar. Chaque matin, des milliers de commerçants ouvrent leur boutique.
+2. Mais le soir, c'est toujours la même question : combien ai-je gagné aujourd'hui ? Le vieux cahier ne répond pas.
+3. Alors, Ibou lui fait découvrir Jokko.
+4. Modou parle simplement, en wolof ou en français. Et Jokko note tout : la vente, le stock, la caisse.
+5. Au restaurant, à la supérette, chez le tailleur : chaque métier a son Jokko. Le ticket sort, le stock se met à jour, le client est servi.
+6. Jokko est partout dans la ville.
+7. Jokko, c'est ton caissier, ton comptable et ta mémoire. Essai gratuit de quatorze jours, sur jokkoapp point com.
+8. (wolof) Jokko moo koy yor !
+
+- v2 montée : média Higgsfield `cb4e1343-6aeb-42ab-96e9-d05a7f20cd04` (65,7 s), sous-titres français (images Pillow, ffmpeg 5.1 sans `text_align`).
+- À refaire sans paroles (bouches fermées) : plan 2 nuit `7ece3871-dd4b-44e6-8251-378875d98dd7` (en cours), plan 11 appel final (à lancer) → v3.
+- Défaut vu : l'écran du téléphone de la supérette affiche des prix en « $ » (image IA) — à corriger si on refait le plan 7.
