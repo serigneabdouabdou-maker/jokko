@@ -15,7 +15,7 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 7 | Supérette : scanner, ticket | — | `1be932e0-8b27-48ec-8bd1-7903ab1c613c` | — | image prête |
 | 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | — | image prête |
 | 9 | Rue : car rapide Jokko, moto | — | — | — | à faire |
-| 10 | Danse sabar devant la boutique | — | `eef0bf8b-019e-4649-ad59-7ac792fbbe2d` | — | image prête |
+| 10 | Danse sabar devant la boutique | — | `eef0bf8b-019e-4649-ad59-7ac792fbbe2d` | `2fcb3682-b3ed-4dd9-8edc-1cff8860b67a` | ✅ fait |
 | 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | — | — | à faire |
 | 12 | Fin : logo, slogan, jokkoapp.com | — | — | — | à faire |
 
