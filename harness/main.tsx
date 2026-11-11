@@ -1,0 +1,14 @@
+import { createRoot } from "react-dom/client";
+import "../src/styles.css";
+const st = document.createElement("style"); st.textContent = ".demo-bar{display:none!important}"; document.head.appendChild(st);
+import { Desk } from "../src/App";
+import { blankProfile, type Profile } from "../src/model";
+import { demoProfile } from "../src/data/demo";
+const q = new URLSearchParams(location.search);
+const real = blankProfile();
+real.owner = "Modou"; real.phone = "770000000";
+const p = demoProfile(real);
+p.shops = p.shops.map((s) => ({ ...s, name: "Boutique Modou" }));
+const act = q.get("metier");
+if (act) p.shops = p.shops.map((s) => ({ ...s, activity: act, name: act === "restauration" ? "Chez Awa" : s.name }));
+createRoot(document.getElementById("root")!).render(<Desk profile={p as Profile} setProfile={() => {}} demo={{ realShopId: p.shopId, restart: () => {}, quit: () => {} }} />);
