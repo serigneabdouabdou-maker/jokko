@@ -52,6 +52,8 @@ $('kick').textContent=P.kick||''; $('l1').textContent=P.l1||''; $('l2').innerHTM
 if(P.screen) $('scr').style.backgroundImage='url(screens/'+P.screen+')';
 if(P.callout) $('ctext').textContent=P.callout; else $('callout').style.display='none';
 if(mode!=='phone') $('device').style.display='none';
+if(P.dx) $('device').style.marginLeft=(90+P.dx)+'px';
+if(P.dy) $('device').style.marginTop=(-470+P.dy)+'px';
 if(mode==='center') document.body.classList.add('center');
 if(mode==='end'){ $('end').style.display='flex'; ['shade','brand','callout','device'].forEach(i=>$(i).style.display='none'); document.querySelector('.copy').style.display='none'; }
 const ease=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3);
