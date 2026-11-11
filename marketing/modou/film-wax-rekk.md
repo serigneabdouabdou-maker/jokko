@@ -13,7 +13,7 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 5 | Vraie appli : vente enregistrée | — | capture `app-vente.mp4` (branche `atelier-film`) → media `d328f13f-165e-419e-8e85-2deae5371cf0` | — | prêt |
 | 6 | Restaurant : Awa encaisse, ticket | « Ñaari yassa, benn bissap… ticket bi génn na ! » | `3a173357-1de4-4263-ac05-a08390ed9d2e` | `5a0376c1-3d2c-4ba4-af03-9ba081a55bd7` | ✅ fait (sans paroles) |
 | 7 | Supérette : scanner, ticket | — | `1be932e0-8b27-48ec-8bd1-7903ab1c613c` | — | image prête |
-| 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | `b10016ce-4232-420f-8ad2-ac45d31d022b` | en cours |
+| 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | `b10016ce-4232-420f-8ad2-ac45d31d022b` | ✅ fait (sans paroles) |
 | 9 | Rue : car rapide Jokko, moto | — | — | — | à faire |
 | 10 | Danse sabar devant la boutique | — | `eef0bf8b-019e-4649-ad59-7ac792fbbe2d` | `2fcb3682-b3ed-4dd9-8edc-1cff8860b67a` | ✅ fait |
 | 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | `4a4f9bbe-8df6-420d-bfc4-6c899aa29639` | — | à faire |
