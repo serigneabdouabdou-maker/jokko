@@ -10,3 +10,4 @@ dist
 # fichiers temporaires
 *.tmp.*
 _sauvegarde*/
+harness/
