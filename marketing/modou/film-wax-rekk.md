@@ -16,9 +16,11 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | `b10016ce-4232-420f-8ad2-ac45d31d022b` | ✅ fait (sans paroles) |
 | 9 | Rue : car rapide Jokko, moto | — | affiches importées : car rapide `f6d5565c-5a7f-43f8-876a-5ebeee0c588d`, moto `486e74eb-35ae-4cdf-bb32-aeba630ec698` | car rapide `4122d9ef-0c42-4cef-83b1-1eed7d6f3547` ✅ ; moto à faire (si le temps) |
 | 10 | Danse sabar devant la boutique | — | `eef0bf8b-019e-4649-ad59-7ac792fbbe2d` | `2fcb3682-b3ed-4dd9-8edc-1cff8860b67a` | ✅ fait |
-| 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | `4a4f9bbe-8df6-420d-bfc4-6c899aa29639` | — | à faire |
+| 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | `4a4f9bbe-8df6-420d-bfc4-6c899aa29639` | `bcdf45c1-0ad2-4d1e-a58e-df208961a4e0` | en cours |
 | 12 | Fin : logo, slogan, jokkoapp.com | — | — | — | à faire |
 
 Notes
 - Captures de l'appli : rendu de `Desk` en mode démo (dossier `harness/` temporaire, puppeteer), puis `media_import_url` via **jsDelivr** (`cdn.jsdelivr.net/gh/serigneabdouabdou-maker/jokko@atelier-film/…`) — raw.githubusercontent est refusé (type de fichier).
 - Voix Gemini : crédit vide le 11/11 à 00 h 08 (402) → en attendant, test des paroles wolof natives de Seedance.
+
+- Montage : workflow Higgsfield `video-montage` (ffmpeg dans `sandbox_exec`, côté Higgsfield ; l'assemblage n'est pas couvert par l'illimité → vérifier le coût avant).
