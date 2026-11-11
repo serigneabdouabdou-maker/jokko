@@ -14,9 +14,9 @@ Personnages (toujours en `image_references`) : Modou `517618bf-87d4-4a08-a3e3-c2
 | 6 | Restaurant : Awa encaisse, ticket | « Ñaari yassa, benn bissap… ticket bi génn na ! » | `3a173357-1de4-4263-ac05-a08390ed9d2e` | `5a0376c1-3d2c-4ba4-af03-9ba081a55bd7` | ✅ fait (sans paroles) |
 | 7 | Supérette : scanner, ticket | — | `1be932e0-8b27-48ec-8bd1-7903ab1c613c` | `12dcb316-99a0-4094-94cd-4f5a74c5e33c` | ✅ fait |
 | 8 | Tailleur : essayage sur selfie | « Waaw ! Moom laa bëgg ! » | `405127b7-fb15-476f-9b20-0cbeafc3dd49` | `b10016ce-4232-420f-8ad2-ac45d31d022b` | ✅ fait (sans paroles) |
-| 9 | Rue : car rapide Jokko, moto | — | affiches importées : car rapide `f6d5565c-5a7f-43f8-876a-5ebeee0c588d`, moto `486e74eb-35ae-4cdf-bb32-aeba630ec698` | car rapide `4122d9ef-0c42-4cef-83b1-1eed7d6f3547` ✅ ; moto à faire (si le temps) |
+| 9 | Rue : car rapide Jokko, moto | — | affiches importées : car rapide `f6d5565c-5a7f-43f8-876a-5ebeee0c588d`, moto `486e74eb-35ae-4cdf-bb32-aeba630ec698` | car rapide `4122d9ef-0c42-4cef-83b1-1eed7d6f3547` ✅, moto `5a0227be-6f44-4585-b76f-2282c7f10646` ✅ |
 | 10 | Danse sabar devant la boutique | — | `eef0bf8b-019e-4649-ad59-7ac792fbbe2d` | `2fcb3682-b3ed-4dd9-8edc-1cff8860b67a` | ✅ fait |
-| 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | `4a4f9bbe-8df6-420d-bfc4-6c899aa29639` | `bcdf45c1-0ad2-4d1e-a58e-df208961a4e0` | en cours |
+| 11 | Appel final face caméra | « Jokko mooy sa caissier, sa comptable ak sa mémoire. Jéemal ko tey : essai 14 jours gratuit ! » | `4a4f9bbe-8df6-420d-bfc4-6c899aa29639` | `bcdf45c1-0ad2-4d1e-a58e-df208961a4e0` | ✅ fait, à écouter |
 | 12 | Fin : logo, slogan, jokkoapp.com | — | — | — | à faire |
 
 Notes
@@ -24,3 +24,10 @@ Notes
 - Voix Gemini : crédit vide le 11/11 à 00 h 08 (402) → en attendant, test des paroles wolof natives de Seedance.
 
 - Montage : workflow Higgsfield `video-montage` (ffmpeg dans `sandbox_exec`, côté Higgsfield ; l'assemblage n'est pas couvert par l'illimité → vérifier le coût avant).
+
+## Montage v1 (11/11/2026, 06 h)
+
+- Fichier : `jokko-film-wax-rekk.mp4`, 64 s, 720 × 1280, 24 i/s, −14 LUFS, ≈ 30 Mo. Média Higgsfield `3837f5ff-95ae-467c-a417-8fd73ef8cc9f`.
+- Monté dans la sandbox Higgsfield (gratuite) : coupes franches, sous-titres wolof en grand (Montserrat ExtraBold) + français en jaune, vraie appli en accéléré ×2, carte de fin (logo, « Wax rekk, Jokko bind », « Essai 14 jours gratuit », jokkoapp.com).
+- Musique : `bed.mp3` (afrobeat + sabar fabriqué en numpy, 112 BPM, branche `atelier-film`), baissée sous les paroles (4–22 s et 52–60 s).
+- Paroles : voix wolof natives de Seedance. Contrôle Whisper : les phrases sont là, mais « 14 jours » de l'appel final sonne peu clair → le sous-titre l'écrit. **Wolof à valider à l'oreille par Fallou avant publication.**
