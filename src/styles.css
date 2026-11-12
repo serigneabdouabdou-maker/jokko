@@ -1005,6 +1005,9 @@
     background: var(--j-soft-2); border: 1px dashed color-mix(in oklab, var(--j-yellow) 70%, var(--j-ink));
   }
   .demo-bar p { margin: 0; font-size: 14px; color: var(--j-ink-2); }
+  .demo-bar .row { flex-wrap: wrap; }
+  .demo-metier { flex: 1 1 220px; max-width: 320px; }
+  .demo-metier .native-select { height: 36px; border-radius: 999px; padding: 0 14px; font-size: 14px; }
   .demo-invite { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
   .sheet.demo-invite { background: var(--j-soft-2); border-color: color-mix(in oklab, var(--j-yellow) 40%, var(--j-line)); }
   .demo-invite h2 { font-size: 20px; }

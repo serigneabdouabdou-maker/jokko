@@ -63,7 +63,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
 import { Couture } from "@/components/jokko/Couture";
-import { expiringSoon, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf, shopWithMetier } from "@/data/metiers";
+import { expiringSoon, METIERS, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf, shopWithMetier } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
@@ -91,7 +91,7 @@ import { PriceTool } from "@/components/jokko/PriceTool";
 import { Remote } from "@/components/jokko/Remote";
 import { Advisor } from "@/components/jokko/Advisor";
 import { Landing } from "@/components/jokko/Landing";
-import { demoProfile, isDemoShop } from "@/data/demo";
+import { demoInfo, demoProfile, isDemoShop } from "@/data/demo";
 import { guessLang, type QualityKind } from "@/data/quality";
 import { ShopLocation } from "@/components/jokko/ShopLocation";
 import { Icon, type IconName } from "@/components/jokko/Icon";
@@ -260,13 +260,20 @@ export function App() {
   if (profile.termsVersion === null) return <TermsGate profile={profile} onAccepted={() => setProfile({ ...profile, termsVersion: TERMS_VERSION })} />;
   if (!profile.shops.length) return <ShopSetup profile={profile} setProfile={setProfile} />;
   // Démo : une boutique exemple qui reste sur ce téléphone (jamais envoyée au serveur).
+  // Une démo par métier : celle du métier de la boutique, ou d'un autre métier choisi dans le bandeau (pour la montrer chez un commerçant).
   if (demo) {
+    const activity = currentShop(demo).activity;
     return (
       <Desk
-        key="demo"
+        key={`demo-${metierOf(activity).id}`}
         profile={demo}
         setProfile={setDemo}
-        demo={{ realShopId: profile.shopId, restart: () => setDemo(demoProfile(profile)), quit: () => setDemo(null) }}
+        demo={{
+          realShopId: profile.shopId,
+          restart: () => setDemo(demoProfile(profile, new Date(), activity)),
+          switchTo: (metier) => setDemo(demoProfile(profile, new Date(), metier)),
+          quit: () => setDemo(null),
+        }}
       />
     );
   }
@@ -679,7 +686,7 @@ const NOISE = /<[^>]*>/g;
 
 /** Rubriques cachées en démo : elles parlent au serveur (équipe, journal, à distance, offre). */
 const DEMO_HIDDEN: Screen[] = ["offre", "distance", "boutiques", "equipe", "journal"];
-type DemoControls = { realShopId: string; restart: () => void; quit: () => void };
+type DemoControls = { realShopId: string; restart: () => void; switchTo: (metier: string) => void; quit: () => void };
 
 export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
   // Une notification touchée ouvre le bon écran (?ecran=distance)
@@ -1420,8 +1427,16 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
 
         {demo && (
           <div className="demo-bar" role="status">
-            <p><Icon name="boutique" size="sm" /> <b>Mode démo.</b> Boutique exemple avec des prix du Sénégal : essaie tout, rien n’est enregistré.</p>
+            <p><Icon name="boutique" size="sm" /> <b>Mode démo.</b> {demoInfo(shop.activity).bar}</p>
             <div className="row">
+              <label className="demo-metier">
+                <span className="sr-only">Métier de la démo</span>
+                <select className="native-select" value={metierOf(shop.activity).id} onChange={(e) => demo.switchTo(e.target.value)} aria-label="Montrer la démo d’un autre métier">
+                  {METIERS.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </label>
               <Button variant="outline" className="h-9 rounded-full px-4" onClick={demo.restart}><Icon name="rafraichir" size="sm" />Recommencer</Button>
               <Button className="h-9 rounded-full px-4" onClick={demo.quit}><Icon name="fermer" size="sm" />Quitter la démo</Button>
             </div>
@@ -1455,8 +1470,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               {!demo && onDemo && shop.products.length < 3 && (
                 <section className="sheet demo-invite">
                   <div>
-                    <h2>Découvre Jokko avec une boutique exemple</h2>
-                    <p className="note">Riz, huile, sucre, clients, dettes et une semaine de ventes, avec des prix du Sénégal. Essaie tout sans risque : ta vraie boutique ne change pas.</p>
+                    <h2>{demoInfo(shop.activity).title}</h2>
+                    <p className="note">{demoInfo(shop.activity).text}</p>
                   </div>
                   <Button className="h-11 rounded-full px-5" onClick={onDemo}><Icon name="boutique" size="sm" />Essayer la démo</Button>
                 </section>
@@ -1856,7 +1871,7 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
         <div className="demo-invite">
           <div>
             <b>Démonstration</b>
-            <p className="note">Ouvre une boutique exemple remplie (produits, prix du Sénégal, clients, ventes) pour montrer Jokko ou t’entraîner. Rien n’est enregistré ; « Quitter la démo » efface tout.</p>
+            <p className="note">{demoInfo(shop.activity).title.replace("Découvre Jokko avec", "Ouvre")}, remplie avec des prix du Sénégal, pour montrer Jokko ou t’entraîner. Pour un autre métier, choisis-le en haut de la démo. Rien n’est enregistré ; « Quitter la démo » efface tout.</p>
           </div>
           <Button variant="outline" className="h-11 rounded-full px-5" onClick={onDemo}>Essayer la démo</Button>
         </div>
