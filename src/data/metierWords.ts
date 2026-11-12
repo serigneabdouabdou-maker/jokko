@@ -197,7 +197,7 @@ export function localizeInstruction(text: string, activity: string | undefined |
 }
 
 /** Règle « hors métier » ajoutée aux consignes de chaque boutique. */
-export function offTopicRule(activity: string | undefined | null, extra: readonly string[] = []): string {
+export function offTopicRule(activity: string | undefined | null): string {
   const m = metierOf(activity);
   return (
     `RESTE DANS LE MÉTIER (${m.label}) : tu parles seulement de cette entreprise, de ses articles, de ses clients, de son argent et de son travail. ` +

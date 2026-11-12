@@ -129,7 +129,7 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
 function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): LiveConnectConfig {
   return {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: `${localizeInstruction(LIVE_INSTRUCTION, context.activity, context.modules ?? [])}\n\n${metierInstruction(context.activity, context.modules)}\n${offTopicRule(context.activity, context.modules ?? [])}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction(modulesOf(context.activity, context.modules).has("vivres"))}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
+    systemInstruction: `${localizeInstruction(LIVE_INSTRUCTION, context.activity, context.modules ?? [])}\n\n${metierInstruction(context.activity, context.modules)}\n${offTopicRule(context.activity)}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction(modulesOf(context.activity, context.modules).has("vivres"))}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     inputAudioTranscription: {},
     outputAudioTranscription: {},

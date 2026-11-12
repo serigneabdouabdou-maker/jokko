@@ -78,7 +78,7 @@ Règles de réponse
 export function buildAudioPrompt(context: ShopContext): string {
   return [
     metierInstruction(context.activity, context.modules),
-    offTopicRule(context.activity, context.modules),
+    offTopicRule(context.activity),
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
     wolofAmounts(context),
     "La phrase du commerçant est dans l'audio joint.",
@@ -90,7 +90,7 @@ export function buildAudioPrompt(context: ShopContext): string {
 export function buildPrompt(message: string, context: ShopContext): string {
   return [
     metierInstruction(context.activity, context.modules),
-    offTopicRule(context.activity, context.modules),
+    offTopicRule(context.activity),
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
     wolofAmounts(context),
     `Phrase du commerçant : """${message.replaceAll('"""', '"')}"""`,
