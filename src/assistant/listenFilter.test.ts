@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CallGate, isCalled, NoiseGate } from "./listenFilter.ts";
+import { BargeIn, CallGate, isCalled, NoiseGate } from "./listenFilter.ts";
 
 describe("mot d'appel Jokko", () => {
   it("reconnaît les façons d'écrire Jokko", () => {
@@ -62,5 +62,27 @@ describe("filtre anti-bruit", () => {
     expect(after.slice(0, 10).every((d) => d === "send")).toBe(true);
     expect(after.includes("silence")).toBe(true);
     expect(after[after.length - 1]).toBe("skip");
+  });
+});
+
+describe("couper la parole à Jokko", () => {
+  it("une voix forte et proche qui dure coupe Jokko ; le bruit, l'écho et un « hum » court non", () => {
+    const b = new BargeIn();
+    const floor = 0.01;
+    // Bruit de fond et écho du haut-parleur (faibles) : jamais.
+    for (let i = 0; i < 50; i++) expect(b.frame(0.03, floor)).toBe(false);
+    // Un « hum » de 3 trames (120 ms) : non.
+    expect([0.2, 0.2, 0.2].map((x) => b.frame(x, floor)).some(Boolean)).toBe(false);
+    b.reset();
+    // Le commerçant parle (≈ 0,3 s de voix forte, avec un petit creux entre deux syllabes) : oui.
+    const said = [0.2, 0.25, 0.18, 0.04, 0.22, 0.2, 0.21, 0.19, 0.2, 0.2].map((x) => b.frame(x, floor));
+    expect(said.some(Boolean)).toBe(true);
+  });
+
+  it("boutique très bruyante : il faut parler plus fort", () => {
+    const loud = new BargeIn(7, 0.08, 8);
+    const floor = 0.02;
+    expect(Array.from({ length: 20 }, () => loud.frame(0.12, floor)).some(Boolean)).toBe(false);
+    expect(Array.from({ length: 20 }, () => loud.frame(0.25, floor)).some(Boolean)).toBe(true);
   });
 });

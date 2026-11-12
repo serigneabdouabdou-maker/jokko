@@ -32,6 +32,11 @@ export class NoiseGate {
     private tailMs = 1300,
   ) {}
 
+  /** Bruit de fond mesuré (rms). */
+  get level(): number {
+    return this.floor;
+  }
+
   get threshold(): number {
     return Math.max(this.minLevel, this.floor * this.ratio);
   }
@@ -60,6 +65,36 @@ export class NoiseGate {
     }
     if (now < this.silenceUntil) return "silence";
     return "skip";
+  }
+}
+
+/**
+ * Couper la parole à Jokko (12/11/2026, demande de Fallou : « même si on l'interrompt, il doit écouter »).
+ * Pendant que Jokko parle, le micro reste fermé à Gemini (sinon le haut-parleur revient dans le micro).
+ * Seule une voix forte et proche, qui dure environ 0,3 s, rouvre le micro : Jokko se tait et écoute.
+ * Le bruit de fond, une voix plus loin, un « hum » court ou l'écho du haut-parleur ne le coupent pas.
+ */
+export class BargeIn {
+  private run = 0;
+
+  constructor(
+    private ratio = 5,
+    private minLevel = 0.05,
+    private frames = 7,
+  ) {}
+
+  reset() {
+    this.run = 0;
+  }
+
+  /** Une trame de 40 ms ; `floor` = bruit de fond de la boutique. Renvoie true quand le commerçant coupe la parole. */
+  frame(rms: number, floor: number): boolean {
+    const threshold = Math.max(this.minLevel, floor * this.ratio);
+    // Une petite baisse entre deux syllabes ne remet pas tout à zéro.
+    this.run = rms >= threshold ? this.run + 1 : Math.max(0, this.run - 2);
+    if (this.run < this.frames) return false;
+    this.run = 0;
+    return true;
   }
 }
 

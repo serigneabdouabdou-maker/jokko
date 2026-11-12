@@ -10,7 +10,9 @@ import { debtWords } from "./debtMode";
 import { addCouture, deliverCouture, findCouture, isOpen as coutureOpen, knownMeasures, MEASURES, ordersOf as coutureOrders, payCouture, remaining as coutureRest, setStep, STEP_LABEL } from "../data/couture";
 import { missingForOrder, readSpokenCouture, spokenMoney } from "../data/coutureVoice";
 import { addRepair, deliverRepair, findRepair, markRepaired, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
-import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName } from "./wolofNames";
+import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName, UNITS } from "./wolofNames";
+import { foreignArticle } from "../data/metierWords";
+import { metierOf } from "../data/metiers";
 
 export { expandHeard, pickByName, plain, sameName };
 
@@ -234,7 +236,7 @@ export class LiveDesk {
     return { statut: "outil_inconnu" };
   }
 
-  record(action: DraftAction, heard = "", callId?: string): Recorded {
+  record(action: DraftAction, heard = "", callId?: string, learn?: Learned | null): Recorded {
     const key = JSON.stringify([action, heard.trim().toLowerCase()]);
     const last = this.history[0];
     if (last?.key === key && Date.now() - last.at < DUPLICATE_MS && last.after.id === this.deps.getShop().id) {
@@ -259,7 +261,9 @@ export class LiveDesk {
     }
     const applied = applyDraft(before, action);
     if (!applied) return { ok: false, besoin: missing(action) };
-    return { ok: true, entry: this.commit(before, applied.shop, applied.summary, heard, { callId, key, amount: applied.amount }) };
+    // Carnet de mots de la boutique : le mot appris fait partie de l'écriture, il est oublié si on l'annule.
+    const after = learn ? withAlias(applied.shop, learn.productId, learn.word) : applied.shop;
+    return { ok: true, entry: this.commit(before, after, applied.summary, heard, { callId, key, amount: applied.amount }) };
   }
 
   /** Enregistre un changement déjà calculé (mode local sans Gemini, écrans). */
@@ -364,6 +368,23 @@ export class LiveDesk {
         return { statut: "incomplet", besoin: resolved.ambigu, consigne: "Deux noms se ressemblent. N'enregistre rien : demande lequel, en disant les deux noms." };
       }
       const action = resolved.action;
+      const shopNow = this.deps.getShop();
+      const said = typeof args.productName === "string" ? args.productName.trim() : "";
+      // Un métier = ses articles : du riz chez un tailleur (absent du stock) n'est pas enregistré sans question.
+      if (!action.productId && said && ["sale", "purchase", "stock_adjust", "invoice"].includes(action.type) && args.horsMetierConfirme !== true) {
+        const owner = foreignArticle(said, shopNow.activity, shopNow.modules ?? []);
+        if (owner) {
+          return {
+            statut: "hors_metier",
+            article: said,
+            metier_de_la_boutique: metierOf(shopNow.activity).label,
+            consigne:
+              "N'enregistre rien. Cet article n'est pas du métier de la boutique et n'est pas dans son stock. Demande en une phrase si c'est bien un article de sa boutique, ou une dépense (repas, maison). " +
+              "S'il confirme que c'est pour la boutique, rappelle enregistrer avec horsMetierConfirme true. Si c'est une dépense, enregistre type expense.",
+          };
+        }
+      }
+      const learn = learnedWord(args, shopNow, action);
       // Garde-fou des chiffres : le montant est recalculé ici, jamais laissé au calcul du modèle.
       const heardText = typeof args.heard === "string" ? args.heard : "";
       if (action.type !== "stock_adjust" && !fixAmounts(action, args, heardText)) return NOT_UNDERSTOOD;
@@ -383,7 +404,7 @@ export class LiveDesk {
         const units = [product.unit, product.retail?.unit].filter(Boolean).join(" ou ");
         return { statut: "incomplet", besoin: `l'unité : ${product.name} se compte en ${units}`, consigne: "N'enregistre rien. Demande l'unité en disant les unités possibles." };
       }
-      const result = this.record(action, heard, call.id);
+      const result = this.record(action, heard, call.id, learn);
       if (!result.ok && result.besoin === PATRON_ONLY_MESSAGE) {
         return { statut: "refuse", raison: PATRON_ONLY_MESSAGE, consigne: "N'enregistre rien. Dis en une phrase que seul le patron peut faire ça." };
       }
@@ -405,6 +426,7 @@ export class LiveDesk {
       return {
         statut: "enregistre",
         resume: result.entry.summary,
+        ...(learn ? { mot_appris: `${learn.word} = ${learn.productName}` } : {}),
         montant_francs: amount ?? null,
         montant_en_wolof: amount ? francsToWolof(amount) : null,
         stock_bas: low,
@@ -541,7 +563,10 @@ function revert(current: Shop, entry: Entry): Shop {
         if (!b || !a) return p;
         // Le prix d'achat revient aussi à l'ancien (achat annulé).
         const cost = a.cost !== b.cost && p.cost === a.cost ? b.cost : p.cost;
-        return { ...p, stock: Math.max(0, roundQty(p.stock + (b.stock - a.stock))), cost };
+        // Mot appris avec cette écriture : oublié avec elle.
+        const learned = (a.aliases ?? []).filter((w) => !(b.aliases ?? []).includes(w));
+        const aliases = learned.length ? (p.aliases ?? []).filter((w) => !learned.includes(w)) : p.aliases;
+        return { ...p, stock: Math.max(0, roundQty(p.stock + (b.stock - a.stock))), cost, ...(aliases !== p.aliases ? { aliases } : {}) };
       }),
     clients: current.clients
       .filter((c) => !newClients.has(c.id) || c.debt !== (after.clients.find((x) => x.id === c.id)?.debt ?? 0))
@@ -562,6 +587,36 @@ function revert(current: Shop, entry: Entry): Shop {
  * Deux articles qui se ressemblent (huile moteur / huile de cuisine) : on ne laisse PAS le modèle deviner ;
  * sans mot qui les distingue, Jokko demande lequel.
  */
+/** Un mot du commerçant appris pour un article de SA boutique. */
+export type Learned = { productId: string; productName: string; word: string };
+
+/**
+ * Carnet de mots de la boutique : Gemini a compris l'article (son id), mais le code ne l'aurait pas trouvé avec le mot dit
+ * (« diwu oto », « bazin bu xonq », un surnom). Ce mot devient un « autre nom » de l'article, pour CETTE boutique seulement :
+ * la fois suivante, Jokko le reconnaît aussi en message vocal, à l'écrit et dans le panier. Si l'écriture est annulée, le mot est oublié.
+ */
+export function learnedWord(args: Record<string, unknown>, shop: Shop, action: DraftAction): Learned | null {
+  const said = typeof args.productName === "string" ? args.productName.trim() : "";
+  const heard = typeof args.heard === "string" ? args.heard : "";
+  const product = shop.products.find((p) => p.id === args.productId);
+  if (!said || !product || action.productId !== product.id) return null;
+  const word = plain(said);
+  const words = word.split(" ").filter(Boolean);
+  if (word.length < 3 || word.length > 30 || words.length > 3 || /\d/.test(word) || words.every((w) => UNITS.has(w))) return null;
+  // Seulement un mot vraiment dit par le commerçant (pas une reformulation du modèle).
+  if (!` ${plain(heard)} `.includes(` ${word} `)) return null;
+  // Déjà connu : le nom, un autre nom, ou un mot que le code reconnaît déjà.
+  if ([product.name, ...(product.aliases ?? [])].some((n) => plain(n) === word)) return null;
+  const found = pickByName(shop.products, said);
+  if (found.item || found.ambiguous.length) return null;
+  if ((product.aliases?.length ?? 0) >= 12) return null;
+  return { productId: product.id, productName: product.name, word };
+}
+
+function withAlias(shop: Shop, productId: string, word: string): Shop {
+  return { ...shop, products: shop.products.map((p) => (p.id === productId ? { ...p, aliases: [...(p.aliases ?? []), word] } : p)) };
+}
+
 function resolveOne<T extends Named>(items: T[], id: unknown, heard: string | null): { item?: T; ambiguous: T[] } {
   const byId = items.find((x) => x.id === id);
   if (!heard) return { item: byId, ambiguous: [] };

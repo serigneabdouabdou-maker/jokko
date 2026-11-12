@@ -3,6 +3,7 @@ import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import { lexiconInstruction } from "../../src/assistant/wolofLexicon.ts";
 import type { ShopContext } from "./schema.ts";
 import { metierInstruction, modulesOf } from "../../src/data/metiers.ts";
+import { offTopicRule } from "../../src/data/metierWords.ts";
 
 const F = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
 const W = (n: number) => `${francsToWolof(n)} (${F(n)})`;
@@ -77,6 +78,7 @@ Règles de réponse
 export function buildAudioPrompt(context: ShopContext): string {
   return [
     metierInstruction(context.activity, context.modules),
+    offTopicRule(context.activity, context.modules),
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
     wolofAmounts(context),
     "La phrase du commerçant est dans l'audio joint.",
@@ -88,6 +90,7 @@ export function buildAudioPrompt(context: ShopContext): string {
 export function buildPrompt(message: string, context: ShopContext): string {
   return [
     metierInstruction(context.activity, context.modules),
+    offTopicRule(context.activity, context.modules),
     `Contexte boutique (JSON, montants en francs CFA) : ${JSON.stringify(context)}`,
     wolofAmounts(context),
     `Phrase du commerçant : """${message.replaceAll('"""', '"')}"""`,

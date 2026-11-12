@@ -355,3 +355,53 @@ describe("deux articles qui se ressemblent : huile moteur et huile de cuisine", 
     expect(pickByName(named, "niinal").item?.id).toBe("cuisine");
   });
 });
+
+describe("Un métier = ses articles, et ses mots", () => {
+  const tailor = (): Shop => ({
+    ...seedShop(),
+    activity: "Couture, tailleur",
+    products: [
+      { id: "bazin", name: "Bazin riche", unit: "mètre", stock: 40, min: 10, price: 3500 },
+      { id: "fil", name: "Fil à coudre", unit: "bobine", stock: 20, min: 5, price: 250 },
+    ],
+  });
+
+  it("du riz chez un tailleur n'est pas enregistré sans question ; une dépense passe", () => {
+    const { desk, shop, set } = setup();
+    set(tailor());
+    const asked = desk.handle({ name: "enregistrer", args: { type: "sale", productName: "riz", quantity: 2, amount: 36000, heard: "vends 2 sacs de riz à 36 000" } });
+    expect(asked).toMatchObject({ statut: "hors_metier", article: "riz" });
+    expect(shop().sales).toHaveLength(tailor().sales.length);
+    // Le commerçant confirme : c'est bien pour sa boutique.
+    expect(desk.handle({ name: "enregistrer", args: { type: "sale", productName: "riz", quantity: 2, amount: 36000, heard: "waaw, vends 2 sacs de riz à 36 000", horsMetierConfirme: true } })).toMatchObject({ statut: "enregistre" });
+    // Le repas du tailleur reste une dépense normale.
+    expect(desk.handle({ name: "enregistrer", args: { type: "expense", amount: 1500, label: "repas : riz au poisson", heard: "dépense 1 500 pour le repas" } })).toMatchObject({ statut: "enregistre" });
+  });
+
+  it("l'alimentation vend du riz sans question", () => {
+    const { desk } = setup();
+    expect(desk.handle({ name: "enregistrer", args: { type: "sale", productName: "riz", quantity: 1, heard: "jaay naa benn sac riz" } })).toMatchObject({ statut: "enregistre" });
+  });
+
+  it("carnet de mots : le mot du commerçant devient un autre nom de l'article, oublié si on annule", () => {
+    const { desk, shop, set } = setup();
+    set(tailor());
+    const first = desk.handle({ name: "enregistrer", args: { type: "sale", productId: "bazin", productName: "getzner bleu", quantity: 2, heard: "jaay naa ñaari mètre getzner bleu" } });
+    expect(first).toMatchObject({ statut: "enregistre", mot_appris: "getzner bleu = Bazin riche" });
+    expect(shop().products.find((p) => p.id === "bazin")!.aliases).toEqual(["getzner bleu"]);
+    // La fois suivante, le code le reconnaît tout seul, sans l'id donné par Gemini.
+    expect(pickByName(shop().products, "getzner bleu").item?.id).toBe("bazin");
+    desk.handle({ name: "annuler_derniere", args: {} });
+    expect(shop().products.find((p) => p.id === "bazin")!.aliases ?? []).toEqual([]);
+  });
+
+  it("carnet de mots : rien n'est appris si le mot n'a pas été dit, ou s'il est déjà connu", () => {
+    const { desk, shop, set } = setup();
+    set(tailor());
+    // Gemini reformule (« tissu bleu » n'est pas dans la phrase) : rien appris.
+    expect(desk.handle({ name: "enregistrer", args: { type: "sale", productId: "bazin", productName: "tissu bleu", quantity: 1, heard: "jaay naa benn mètre bu bleu" } }).mot_appris).toBeUndefined();
+    // Nom déjà connu : rien appris.
+    desk.handle({ name: "enregistrer", args: { type: "sale", productId: "fil", productName: "fil", quantity: 1, heard: "vends un fil" } });
+    expect(shop().products.every((p) => !p.aliases?.length)).toBe(true);
+  });
+});

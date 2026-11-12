@@ -4,6 +4,7 @@ import { phrasebookInstruction } from "../../src/assistant/wolofPhrases.ts";
 import { lexiconInstruction } from "../../src/assistant/wolofLexicon.ts";
 import { contextAmountsInWolof } from "./prompt.ts";
 import { metierInstruction, modulesOf } from "../../src/data/metiers.ts";
+import { localizeInstruction, offTopicRule } from "../../src/data/metierWords.ts";
 import type { ShopContext } from "./schema.ts";
 
 /** Gemini 3.8 Live : environ 3 fois plus rapide que 2.5 sur nos essais en wolof (0,9 s contre 3,3 s). */
@@ -37,6 +38,7 @@ Voix et langue
 
 Comprendre le commerçant
 - Garde le fil : « mets-en deux », « et le sucre ? », « non, trois » se rapportent à ce qui vient d'être dit.
+- SI LE COMMERÇANT TE COUPE LA PAROLE : arrête-toi tout de suite et écoute-le jusqu'au bout. Réponds d'abord à ce qu'il vient de dire. Ensuite, si ta phrase coupée contenait une information encore utile (un montant, un total, une question comme « Noonu la ? » ou « Ñaata ? »), redis seulement cette partie en une phrase courte ; ne recommence jamais toute ta réponse depuis le début et ne t'excuse pas. S'il a corrigé quelque chose (« déedéet », « non, trois »), applique la correction et garde le reste du fil (même client, même panier, même article).
 - Les articles du stock ont souvent un nom français ; le commerçant peut dire le nom wolof. ceeb = riz, diw ou diwlin = huile, suukar = sucre, meew = lait, mburu = pain, saabu = savon, soble = oignon, pombiteer = pomme de terre, ataaya = thé, kaani = piment, xorom = sel, ndox = eau. Choisis l'article du contexte qui correspond.
 - Verbes : jaay = vendre, jënd = acheter (marchandise pour la boutique = achat, type purchase ; sinon dépense), fey = payer, bor = dette (« Fatou bor na 2 000 » = dette de Fatou), dugal ou yokk = ajouter au stock, des = il reste, ñaata = combien, njëg = prix, xaalis = argent.
 - Chiffres wolof : benn 1, ñaar 2, ñett 3, ñeent 4, juróom 5, juróom-benn 6, juróom-ñaar 7, juróom-ñett 8, juróom-ñeent 9, fukk 10, ñaar-fukk 20, fanweer 30, ñeent-fukk 40, juróom-fukk 50, téeméer 100, junni 1000.
@@ -112,9 +114,11 @@ const TOOL_MODULE: Record<string, string> = { reparation: "atelier", couture: "c
 export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, speed: LiveSpeed = "normal"): LiveConnectConfig {
   const config = fullLiveConfig(context, voice, speed);
   const modules = modulesOf(context.activity, context.modules);
+  // Exemples des outils dans les mots du métier (pas de « riz » dans les outils d'un tailleur).
+  const local = <T,>(value: T): T => JSON.parse(localizeInstruction(JSON.stringify(value), context.activity, context.modules ?? [])) as T;
   return {
     ...config,
-    tools: (config.tools ?? []).map((tool) =>
+    tools: local(config.tools ?? []).map((tool) =>
       "functionDeclarations" in tool && tool.functionDeclarations
         ? { ...tool, functionDeclarations: tool.functionDeclarations.filter((d) => !TOOL_MODULE[d.name ?? ""] || modules.has(TOOL_MODULE[d.name ?? ""] as never)) }
         : tool,
@@ -125,15 +129,17 @@ export function liveConfig(context: ShopContext, voice = DEFAULT_LIVE_VOICE, spe
 function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): LiveConnectConfig {
   return {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: `${LIVE_INSTRUCTION}\n\n${metierInstruction(context.activity, context.modules)}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction(modulesOf(context.activity, context.modules).has("vivres"))}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
+    systemInstruction: `${localizeInstruction(LIVE_INSTRUCTION, context.activity, context.modules ?? [])}\n\n${metierInstruction(context.activity, context.modules)}\n${offTopicRule(context.activity, context.modules ?? [])}\n\n${SPEED_LINE[speed]}\n\n${lexiconInstruction(modulesOf(context.activity, context.modules).has("vivres"))}\n\n${phrasebookInstruction()}\n\n${contextAmountsInWolof(context)}\n\nContexte boutique au début de la conversation (JSON) : ${JSON.stringify(context)}`,
     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
     // Micro sensible : Jokko réagit dès qu'on parle, et répond vite après la fin de la phrase.
     // (Le réglage « peu sensible » faisait rater la voix du commerçant.)
     realtimeInputConfig: {
-      // Boutique bruyante : une voix derrière le commerçant ne coupe plus la parole à Jokko.
-      activityHandling: ActivityHandling.NO_INTERRUPTION,
+      // Le commerçant peut couper la parole à Jokko : Jokko se tait, écoute, puis reprend le fil (12/11/2026).
+      // Le bruit de la boutique ne le coupe pas : pendant que Jokko parle, le téléphone n'envoie le micro
+      // qu'à une voix forte et proche qui dure (BargeIn, src/assistant/listenFilter.ts).
+      activityHandling: ActivityHandling.START_OF_ACTIVITY_INTERRUPTS,
       automaticActivityDetection: {
         startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
         // Le commerçant marque souvent une pause au milieu d'un montant (« ñaari junni… ak juróomi téeméer ») :
@@ -173,6 +179,7 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 modeDette: { type: Type.STRING, enum: ["ajout", "total"], description: "Pour debt_add : « ajout » si le client prend encore à crédit (jël, prend, ajoute, yokk) ; « total » si le commerçant dit ce que le client doit EN TOUT (en tout, lépp, sa dette est) ; vide si ce n'est pas clair (« me doit 15 000 ») : l'outil posera la question." },
                 delaiJours: { type: Type.NUMBER, description: "Pour une dette : dans combien de jours le client doit payer, s'il l'a dit (sinon vide : 30 jours)." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, écrite comme il l'a dite." },
+                horsMetierConfirme: { type: Type.BOOLEAN, description: "true seulement si l'outil a répondu hors_metier et que le commerçant vient de confirmer que cet article est bien pour sa boutique." },
               },
               required: ["type", "heard"],
             },

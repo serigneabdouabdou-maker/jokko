@@ -3,7 +3,7 @@ import { api, noteLiveFailure } from "../data/supabase";
 import type { ShopContext } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
-import { CallGate, NoiseGate } from "./listenFilter";
+import { BargeIn, CallGate, NoiseGate } from "./listenFilter";
 import { matchRecorded, playRecorded, prefetchRecorded, recordedPlaying, stopRecorded } from "./recorded";
 import { AmountLedger, moneyAmountsSaid, wrongAmounts } from "./wolofNumbers";
 import { type SpeechSpeed, speedPreferred } from "./greeting";
@@ -182,6 +182,8 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   const clear = options.clear && !options.mute ? new ClearSpeaker(player, options.lang ?? (() => "wo"), () => handlers.onPhase("parle")) : null;
   const lang = options.lang ?? (() => "wo" as SpeechLang);
   const noise = new NoiseGate(options.noise === "fort" ? 4.2 : 2.6, options.noise === "fort" ? 0.04 : 0.02);
+  // Boutique très bruyante : il faut parler plus fort pour couper la parole à Jokko.
+  const barge = options.noise === "fort" ? new BargeIn(7, 0.08, 8) : new BargeIn();
   // Plus de mot d'appel : on parle à Jokko directement, il répond à tout ce qui lui est dit.
   const calls = new CallGate(false);
   let held = false;
@@ -191,7 +193,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
   // Le tour de Jokko en cours : on garde sa voix tant qu'on ne sait pas si on lui parlait,
   // et on regarde s'il dit une phrase enregistrée (alors on joue la belle voix, tout de suite).
   type Pending = { name?: string; id?: string; args?: Record<string, unknown> };
-  let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean; known: AmountLedger } | null = null;
+  let turn: { decided: boolean; addressed: boolean; audio: Array<[Uint8Array, number]>; text: string; tools: Pending[]; started: number; flushed: boolean; known: AmountLedger; cut?: boolean } | null = null;
   /** Montants attendus gardés pendant les relances du garde-fou (la question du commerçant ne se répète pas). */
   let expected: number[] = [];
   let userPending: string[] = [];
@@ -211,7 +213,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
 
   /** Joue la voix gardée de Jokko (aucune phrase enregistrée ne correspond). */
   const flushAudio = () => {
-    if (!turn || turn.flushed || !turn.addressed) return;
+    if (!turn || turn.flushed || !turn.addressed || turn.cut) return;
     if (blockIfWrong()) return;
     turn.flushed = true;
     window.clearTimeout(swapTimer);
@@ -331,6 +333,19 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     handlers.onEnd(reason, reconnect);
   };
 
+  /** Le commerçant parle par-dessus Jokko : Jokko se tait tout de suite, le reste de sa phrase est jeté. */
+  const silenceJokko = () => {
+    clear?.reset();
+    player.stop();
+    stopRecorded();
+    window.clearTimeout(swapTimer);
+    if (turn) {
+      turn.audio = [];
+      turn.cut = true;
+    }
+    handlers.onPhase("ecoute");
+  };
+
   player.onIdle = () => {
     if (open) handlers.onPhase("ecoute");
   };
@@ -350,12 +365,31 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     const silence = new Uint8Array(1280).buffer;
     const sendPcm = (pcm: ArrayBuffer) => live?.sendRealtimeInput({ audio: { data: bytesToBase64(new Uint8Array(pcm)), mimeType: "audio/pcm;rate=16000" } });
     let wasSending = false;
+    const cutIn: ArrayBuffer[] = [];
     node.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => {
       if (!open || !live) return;
       // Pendant que Jokko parle (et 0,4 s après), le micro n'envoie pas sa propre voix à Gemini :
       // sinon le haut-parleur revient dans le micro et brouille la conversation. Le bouton « Maintenir » passe outre.
-      if (!held && (player.speaking || recordedPlaying())) quietUntil = Date.now() + 400;
+      // Jokko parle, ou sa réponse est prête (gardée le temps de vérifier les chiffres) : seule une vraie coupure passe.
+      const speaking = player.speaking || recordedPlaying() || (!!turn && turn.decided && turn.addressed && !turn.cut && !turn.flushed && turn.audio.length > 0);
+      if (!held && speaking) quietUntil = Date.now() + 400;
       if (!held && Date.now() < quietUntil) {
+        if (speaking) {
+          // Le commerçant coupe la parole ? On garde ses 400 dernières ms pour ne pas perdre le début de sa phrase.
+          cutIn.push(event.data.pcm);
+          if (cutIn.length > 10) cutIn.shift();
+          if (barge.frame(event.data.rms, noise.level)) {
+            silenceJokko();
+            quietUntil = 0;
+            noise.frame(event.data.rms, Date.now(), true);
+            wasSending = true;
+            for (const old of cutIn.splice(0)) sendPcm(old);
+            return;
+          }
+        } else {
+          barge.reset();
+          cutIn.length = 0;
+        }
         wasSending = false;
         preroll.length = 0;
         return;
@@ -380,9 +414,10 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     const content = message.serverContent;
     const now = Date.now();
     if (content?.interrupted) {
-      clear?.reset();
-      player.stop();
-      handlers.onPhase("ecoute");
+      // Gemini a arrêté sa réponse : la suivante (celle qui répond au commerçant) part sur un tour neuf.
+      silenceJokko();
+      window.clearTimeout(toolTimer);
+      turn = null;
     }
     if (content?.inputTranscription?.text) {
       const chunk = content.inputTranscription.text;
@@ -401,7 +436,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
     }
     for (const part of parts) {
       if (!part.inlineData?.data || !turn) continue;
-      if (turn.decided && !turn.addressed) continue;
+      if ((turn.decided && !turn.addressed) || turn.cut) continue;
       const clip: [Uint8Array, number] = [base64ToBytes(part.inlineData.data), rateOf(part.inlineData.mimeType)];
       if (turn.flushed) {
         if (!options.mute && !clear) {
@@ -410,7 +445,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
         }
       } else turn.audio.push(clip);
     }
-    if (said && turn) {
+    if (said && turn && !turn.cut) {
       turn.text += said;
       if (turn.decided && turn.addressed && turn.flushed) {
         handlers.onJokko(said);
@@ -431,7 +466,7 @@ export async function startLive(context: ShopContext, handlers: LiveHandlers, op
       if (turn && !turn.decided) decide(calls.addressed(now));
       if (turn?.addressed) {
         // Phrase enregistrée ? Elle part avec la belle voix, à la place de la voix directe.
-        const recorded = !turn.flushed && !options.mute && !clear ? matchRecorded(turn.text) : null;
+        const recorded = !turn.flushed && !turn.cut && !options.mute && !clear ? matchRecorded(turn.text) : null;
         if (recorded && playRecorded(audio, recorded, () => handlers.onPhase("ecoute"))) {
           window.clearTimeout(swapTimer);
           turn.flushed = true;

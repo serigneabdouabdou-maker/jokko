@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
 import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
 import { conseillerInstruction } from "../../src/data/metiers.ts";
+import { localizeInstruction } from "../../src/data/metierWords.ts";
 import { ADVICE_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
@@ -89,7 +90,7 @@ export type InterpretOptions = {
 };
 
 export async function interpret(request: InterpretRequest, options: InterpretOptions): Promise<Interpretation> {
-  const result = await run(options, interpretationSchema, interpretationJsonSchema(), buildPrompt(request.message, request.shopContext));
+  const result = await run(options, interpretationSchema, interpretationJsonSchema(), buildPrompt(request.message, request.shopContext), undefined, instructionFor(request.shopContext));
   return checkAmount(enforceRules(result, request.shopContext), request.message);
 }
 
@@ -97,6 +98,9 @@ export async function interpret(request: InterpretRequest, options: InterpretOpt
  * Garde-fou des chiffres : si la phrase contient un montant clair, c'est la calculatrice qui décide,
  * pas le modèle (« ñaari junni » = 10 000 F, jamais 2 000).
  */
+/** Consignes avec les exemples du métier de la boutique (un tailleur n'entend jamais parler de riz). */
+export const instructionFor = (context: { activity?: string; modules?: string[] }) => localizeInstruction(SYSTEM_INSTRUCTION, context.activity, context.modules ?? []);
+
 export function checkAmount(result: Interpretation, phrase: string): Interpretation {
   const action = result.draftAction;
   if (!action || action.type === "stock_adjust") return result;
@@ -107,7 +111,7 @@ export function checkAmount(result: Interpretation, phrase: string): Interpretat
 }
 
 export async function listen(request: ListenRequest, options: InterpretOptions): Promise<Heard> {
-  const { transcript, ...result } = await run(options, heardSchema, heardJsonSchema(), buildAudioPrompt(request.shopContext), request.audio);
+  const { transcript, ...result } = await run(options, heardSchema, heardJsonSchema(), buildAudioPrompt(request.shopContext), request.audio, instructionFor(request.shopContext));
   return { transcript, interpretation: checkAmount(enforceRules(result, request.shopContext), transcript) };
 }
 
