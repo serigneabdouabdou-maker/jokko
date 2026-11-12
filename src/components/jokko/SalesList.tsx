@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Sale, type Shop, money } from "@/model";
 import { editSale, removeSale } from "@/data/sales";
-import { receiptFor } from "@/data/tickets";
+import { type ReceiptDoc, receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
 
 const num = (v: string) => Number(v.replace(/[^\d.,]/g, "").replace(",", "."));
@@ -29,7 +29,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
   const [price, setPrice] = useState(String(s.amount));
   const [qty, setQty] = useState(s.qty !== undefined ? String(s.qty) : "");
   const [sure, setSure] = useState(false);
-  const [ticket, setTicket] = useState<{ title: string; text: string } | null>(null);
+  const [ticket, setTicket] = useState<ReceiptDoc | null>(null);
   const when = new Date(s.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const unitPrice = s.qty && s.qty > 0 ? s.amount / s.qty : null;
 
@@ -47,7 +47,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
         <small>{when}{s.ticket ? ` · ticket ${s.ticket}` : ""}{s.payment && s.payment !== "especes" ? ` · ${s.payment === "credit" ? "crédit" : s.payment === "om" ? "Orange Money" : "Wave"}` : ""}</small>
       </span>
       <b className="num">{money(s.amount)}</b>
-      {ticket && <Receipt title={ticket.title} text={ticket.text} onClose={() => setTicket(null)} />}
+      {ticket && <Receipt title={ticket.title} text={ticket.text} build={ticket.build} onClose={() => setTicket(null)} />}
       {!canEdit && (
         <Button variant="ghost" className="h-9 rounded-full px-3" onClick={() => setTicket(receiptFor(shop, s))}><Icon name="imprimer" size="sm" /> Ticket</Button>
       )}

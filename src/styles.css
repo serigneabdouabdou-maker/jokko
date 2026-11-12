@@ -1884,6 +1884,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .rc-head { display: flex; justify-content: space-between; align-items: center; }
 .rc-head h3 { margin: 0; font-size: 17px; }
 .rc-paper { margin: 0 auto; width: 100%; max-width: 300px; padding: 14px 12px; background: #fffef8; border: 1px dashed #c9c3b0; border-radius: 6px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; color: #17191F; box-shadow: 0 6px 18px -10px rgba(0,0,0,.35); }
+
+.rc-paper.is-80 { max-width: 100%; font-size: 10.5px; }
+.rc-paper-size { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 10px; font-size: 14px; color: #4a4d55; }
+.rc-paper-size button { min-height: 40px; min-width: 64px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #d9d4c5; background: #fff; font-weight: 650; color: #17191F; cursor: pointer; }
+.rc-paper-size button.is-on { background: #17191F; color: #F6B800; border-color: #17191F; }
 .rc-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 @media (min-width: 700px) { .rc-backdrop { place-items: center; } }
 .cz-ticket-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }

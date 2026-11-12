@@ -1,12 +1,13 @@
 import { type Payment, PAYMENT_LABELS, type Sale, type Shop } from "../model.ts";
 import { type VoidDay, voidsOfDay } from "./voids.ts";
+import { getPaper, type Paper, paperCols } from "./printer.ts";
 
 /**
  * Tickets de caisse (10/11/2026) : chaque encaissement reçoit un numéro qui se suit dans la journée (1, 2, 3…).
  * Le ticket papier donné au client et ce que montre Jokko doivent dire la même chose : le soir, le ticket Z
  * compte les tickets, les totaux par paiement, et signale les numéros manquants (un ticket effacé laisse un trou).
- * Impression : imprimante thermique Bluetooth 58 mm (32 caractères par ligne), par l'impression du téléphone
- * ou par l'appli RawBT (commandes ESC/POS).
+ * Impression : imprimante thermique 58 mm (32 caractères par ligne) ou 80 mm des kits de caisse (48 caractères),
+ * par l'impression de l'appareil ou par l'appli RawBT (commandes ESC/POS). La largeur est réglée sur chaque appareil (printer.ts).
  */
 
 const localDay = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
@@ -27,16 +28,20 @@ export function ticketSales(shop: Pick<Shop, "sales">, ticket: number, day: stri
 
 export const ticketLabel = (ticket: number, day: string) => `N° ${String(ticket).padStart(4, "0")} du ${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`;
 
-const W = 32;
 const plain = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[«»]/g, '"').replace(/[’‘]/g, "'").replace(/[^\x20-\x7E]/g, "");
 const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/\s/g, " ")} F`;
-const center = (s: string) => { const t = s.slice(0, W); return " ".repeat(Math.max(0, Math.floor((W - t.length) / 2))) + t; };
-const row = (left: string, right: string) => { const r = right.slice(0, W); const l = left.slice(0, W - r.length - 1); return l + " ".repeat(Math.max(1, W - l.length - r.length)) + r; };
-const line = "-".repeat(W);
+/** Mise en page d'une ligne de ticket pour une largeur de papier. */
+function layout(paper: Paper) {
+  const W = paperCols(paper);
+  const center = (s: string) => { const t = s.slice(0, W); return " ".repeat(Math.max(0, Math.floor((W - t.length) / 2))) + t; };
+  const row = (left: string, right: string) => { const r = right.slice(0, W); const l = left.slice(0, W - r.length - 1); return l + " ".repeat(Math.max(1, W - l.length - r.length)) + r; };
+  return { W, center, row, line: "-".repeat(W) };
+}
 
-/** Texte du ticket client, 32 caractères par ligne (imprimante 58 mm), sans accents (lisible sur toutes les imprimantes). */
-export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients">, sales: Sale[], cash?: { recu: number; rendu: number }): string {
+/** Texte du ticket client, 32 caractères par ligne (58 mm) ou 48 (80 mm), sans accents (lisible sur toutes les imprimantes). */
+export function receiptText(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients">, sales: Sale[], cash?: { recu: number; rendu: number }, paper: Paper = getPaper()): string {
   if (!sales.length) return "";
+  const { W, center, row, line } = layout(paper);
   const first = sales[0];
   const day = dayOfSale(first);
   const time = new Date(first.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -108,11 +113,12 @@ export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids" | "repay
 }
 
 /** Texte du ticket Z, pour l'imprimante. */
-export function zText(shop: Pick<Shop, "name">, z: ZReport, counted?: number): string {
+export function zText(shop: Pick<Shop, "name">, z: ZReport, counted?: number, paper: Paper = getPaper()): string {
+  const { W, center, row, line } = layout(paper);
   const out = [center(plain(shop.name).toUpperCase()), center("TICKET Z - CLOTURE"), center(`${z.day.slice(8, 10)}/${z.day.slice(5, 7)}/${z.day.slice(0, 4)}`), line];
   out.push(row("Tickets", String(z.tickets)));
   if (z.first) out.push(row("Du numero", `${z.first} au ${z.last}`));
-  out.push(row("Numeros manquants", z.missing.length ? z.missing.join(", ").slice(0, 14) : "aucun"));
+  out.push(row("Numeros manquants", z.missing.length ? z.missing.join(", ").slice(0, W - 18) : "aucun"));
   out.push(line);
   for (const p of ["especes", "wave", "om", "credit"] as Payment[]) if (z.byPayment[p]) out.push(row(plain(PAYMENT_LABELS[p]), f(z.byPayment[p])));
   if (z.untracked) out.push(row("Sans ticket", f(z.untracked)));
@@ -124,7 +130,7 @@ export function zText(shop: Pick<Shop, "name">, z: ZReport, counted?: number): s
   }
   out.push(row("Depenses", f(z.expenses)));
   out.push(line, row("Articles retires", z.voids.count ? `${z.voids.count} (${f(z.voids.amount)})` : "aucun"));
-  for (const p of z.voids.byPerson.slice(0, 6)) out.push(row(`  ${plain(p.name).slice(0, 16)}`, `${p.count} art.`));
+  for (const p of z.voids.byPerson.slice(0, 6)) out.push(row(`  ${plain(p.name).slice(0, W - 16)}`, `${p.count} art.`));
   if (counted !== undefined) out.push(line, row("Especes comptees", f(counted)), row("Ecart", f(counted - (z.byPayment.especes + z.repaid.especes - z.expenses))));
   out.push(line, center(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })));
   return out.join("\n");
@@ -147,8 +153,11 @@ export function escposBase64(text: string): string {
 export const rawbtLink = (text: string) => `intent:base64,${escposBase64(text)}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
 /** Ticket d'une vente : toutes les lignes du même encaissement (ou la vente seule si elle n'a pas de numéro). */
-export function receiptFor(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients" | "sales">, sale: Sale, cash?: { recu: number; rendu: number }): { title: string; text: string } {
+export type ReceiptDoc = { title: string; text: string; build: (paper: Paper) => string };
+export function receiptFor(shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "clients" | "sales">, sale: Sale, cash?: { recu: number; rendu: number }): ReceiptDoc {
   const day = dayOfSale(sale);
-  const lines = sale.ticket ? ticketSales(shop, sale.ticket, day) : [sale];
-  return { title: sale.ticket ? `Ticket ${ticketLabel(sale.ticket, day)}` : "Ticket", text: receiptText(shop, lines.length ? lines : [sale], cash) };
+  const found = sale.ticket ? ticketSales(shop, sale.ticket, day) : [sale];
+  const lines = found.length ? found : [sale];
+  const build = (paper: Paper) => receiptText(shop, lines, cash, paper);
+  return { title: sale.ticket ? `Ticket ${ticketLabel(sale.ticket, day)}` : "Ticket", text: build(getPaper()), build };
 }

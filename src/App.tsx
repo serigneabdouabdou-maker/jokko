@@ -1808,7 +1808,7 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
             <p className="note">Compare l'heure avec la caméra de la boutique ou avec ce que dit le client.</p>
           </details>
         )}
-        {z && <Receipt title="Ticket Z" text={zText(shop, zr, Number(counted) || 0)} onClose={() => setZ(false)} />}
+        {z && <Receipt title="Ticket Z" text={zText(shop, zr, Number(counted) || 0)} build={(p) => zText(shop, zr, Number(counted) || 0, p)} onClose={() => setZ(false)} />}
         {closing === "ok" && <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Clôture enregistrée. Le patron la voit à distance{gap ? `, avec l'écart de ${amount(gap)}` : ""}.</span></p>}
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}

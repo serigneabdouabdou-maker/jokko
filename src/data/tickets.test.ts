@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Shop } from "../model.ts";
 import { checkout } from "./checkout";
 import { dayOfSale, escposBase64, nextTicket, receiptText, ticketSales, zReport, zText } from "./tickets";
+import { paperPage } from "./printer";
 
 const base = (): Shop => ({
   id: "s", name: "Chez Awa", activity: "restauration", address: "Médina", phone: "77 000 00 00",
@@ -54,5 +55,27 @@ describe("ligne du numéro", () => {
     const head = receiptText(s, s.sales).split("\n").find((l) => l.startsWith("Ticket"))!;
     expect(head).toMatch(/^Ticket n 0001\s+\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
     expect(head.length).toBeLessThanOrEqual(32);
+  });
+});
+
+describe("papier 80 mm (kits de caisse)", () => {
+  it("le ticket client tient sur 48 caractères en 80 mm et sur 32 en 58 mm", () => {
+    const s = checkout(base(), [{ productId: "yassa", retail: false, qty: 2 }, { productId: "bissap", retail: false, qty: 3 }], "especes")!.shop;
+    const t80 = receiptText(s, s.sales, undefined, 80);
+    const t58 = receiptText(s, s.sales, undefined, 58);
+    expect(t80.split("\n").every((l) => l.length <= 48)).toBe(true);
+    expect(t80.split("\n").some((l) => l.length > 32)).toBe(true);
+    expect(t58.split("\n").every((l) => l.length <= 32)).toBe(true);
+    expect(t80).toMatch(/TOTAL\s+4 500 F/);
+  });
+  it("le ticket Z suit la largeur choisie", () => {
+    const s = checkout(base(), [{ productId: "bissap", retail: false, qty: 1 }], "especes")!.shop;
+    expect(zText(s, zReport(s), 500, 80).split("\n").every((l) => l.length <= 48)).toBe(true);
+    expect(zText(s, zReport(s), 500, 80).split("\n").find((l) => l.startsWith("TOTAL VENTES"))!.length).toBe(48);
+  });
+  it("la page d'impression 80 mm fait tenir 48 caractères dans 72 mm", () => {
+    expect(paperPage(80)).toContain("size:80mm auto");
+    expect(paperPage(80)).toContain("width:72mm");
+    expect(paperPage(58)).toContain("width:48mm");
   });
 });

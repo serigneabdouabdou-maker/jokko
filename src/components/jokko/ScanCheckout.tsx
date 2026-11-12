@@ -10,7 +10,7 @@ import { beep, type CameraScan, startCamera } from "@/data/scanner";
 import { waveReady } from "@/data/wave";
 import { WavePay } from "@/components/jokko/WavePay";
 import { metierOf } from "@/data/metiers";
-import { receiptFor } from "@/data/tickets";
+import { type ReceiptDoc, receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
 import { useCartVoids } from "./useCartVoids";
 
@@ -27,7 +27,7 @@ type Notice = { tone: "ok" | "bad" | "info"; text: string };
 export function ScanCheckout({ shop, commit, role, by }: { shop: Shop; commit: (s: Shop) => void; role: Role; by: string }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const voids = useCartVoids(lines, shop, commit, by, "scanner");
-  const [receipt, setReceipt] = useState<{ title: string; text: string } | null>(null);
+  const [receipt, setReceipt] = useState<ReceiptDoc | null>(null);
   const [code, setCode] = useState("");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -144,7 +144,7 @@ export function ScanCheckout({ shop, commit, role, by }: { shop: Shop; commit: (
 
   return (
     <section className="scan">
-      {receipt && <Receipt title={receipt.title} text={receipt.text} onClose={() => setReceipt(null)} />}
+      {receipt && <Receipt title={receipt.title} text={receipt.text} build={receipt.build} onClose={() => setReceipt(null)} />}
       <article className="sheet scan-main">
         <div className="sheet-head">
           <h2>Scanner</h2>

@@ -8,7 +8,7 @@ import { addFromCatalogue, cataloguePath, catalogueFor, onMenu } from "@/data/ca
 import { addToCart, type CartLine, cartTotal, checkout, setQty } from "@/data/checkout";
 import { deliver, deliveriesToday, returnItems, setTournee, tourneeClients } from "@/data/tournee";
 import { vitrinePhotoUrl } from "@/data/vitrine";
-import { receiptFor } from "@/data/tickets";
+import { type ReceiptDoc, receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
 import { useCartVoids } from "./useCartVoids";
 import { metierOf } from "@/data/metiers";
@@ -53,8 +53,8 @@ export function Cuisine({ shop, commit, canEdit, by }: { shop: Shop; commit: (s:
   const [tour, setTour] = useState({ client: "", productId: "", qty: "" });
   const [ret, setRet] = useState<{ clientId: string; productId: string; qty: string } | null>(null);
   const [note, setNote] = useState("");
-  const [receipt, setReceipt] = useState<{ title: string; text: string } | null>(null);
-  const [paid, setPaid] = useState<{ text: string; receipt: { title: string; text: string } | null } | null>(null);
+  const [receipt, setReceipt] = useState<ReceiptDoc | null>(null);
+  const [paid, setPaid] = useState<{ text: string; receipt: ReceiptDoc | null } | null>(null);
 
   const flash = (text: string) => { setNote(text); window.setTimeout(() => setNote(""), 4000); };
   const total = cartTotal(shop, cart);
@@ -90,7 +90,7 @@ export function Cuisine({ shop, commit, canEdit, by }: { shop: Shop; commit: (s:
       </div>
       <p className="note">Touche les photos pour faire la commande, puis encaisse. Tu peux aussi le dire à Jokko : {W.say}.</p>
       {note && <p className="note cz-flash" role="status">{note}</p>}
-      {receipt && <Receipt title={receipt.title} text={receipt.text} onClose={() => setReceipt(null)} />}
+      {receipt && <Receipt title={receipt.title} text={receipt.text} build={receipt.build} onClose={() => setReceipt(null)} />}
 
       {dishes.length === 0 && <div className="cz-empty"><p>Ton menu est vide. Choisis tes {W.items} dans le catalogue Jokko ci-dessous et mets ton prix : c'est tout.</p></div>}
 

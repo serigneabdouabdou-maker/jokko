@@ -87,6 +87,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Dettes remboursées (livré le 10/11/2026) : « Il a payé » (avec Espèces / Wave / Orange Money) et `debt_payment` à la voix notent un remboursement (`addRepayment`, table `debt_payments`, jamais plus que la dette). Espèces → caisse attendue (`dayRepaid` dans `expectedCash`, ligne « + Dettes remboursées ») ; ticket Z « Dettes remboursees » par paiement, écart juste. Corriger / effacer une dette n'est pas un paiement.
 - Achat supprimé = stock juste (livré le 10/11/2026) : chaque achat (`applyPurchase`) et chaque perte à la voix gardent `expenses.product_id` + `qty` (unités de gros). `removeExpense` : achat → articles retirés du stock (jamais sous 0), perte → articles remis ; le message de confirmation le dit. Anciennes lignes sans article : le stock ne bouge pas.
 - Imprimante conseillée : thermique Bluetooth 58 mm (≈ 15 000 à 25 000 F à Dakar, hypothèse) ; 80 mm pour les supérettes à gros débit.
+- Papier 80 mm (kits de caisse CFC, 12/11/2026) : choix « Papier 58 mm / 80 mm » dans l'aperçu du ticket, gardé sur chaque appareil (`src/data/printer.ts`, clé `jokko.papier`) ; 80 mm = 48 caractères, page 80 mm, zone 72 mm (`paperPage`). Ticket client et ticket Z suivent la largeur (`receiptFor().build`, `zText(…, paper)`). Caisse tactile Windows/Android : Chrome + jokkoapp.com installé en appli, imprimante USB par « Imprimer » (pilote installé, tiroir-caisse ouvert par le pilote de l'imprimante).
 
 ## Garde-fou du budget (livré le 09/11/2026)
 
