@@ -47,7 +47,7 @@ export type Relance = {
   nom: string;
   ville: string | null;
   metier: string | null;
-  raison: "epuise" | "bientot" | "fini";
+  raison: "epuise" | "bientot" | "fini" | "demarrage";
   created_at: string;
   appele_at: string | null;
   issue: "paye" | "rappeler" | "non" | null;
@@ -76,6 +76,8 @@ export function intlPhone(tel: string | null): string | null {
 
 /** Message WhatsApp prêt à envoyer par Fallou au commerçant. */
 export function relanceMessage(r: Pick<Relance, "nom" | "raison" | "ventes">): string {
+  if (r.raison === "demarrage")
+    return `Salam ${r.nom}, c'est Fallou de Jokko (CFC). Bienvenue ! Je vois que tu t'es inscrit, mais tu n'as pas encore noté de vente. Je peux t'appeler 5 minutes pour te montrer : tu touches le micro, tu dis « Vends 2 sacs de riz », et Jokko note tout (stock, caisse, dettes). Quand es-tu disponible ?`;
   const debut = r.raison === "fini" ? "ton essai gratuit de Jokko est terminé" : r.raison === "epuise" ? "tu as utilisé tout ton essai de la voix Jokko" : "ton essai gratuit de Jokko se termine bientôt";
   const ventes = r.ventes > 0 ? ` Tu as déjà noté ${r.ventes} vente${r.ventes > 1 ? "s" : ""} avec Jokko.` : "";
   return `Salam ${r.nom}, c'est Fallou de Jokko (CFC). ${debut[0].toUpperCase()}${debut.slice(1)}.${ventes} Pour continuer à parler à Jokko, l'offre Médium coûte 4 000 F par mois (135 F par jour). Je peux t'aider à l'activer maintenant ?`;

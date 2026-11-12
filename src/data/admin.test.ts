@@ -32,4 +32,10 @@ describe("relances d'essai", () => {
     expect(m).toContain("Ton essai gratuit de Jokko est terminé");
     expect(m).toContain("12 ventes");
   });
+  it("un inscrit sans vente reçoit une proposition d'aide, pas une offre payante", async () => {
+    const { relanceMessage } = await import("./guard");
+    const m = relanceMessage({ nom: "Boutique Awa", raison: "demarrage", ventes: 0 });
+    expect(m).toContain("Bienvenue");
+    expect(m).not.toContain("4 000 F");
+  });
 });

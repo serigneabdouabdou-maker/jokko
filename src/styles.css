@@ -1904,3 +1904,20 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .voids-day summary { font-weight: 600; cursor: pointer; padding: 4px 0; }
 .voids-day ul { list-style: none; margin: 6px 0 0; padding: 0; }
 .voids-day li { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px dashed var(--line, #e5e5e5); font-size: 0.92rem; }
+
+/* Premiers pas (écran Parler, nouveau patron) */
+.first-steps { border: 1.5px solid color-mix(in oklab, var(--j-yellow, #F6B800) 45%, transparent); background: linear-gradient(180deg, #fffaf0, #fff); }
+.fs-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.fs-head h2 { margin: 0; }
+.fs-bar { height: 6px; border-radius: 999px; background: #efe9d8; overflow: hidden; margin: 10px 0 6px; }
+.fs-bar span { display: block; height: 100%; background: #F6B800; border-radius: 999px; transition: width .4s ease; }
+.fs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fs-list li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-radius: 14px; }
+.fs-list li.is-next { background: #fff6dc; padding: 12px 10px; }
+.fs-check { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #d9d4c5; display: grid; place-items: center; color: #16804a; }
+.fs-list li.is-done .fs-check { border-color: #16804a; background: #e8f6ee; }
+.fs-list li.is-next .fs-check { border-color: #F6B800; }
+.fs-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fs-text small { color: #4a4d55; font-size: 14px; line-height: 1.35; }
+.fs-list li.is-done .fs-text b { color: #6e727c; text-decoration: line-through; font-weight: 600; }
+@media (max-width: 520px) { .fs-list li.is-next { flex-wrap: wrap; } .fs-list li.is-next button { margin-left: 38px; } }

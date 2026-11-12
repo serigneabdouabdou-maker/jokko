@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { intlPhone, type Relance, relanceMark, relanceMessage, relancesList } from "@/data/guard";
 import { metierOf } from "@/data/metiers";
 
-const RAISON: Record<Relance["raison"], string> = { fini: "Essai fini", epuise: "Essai de la voix épuisé", bientot: "Essai fini dans moins de 2 jours" };
+const RAISON: Record<Relance["raison"], string> = { fini: "Essai fini", epuise: "Essai de la voix épuisé", bientot: "Essai fini dans moins de 2 jours", demarrage: "Inscrit, aucune vente encore : lui montrer Jokko" };
 const ISSUE: Record<NonNullable<Relance["issue"]>, string> = { paye: "✓ A payé", rappeler: "À rappeler", non: "Pas intéressé" };
 const show = (tel: string) => tel.replace(/^221/, "").replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
 

@@ -67,6 +67,7 @@ import { expiringSoon, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type Opti
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
+import { FirstSteps } from "@/components/jokko/FirstSteps";
 import { chosenMetier, forgetMetier, METIER_LOOK, MetierCards, MetierSetup, rememberMetier } from "@/components/jokko/MetierCards";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
@@ -1461,6 +1462,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                 </section>
               )}
               {!demo && <ForfaitChip shop={shop} onPlans={patron ? () => setScreen("offre") : undefined} />}
+              {!demo && patron && <FirstSteps shop={shop} userId={profile.userId} onMic={() => void toggleMic()} onGo={(to) => (to === "stock" && !allowed("stock") ? void toggleMic() : setScreen(to))} />}
               <section className="sheet talk">
                 <div className="sheet-head">
                   <h2>Parle à Jokko</h2>
