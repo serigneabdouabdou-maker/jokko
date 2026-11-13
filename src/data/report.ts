@@ -5,7 +5,7 @@ import type { Shop } from "../model.ts";
  * ce que ça a coûté, le bénéfice. Tout est calculé à partir des ventes enregistrées.
  */
 
-export type PeriodKind = "jour" | "mois" | "mois_dernier";
+export type PeriodKind = "jour" | "mois" | "mois_dernier" | "annee" | "annee_derniere";
 export type Period = { kind: PeriodKind; from: Date; to: Date; label: string };
 
 const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -14,6 +14,10 @@ export function periodOf(kind: PeriodKind, now = new Date()): Period {
   if (kind === "jour") {
     const from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return { kind, from, to: new Date(from.getTime() + 86_400_000), label: "Aujourd'hui" };
+  }
+  if (kind === "annee" || kind === "annee_derniere") {
+    const year = now.getFullYear() - (kind === "annee_derniere" ? 1 : 0);
+    return { kind, from: new Date(year, 0, 1), to: new Date(year + 1, 0, 1), label: `Année ${year}` };
   }
   const offset = kind === "mois_dernier" ? -1 : 0;
   const from = new Date(now.getFullYear(), now.getMonth() + offset, 1);
@@ -55,6 +59,12 @@ export type Report = {
   byProduct: ProductLine[];
 };
 
+/**
+ * Paiement d'un travail (commande de couture, réparation) : la main-d'œuvre n'a pas de prix d'achat.
+ * Il compte en entier dans le bénéfice ; les pièces posées sont déjà sur le paiement final (« rendu »).
+ */
+export const isServicePayment = (sale: Shop["sales"][number]) => !sale.productId && /^(Couture C-|Réparation R-)/.test(sale.label);
+
 const within = (iso: string, p: Period) => {
   const t = Date.parse(iso);
   return t >= p.from.getTime() && t < p.to.getTime();
@@ -70,7 +80,7 @@ export function buildReport(shop: Shop, period: Period): Report {
   for (const sale of sales) {
     revenue += sale.amount;
     if (sale.cost !== undefined) cost += sale.cost;
-    else unknownRevenue += sale.amount;
+    else if (!isServicePayment(sale)) unknownRevenue += sale.amount;
 
     if (!sale.productId) continue;
     const product = shop.products.find((p) => p.id === sale.productId);
@@ -175,4 +185,76 @@ export function recordInventory(shop: Shop, counts: Record<string, number>, make
     losses: lossExpenses.reduce((a, e) => a + e.amount, 0),
     lines,
   };
+}
+
+export const MONTH_NAMES = MONTHS;
+
+export type MonthRow = { month: number; label: string; revenue: number; grossProfit: number; expenses: number; losses: number; netProfit: number; salesCount: number };
+
+/**
+ * Bénéfices mois par mois d'une année (règle de Fallou, 13/11/2026 : « chaque mois ou chaque année, ce que tu as gagné et perdu »).
+ * Année en cours : jusqu'au mois actuel. Total = somme des mois.
+ */
+export function monthlyReport(shop: Shop, year: number, now = new Date()): { rows: MonthRow[]; total: Omit<MonthRow, "month" | "label">; unknownRevenue: number } {
+  const last = year === now.getFullYear() ? now.getMonth() : year < now.getFullYear() ? 11 : -1;
+  const rows: MonthRow[] = [];
+  let unknownRevenue = 0;
+  for (let m = 0; m <= last; m++) {
+    const from = new Date(year, m, 1);
+    const r = buildReport(shop, { kind: "mois", from, to: new Date(year, m + 1, 1), label: `${MONTHS[m]} ${year}` });
+    unknownRevenue += r.unknownRevenue;
+    rows.push({ month: m, label: MONTHS[m], revenue: r.revenue, grossProfit: r.grossProfit, expenses: r.expenses, losses: r.losses, netProfit: r.netProfit, salesCount: r.salesCount });
+  }
+  const sum = (k: keyof Omit<MonthRow, "month" | "label">) => rows.reduce((a, r) => a + r[k], 0);
+  return {
+    rows,
+    total: { revenue: sum("revenue"), grossProfit: sum("grossProfit"), expenses: sum("expenses"), losses: sum("losses"), netProfit: sum("netProfit"), salesCount: sum("salesCount") },
+    unknownRevenue,
+  };
+}
+
+const CATEGORIES: Array<[RegExp, string]> = [
+  [/woyofal|electricit|courant|senelec/, "Électricité"],
+  [/\beau\b|sen'?eau/, "Eau"],
+  [/loyer|location/, "Loyer"],
+  [/transport|taxi|charret|camion|livraison|clando|jakarta/, "Transport et livraison"],
+  [/salaire|paie|mitron|vendeur|employ|apprenti/, "Salaires"],
+  [/credit|telephone|internet|forfait|recharge/, "Téléphone et internet"],
+  [/gaz|bois|charbon/, "Gaz et bois"],
+  [/marche du jour|marche/, "Marché du jour"],
+  [/pub|facebook|publicite|affiche/, "Publicité"],
+  [/reparation|machine|entretien/, "Réparations et entretien"],
+  [/impot|taxe|patente|mairie/, "Taxes et impôts"],
+  [/repas|dejeuner|petit-dej/, "Repas"],
+];
+
+const plainLabel = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/** Où part l'argent : dépenses de la période par catégorie (les achats de marchandise n'en font pas partie). */
+export function expenseBreakdown(shop: Shop, period: Period): Array<{ label: string; amount: number; count: number }> {
+  const groups = new Map<string, { label: string; amount: number; count: number }>();
+  for (const e of shop.expenses) {
+    if (e.kind === "achat" || e.kind === "perte" || !within(e.at, period)) continue;
+    const p = plainLabel(e.label);
+    const label = CATEGORIES.find(([re]) => re.test(p))?.[1] ?? "Autres dépenses";
+    const g = groups.get(label) ?? { label, amount: 0, count: 0 };
+    g.amount += e.amount;
+    g.count += 1;
+    groups.set(label, g);
+  }
+  return [...groups.values()].sort((a, b) => b.amount - a.amount);
+}
+
+/** Le bilan en quelques lignes, à envoyer sur WhatsApp (comptable, associé, soi-même). */
+export function reportText(shopName: string, r: Report, money: (n: number) => string): string {
+  return [
+    `${shopName} – Bénéfices ${r.period.label}`,
+    `Ventes : ${money(r.revenue)} (${r.salesCount} vente${r.salesCount > 1 ? "s" : ""})`,
+    `Bénéfice sur les ventes : ${money(r.grossProfit)}`,
+    `Dépenses : - ${money(r.expenses)}`,
+    `Pertes : - ${money(r.losses)}`,
+    `${r.netProfit < 0 ? "Perdu" : "Gagné"} : ${money(Math.abs(r.netProfit))}`,
+    r.purchases ? `Marchandise achetée (dans le stock) : ${money(r.purchases)}` : "",
+    "Calculé par Jokko – jokkoapp.com",
+  ].filter(Boolean).join("\n");
 }

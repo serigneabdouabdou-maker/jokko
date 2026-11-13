@@ -94,6 +94,13 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Imprimante conseillée : thermique Bluetooth 58 mm (≈ 15 000 à 25 000 F à Dakar, hypothèse) ; 80 mm pour les supérettes à gros débit.
 - Papier 80 mm (kits de caisse CFC, 12/11/2026) : choix « Papier 58 mm / 80 mm » dans l'aperçu du ticket, gardé sur chaque appareil (`src/data/printer.ts`, clé `jokko.papier`) ; 80 mm = 48 caractères, page 80 mm, zone 72 mm (`paperPage`). Ticket client et ticket Z suivent la largeur (`receiptFor().build`, `zText(…, paper)`). Caisse tactile Windows/Android : Chrome + jokkoapp.com installé en appli, imprimante USB par « Imprimer » (pilote installé, tiroir-caisse ouvert par le pilote de l'imprimante).
 
+## Bénéfices (13/11/2026, demande de Fallou)
+
+- Écran « Bénéfices » (ancien « Bilan », patron seulement, `Bilan.tsx`, calculs `src/data/report.ts`) : ventes − prix d'achat de ce qui est vendu (`sales.cost`) = bénéfice sur les ventes ; − dépenses − pertes = gagné (ou perdu). Les achats de marchandise (`kind: achat`) ne sont pas des dépenses : leur coût compte quand l'article est vendu.
+- Périodes : aujourd'hui, ce mois, mois dernier, cette année, l'an dernier ; tableau « Mois par mois » de l'année avec total (`monthlyReport`) et meilleur mois ; « Où part ton argent » (`expenseBreakdown` : électricité, transport, loyer, salaires…) ; ligne de calcul écrite en clair ; « Envoyer ce bilan sur WhatsApp » (`reportText`).
+- Paiements de couture et de réparation (`isServicePayment`, libellés « Couture C-… » / « Réparation R-… ») : main-d'œuvre sans prix d'achat, comptée en entier ; les pièces posées sont sur le paiement « rendu ».
+- En haut des Dépenses (patron) : bandeau du mois « bénéfice − dépenses = gagné » qui ouvre Bénéfices (`ProfitStrip`).
+
 ## Garde-fou du budget (livré le 09/11/2026)
 
 - Images IA : essai = **1 essayage au total** (`essai_total_image`), Médium 0, Avancé 5/jour (`quota_avance_image`). Hors Avancé, le Studio montre seulement 20 modèles + invitation à l'offre Avancé ; les nouveaux modèles sont réservés à l'Avancé.

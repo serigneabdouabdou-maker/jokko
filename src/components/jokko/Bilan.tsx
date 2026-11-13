@@ -2,18 +2,21 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
-import { buildReport, inventoryDue, type PeriodKind, periodOf, recordInventory, stockValue } from "@/data/report";
+import { buildReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
   ["mois", "Ce mois"],
   ["mois_dernier", "Mois dernier"],
+  ["annee", "Cette année"],
+  ["annee_derniere", "L'an dernier"],
 ];
 
 const qty = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }));
 
 /**
- * Bilan : ce qui s'est vendu, ce qu'on a gagné, ce qu'on a dépensé ou perdu.
+ * Bénéfices (ancien « Bilan ») : ventes − prix d'achat de ce qui est vendu = bénéfice sur les ventes ;
+ * − dépenses − pertes = ce que tu as gagné. Par jour, mois, année, et mois par mois (demande de Fallou, 13/11/2026).
  * Et l'inventaire du mois : compter le stock, les manques deviennent des pertes.
  */
 export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
@@ -22,6 +25,24 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [result, setResult] = useState("");
   const report = useMemo(() => buildReport(shop, periodOf(kind)), [shop, kind]);
+  // Mois par mois : l'année de la période choisie.
+  const year = report.period.from.getFullYear();
+  const months = useMemo(() => monthlyReport(shop, year), [shop, year]);
+  const spending = useMemo(() => expenseBreakdown(shop, report.period), [shop, report.period]);
+  const bestMonth = months.rows.filter((r) => r.salesCount > 0).sort((a, b) => b.netProfit - a.netProfit)[0];
+
+  async function share() {
+    const text = reportText(shop.name, report, money);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Bénéfices ${report.period.label}`, text });
+        return;
+      }
+    } catch {
+      return; // partage annulé
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  }
   const value = useMemo(() => stockValue(shop), [shop]);
   const due = inventoryDue(shop);
 
@@ -52,7 +73,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   return (
     <section className="sheet bilan">
       <div className="sheet-head">
-        <h2>Bilan</h2>
+        <h2>Bénéfices</h2>
         <div className="seg" role="tablist" aria-label="Période">
           {PERIODS.map(([id, label]) => (
             <button key={id} role="tab" aria-selected={kind === id} className={kind === id ? "on" : ""} onClick={() => setKind(id)}>{label}</button>
@@ -66,7 +87,14 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         <article><span>Bénéfice sur les ventes</span><b className="num">{money(report.grossProfit)}</b></article>
         <article><span>Dépenses</span><b className="num">− {money(report.expenses)}</b></article>
         <article><span>Pertes</span><b className="num">− {money(report.losses)}</b></article>
-        <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>Ce que tu as gagné</span><b className="num">{money(report.netProfit)}</b></article>
+        <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span><b className="num">{money(Math.abs(report.netProfit))}</b></article>
+      </div>
+      <p className="note bilan-calc">
+        Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
+        {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)} = <b>{money(report.netProfit)}</b>.
+      </p>
+      <div className="row">
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => void share()}>Envoyer ce bilan sur WhatsApp</Button>
       </div>
       {report.unknownRevenue > 0 && (
         <p className="note">
@@ -77,6 +105,55 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         <p className="note">
           Marchandise achetée : {money(report.purchases)}. Cet argent est sorti de la caisse, mais ce n'est pas une perte : il est dans ton stock, et son coût compte quand tu vends.
         </p>
+      )}
+
+      <h3>Où part ton argent</h3>
+      {spending.length === 0 ? (
+        <p className="note">Aucune dépense sur cette période. Dis à Jokko : « dépense 5 000 pour le transport ».</p>
+      ) : (
+        <ul className="bilan-spend">
+          {spending.map((g) => (
+            <li key={g.label}>
+              <span>{g.label} <small>({g.count})</small></span>
+              <span className="bar" aria-hidden="true"><i style={{ width: `${Math.max(4, (g.amount / spending[0].amount) * 100)}%` }} /></span>
+              <b className="num">{money(g.amount)}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3>Mois par mois · {year}</h3>
+      {months.rows.length === 0 ? (
+        <p className="note">Pas encore de mois dans cette année.</p>
+      ) : (
+        <>
+          <div className="import-preview">
+            <table className="bilan-months">
+              <thead><tr><th>Mois</th><th>Ventes</th><th>Bénéfice ventes</th><th>Dépenses + pertes</th><th>Gagné</th></tr></thead>
+              <tbody>
+                {months.rows.map((r) => (
+                  <tr key={r.month}>
+                    <td>{r.label}</td>
+                    <td className="num">{money(r.revenue)}</td>
+                    <td className="num">{money(r.grossProfit)}</td>
+                    <td className="num">{r.expenses + r.losses ? `− ${money(r.expenses + r.losses)}` : money(0)}</td>
+                    <td className="num" data-tone={r.netProfit < 0 ? "bad" : r.netProfit > 0 ? "good" : undefined}>{money(r.netProfit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Total {year}</th>
+                  <th className="num">{money(months.total.revenue)}</th>
+                  <th className="num">{money(months.total.grossProfit)}</th>
+                  <th className="num">− {money(months.total.expenses + months.total.losses)}</th>
+                  <th className="num" data-tone={months.total.netProfit < 0 ? "bad" : "good"}>{money(months.total.netProfit)}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          {bestMonth && months.rows.length > 1 && <p className="note">Ton meilleur mois : {bestMonth.label} ({money(bestMonth.netProfit)} gagnés).</p>}
+        </>
       )}
 
       <h3>Ce qui s'est vendu</h3>
@@ -127,5 +204,20 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         </div>
       )}
     </section>
+  );
+}
+
+/** En haut des Dépenses : ce mois, ce que les ventes ont rapporté moins les dépenses, et le lien vers Bénéfices. */
+export function ProfitStrip({ shop, onOpen }: { shop: Shop; onOpen: () => void }) {
+  const r = useMemo(() => buildReport(shop, periodOf("mois")), [shop]);
+  if (!r.salesCount && !r.expenses && !r.losses) return null;
+  return (
+    <button type="button" className="banner banner-link profit-strip" onClick={onOpen}>
+      <span>
+        <b>{r.period.label}</b> · bénéfice sur les ventes {money(r.grossProfit)} − dépenses et pertes {money(r.expenses + r.losses)} ={" "}
+        <b data-tone={r.netProfit < 0 ? "bad" : "good"}>{r.netProfit < 0 ? `perdu ${money(-r.netProfit)}` : `gagné ${money(r.netProfit)}`}</b>
+      </span>
+      <span className="profit-go">Mes bénéfices ›</span>
+    </button>
   );
 }

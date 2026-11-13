@@ -58,7 +58,7 @@ import { AmountLedger, guardReply, moneyAmountsSaid } from "@/assistant/wolofNum
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
-import { Bilan } from "@/components/jokko/Bilan";
+import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -145,7 +145,7 @@ const NAV: Array<[Screen, string]> = [
   ["boutiques", "Mes entreprises"],
   ["conseiller", "Conseiller"],
   ["scanner", "Scanner"],
-  ["bilan", "Bilan"],
+  ["bilan", "Bénéfices"],
   ["ventes", "Ventes"],
   ["stock", "Stock"],
   ["clients", "Clients"],
@@ -1638,6 +1638,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
           {screen === "couture" && <Couture shop={shop} commit={commit} lang={profile.lang} draft={coutureDraft} clearDraft={() => setCoutureDraft(null)} onStudio={() => setScreen("studio")} />}
+          {screen === "depenses" && patron && <ProfitStrip shop={shop} onOpen={() => setScreen("bilan")} />}
           {screen === "depenses" && <ExpensesList shop={shop} commit={commit} canEdit={patron} />}
           {screen === "dettes" && <Debts shop={shop} lang={profile.lang} commit={commit} canEdit={patron} />}
           {screen === "bilan" && patron && <Bilan shop={shop} commit={commit} />}

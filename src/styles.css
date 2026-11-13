@@ -655,6 +655,19 @@
   .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; color: var(--j-ink-2); }
   .seg button.on { background: var(--j-white); color: var(--j-ink); font-weight: 650; box-shadow: var(--j-shadow); }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  .bilan-calc { margin-top: 10px; line-height: 1.5; }
+  .bilan .row { margin: 10px 0 4px; }
+  .bilan-spend { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  .bilan-spend li { display: grid; grid-template-columns: minmax(120px, 1.2fr) 1fr auto; align-items: center; gap: 10px; font-size: 14px; }
+  .bilan-spend small { color: var(--j-ink-3); }
+  .bilan-spend .bar { height: 8px; border-radius: 999px; background: var(--j-wash); overflow: hidden; }
+  .bilan-spend .bar i { display: block; height: 100%; border-radius: 999px; background: var(--j-ink-2); }
+  .bilan-months td[data-tone="good"], .bilan-months th[data-tone="good"], .profit-strip b[data-tone="good"] { color: var(--j-ok); }
+  .bilan-months td[data-tone="bad"], .bilan-months th[data-tone="bad"], .profit-strip b[data-tone="bad"] { color: var(--j-danger); }
+  .bilan-months tfoot th { border-top: 2px solid var(--j-line); font-weight: 700; }
+  .profit-strip { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; text-align: left; margin-bottom: 12px; }
+  .profit-strip .profit-go { font-weight: 650; white-space: nowrap; }
+  @media (max-width: 560px) { .bilan-spend li { grid-template-columns: 1fr auto; } .bilan-spend .bar { grid-column: 1 / -1; order: 3; } }
   .kpis article { border: 1px solid var(--j-line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 4px; background: var(--j-white); }
   .kpis article span { font-size: 13px; color: var(--j-ink-3); }
   .kpis article b { font-size: 20px; font-weight: 680; }
