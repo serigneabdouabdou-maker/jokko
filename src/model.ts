@@ -100,7 +100,13 @@ export type Sale = {
 };
 
 /** Service sans pièce (décodage, configuration, création de compte, maintenance…) : prix habituel, licence utilisée. */
-export type ServiceItem = { id: string; name: string; price: number; licenceId?: string };
+/**
+ * Service vendu (décodage, photocopie, bâche, flocage…). unit : comment on compte (par défaut une fois) ;
+ * « m2 » = largeur × hauteur × prix du m² (grand format). matter : matière prise dans le stock pour chaque unité
+ * (flex au mètre pour un flocage, bâche au m²…) : elle sort du stock et son prix d'achat compte dans le bénéfice.
+ */
+export type ServiceUnit = "fois" | "page" | "piece" | "m2" | "metre";
+export type ServiceItem = { id: string; name: string; price: number; licenceId?: string; unit?: ServiceUnit; matter?: { productId: string; per: number } };
 
 /** Licence d'un outil (décodage…) payée d'un coup, utilisée des mois : son coût est réparti sur sa durée dans les bénéfices. */
 export type Licence = { id: string; name: string; cost: number; startAt: string; months: number };

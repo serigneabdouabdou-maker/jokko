@@ -1,4 +1,4 @@
-import type { CartVoid, Client, Repayment, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
+import type { CartVoid, Client, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -384,7 +384,18 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(optStr(s.wave_link) ? { waveLink: str(s.wave_link) } : {}),
     ...(Array.isArray(s.modules) && s.modules.length ? { modules: (s.modules as unknown[]).filter((m): m is string => typeof m === "string") } : {}),
     ...(Array.isArray(s.services) && s.services.length
-      ? { services: (s.services as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), price: num(x.price), ...(optStr(x.licenceId) ? { licenceId: str(x.licenceId) } : {}) })) }
+      ? {
+          services: (s.services as Row[]).map((x) => {
+            const unit = str(x.unit);
+            const m = x.matter as Row | undefined;
+            return {
+              id: str(x.id), name: str(x.name), price: num(x.price),
+              ...(optStr(x.licenceId) ? { licenceId: str(x.licenceId) } : {}),
+              ...(["page", "piece", "m2", "metre"].includes(unit) ? { unit: unit as ServiceUnit } : {}),
+              ...(m && optStr(m.productId) && num(m.per) > 0 ? { matter: { productId: str(m.productId), per: num(m.per) } } : {}),
+            };
+          }),
+        }
       : {}),
     ...(Array.isArray(s.licences) && s.licences.length
       ? { licences: (s.licences as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), cost: num(x.cost), startAt: str(x.startAt), months: num(x.months) || 12 })) }

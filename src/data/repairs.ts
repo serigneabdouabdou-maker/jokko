@@ -10,6 +10,7 @@
  */
 import { type Client, type Repair, type RepairPart, type Shop, todayStamp, uid } from "@/model";
 import { nameClash, pickByName } from "@/assistant/wolofNames";
+import { metierOf } from "@/data/metiers";
 
 const DAY = 86_400_000;
 const DEFAULT_DUE_DAYS = 30;
@@ -54,8 +55,14 @@ export function clientFor(shop: Shop, name: string, phone: string): { clients: C
   return { clients: [...shop.clients, client], client };
 }
 
-function paymentSale(r: Repair, amount: number, what: string, cost?: number) {
-  return { id: uid("s"), at: todayStamp(), label: `Réparation ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment: "especes" as const };
+/**
+ * Libellé des paiements : « Réparation R-001 … » chez un réparateur ; chez un multiservice, les commandes
+ * (maillots floqués, bâches…) passent par le même carnet → « Service · Commande R-001 … » (compté comme service).
+ */
+const payWord = (shop: Pick<Shop, "activity">) => (metierOf(shop.activity).id === "multiservice" ? "Service · Commande" : "Réparation");
+
+function paymentSale(r: Repair, amount: number, what: string, cost?: number, word = "Réparation") {
+  return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment: "especes" as const };
 }
 
 export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; warrantyDays?: number };
@@ -81,7 +88,7 @@ export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: R
     status: "depot",
     ...(input.warrantyDays ? { warrantyDays: input.warrantyDays } : {}),
   };
-  const sales = advance > 0 ? [paymentSale(repair, advance, "avance"), ...shop.sales] : shop.sales;
+  const sales = advance > 0 ? [paymentSale(repair, advance, "avance", undefined, payWord(shop)), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, repairs: [repair, ...repairsOf(shop)] }, repair };
 }
 
@@ -130,7 +137,7 @@ export function payRepair(shop: Shop, id: string, amount: number): Shop | null {
   const repair = repairsOf(shop).find((r) => r.id === id);
   const pay = Math.round(amount);
   if (!repair || pay <= 0) return null;
-  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(repair, pay, "acompte"), ...shop.sales] };
+  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(repair, pay, "acompte", undefined, payWord(shop)), ...shop.sales] };
 }
 
 /**
@@ -143,7 +150,7 @@ export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDeb
   const pay = Math.max(0, Math.round(paidNow));
   const rest = Math.max(0, repair.price - repair.paid - pay);
   const cost = partsCost(repair);
-  const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, "rendu", cost), ...shop.sales] : shop.sales;
+  const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop)), ...shop.sales] : shop.sales;
   let clients = shop.clients;
   if (rest > 0 && restToDebt && repair.clientId) {
     clients = clients.map((c) =>

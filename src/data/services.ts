@@ -8,7 +8,8 @@
  *   L'argent sort de la caisse le jour de l'achat (sortie « achat »), mais dans les bénéfices son coût est
  *   réparti sur sa durée : 90 000 F sur 12 mois = 7 500 F par mois. Jokko montre aussi ce qu'elle a rapporté.
  */
-import type { Licence, Payment, Sale, ServiceItem, Shop } from "../model.ts";
+import type { Licence, Payment, Sale, ServiceItem, ServiceUnit, Shop } from "../model.ts";
+import { metierOf } from "./metiers.ts";
 
 const DAY = 86_400_000;
 let seq = 0;
@@ -19,7 +20,7 @@ export const SERVICE_PREFIX = "Service · ";
 export const isServiceSale = (s: Pick<Sale, "label" | "productId">) => !s.productId && s.label.startsWith(SERVICE_PREFIX);
 
 /** Services courants proposés au réparateur la première fois (prix modifiables). */
-export const COMMON_SERVICES: Array<Pick<ServiceItem, "name" | "price">> = [
+export const COMMON_SERVICES: Array<Pick<ServiceItem, "name" | "price" | "unit">> = [
   { name: "Décodage", price: 5000 },
   { name: "Déblocage compte (FRP)", price: 5000 },
   { name: "Flash / mise à jour", price: 5000 },
@@ -29,11 +30,60 @@ export const COMMON_SERVICES: Array<Pick<ServiceItem, "name" | "price">> = [
   { name: "Réparation imprimante", price: 8000 },
 ];
 
+/**
+ * Multiservice (demande de Fallou, 13/11/2026) : photocopie, impression, grand format au m², flocage, conception.
+ * Prix de départ (hypothèses, modifiables par le patron).
+ */
+export const MULTISERVICE_SERVICES: Array<Pick<ServiceItem, "name" | "price" | "unit">> = [
+  { name: "Photocopie noir A4", price: 25, unit: "page" },
+  { name: "Photocopie couleur A4", price: 100, unit: "page" },
+  { name: "Impression noir A4", price: 50, unit: "page" },
+  { name: "Impression couleur A4", price: 150, unit: "page" },
+  { name: "Impression couleur A3", price: 300, unit: "page" },
+  { name: "Scan", price: 100, unit: "page" },
+  { name: "Saisie", price: 500, unit: "page" },
+  { name: "Plastification A4", price: 300, unit: "piece" },
+  { name: "Reliure", price: 1000, unit: "piece" },
+  { name: "Photos d'identité (4)", price: 1000, unit: "piece" },
+  { name: "Cartes de visite (100)", price: 10000, unit: "piece" },
+  { name: "Bâche grand format", price: 5000, unit: "m2" },
+  { name: "Autocollant vinyle", price: 7000, unit: "m2" },
+  { name: "Flocage t-shirt / maillot", price: 2500, unit: "piece" },
+  { name: "Flocage nom + numéro", price: 1500, unit: "piece" },
+  { name: "Conception de logo", price: 15000 },
+  { name: "Conception affiche / flyer", price: 10000 },
+];
+
+/** Les services courants du métier de la boutique. */
+export function commonServicesFor(activity: string | undefined | null) {
+  return metierOf(activity).id === "multiservice" ? MULTISERVICE_SERVICES : COMMON_SERVICES;
+}
+
+/** Comment chaque unité se dit : « 50 pages », « 3 m² », « 12 pièces ». */
+export const UNIT_WORDS: Record<ServiceUnit, { one: string; many: string; short: string }> = {
+  fois: { one: "fois", many: "fois", short: "" },
+  page: { one: "page", many: "pages", short: "la page" },
+  piece: { one: "pièce", many: "pièces", short: "la pièce" },
+  m2: { one: "m²", many: "m²", short: "le m²" },
+  metre: { one: "mètre", many: "mètres", short: "le mètre" },
+};
+
+/** Quantité arrondie au centième (m², mètres). */
+const q2 = (n: number) => Math.round(n * 100) / 100;
+const fr = (n: number) => String(q2(n)).replace(".", ",");
+
 export const servicesOf = (shop: Shop): ServiceItem[] => shop.services ?? [];
 export const licencesOf = (shop: Shop): Licence[] => shop.licences ?? [];
 
 export function saveService(shop: Shop, item: Omit<ServiceItem, "id"> & { id?: string }): Shop {
-  const clean: ServiceItem = { id: item.id ?? newId("srv"), name: item.name.trim(), price: Math.max(0, Math.round(item.price)), ...(item.licenceId ? { licenceId: item.licenceId } : {}) };
+  const clean: ServiceItem = {
+    id: item.id ?? newId("srv"),
+    name: item.name.trim(),
+    price: Math.max(0, Math.round(item.price)),
+    ...(item.licenceId ? { licenceId: item.licenceId } : {}),
+    ...(item.unit && item.unit !== "fois" ? { unit: item.unit } : {}),
+    ...(item.matter && item.matter.productId && item.matter.per > 0 ? { matter: { productId: item.matter.productId, per: q2(item.matter.per) } } : {}),
+  };
   if (!clean.name) return shop;
   const list = servicesOf(shop);
   const exists = list.some((s) => s.id === clean.id);
@@ -46,26 +96,53 @@ export function removeService(shop: Shop, id: string): Shop {
 
 export function addCommonServices(shop: Shop): Shop {
   const have = new Set(servicesOf(shop).map((s) => s.name.toLowerCase()));
-  return COMMON_SERVICES.filter((c) => !have.has(c.name.toLowerCase())).reduce((s, c) => saveService(s, c), shop);
+  return commonServicesFor(shop.activity).filter((c) => !have.has(c.name.toLowerCase())).reduce((s, c) => saveService(s, c), shop);
 }
 
-/** Encaisse un service : une vente sans prix d'achat (main-d'œuvre), avec la licence utilisée. */
+/**
+ * Encaisse un service. Sans quantité : une fois, au prix dit (main-d'œuvre, bénéfice entier).
+ * Avec quantité (pages, pièces, m², mètres) : prix × quantité, sauf montant dit. La matière liée (flex, bâche…)
+ * sort du stock (quantité × consommation par unité) et son prix d'achat devient le coût de la vente.
+ */
 export function sellService(
   shop: Shop,
-  input: { name: string; amount: number; licenceId?: string; payment?: Payment; clientId?: string; at?: string },
+  input: { name: string; amount?: number; qty?: number; size?: { w: number; h: number }; service?: ServiceItem; licenceId?: string; payment?: Payment; clientId?: string; at?: string },
 ): { shop: Shop; sale: Sale } | null {
-  const amount = Math.round(input.amount);
-  if (!input.name.trim() || amount <= 0) return null;
+  const item = input.service;
+  const unit: ServiceUnit = item?.unit ?? "fois";
+  const qty = input.size ? q2(input.size.w * input.size.h) : input.qty && input.qty > 0 ? q2(input.qty) : 1;
+  const amount = Math.round(input.amount ?? (item ? item.price * qty : 0));
+  const name = (input.name || item?.name || "").trim();
+  if (!name || amount <= 0 || !(qty > 0)) return null;
+  const detail = input.size
+    ? ` (${fr(input.size.w)} × ${fr(input.size.h)} m = ${fr(qty)} m²)`
+    : unit !== "fois" && qty !== 1
+      ? ` × ${fr(qty)} ${UNIT_WORDS[unit].many}`
+      : "";
+  // Matière prise dans le stock.
+  let products = shop.products;
+  let cost: number | undefined;
+  const m = item?.matter;
+  if (m && m.per > 0) {
+    const p = shop.products.find((x) => x.id === m.productId);
+    if (p) {
+      const used = q2(m.per * qty);
+      products = shop.products.map((x) => (x.id === p.id ? { ...x, stock: Math.max(0, q2(x.stock - used)) } : x));
+      if (p.cost !== undefined) cost = Math.round(p.cost * used);
+    }
+  }
   const sale: Sale = {
     id: newId("s"),
     at: input.at ?? new Date().toISOString(),
-    label: `${SERVICE_PREFIX}${input.name.trim()}`,
+    label: `${SERVICE_PREFIX}${name}${detail}`,
     amount,
+    ...(unit !== "fois" ? { qty } : {}),
+    ...(cost !== undefined ? { cost } : {}),
     ...(input.payment && input.payment !== "especes" ? { payment: input.payment } : {}),
     ...(input.clientId ? { clientId: input.clientId } : {}),
-    ...(input.licenceId ? { licenceId: input.licenceId } : {}),
+    ...((input.licenceId ?? item?.licenceId) ? { licenceId: input.licenceId ?? item?.licenceId } : {}),
   };
-  return { shop: { ...shop, sales: [sale, ...shop.sales] }, sale };
+  return { shop: { ...shop, products, sales: [sale, ...shop.sales] }, sale };
 }
 
 /** Date (AAAA-MM-JJ) au fuseau du téléphone. */
@@ -155,5 +232,6 @@ export function servicesMonth(shop: Shop, now = new Date()): { count: number; ea
   const from = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
   const list = shop.sales.filter((s) => isServiceSale(s) && Date.parse(s.at) >= from && Date.parse(s.at) < to);
-  return { count: list.length, earned: list.reduce((a, s) => a + s.amount, 0) };
+  // Gagné = prix − matière utilisée (flex, bâche…) quand elle est connue.
+  return { count: list.length, earned: list.reduce((a, s) => a + s.amount - (s.cost ?? 0), 0) };
 }

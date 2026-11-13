@@ -18,6 +18,7 @@ const SALE_EXAMPLE: Record<MetierId, string> = {
   quincaillerie: "« Vends 5 sacs de ciment »",
   couture: "« Commande d'Awa : grand boubou, 25 000, avance 10 000 »",
   vetements: "« Vends 2 pantalons à 7 500 »",
+  mercerie: "« Vends 3 bobines de fil noir »",
   restauration: "« J'ai vendu 2 yassa et 3 bissap »",
   boulangerie: "« Vends 20 baguettes »",
   multiservice: "« 50 photocopies à 25 »",

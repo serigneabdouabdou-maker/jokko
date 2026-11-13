@@ -4,7 +4,7 @@
  * Pas d'import avec « @/ » : ce fichier est aussi lu par le serveur (consignes de Gemini).
  */
 
-export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "couture" | "vetements" | "restauration" | "boulangerie" | "multiservice" | "autre";
+export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaillerie" | "couture" | "mercerie" | "vetements" | "restauration" | "boulangerie" | "multiservice" | "autre";
 
 /**
  * Modules : morceaux de l'appli propres à un métier. Le métier choisi donne ses modules ; le patron peut en ajouter
@@ -125,6 +125,34 @@ export const METIERS: Metier[] = [
     ex: { stock: "« 50 sacs de ciment à 4 500, achetés à 4 000 ; 20 barres de fer de 10 ; 10 pots de peinture »", search: "ciment, fer, peinture…", invoice: "« Facture Moussa, 10 sacs de ciment »", prompts: ["Il me reste combien de ciment ?", "Ajoute une vente de 45 000", "Qui me doit de l'argent ?", "Caisse du jour", "Relance Moussa", "Bénéfice de la semaine"], units: "sac, barre, mètre…" },
   },
   {
+    id: "mercerie",
+    label: "Mercerie (fournitures de couture)",
+    keywords: /mercerie|mercier|fourniture.{0,6}(couture|tailleur)|bobine|fil a coudre|fil à coudre|fermeture eclair|fermeture éclair|galon|dentelle|passementerie/i,
+    units: ["pièce", "bobine", "cône", "rouleau", "mètre", "yard", "douzaine", "sachet", "paquet", "boîte", "carton"],
+    screens: ["stock", "scanner", "distance", "boutiques", "conseiller"],
+    conseiller:
+      "MERCERIE : regarde les fils et boutons des couleurs qui partent le plus (ne jamais tomber en rupture avant la Tabaski et la Korité), " +
+      "les tailleurs qui achètent à crédit et paient en retard, les articles qui dorment (couleurs passées de mode) et la marge par article (le détail rapporte plus que le gros).",
+    atelier: false,
+    peremption: false,
+    consigne:
+      "Mercerie : fournitures pour tailleurs et couturières. Fil à coudre (bobine, cône), fil à broder, boutons (pièce, douzaine, sachet), " +
+      "fermetures éclair (par longueur : 15, 20, 50 cm…), galons, dentelles, rubans, biais et élastique (au mètre ou au rouleau), entoilage, " +
+      "aiguilles de machine, ciseaux, mètres ruban, craie de tailleur, perles, strass, pressions, crochets. " +
+      "Un même article existe souvent en plusieurs COULEURS (fil rouge, fil noir, fil or) ou longueurs : chaque couleur est un article différent du stock. " +
+      "Si la couleur n'est pas dite et qu'il y en a plusieurs, demande laquelle (une seule question). " +
+      "Vente en gros (carton, paquet de 10 bobines, rouleau de 50 m) et au détail (1 bobine, 1 mètre, 1 douzaine de boutons). " +
+      "Les clients sont surtout des tailleurs du quartier, souvent à crédit : c'est une dette à leur nom.",
+    vivres: false,
+    ex: {
+      stock: "« 10 paquets de fil noir (10 bobines) à 2 500, achetés à 1 800 ; 5 rouleaux de galon doré ; 200 boutons »",
+      search: "fil, boutons, fermeture, galon…",
+      invoice: "« Facture Atelier Dabakh, 2 douzaines de boutons, 10 bobines de fil »",
+      prompts: ["J'ai vendu 3 bobines de fil noir", "Il me reste combien de fermetures 20 cm ?", "Qui me doit de l'argent ?", "Caisse du jour", "Relance l'atelier Dabakh", "Bénéfice de la semaine"],
+      units: "bobine, mètre, douzaine…",
+    },
+  },
+  {
     id: "couture",
     label: "Couture, tailleur",
     keywords: /tailleur|couture|couturi|atelier de couture|brodeur|broderie|styliste/i,
@@ -205,17 +233,22 @@ export const METIERS: Metier[] = [
   {
     id: "multiservice",
     label: "Multiservice (impression, photocopie, transfert d'argent)",
-    keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|secretariat|secrétariat/i,
-    units: ["page", "copie", "pièce", "unité", "rame"],
+    keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|secretariat|secrétariat|flocage|serigraph|sérigraph|grand format|bache|bâche|infographi|maillot/i,
+    units: ["page", "copie", "pièce", "unité", "rame", "m²", "mètre", "rouleau", "maillot", "t-shirt", "cartouche", "flacon"],
     screens: ["stock", "atelier", "distance", "conseiller"],
     atelier: true,
     peremption: false,
     modules: ["services"],
     consigne:
-      "Multiservice : impression, photocopie, saisie, transfert d'argent, petites réparations. Un service sans marchandise est une vente " +
-      "(« 50 photocopies à 25 F » = 50 × 25 F, calculé par l'outil) ; tout est bénéfice sauf le papier et l'encre achetés.",
+      "Multiservice : impression, photocopie, saisie, scan, plastification, reliure, transfert d'argent, petites réparations ; " +
+      "impression numérique grand format (bâche, vinyle, autocollant) vendue AU MÈTRE CARRÉ (largeur × hauteur × prix du m², calculé par l'outil) ; " +
+      "flocage de t-shirts et maillots (flex vert, jaune, bleu, blanc… acheté au mètre ou au rouleau : c'est une matière du stock), " +
+      "vente de maillots et t-shirts (par taille S, M, L, XL : chaque taille est un article), vente d'encre et de papier, " +
+      "conception de logos, d'affiches, de cartes de visite et de projets (service sans marchandise). " +
+      "Un service sans marchandise est une vente (« 50 photocopies à 25 F » = 50 × 25 F, calculé par l'outil) ; le bénéfice = prix − papier, encre, flex ou bâche utilisés. " +
+      "Une commande à livrer plus tard (« 20 maillots floqués pour l'ASC, avance 30 000 ») se note dans l'écran Services et commandes, avec l'avance.",
     vivres: false,
-    ex: { stock: "« 10 rames de papier à 3 500 ; 2 cartouches d'encre »", search: "papier, encre…", invoice: "« Facture de 5 000 pour Moussa, 200 photocopies »", prompts: ["50 photocopies à 25", "Ajoute une vente de 2 000", "Qui me doit de l'argent ?", "Caisse du jour", "Il me reste combien de papier ?", "Bénéfice de la semaine"], units: "rame, pièce, unité…" },
+    ex: { stock: "« 10 rames de papier à 3 500 ; 2 cartouches d'encre ; 1 rouleau de flex vert de 25 mètres »", search: "papier, encre, flex, maillot…", invoice: "« Facture ASC Mboss, 20 maillots floqués, 70 000 »", prompts: ["50 photocopies à 25", "Bâche de 2 mètres sur 1,5", "Ajoute une vente de 2 000", "Qui me doit de l'argent ?", "Caisse du jour", "Il me reste combien de papier ?", "Bénéfice de la semaine"], units: "rame, pièce, unité…" },
   },
   {
     id: "autre",
@@ -283,6 +316,9 @@ export function screenLabel(activity: string | undefined | null, screen: string,
   // Un tailleur ne « vend » pas : il reçoit des paiements de couture (avances, acomptes, soldes).
   if (id === "couture" && screen === "ventes") return "Paiements";
   if (id === "reparation" && screen === "stock") return "Pièces";
+  if (id === "multiservice" && screen === "atelier") return "Services et commandes";
+  if (id === "multiservice" && screen === "stock") return "Fournitures et articles";
+  if (id === "mercerie" && screen === "stock") return "Articles de mercerie";
   if (id === "pharmacie" && screen === "stock") return "Médicaments";
   if (id === "restauration" && screen === "stock") return "Ingrédients et boissons";
   if (id === "restauration" && screen === "cuisine") return "Plats du jour";

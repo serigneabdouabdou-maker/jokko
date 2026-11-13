@@ -60,6 +60,9 @@ import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
+import { Travaux } from "@/components/jokko/Travaux";
+import { VariantAdd } from "@/components/jokko/VariantAdd";
+import { VARIANT_METIERS } from "@/data/variants";
 import { Services } from "@/components/jokko/Services";
 import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
@@ -1686,7 +1689,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}
-          {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
+          {screen === "atelier" && (metierOf(shop.activity).id === "multiservice" ? <Travaux shop={shop} commit={commit} /> : <Atelier shop={shop} commit={commit} />)}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
@@ -1724,7 +1727,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
-  const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | "reception" | null>(null);
+  const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | "reception" | "variantes" | null>(null);
   const [query, setQuery] = useState("");
   const toggle = (t: typeof tool) => setTool((cur) => (cur === t ? null : t));
   // Beaucoup d'articles (pièces du fournisseur) : on cherche par nom ou par téléphone compatible (« BF6 »).
@@ -1744,6 +1747,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           <div className="stock-tools" role="toolbar" aria-label="Gestion du stock (patron)">
             <Button variant={tool === "voix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("voix")}><Icon name="micro" size="sm" />Ajouter en parlant</Button>
             <Button variant={tool === "prix" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("prix")}><Icon name="etiquette" size="sm" />Changer les prix</Button>
+            {VARIANT_METIERS.has(metierOf(shop.activity).id) && <Button variant={tool === "variantes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("variantes")}><Icon name="ajouter" size="sm" />Tailles et couleurs</Button>}
             {(modulesOf(shop.activity, shop.modules).has("peremption") || shop.products.some((p) => p.lots?.length)) && <Button variant={tool === "reception" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("reception")}><Icon name="scanner" size="sm" />Réception (dates)</Button>}
             {can(shop, "etiquettes") && screensOf(shop.activity, shop.modules).has("scanner") && <Button variant={tool === "etiquettes" ? "default" : "outline"} className="h-9 rounded-full px-4" onClick={() => toggle("etiquettes")}><Icon name="scanner" size="sm" />Étiquettes</Button>}
           </div>
@@ -1751,6 +1755,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
         <span className="note">{lowStock(shop).length} article(s) sous le seuil</span>
       </div>
       {canEdit && tool === "voix" && <StockEntry shop={shop} lang={lang} commit={commit} onClose={() => setTool(null)} />}
+      {canEdit && tool === "variantes" && <VariantAdd shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "prix" && <PriceTool shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "etiquettes" && <Labels shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "reception" && <ReceiveLots shop={shop} commit={commit} onClose={() => setTool(null)} />}

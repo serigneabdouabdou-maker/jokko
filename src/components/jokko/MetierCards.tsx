@@ -1,4 +1,4 @@
-import { Croissant, Hammer, type LucideIcon, Pill, Printer, Scissors, Shirt, ShoppingBasket, Smartphone, Store, UtensilsCrossed } from "lucide-react";
+import { Croissant, Hammer, type LucideIcon, Pill, Printer, Scissors, Shirt, ShoppingBasket, Smartphone, Spool, Store, UtensilsCrossed } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ICON_STROKE } from "./Icon";
 import { METIERS, type MetierId, metierOf } from "@/data/metiers";
@@ -53,11 +53,17 @@ export const METIER_LOOK: Record<MetierId, { icon: LucideIcon; title: string; su
     sub: "Habits, tissus, chaussures",
     setup: ["Pièces, mètres de tissu, paires", "Ventes à crédit suivies", "Relances sur WhatsApp"],
   },
+  mercerie: {
+    icon: Spool,
+    title: "Mercerie",
+    sub: "Fil, boutons, fermetures, galons",
+    setup: ["Couleurs et longueurs suivies", "Gros et détail (bobine, mètre, douzaine)", "Tailleurs à crédit suivis"],
+  },
   multiservice: {
     icon: Printer,
     title: "Multiservice",
-    sub: "Impression, photocopie, transfert",
-    setup: ["Photocopies et impressions calculées", "Petites réparations au carnet", "Papier et encre suivis"],
+    sub: "Impression, flocage, grand format",
+    setup: ["Photocopie, bâche au m², flocage calculés", "Commandes avec avance et livraison", "Papier, encre et flex suivis"],
   },
   autre: {
     icon: Store,

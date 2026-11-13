@@ -171,9 +171,10 @@ const OFFER: Record<MetierId, string> = {
   quincaillerie: "Ciment, fer, plomberie, électricité : tout pour ton chantier",
   couture: "Pense à ton prochain habit : nouveaux modèles à l'atelier",
   vetements: "Nouveaux arrivages : habits, chaussures et tissus",
+  mercerie: "Fil, boutons, fermetures et galons : toutes les couleurs sont là",
   restauration: "Le plat du jour t'attend",
   boulangerie: "Pain frais et viennoiseries tous les matins",
-  multiservice: "Photocopies, impressions, plastification : on est là",
+  multiservice: "Impressions, bâches, flocage de maillots, logos : on est là",
   autre: "On a ce qu'il te faut",
 };
 

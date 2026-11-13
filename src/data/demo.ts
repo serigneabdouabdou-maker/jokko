@@ -635,12 +635,64 @@ const boulangerie: Kit = {
 };
 
 // ————————————————————————————————————————————————————————————————— Multiservice
+// ————————————————————————————————————————————————————————————————— Mercerie
+const mercerie: Kit = {
+  seed: 20261113,
+  name: "Mercerie Ndèye Fatou (démo)",
+  noun: "Mercerie",
+  title: "Découvre Jokko avec une mercerie exemple",
+  text: "Fil de toutes les couleurs, boutons, fermetures, galons au mètre, tailleurs à crédit et une semaine de ventes.",
+  yours: "ta vraie mercerie",
+  address: "Marché HLM, Dakar",
+  paymentInfo: "Wave ou Orange Money",
+  openingCash: 10000,
+  perDay: [14, 24],
+  today: 9,
+  hours: [9, 20],
+  pay: [0.6, 0.25, 0.1],
+  items: [
+    { key: "fil-noir", name: "Fil à coudre · noir", unit: "bobine", stock: 60, min: 20, price: 300, cost: 180, weight: 8, max: 6 },
+    { key: "fil-blanc", name: "Fil à coudre · blanc", unit: "bobine", stock: 45, min: 20, price: 300, cost: 180, weight: 7, max: 6 },
+    { key: "fil-bleu", name: "Fil à coudre · bleu roi", unit: "bobine", stock: 12, min: 15, price: 300, cost: 180, weight: 4, max: 4 },
+    { key: "fil-or", name: "Fil à broder · or", unit: "cône", stock: 8, min: 4, price: 2500, cost: 1700, weight: 2, max: 1 },
+    { key: "boutons-dores", name: "Boutons dorés", unit: "douzaine", stock: 30, min: 10, price: 600, cost: 350, weight: 4, max: 3 },
+    { key: "boutons-chemise", name: "Boutons de chemise · blanc", unit: "douzaine", stock: 40, min: 10, price: 250, cost: 120, weight: 4, max: 4 },
+    { key: "zip-20", name: "Fermeture éclair · 20 cm", unit: "pièce", stock: 80, min: 25, price: 150, cost: 80, weight: 6, max: 6 },
+    { key: "zip-50", name: "Fermeture éclair · 50 cm", unit: "pièce", stock: 25, min: 10, price: 350, cost: 200, weight: 3, max: 3 },
+    { key: "galon-dore", name: "Galon doré", unit: "mètre", stock: 100, min: 30, price: 200, cost: 110, weight: 4, max: 10 },
+    { key: "elastique", name: "Élastique 2 cm", unit: "mètre", stock: 150, min: 40, price: 100, cost: 50, weight: 3, max: 10 },
+    { key: "entoilage", name: "Entoilage", unit: "mètre", stock: 30, min: 10, price: 700, cost: 450, weight: 2, max: 3 },
+    { key: "aiguilles", name: "Aiguilles machine (paquet)", unit: "paquet", stock: 6, min: 8, price: 1000, cost: 650, weight: 2, max: 2 },
+  ],
+  clients: [
+    { key: "dabakh", name: "Atelier Dabakh Couture", debt: 18500, dueDays: 4 },
+    { key: "ousmane", name: "Ousmane Tailleur", debt: 7200, dueDays: -2 },
+    { key: "awa", name: "Awa Couture", debt: 0 },
+    { key: "fallou", name: "Fallou Styliste", debt: 0 },
+  ],
+  expenses: [
+    { key: "achat", daysAgo: 3, hour: 9, label: "Achat : 10 douzaines de boutons dorés", amount: 3500, kind: "achat", item: "boutons-dores", qty: 10 },
+    { key: "transport", daysAgo: 3, hour: 11, label: "Transport depuis Sandaga", amount: 1500, kind: "depense" },
+    { key: "loyer", daysAgo: 5, hour: 10, label: "Part du loyer de la semaine", amount: 7500, kind: "depense" },
+  ],
+  invoice: {
+    client: "dabakh",
+    daysAgo: 2,
+    status: "envoyee",
+    lines: [
+      { label: "Fil à coudre · noir", qty: 20, unit: "bobine", unitPrice: 280, item: "fil-noir" },
+      { label: "Galon doré", qty: 25, unit: "mètre", unitPrice: 200, item: "galon-dore" },
+    ],
+  },
+  reminder: { client: "ousmane", note: "Relance envoyée sur WhatsApp" },
+};
+
 const multiservice: Kit = {
   seed: 20261109,
   name: "Keur Service Plus (démo)",
   noun: "Multiservice",
   title: "Découvre Jokko avec un multiservice exemple",
-  text: "Photocopies, impressions, plastification, papier et encre, ordinateurs au dépôt.",
+  text: "Photocopies, impressions, bâches au m², flocage de maillots, papier, encre et flex, commandes avec avance.",
   yours: "ton vrai multiservice",
   address: "Face université, Fann",
   paymentInfo: "Wave ou Orange Money",
@@ -661,6 +713,13 @@ const multiservice: Kit = {
     { key: "encre", name: "Cartouche d'encre", unit: "pièce", stock: 1, min: 2, price: 15000, cost: 11000, weight: 0 },
     { key: "cle", name: "Clé USB 16 Go", unit: "pièce", stock: 10, min: 3, price: 5000, cost: 3000, weight: 1, max: 1 },
     { key: "enveloppe", name: "Enveloppe kraft", unit: "pièce", stock: 60, min: 20, price: 100, cost: 50, weight: 2, max: 4 },
+    { key: "flex-vert", name: "Flex vert", unit: "mètre", stock: 18, min: 5, price: 0, cost: 2500, weight: 0 },
+    { key: "flex-jaune", name: "Flex jaune", unit: "mètre", stock: 12, min: 5, price: 0, cost: 2500, weight: 0 },
+    { key: "flex-blanc", name: "Flex blanc", unit: "mètre", stock: 4, min: 5, price: 0, cost: 2500, weight: 0 },
+    { key: "bache", name: "Bâche (rouleau)", unit: "m²", stock: 40, min: 10, price: 0, cost: 1800, weight: 0 },
+    { key: "maillot-m", name: "Maillot blanc · M", unit: "pièce", stock: 15, min: 5, price: 3500, cost: 2000, weight: 1, max: 2 },
+    { key: "maillot-l", name: "Maillot blanc · L", unit: "pièce", stock: 12, min: 5, price: 3500, cost: 2000, weight: 1, max: 2 },
+    { key: "maillot-xl", name: "Maillot blanc · XL", unit: "pièce", stock: 3, min: 5, price: 3500, cost: 2000, weight: 1, max: 1 },
   ],
   clients: [
     { key: "ecole", name: "École Les Cours Sainte-Marie", debt: 35000, dueDays: 7 },
@@ -690,8 +749,23 @@ const multiservice: Kit = {
       { id: id("r-1"), at: at(1, 11), number: "R-001", clientId: c("mamadou").id, clientName: c("mamadou").name, phone: "", device: "Ordinateur HP", problem: "Formatage et Windows", price: 10000, paid: 5000, parts: [], status: "depot" },
       { id: id("r-2"), at: at(3, 15), number: "R-002", clientId: c("sokhna").id, clientName: c("sokhna").name, phone: "", device: "Imprimante Canon", problem: "Bourrage papier", price: 5000, paid: 0, parts: [], status: "repare", repairedAt: at(1, 17) },
     ];
-    const sales: Sale[] = [{ id: id("s-rav-1"), at: repairs[0].at, label: "Réparation R-001 · Ordinateur HP (avance)", amount: 5000, clientId: c("mamadou").id, payment: "especes" }];
-    return { repairs, sales };
+    repairs.push({ id: id("r-3"), at: at(2, 10), number: "R-003", clientId: c("ecole").id, clientName: "ASC Mboss", phone: "", device: "20 maillots floqués", problem: "Noms + numéros 1 à 20, flex vert · pour samedi", price: 70000, paid: 30000, parts: [], status: "depot" });
+    const sales: Sale[] = [
+      { id: id("s-rav-1"), at: repairs[0].at, label: "Service · Commande R-001 · Ordinateur HP (avance)", amount: 5000, clientId: c("mamadou").id, payment: "especes" },
+      { id: id("s-rav-3"), at: repairs[2].at, label: "Service · Commande R-003 · 20 maillots floqués (avance)", amount: 30000, payment: "especes" },
+      { id: id("s-bache-1"), at: at(1, 16), label: "Service · Bâche grand format (2 × 1,5 m = 3 m²)", amount: 15000, qty: 3, cost: 5400, payment: "wave" },
+      { id: id("s-floc-1"), at: at(0, 12), label: "Service · Flocage t-shirt / maillot × 4 pièces", amount: 10000, qty: 4, cost: 3000, payment: "especes" },
+    ];
+    const p = (k: string) => id(`p-${k}`);
+    const services: ServiceItem[] = [
+      { id: id("srv-pn"), name: "Photocopie noir A4", price: 25, unit: "page" },
+      { id: id("srv-ic"), name: "Impression couleur A4", price: 150, unit: "page" },
+      { id: id("srv-bache"), name: "Bâche grand format", price: 5000, unit: "m2", matter: { productId: p("bache"), per: 1 } },
+      { id: id("srv-floc"), name: "Flocage t-shirt / maillot", price: 2500, unit: "piece", matter: { productId: p("flex-vert"), per: 0.3 } },
+      { id: id("srv-logo"), name: "Conception de logo", price: 15000 },
+      { id: id("srv-cartes"), name: "Cartes de visite (100)", price: 10000, unit: "piece" },
+    ];
+    return { repairs, sales, services };
   },
 };
 
@@ -746,7 +820,7 @@ const autre: Kit = {
   reminder: { client: "yacine", note: "Relance envoyée sur WhatsApp" },
 };
 
-const KITS: Record<MetierId, Kit> = { alimentation, pharmacie, quincaillerie, couture, reparation, vetements, restauration, boulangerie, multiservice, autre };
+const KITS: Record<MetierId, Kit> = { alimentation, pharmacie, quincaillerie, couture, reparation, vetements, mercerie, restauration, boulangerie, multiservice, autre };
 
 /** Les métiers qui ont une démo (tous). */
 export const DEMO_METIERS: MetierId[] = METIERS.map((m) => m.id);

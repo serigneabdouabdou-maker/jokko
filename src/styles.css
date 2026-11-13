@@ -2010,3 +2010,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .fs-text small { color: #4a4d55; font-size: 14px; line-height: 1.35; }
 .fs-list li.is-done .fs-text b { color: #6e727c; text-decoration: line-through; font-weight: 600; }
 @media (max-width: 520px) { .fs-list li.is-next { flex-wrap: wrap; } .fs-list li.is-next button { margin-left: 38px; } }
+
+/* Multiservice : quantités, m², commandes à livrer (rien ne dépasse de l'écran du téléphone) */
+.service-pay > *, .service-who > *, .service-form > * { min-width: 0; }
+.travaux article { flex-wrap: wrap; }
+.travaux article > span { min-width: 0; flex: 1 1 100%; }

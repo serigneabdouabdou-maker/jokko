@@ -2,11 +2,16 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Payment, PAYMENT_LABELS, type ServiceItem, type Shop, money } from "@/model";
+import { type Payment, PAYMENT_LABELS, type ServiceItem, type ServiceUnit, type Shop, money } from "@/model";
+import { metierOf } from "@/data/metiers";
 import { clientFor } from "@/data/repairs";
-import { addCommonServices, addLicence, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth } from "@/data/services";
+import { addCommonServices, addLicence, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth, UNIT_WORDS } from "@/data/services";
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
+/** Nombre à virgule (« 1,5 » m) : la virgule ou le point. */
+const dec = (v: string) => Math.max(0, Number(v.replace(",", ".").replace(/[^\d.]/g, "")) || 0);
+const UNITS: ServiceUnit[] = ["fois", "page", "piece", "m2", "metre"];
+const UNIT_LABEL: Record<ServiceUnit, string> = { fois: "Une fois (prix fixe)", page: "À la page", piece: "À la pièce", m2: "Au m² (largeur × hauteur)", metre: "Au mètre" };
 const PAY: Payment[] = ["especes", "wave", "om"];
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const day = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -21,15 +26,24 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
   const month = servicesMonth(shop);
   const [picked, setPicked] = useState<ServiceItem | null>(null);
   const [amount, setAmount] = useState("");
+  const [qty, setQty] = useState("1");
+  const [size, setSize] = useState({ w: "", h: "" });
+  const multi = metierOf(shop.activity).id === "multiservice";
   const [payment, setPayment] = useState<Payment>("especes");
   const [who, setWho] = useState({ name: "", phone: "" });
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ id: "", name: "", price: "", licenceId: "" });
+  const [draft, setDraft] = useState({ id: "", name: "", price: "", licenceId: "", unit: "fois" as ServiceUnit, matterId: "", per: "" });
+  const unitOf = (s: ServiceItem): ServiceUnit => s.unit ?? "fois";
+  const counted = picked ? unitOf(picked) : "fois";
+  const quantity = counted === "m2" ? Math.round(dec(size.w) * dec(size.h) * 100) / 100 : counted === "fois" ? 1 : dec(qty);
+  const total = picked ? Math.round(picked.price * quantity) : 0;
 
   function pick(s: ServiceItem) {
     setPicked(s);
-    setAmount(String(s.price));
+    setAmount(unitOf(s) === "fois" ? String(s.price) : "");
+    setQty("1");
+    setSize({ w: "", h: "" });
     setPayment("especes");
     setWho({ name: "", phone: "" });
     setNote("");
@@ -40,31 +54,51 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
     // Client noté (facultatif) : le service entre dans sa fiche.
     const known = who.name.trim() || who.phone.replace(/\D/g, "").length >= 9 ? clientFor(shop, who.name, who.phone.replace(/\D/g, "")) : null;
     const base = known ? { ...shop, clients: known.clients } : shop;
-    const done = sellService(base, { name: picked.name, amount: n(amount), licenceId: picked.licenceId, payment, ...(known ? { clientId: known.client.id } : {}) });
+    const done = sellService(base, {
+      name: picked.name,
+      service: picked,
+      // Montant changé à la main (remise, prix spécial) : il gagne ; sinon prix × quantité.
+      ...(n(amount) ? { amount: n(amount) } : {}),
+      ...(counted === "m2" ? { size: { w: dec(size.w), h: dec(size.h) } } : counted !== "fois" ? { qty: dec(qty) } : {}),
+      payment,
+      ...(known ? { clientId: known.client.id } : {}),
+    });
     if (!done) return;
     commit(done.shop);
-    setNote(`✓ ${picked.name} encaissé : ${money(done.sale.amount)} (${PAYMENT_LABELS[payment]}). Tout est main-d'œuvre.`);
+    const gain = done.sale.cost !== undefined ? ` Matière : ${money(done.sale.cost)}, gagné : ${money(done.sale.amount - done.sale.cost)}.` : " Tout est main-d'œuvre.";
+    setNote(`✓ ${done.sale.label.replace(/^Service · /, "")} encaissé : ${money(done.sale.amount)} (${PAYMENT_LABELS[payment]}).${gain}`);
     setPicked(null);
   }
 
   function saveDraft() {
     if (!draft.name.trim()) return;
-    commit(saveService(shop, { ...(draft.id ? { id: draft.id } : {}), name: draft.name, price: n(draft.price), ...(draft.licenceId ? { licenceId: draft.licenceId } : {}) }));
-    setDraft({ id: "", name: "", price: "", licenceId: "" });
+    commit(saveService(shop, {
+      ...(draft.id ? { id: draft.id } : {}),
+      name: draft.name,
+      price: n(draft.price),
+      unit: draft.unit,
+      ...(draft.licenceId ? { licenceId: draft.licenceId } : {}),
+      ...(draft.matterId && dec(draft.per) > 0 ? { matter: { productId: draft.matterId, per: dec(draft.per) } } : {}),
+    }));
+    setDraft({ id: "", name: "", price: "", licenceId: "", unit: "fois", matterId: "", per: "" });
   }
 
   return (
     <section className="sheet services">
       <div className="sheet-head">
-        <h2>Services sans pièce</h2>
+        <h2>{multi ? "Services" : "Services sans pièce"}</h2>
         <b className="num sheet-total">{month.count} ce mois · {money(month.earned)}</b>
       </div>
-      <p className="note">Décodage, configuration, création de compte, maintenance… : le client paie tout de suite, il n'y a pas de pièce. Tout le prix est ton gain. Tu peux aussi le dire à Jokko : « décodage 5 000 ».</p>
+      {multi ? (
+        <p className="note">Photocopie, impression, bâche au m², flocage, conception : touche le service, mets la quantité (ou la largeur et la hauteur), Jokko calcule le prix. Si une matière est liée (flex, bâche), elle sort du stock et Jokko te dit ce que tu as vraiment gagné.</p>
+      ) : (
+        <p className="note">Décodage, configuration, création de compte, maintenance… : le client paie tout de suite, il n'y a pas de pièce. Tout le prix est ton gain. Tu peux aussi le dire à Jokko : « décodage 5 000 ».</p>
+      )}
 
       {services.length === 0 ? (
         canEdit ? (
           <Button className="h-11 rounded-full px-5" onClick={() => commit(addCommonServices(shop))}>
-            <Icon name="ajouter" size="sm" /> Ajouter les services courants (décodage, configuration…)
+            <Icon name="ajouter" size="sm" /> {multi ? "Ajouter les services courants (photocopie, impression, bâche, flocage…)" : "Ajouter les services courants (décodage, configuration…)"}
           </Button>
         ) : (
           <p className="note">Le patron n'a pas encore mis la liste des services.</p>
@@ -74,7 +108,7 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
           {services.map((s) => (
             <button key={s.id} type="button" className={`service-tile${picked?.id === s.id ? " on" : ""}`} onClick={() => pick(s)}>
               <b>{s.name}</b>
-              <span className="num">{money(s.price)}</span>
+              <span className="num">{money(s.price)}{unitOf(s) !== "fois" ? ` / ${UNIT_WORDS[unitOf(s)].one}` : ""}</span>
               {s.licenceId && <small>licence {licences.find((l) => l.id === s.licenceId)?.name ?? ""}</small>}
             </button>
           ))}
@@ -83,9 +117,24 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
 
       {picked && (
         <div className="service-pay">
+          {counted === "m2" && (
+            <div className="service-who">
+              <Input className="h-11 num" inputMode="decimal" placeholder="Largeur (m)" aria-label="Largeur en mètres" value={size.w} onChange={(e) => setSize({ ...size, w: e.target.value })} />
+              <Input className="h-11 num" inputMode="decimal" placeholder="Hauteur (m)" aria-label="Hauteur en mètres" value={size.h} onChange={(e) => setSize({ ...size, h: e.target.value })} />
+            </div>
+          )}
+          {(counted === "page" || counted === "piece" || counted === "metre") && (
+            <label>
+              <small>Combien de {UNIT_WORDS[counted].many} ?</small>
+              <Input className="h-11 num" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} aria-label="Quantité" />
+            </label>
+          )}
+          {counted !== "fois" && quantity > 0 && (
+            <p className="note num">{String(quantity).replace(".", ",")} {UNIT_WORDS[counted].many} × {money(picked.price)} = <b>{money(total)}</b></p>
+          )}
           <label>
-            <small>Prix payé pour « {picked.name} »</small>
-            <Input className="h-11 num" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Prix payé" />
+            <small>{counted === "fois" ? `Prix payé pour « ${picked.name} »` : "Prix spécial (laisser vide pour le prix calculé)"}</small>
+            <Input className="h-11 num" inputMode="numeric" value={amount} placeholder={counted === "fois" ? "" : money(total)} onChange={(e) => setAmount(e.target.value)} aria-label="Prix payé" />
           </label>
           <div className="service-who">
             <Input className="h-10" placeholder="Client (facultatif)" aria-label="Nom du client" value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })} />
@@ -97,8 +146,8 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
             ))}
           </div>
           <div className="row">
-            <Button className="h-11 rounded-full px-5" disabled={!n(amount)} onClick={cash}>
-              <Icon name="ok" size="sm" /> Encaisser {n(amount) ? money(n(amount)) : ""}
+            <Button className="h-11 rounded-full px-5" disabled={!(n(amount) || total)} onClick={cash}>
+              <Icon name="ok" size="sm" /> Encaisser {n(amount) ? money(n(amount)) : total ? money(total) : ""}
             </Button>
             <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setPicked(null)}>Annuler</Button>
           </div>
@@ -113,14 +162,30 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
         <div className="service-edit">
           {services.map((s) => (
             <div key={s.id} className="row">
-              <span>{s.name} · {money(s.price)}{s.licenceId ? ` · licence ${licences.find((l) => l.id === s.licenceId)?.name ?? ""}` : ""}</span>
-              <button type="button" className="link" onClick={() => setDraft({ id: s.id, name: s.name, price: String(s.price), licenceId: s.licenceId ?? "" })}>Modifier</button>
+              <span>
+                {s.name} · {money(s.price)}{unitOf(s) !== "fois" ? ` / ${UNIT_WORDS[unitOf(s)].one}` : ""}
+                {s.licenceId ? ` · licence ${licences.find((l) => l.id === s.licenceId)?.name ?? ""}` : ""}
+                {s.matter ? ` · ${String(s.matter.per).replace(".", ",")} ${shop.products.find((p) => p.id === s.matter?.productId)?.unit ?? ""} de ${shop.products.find((p) => p.id === s.matter?.productId)?.name ?? "matière"}` : ""}
+              </span>
+              <button type="button" className="link" onClick={() => setDraft({ id: s.id, name: s.name, price: String(s.price), licenceId: s.licenceId ?? "", unit: unitOf(s), matterId: s.matter?.productId ?? "", per: s.matter ? String(s.matter.per).replace(".", ",") : "" })}>Modifier</button>
               <button type="button" className="link" onClick={() => commit(removeService(shop, s.id))}>Enlever</button>
             </div>
           ))}
           <div className="service-form">
             <Input className="h-10" placeholder="Service (ex. Décodage Samsung)" aria-label="Nom du service" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             <Input className="h-10" inputMode="numeric" placeholder="Prix (F)" aria-label="Prix du service" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
+            <select className="native-select h-10" aria-label="Comment compter" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value as ServiceUnit })}>
+              {UNITS.map((u) => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
+            </select>
+            {shop.products.length > 0 && (
+              <select className="native-select h-10" aria-label="Matière prise dans le stock" value={draft.matterId} onChange={(e) => setDraft({ ...draft, matterId: e.target.value })}>
+                <option value="">Sans matière du stock</option>
+                {shop.products.map((p) => <option key={p.id} value={p.id}>Utilise : {p.name} ({p.unit})</option>)}
+              </select>
+            )}
+            {draft.matterId && (
+              <Input className="h-10 num" inputMode="decimal" placeholder={`Combien de ${shop.products.find((p) => p.id === draft.matterId)?.unit ?? "unités"} par ${draft.unit === "fois" ? "service" : UNIT_WORDS[draft.unit].one} (ex. 0,3)`} aria-label="Matière utilisée par unité" value={draft.per} onChange={(e) => setDraft({ ...draft, per: e.target.value })} />
+            )}
             {licences.length > 0 && (
               <select className="native-select h-10" aria-label="Licence utilisée" value={draft.licenceId} onChange={(e) => setDraft({ ...draft, licenceId: e.target.value })}>
                 <option value="">Sans licence</option>
@@ -132,7 +197,7 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
         </div>
       )}
 
-      {canEdit && <Licences shop={shop} commit={commit} />}
+      {canEdit && !multi && <Licences shop={shop} commit={commit} />}
     </section>
   );
 }
