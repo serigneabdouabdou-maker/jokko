@@ -5,9 +5,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b7bdfe5de57150138cf93b6db33b6077eff25bd4/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b7bdfe5de57150138cf93b6db33b6077eff25bd4/server/assistant/live.ts";
-import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b7bdfe5de57150138cf93b6db33b6077eff25bd4/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/342367cd04618fa7d93ab7eb848ff55361278d3c/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/342367cd04618fa7d93ab7eb848ff55361278d3c/server/assistant/live.ts";
+import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/342367cd04618fa7d93ab7eb848ff55361278d3c/server/assistant/schema.ts";
 
 const MAX_TEXT_BODY = 32 * 1024;
 const MAX_AUDIO_BODY = 3 * 1024 * 1024;
