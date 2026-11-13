@@ -72,7 +72,7 @@ export const METIERS: Metier[] = [
   {
     id: "reparation",
     label: "Réparation de téléphones et pièces détachées",
-    keywords: /repar|répar|telephon|téléphon|portable|smartphone|piece.?detach|pièce|gsm|ecran|écran|informatique|ordinateur/i,
+    keywords: /repar|répar|telephon|téléphon|portable|smartphone|piece.?detach|pièce|gsm|ecran|écran|informati|ordinateur|decodage|décodage|deblocage|déblocage|maintenance/i,
     units: ["pièce", "unité", "carton", "lot"],
     screens: ["stock", "atelier", "distance", "boutiques", "conseiller"],
     atelier: true,
@@ -83,6 +83,9 @@ export const METIERS: Metier[] = [
       "le client dépose l'appareil (nom, téléphone, appareil, panne, prix, avance), le réparateur pose les pièces (elles sortent du stock), " +
       "puis le client revient le chercher, parfois des mois après, et paie le reste (ou le reste va en dette). " +
       "Bénéfice d'une réparation = prix de la réparation − prix d'achat des pièces : c'est l'outil qui le calcule. " +
+      "Services sans pièce (décodage, déblocage, flash, mise à jour, configuration, création de compte, maintenance, réparation d'imprimante) : " +
+      "si le client paie tout de suite, c'est une vente du service (outil enregistrer, type sale, productName = le nom du service, montant dit ou prix habituel) ; " +
+      "tout le prix est de la main-d'œuvre. Les licences des outils de décodage sont réparties sur leur durée dans les bénéfices. " +
       "Mots : ekraan / écran, konektëer / connecteur de charge, batri / batterie, nappe, vitre, coque, chargeur, « dafa dee » = l'appareil ne s'allume plus.",
     vivres: false,
     ex: { stock: "« 10 écrans iPhone 11 à 25 000, achetés à 15 000 ; 20 connecteurs à 2 000 ; 5 batteries Tecno »", search: "écran, batterie, connecteur…", invoice: "« Facture Awa, écran iPhone 11, 25 000 »", prompts: ["Awa dépose un iPhone 11, écran cassé", "Quels téléphones sont au dépôt ?", "Il me reste combien d'écrans ?", "Qui me doit de l'argent ?", "Caisse du jour", "Bénéfice de la semaine"], units: "pièce, lot, carton…" },

@@ -657,6 +657,21 @@
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
   .bilan-calc { margin-top: 10px; line-height: 1.5; }
   .atelier-month { margin: 4px 0 10px; }
+  .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+  .service-tile { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--j-line); background: var(--j-white); font: inherit; color: var(--j-ink); cursor: pointer; min-height: 64px; }
+  .service-tile b { font-size: 15px; font-weight: 650; }
+  .service-tile span { font-size: 14px; color: var(--j-ink-2); }
+  .service-tile small { font-size: 12px; color: var(--j-ink-3); }
+  .service-tile.on { border-color: var(--j-ink); box-shadow: var(--j-shadow); }
+  .service-pay { display: grid; gap: 10px; padding: 12px; border-radius: 14px; background: var(--j-soft-2); margin-bottom: 10px; }
+  .service-pay label { display: grid; gap: 4px; }
+  .service-pay small { font-size: 13px; color: var(--j-ink-3); }
+  .service-edit { display: grid; gap: 6px; margin: 8px 0; }
+  .service-edit .row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 14px; }
+  .service-form { display: grid; gap: 8px; margin: 8px 0; }
+  .licences { margin-top: 18px; border-top: 1px solid var(--j-line); padding-top: 12px; }
+  .licence-bar { display: block; height: 6px; margin-top: 6px; border-radius: 999px; background: var(--j-wash); overflow: hidden; max-width: 260px; }
+  .licence-bar i { display: block; height: 100%; background: var(--j-ink-2); }
   .repair-price { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: end; gap: 6px; }
   .repair-price label { display: grid; gap: 4px; }
   .repair-price small { font-size: 12px; color: var(--j-ink-3); }

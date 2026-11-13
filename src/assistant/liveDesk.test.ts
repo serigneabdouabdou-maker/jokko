@@ -417,3 +417,13 @@ describe("réparateur : pièce achetée exprès, dite avec son prix", () => {
     expect(shop().expenses[0]).toMatchObject({ amount: 5000, kind: "achat" });
   });
 });
+
+describe("réparateur : service sans pièce dit à la voix", () => {
+  it("« décodage 5 000 » : vente du service, tout est main-d'œuvre", () => {
+    const { desk, shop, set } = setup();
+    set({ ...seedShop(), activity: "Réparation de téléphones et pièces détachées", products: [], services: [{ id: "srv-1", name: "Décodage", price: 5000, licenceId: "lic-1" }] });
+    const done = desk.handle({ name: "enregistrer", args: { type: "sale", productName: "décodage", amount: 5000, heard: "décodage 5 000" } });
+    expect(done).toMatchObject({ statut: "enregistre", montant: { francs: 5000 } });
+    expect(shop().sales[0]).toMatchObject({ label: "Service · Décodage", amount: 5000, licenceId: "lic-1" });
+  });
+});

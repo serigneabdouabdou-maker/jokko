@@ -24,6 +24,8 @@ export function shopRow(s: Shop): Row {
     lng: s.location ? Math.round(s.location.lng * 100) / 100 : null,
     located_at: s.location?.at ?? null,
     modules: s.modules ?? [],
+    services: s.services ?? [],
+    licences: s.licences ?? [],
   };
 }
 
@@ -43,6 +45,7 @@ const toRow = {
     id: s.id, shop_id: shopId, at: s.at, label: s.label, amount: s.amount,
     qty: opt(s.qty), product_id: opt(s.productId), client_id: opt(s.clientId),
     cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes", ticket: opt(s.ticket),
+    licence_id: opt(s.licenceId),
   }),
   expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense", product_id: opt(e.productId), qty: opt(e.qty) }),
   invoices: (i: Invoice, shopId: string): Row => ({
@@ -378,6 +381,12 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(optStr(s.invoice_note) ? { invoiceNote: str(s.invoice_note) } : {}),
     ...(optStr(s.wave_link) ? { waveLink: str(s.wave_link) } : {}),
     ...(Array.isArray(s.modules) && s.modules.length ? { modules: (s.modules as unknown[]).filter((m): m is string => typeof m === "string") } : {}),
+    ...(Array.isArray(s.services) && s.services.length
+      ? { services: (s.services as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), price: num(x.price), ...(optStr(x.licenceId) ? { licenceId: str(x.licenceId) } : {}) })) }
+      : {}),
+    ...(Array.isArray(s.licences) && s.licences.length
+      ? { licences: (s.licences as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), cost: num(x.cost), startAt: str(x.startAt), months: num(x.months) || 12 })) }
+      : {}),
     ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"
       ? { plan: { plan: s.plan, until: optStr(s.plan_until) ? iso(s.plan_until) : null, trialUntil: optStr(s.trial_until) ? iso(s.trial_until) : null } }
@@ -440,6 +449,8 @@ export function rowsToShop(rows: ShopRows): Shop {
         if (r.checked === true) sale.checked = true;
         const ticket = optNum(r.ticket);
         if (ticket) sale.ticket = ticket;
+        const licenceId = optStr(r.licence_id);
+        if (licenceId) sale.licenceId = licenceId;
         return sale;
       }),
     ),

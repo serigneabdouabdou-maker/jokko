@@ -59,6 +59,7 @@ import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
+import { Services } from "@/components/jokko/Services";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -1633,6 +1634,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
+          {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}

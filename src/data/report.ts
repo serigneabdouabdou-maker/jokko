@@ -1,4 +1,5 @@
 import type { Shop } from "../model.ts";
+import { licenceCharge } from "./services.ts";
 
 /**
  * Bilan de la boutique sur une période : ce qui s'est vendu, ce que ça a rapporté,
@@ -54,7 +55,9 @@ export type Report = {
   /** Marchandise achetée pour le stock : sortie de caisse, pas une dépense du bénéfice */
   purchases: number;
   losses: number;
-  /** Bénéfice net = bénéfice − dépenses − pertes */
+  /** Part du prix des licences (outils de décodage…) qui tombe dans la période. */
+  licences: number;
+  /** Bénéfice net = bénéfice − dépenses − pertes − licences */
   netProfit: number;
   byProduct: ProductLine[];
 };
@@ -63,7 +66,7 @@ export type Report = {
  * Paiement d'un travail (commande de couture, réparation) : la main-d'œuvre n'a pas de prix d'achat.
  * Il compte en entier dans le bénéfice ; les pièces posées sont déjà sur le paiement final (« rendu »).
  */
-export const isServicePayment = (sale: Shop["sales"][number]) => !sale.productId && /^(Couture C-|Réparation R-)/.test(sale.label);
+export const isServicePayment = (sale: Shop["sales"][number]) => !sale.productId && /^(Couture C-|Réparation R-|Service · )/.test(sale.label);
 
 const within = (iso: string, p: Period) => {
   const t = Date.parse(iso);
@@ -112,6 +115,7 @@ export function buildReport(shop: Shop, period: Period): Report {
   const purchases = inPeriod.filter((e) => e.kind === "achat").reduce((a, e) => a + e.amount, 0);
   const losses = inPeriod.filter((e) => e.kind === "perte").reduce((a, e) => a + e.amount, 0);
   const grossProfit = revenue - unknownRevenue - cost;
+  const licences = licenceCharge(shop, period.from, period.to);
 
   const byProduct = [...lines.values()]
     .map(({ unknown, ...line }) => ({ ...line, profit: unknown ? null : line.profit }))
@@ -127,7 +131,8 @@ export function buildReport(shop: Shop, period: Period): Report {
     expenses,
     purchases,
     losses,
-    netProfit: grossProfit - expenses - losses,
+    licences,
+    netProfit: grossProfit - expenses - losses - licences,
     byProduct,
   };
 }
@@ -189,7 +194,7 @@ export function recordInventory(shop: Shop, counts: Record<string, number>, make
 
 export const MONTH_NAMES = MONTHS;
 
-export type MonthRow = { month: number; label: string; revenue: number; grossProfit: number; expenses: number; losses: number; netProfit: number; salesCount: number };
+export type MonthRow = { month: number; label: string; revenue: number; grossProfit: number; expenses: number; losses: number; licences: number; netProfit: number; salesCount: number };
 
 /**
  * Bénéfices mois par mois d'une année (règle de Fallou, 13/11/2026 : « chaque mois ou chaque année, ce que tu as gagné et perdu »).
@@ -203,12 +208,12 @@ export function monthlyReport(shop: Shop, year: number, now = new Date()): { row
     const from = new Date(year, m, 1);
     const r = buildReport(shop, { kind: "mois", from, to: new Date(year, m + 1, 1), label: `${MONTHS[m]} ${year}` });
     unknownRevenue += r.unknownRevenue;
-    rows.push({ month: m, label: MONTHS[m], revenue: r.revenue, grossProfit: r.grossProfit, expenses: r.expenses, losses: r.losses, netProfit: r.netProfit, salesCount: r.salesCount });
+    rows.push({ month: m, label: MONTHS[m], revenue: r.revenue, grossProfit: r.grossProfit, expenses: r.expenses, losses: r.losses, licences: r.licences, netProfit: r.netProfit, salesCount: r.salesCount });
   }
   const sum = (k: keyof Omit<MonthRow, "month" | "label">) => rows.reduce((a, r) => a + r[k], 0);
   return {
     rows,
-    total: { revenue: sum("revenue"), grossProfit: sum("grossProfit"), expenses: sum("expenses"), losses: sum("losses"), netProfit: sum("netProfit"), salesCount: sum("salesCount") },
+    total: { revenue: sum("revenue"), grossProfit: sum("grossProfit"), expenses: sum("expenses"), losses: sum("losses"), licences: sum("licences"), netProfit: sum("netProfit"), salesCount: sum("salesCount") },
     unknownRevenue,
   };
 }
@@ -242,6 +247,8 @@ export function expenseBreakdown(shop: Shop, period: Period): Array<{ label: str
     g.count += 1;
     groups.set(label, g);
   }
+  const licences = licenceCharge(shop, period.from, period.to);
+  if (licences > 0) groups.set("Licences", { label: "Licences (part de la période)", amount: licences, count: (shop.licences ?? []).length });
   return [...groups.values()].sort((a, b) => b.amount - a.amount);
 }
 
@@ -253,6 +260,7 @@ export function reportText(shopName: string, r: Report, money: (n: number) => st
     `Bénéfice sur les ventes : ${money(r.grossProfit)}`,
     `Dépenses : - ${money(r.expenses)}`,
     `Pertes : - ${money(r.losses)}`,
+    r.licences ? `Licences (part de la période) : - ${money(r.licences)}` : "",
     `${r.netProfit < 0 ? "Perdu" : "Gagné"} : ${money(Math.abs(r.netProfit))}`,
     r.purchases ? `Marchandise achetée (dans le stock) : ${money(r.purchases)}` : "",
     "Calculé par Jokko – jokkoapp.com",

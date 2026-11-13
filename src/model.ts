@@ -95,7 +95,15 @@ export type Sale = {
   checked?: boolean;
   /** Numéro du ticket de caisse dans la journée (toutes les lignes d'un même encaissement ont le même). */
   ticket?: number;
+  /** Service fait avec une licence (décodage) : pour savoir ce que la licence a rapporté. */
+  licenceId?: string;
 };
+
+/** Service sans pièce (décodage, configuration, création de compte, maintenance…) : prix habituel, licence utilisée. */
+export type ServiceItem = { id: string; name: string; price: number; licenceId?: string };
+
+/** Licence d'un outil (décodage…) payée d'un coup, utilisée des mois : son coût est réparti sur sa durée dans les bénéfices. */
+export type Licence = { id: string; name: string; cost: number; startAt: string; months: number };
 
 export type Payment = "especes" | "wave" | "om" | "credit";
 
@@ -209,6 +217,9 @@ export type Shop = {
   voids?: CartVoid[];
   /** Dettes remboursées : l'argent entre dans la caisse du jour (espèces) ou chez Wave / Orange Money. */
   repayments?: Repayment[];
+  /** Réparateurs : services sans pièce (catalogue de prix) et licences des outils. */
+  services?: ServiceItem[];
+  licences?: Licence[];
 };
 
 /** Un client rembourse tout ou partie de sa dette. */

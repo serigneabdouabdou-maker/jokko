@@ -2,7 +2,7 @@
 // Une pharmacie voit une pharmacie, un tailleur un atelier de couture, une boutique de quartier du riz et de l'huile.
 // Prix indicatifs du Sénégal (fin 2026), clients, dettes et une semaine d'activité.
 // Elle vit seulement sur le téléphone : rien n'est envoyé au serveur, et « Quitter la démo » efface tout.
-import type { Client, CoutureOrder, CoutureStatus, Expense, Invoice, InvoiceLine, Product, Profile, Reminder, Repair, RepairStatus, Sale, Shop } from "../model.ts";
+import type { Client, CoutureOrder, CoutureStatus, Expense, Invoice, InvoiceLine, Licence, Product, Profile, Reminder, Repair, RepairStatus, Sale, ServiceItem, Shop } from "../model.ts";
 import { METIERS, metierOf, type MetierId } from "./metiers.ts";
 
 export const DEMO_PREFIX = "demo-";
@@ -38,7 +38,7 @@ type DemoClient = { key: string; name: string; debt: number; dueDays?: number; m
 type DemoExpense = { key: string; daysAgo: number; hour: number; label: string; amount: number; kind: NonNullable<Expense["kind"]>; item?: string; qty?: number };
 
 type Ctx = { id: (k: string) => string; at: (daysAgo: number, hour: number) => string; now: Date; products: Product[]; clients: Client[]; rnd: () => number };
-type Extra = { couture?: CoutureOrder[]; repairs?: Repair[]; sales?: Sale[] };
+type Extra = { couture?: CoutureOrder[]; repairs?: Repair[]; sales?: Sale[]; services?: ServiceItem[]; licences?: Licence[]; expenses?: Expense[] };
 
 type Kit = {
   seed: number;
@@ -399,7 +399,7 @@ const reparation: Kit = {
     ],
   },
   reminder: { client: "saliou", note: "Relance envoyée sur WhatsApp" },
-  extra: ({ id, at, clients, products }) => {
+  extra: ({ id, at, now, clients, products }) => {
     const client = (k: string) => clients.find((c) => c.id === id(`c-${k}`))!;
     const product = (k: string) => products.find((p) => p.id === id(`p-${k}`))!;
     const jobs: Array<{ k: string; device: string; problem: string; price: number; advance: number; daysAgo: number; status: RepairStatus; parts: string[]; warranty?: number }> = [
@@ -443,7 +443,23 @@ const reparation: Kit = {
         sales.push({ id: id(`s-rendu-${i + 1}`), at: r.returnedAt!, label: `Réparation ${number} · ${j.device} (rendu)`, amount: j.price - j.advance, clientId: c.id, cost, payment: "especes" });
       }
     });
-    return { repairs, sales };
+    // Services sans pièce et licence de décodage (90 000 F pour 1 an, achetée il y a 2 mois).
+    const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const licences: Licence[] = [{ id: id("lic-1"), name: "Outil de décodage", cost: 90000, startAt: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`, months: 12 }];
+    const services: ServiceItem[] = [
+      { id: id("srv-1"), name: "Décodage", price: 5000, licenceId: id("lic-1") },
+      { id: id("srv-2"), name: "Déblocage compte (FRP)", price: 5000, licenceId: id("lic-1") },
+      { id: id("srv-3"), name: "Flash / mise à jour", price: 5000 },
+      { id: id("srv-4"), name: "Création de compte", price: 5000 },
+      { id: id("srv-5"), name: "Réparation imprimante", price: 8000 },
+    ];
+    for (let d = 6; d >= 0; d--) {
+      [0, 1].forEach((k) => {
+        const srv = services[(d + k) % services.length];
+        sales.push({ id: id(`s-srv-${d}-${k}`), at: at(d, 11 + k * 4), label: `Service · ${srv.name}`, amount: srv.price, ...(srv.licenceId ? { licenceId: srv.licenceId } : {}) });
+      });
+    }
+    return { repairs, sales, services, licences };
   },
 };
 
@@ -868,6 +884,8 @@ export function buildDemoShop(now = new Date(), activity: string | MetierId = "a
     shortcuts: [],
     ...(extra.repairs ? { repairs: extra.repairs } : {}),
     ...(extra.couture ? { couture: extra.couture } : {}),
+    ...(extra.services ? { services: extra.services } : {}),
+    ...(extra.licences ? { licences: extra.licences } : {}),
   };
 }
 

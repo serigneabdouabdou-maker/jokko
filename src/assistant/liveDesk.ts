@@ -12,6 +12,7 @@ import { missingForOrder, readSpokenCouture, spokenMoney } from "../data/couture
 import { addRepair, deliverRepair, findRepair, markRepaired, type PartInput, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName, UNITS } from "./wolofNames";
 import { foreignArticle } from "../data/metierWords";
+import { sellService, servicesOf } from "../data/services";
 import { metierOf } from "../data/metiers";
 
 export { expandHeard, pickByName, plain, sameName };
@@ -400,6 +401,18 @@ export class LiveDesk {
       if (action.type !== "stock_adjust" && !fixAmounts(action, args, heardText)) return NOT_UNDERSTOOD;
       const heard = typeof args.heard === "string" ? args.heard.trim() : "";
       if (heard) this.deps.onHeard?.(heard);
+      // Service sans pièce du catalogue du réparateur (« décodage 5 000 ») : vente de main-d'œuvre, avec sa licence.
+      if (action.type === "sale" && !action.productId && said && servicesOf(shopNow).length) {
+        const service = pickByName(servicesOf(shopNow), said).item;
+        if (service) {
+          const amount = action.amount && action.amount > 0 ? action.amount : service.price;
+          const done = sellService(shopNow, { name: service.name, amount, licenceId: service.licenceId, clientId: action.clientId ?? undefined });
+          if (done) {
+            this.commit(shopNow, done.shop, `Service · ${service.name} · ${amount} F`, heard, { callId: call.id, amount });
+            return { statut: "enregistre", resume: `${service.name} encaissé`, montant: { francs: amount, wolof: francsToWolof(amount) }, consigne: "Dis en une phrase le service et le montant (montant.wolof) : tout est main-d'œuvre, pas de pièce." };
+          }
+        }
+      }
       // Dette : « ajout » ou « total » d'après les mots du commerçant, pas d'après le modèle.
       // Rien de clair avec un montant (« Fatou me doit 15 000 ») : on laisse le code poser la question.
       if (action.type === "debt_add" && heard) {

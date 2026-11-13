@@ -87,11 +87,12 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         <article><span>Bénéfice sur les ventes</span><b className="num">{money(report.grossProfit)}</b></article>
         <article><span>Dépenses</span><b className="num">− {money(report.expenses)}</b></article>
         <article><span>Pertes</span><b className="num">− {money(report.losses)}</b></article>
+        {report.licences > 0 && <article><span>Licences (part)</span><b className="num">− {money(report.licences)}</b></article>}
         <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span><b className="num">{money(Math.abs(report.netProfit))}</b></article>
       </div>
       <p className="note bilan-calc">
         Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
-        {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)} = <b>{money(report.netProfit)}</b>.
+        {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)}{report.licences ? ` − licences ${money(report.licences)}` : ""} = <b>{money(report.netProfit)}</b>.
       </p>
       <div className="row">
         <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => void share()}>Envoyer ce bilan sur WhatsApp</Button>
@@ -129,14 +130,14 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         <>
           <div className="import-preview">
             <table className="bilan-months">
-              <thead><tr><th>Mois</th><th>Ventes</th><th>Bénéfice ventes</th><th>Dépenses + pertes</th><th>Gagné</th></tr></thead>
+              <thead><tr><th>Mois</th><th>Ventes</th><th>Bénéfice ventes</th><th>Dépenses, pertes{months.total.licences ? ", licences" : ""}</th><th>Gagné</th></tr></thead>
               <tbody>
                 {months.rows.map((r) => (
                   <tr key={r.month}>
                     <td>{r.label}</td>
                     <td className="num">{money(r.revenue)}</td>
                     <td className="num">{money(r.grossProfit)}</td>
-                    <td className="num">{r.expenses + r.losses ? `− ${money(r.expenses + r.losses)}` : money(0)}</td>
+                    <td className="num">{r.expenses + r.losses + r.licences ? `− ${money(r.expenses + r.losses + r.licences)}` : money(0)}</td>
                     <td className="num" data-tone={r.netProfit < 0 ? "bad" : r.netProfit > 0 ? "good" : undefined}>{money(r.netProfit)}</td>
                   </tr>
                 ))}
@@ -146,7 +147,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
                   <th>Total {year}</th>
                   <th className="num">{money(months.total.revenue)}</th>
                   <th className="num">{money(months.total.grossProfit)}</th>
-                  <th className="num">− {money(months.total.expenses + months.total.losses)}</th>
+                  <th className="num">− {money(months.total.expenses + months.total.losses + months.total.licences)}</th>
                   <th className="num" data-tone={months.total.netProfit < 0 ? "bad" : "good"}>{money(months.total.netProfit)}</th>
                 </tr>
               </tfoot>
@@ -214,7 +215,7 @@ export function ProfitStrip({ shop, onOpen }: { shop: Shop; onOpen: () => void }
   return (
     <button type="button" className="banner banner-link profit-strip" onClick={onOpen}>
       <span>
-        <b>{r.period.label}</b> · bénéfice sur les ventes {money(r.grossProfit)} − dépenses et pertes {money(r.expenses + r.losses)} ={" "}
+        <b>{r.period.label}</b> · bénéfice sur les ventes {money(r.grossProfit)} − dépenses et pertes {money(r.expenses + r.losses + r.licences)} ={" "}
         <b data-tone={r.netProfit < 0 ? "bad" : "good"}>{r.netProfit < 0 ? `perdu ${money(-r.netProfit)}` : `gagné ${money(r.netProfit)}`}</b>
       </span>
       <span className="profit-go">Mes bénéfices ›</span>
