@@ -3,11 +3,23 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Repair, type Shop, money } from "@/model";
-import { addRepair, deliverRepair, markRepaired, partsCost, payRepair, remaining, repairProfit, repairsOf, setRepairPrice, underWarranty, waitingDays } from "@/data/repairs";
+import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { whatsappLink } from "@/data/debts";
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
+
+/** « Le client paie 15 000 F = pièce 5 000 F + main-d'œuvre 10 000 F » : le calcul du réparateur, écrit en clair. */
+function Breakdown({ r }: { r: Repair }) {
+  const b = repairBreakdown(r);
+  if (!b.price) return null;
+  return (
+    <p className={`repair-calc${b.labor < 0 ? " is-loss" : ""}`}>
+      Le client paie <b>{money(b.price)}</b> = pièces {money(b.parts)} + main-d'œuvre <b>{money(b.labor)}</b>
+      {b.labor < 0 ? " : la pièce coûte plus que le prix, tu perds de l'argent." : r.parts.length ? " (ton gain)" : " (pièces pas encore notées)"}
+    </p>
+  );
+}
 
 /**
  * Atelier : le carnet de réparations.
@@ -16,18 +28,24 @@ const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) 
  */
 export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "" });
+  const [form, setForm] = useState({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<"cours" | "rendu">("cours");
   const list = repairsOf(shop).filter((r) => (filter === "cours" ? r.status === "depot" || r.status === "repare" : r.status === "rendu"));
   const waiting = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
   const owed = waiting.reduce((a, r) => a + remaining(r), 0);
+  const month = workshopMonth(shop);
+  // Calcul du prix : pièce + main-d'œuvre = prix pour le client (ou prix − pièce = main-d'œuvre).
+  const piece = n(form.piece);
+  const labor = n(form.labor);
+  const typedPrice = n(form.price);
+  const price = typedPrice || (piece || labor ? piece + labor : 0);
 
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
-    const { shop: next } = addRepair(shop, { ...form, price: n(form.price), advance: n(form.advance) });
+    const { shop: next } = addRepair(shop, { ...form, price, advance: n(form.advance) });
     commit(next);
-    setForm({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "" });
+    setForm({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
     setAdding(false);
   }
 
@@ -40,6 +58,12 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       <p className="note">
         {waiting.length ? `Reste à encaisser sur les appareils au dépôt : ${money(owed)}.` : "Aucun appareil au dépôt."} Tu peux aussi le dire à Jokko : « Awa dépose un iPhone 11, écran cassé, 25 000, avance 5 000 ».
       </p>
+      <div className="kpis atelier-month" aria-label="L'atelier ce mois-ci">
+        <article><span>Rendues ce mois</span><b className="num">{month.done}</b></article>
+        <article><span>Encaissé</span><b className="num">{money(month.revenue)}</b></article>
+        <article><span>Pièces</span><b className="num">− {money(month.parts)}</b></article>
+        <article className="kpi-main" data-tone={month.labor < 0 ? "bad" : "good"}><span>Main-d'œuvre gagnée ce mois</span><b className="num">{money(month.labor)}</b></article>
+      </div>
       <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
         <Button className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouveau dépôt
@@ -54,7 +78,30 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
           <Input className="h-11" inputMode="tel" placeholder="Téléphone du client (77 …)" aria-label="Téléphone du client" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input className="h-11" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
           <Input className="h-11" placeholder="Panne (écran cassé, connecteur…)" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
-          <Input className="h-11" inputMode="numeric" placeholder="Prix de la réparation (F) — vide si pas encore fixé" aria-label="Prix" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+          <div className="repair-price">
+            <label>
+              <small>Prix d'achat de la pièce</small>
+              <Input className="h-11" inputMode="numeric" placeholder="ex. 5 000" aria-label="Prix d'achat de la pièce" value={form.piece} onChange={(e) => setForm({ ...form, piece: e.target.value })} />
+            </label>
+            <span aria-hidden="true">+</span>
+            <label>
+              <small>Main-d'œuvre</small>
+              <Input className="h-11" inputMode="numeric" placeholder="ex. 10 000" aria-label="Main-d'œuvre" value={form.labor} onChange={(e) => setForm({ ...form, labor: e.target.value })} />
+            </label>
+            <span aria-hidden="true">=</span>
+            <label>
+              <small>Prix pour le client</small>
+              <Input className="h-11" inputMode="numeric" placeholder={piece || labor ? String(piece + labor) : "vide si pas fixé"} aria-label="Prix pour le client" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+            </label>
+          </div>
+          {price > 0 && (
+            <p className="repair-calc">
+              Prix pour le client <b>{money(price)}</b>
+              {piece ? <> − pièce {money(piece)} = ta main-d'œuvre <b>{money(price - piece)}</b></> : null}
+              {piece && price - piece < 0 ? " : attention, tu perds de l'argent." : ""}
+              {piece ? " Tu noteras la pièce quand tu la poses (bouton « Réparé »)." : ""}
+            </p>
+          )}
           <Input className="h-11" inputMode="numeric" placeholder="Avance payée (F)" aria-label="Avance" value={form.advance} onChange={(e) => setForm({ ...form, advance: e.target.value })} />
           <Button className="h-11 rounded-full" onClick={save} disabled={!form.clientName.trim() || !form.device.trim()}>
             <Icon name="sauvegarde" size="sm" /> Enregistrer le dépôt
@@ -74,6 +121,10 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
 
 function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void }) {
   const [parts, setParts] = useState<string[]>([]);
+  const [bought, setBought] = useState<Array<{ label: string; cost: number }>>([]);
+  const [buyName, setBuyName] = useState("");
+  const [buyCost, setBuyCost] = useState("");
+  const [fromCash, setFromCash] = useState(true);
   const [pay, setPay] = useState("");
   const [price, setPrice] = useState(r.price ? String(r.price) : "");
   const days = waitingDays(r);
@@ -116,19 +167,65 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                     {p.name}
                   </Button>
                 ))}
-                {pieces.length === 0 && <small className="note">Ajoute tes pièces dans Stock (avec leur prix d'achat) pour calculer le bénéfice.</small>}
+                {pieces.length === 0 && <small className="note">Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès.</small>}
               </div>
-              <Button className="h-10 rounded-full" onClick={() => { const next = markRepaired(shop, r.id, parts.map((id) => ({ productId: id }))); if (next) commit(next); }}>
+              <small className="note">Pièce achetée exprès pour cette réparation :</small>
+              <div className="repair-buy">
+                <Input className="h-10" placeholder="Pièce (écran, batterie…)" aria-label="Pièce achetée" value={buyName} onChange={(e) => setBuyName(e.target.value)} />
+                <Input className="h-10" inputMode="numeric" placeholder="Prix d'achat (F)" aria-label="Prix d'achat de la pièce" value={buyCost} onChange={(e) => setBuyCost(e.target.value)} />
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-full px-3"
+                  disabled={!buyName.trim() || !n(buyCost)}
+                  onClick={() => {
+                    setBought([...bought, { label: buyName.trim(), cost: n(buyCost) }]);
+                    setBuyName("");
+                    setBuyCost("");
+                  }}
+                >
+                  <Icon name="ajouter" size="sm" /> Ajouter
+                </Button>
+              </div>
+              {bought.length > 0 && (
+                <>
+                  <ul className="repair-bought">
+                    {bought.map((b, i) => (
+                      <li key={i}>
+                        {b.label} · {money(b.cost)}{" "}
+                        <button type="button" className="link" onClick={() => setBought(bought.filter((_, j) => j !== i))}>Enlever</button>
+                      </li>
+                    ))}
+                  </ul>
+                  <label className="row">
+                    <input type="checkbox" checked={fromCash} onChange={(e) => setFromCash(e.target.checked)} />
+                    <span>Payée avec l'argent de la caisse (la caisse baisse de {money(bought.reduce((a, b) => a + b.cost, 0))})</span>
+                  </label>
+                </>
+              )}
+              {r.price > 0 && (parts.length > 0 || bought.length > 0) && (
+                <p className="repair-calc">
+                  Avec ces pièces : main-d'œuvre{" "}
+                  <b>{money(r.price - bought.reduce((a, b) => a + b.cost, 0) - parts.reduce((a, id) => a + (shop.products.find((p) => p.id === id)?.cost ?? 0), 0))}</b>
+                </p>
+              )}
+              <Button
+                className="h-10 rounded-full"
+                onClick={() => {
+                  const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, fromCash }))];
+                  const next = markRepaired(shop, r.id, inputs);
+                  if (next) commit(next);
+                }}
+              >
                 <Icon name="reparation" size="sm" /> Réparé
               </Button>
             </>
           )}
           {r.parts.length > 0 && (
             <small className="note">
-              Pièces : {r.parts.map((p) => p.label).join(", ")} · coût {money(partsCost(r))}
-              {r.price ? ` · bénéfice ${money(repairProfit(r))}` : ""}
+              Pièces : {r.parts.map((p) => `${p.label} (${money(p.cost)})`).join(", ")} · total {money(partsCost(r))}
             </small>
           )}
+          <Breakdown r={r} />
           {r.status !== "rendu" && (
             <>
               <Input className="h-10" inputMode="numeric" placeholder={rest ? `Payé maintenant (reste ${money(rest)})` : "Payé maintenant (F)"} aria-label="Payé maintenant" value={pay} onChange={(e) => setPay(e.target.value)} />

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type Shop, newShop } from "@/model";
-import { addRepair, deliverRepair, findRepair, markRepaired, nextRepairNumber, payRepair, remaining, repairProfit, repairsOf } from "./repairs";
+import { addRepair, deliverRepair, findRepair, markRepaired, nextRepairNumber, payRepair, remaining, repairBreakdown, repairProfit, repairsOf, workshopMonth } from "./repairs";
+import { buildReport, periodOf } from "./report";
 
 function atelier(): Shop {
   return {
@@ -63,5 +64,30 @@ describe("carnet de réparations", () => {
     shop = addRepair(shop, { clientName: "Moussa Fall", device: "Tecno", problem: "batterie" }).shop;
     expect(findRepair(shop, "R-002")?.clientName).toBe("Moussa Fall");
     expect(findRepair(shop, "Awa")?.device).toBe("iPhone 11");
+  });
+
+  it("écran acheté exprès 5 000, réparation 15 000 : la caisse baisse de 5 000, il gagne 10 000 de main-d'œuvre", () => {
+    const start = addRepair(atelier(), { clientName: "Modou", device: "Tecno Spark 10", problem: "écran cassé", price: 15000, advance: 5000 });
+    const fixed = markRepaired(start.shop, start.repair.id, [{ label: "Écran Tecno Spark 10", cost: 5000, fromCash: true }])!;
+    const r = repairsOf(fixed)[0];
+    expect(repairBreakdown(r)).toEqual({ price: 15000, parts: 5000, labor: 10000 });
+    // L'achat de la pièce sort de la caisse, mais n'est pas une dépense du bénéfice.
+    expect(fixed.expenses[0]).toMatchObject({ amount: 5000, kind: "achat", label: "Pièce pour R-001 (Tecno Spark 10) : Écran Tecno Spark 10" });
+    const done = deliverRepair(fixed, start.repair.id, 10000, false)!;
+    const month = workshopMonth(done);
+    expect(month).toMatchObject({ done: 1, revenue: 15000, parts: 5000, labor: 10000, open: 0 });
+    // Bénéfices du mois : 15 000 encaissés − 5 000 de pièce = 10 000 gagnés.
+    const report = buildReport(done, periodOf("mois"));
+    expect(report.revenue).toBe(15000);
+    expect(report.grossProfit).toBe(10000);
+    expect(report.netProfit).toBe(10000);
+    expect(report.purchases).toBe(5000);
+  });
+
+  it("pièce achetée avec son propre argent : rien ne sort de la caisse", () => {
+    const start = addRepair(atelier(), { clientName: "Modou", device: "Itel A70", problem: "batterie", price: 8000 });
+    const fixed = markRepaired(start.shop, start.repair.id, [{ label: "Batterie Itel", cost: 3000 }])!;
+    expect(fixed.expenses).toHaveLength(0);
+    expect(repairBreakdown(repairsOf(fixed)[0]).labor).toBe(5000);
   });
 });

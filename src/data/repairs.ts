@@ -23,6 +23,14 @@ export function nextRepairNumber(shop: Shop): string {
 }
 
 export const partsCost = (r: Repair) => r.parts.reduce((a, p) => a + Math.max(0, Math.round(p.cost)), 0);
+/**
+ * Le prix d'une réparation, décomposé pour le réparateur (demande de Fallou, 13/11/2026) :
+ * le client paie 15 000 = la pièce 5 000 (achetée) + la main-d'œuvre 10 000 (ce que gagne le réparateur).
+ */
+export function repairBreakdown(r: Repair): { price: number; parts: number; labor: number } {
+  const parts = partsCost(r);
+  return { price: r.price, parts, labor: r.price - parts };
+}
 export const remaining = (r: Repair) => Math.max(0, r.price - r.paid);
 /** Bénéfice de la réparation : prix − prix d'achat des pièces. */
 export const repairProfit = (r: Repair) => r.price - partsCost(r);
@@ -78,7 +86,8 @@ export function setRepairPrice(shop: Shop, id: string, price: number): Shop {
   return update(shop, id, (r) => ({ ...r, price: Math.max(0, Math.round(price)) }));
 }
 
-export type PartInput = { productId?: string; label?: string; qty?: number; cost?: number };
+/** Pièce posée : prise dans le stock (productId), ou achetée exprès (label + cost) ; fromCash = payée avec l'argent de la caisse. */
+export type PartInput = { productId?: string; label?: string; qty?: number; cost?: number; fromCash?: boolean };
 
 /**
  * Réparé : les pièces posées sortent du stock (prix d'achat du stock), ou sont notées avec leur prix
@@ -89,6 +98,9 @@ export function markRepaired(shop: Shop, id: string, inputs: PartInput[]): Shop 
   if (!repair || repair.status === "rendu" || repair.status === "annule") return null;
   let products = shop.products;
   const parts: RepairPart[] = [];
+  // Pièce achetée exprès avec l'argent de la caisse : sortie de caisse (achat), pas une dépense du bénéfice ;
+  // son prix d'achat compte au rendu, sur le paiement de la réparation.
+  const bought: Shop["expenses"] = [];
   for (const p of inputs) {
     const qty = Math.max(1, Math.round(p.qty ?? 1));
     if (p.productId) {
@@ -97,11 +109,13 @@ export function markRepaired(shop: Shop, id: string, inputs: PartInput[]): Shop 
       products = products.map((x) => (x.id === product.id ? { ...x, stock: Math.max(0, x.stock - qty) } : x));
       parts.push({ productId: product.id, label: product.name, qty, cost: Math.round((p.cost ?? product.cost ?? 0) * (p.cost !== undefined ? 1 : qty)) });
     } else if (p.label?.trim()) {
-      parts.push({ label: p.label.trim(), qty, cost: Math.max(0, Math.round(p.cost ?? 0)) });
+      const cost = Math.max(0, Math.round(p.cost ?? 0));
+      parts.push({ label: p.label.trim(), qty, cost });
+      if (cost > 0 && p.fromCash) bought.push({ id: uid("e"), at: todayStamp(), label: `Pièce pour ${repair.number} (${repair.device}) : ${p.label.trim()}`, amount: cost, kind: "achat" });
     }
   }
   return {
-    ...update({ ...shop, products }, id, (r) => ({ ...r, parts: [...r.parts, ...parts], status: "repare", repairedAt: todayStamp() })),
+    ...update({ ...shop, products, expenses: bought.length ? [...bought, ...shop.expenses] : shop.expenses }, id, (r) => ({ ...r, parts: [...r.parts, ...parts], status: "repare", repairedAt: todayStamp() })),
   };
 }
 
@@ -162,4 +176,16 @@ export function findRepair(shop: Shop, ref: string): Repair | undefined {
   const open = list.filter((r) => r.status === "depot" || r.status === "repare");
   const found = pickByName(open.map((r) => ({ ...r, name: `${r.clientName} ${r.device}` })), ref);
   return found.item ? open.find((r) => r.id === found.item?.id) : undefined;
+}
+
+/** L'atelier sur un mois : réparations rendues, argent encaissé, pièces, main-d'œuvre gagnée ; et ce qui reste au dépôt. */
+export function workshopMonth(shop: Shop, now = new Date()): { done: number; revenue: number; parts: number; labor: number; open: number; owed: number } {
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+  const list = repairsOf(shop);
+  const done = list.filter((r) => r.status === "rendu" && r.returnedAt && Date.parse(r.returnedAt) >= from && Date.parse(r.returnedAt) < to);
+  const open = list.filter((r) => r.status === "depot" || r.status === "repare");
+  const revenue = done.reduce((a, r) => a + r.price, 0);
+  const parts = done.reduce((a, r) => a + partsCost(r), 0);
+  return { done: done.length, revenue, parts, labor: revenue - parts, open: open.length, owed: open.reduce((a, r) => a + remaining(r), 0) };
 }

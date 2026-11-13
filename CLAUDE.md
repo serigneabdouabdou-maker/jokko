@@ -94,6 +94,14 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Imprimante conseillée : thermique Bluetooth 58 mm (≈ 15 000 à 25 000 F à Dakar, hypothèse) ; 80 mm pour les supérettes à gros débit.
 - Papier 80 mm (kits de caisse CFC, 12/11/2026) : choix « Papier 58 mm / 80 mm » dans l'aperçu du ticket, gardé sur chaque appareil (`src/data/printer.ts`, clé `jokko.papier`) ; 80 mm = 48 caractères, page 80 mm, zone 72 mm (`paperPage`). Ticket client et ticket Z suivent la largeur (`receiptFor().build`, `zText(…, paper)`). Caisse tactile Windows/Android : Chrome + jokkoapp.com installé en appli, imprimante USB par « Imprimer » (pilote installé, tiroir-caisse ouvert par le pilote de l'imprimante).
 
+## Atelier des réparateurs : pièce + main-d'œuvre (13/11/2026, demande de Fallou)
+
+- Le réparateur achète souvent la pièce exprès (écran 5 000) et fait payer pièce + travail (15 000) : `repairBreakdown` (prix = pièces + main-d'œuvre), écrit en clair sur chaque réparation (`Breakdown` dans `Atelier.tsx`), en rouge si la pièce coûte plus que le prix.
+- Dépôt : calcul « prix d'achat de la pièce + main-d'œuvre = prix pour le client » (prix rempli tout seul, modifiable).
+- « Réparé » : pièces du stock (sortent du stock) et/ou « pièce achetée exprès » (nom + prix d'achat) ; « Payée avec l'argent de la caisse » (coché par défaut) → sortie de caisse `kind: achat` « Pièce pour R-001 (…) : … » (caisse juste, pas une dépense du bénéfice ; le prix d'achat compte au rendu).
+- En haut de l'Atelier : ce mois, réparations rendues, encaissé, pièces, main-d'œuvre gagnée (`workshopMonth`).
+- À la voix : « R-001 réparé, écran Tecno à 5 000 » → pièce achetée 5 000, Jokko dit la main-d'œuvre (`main_oeuvre`) ; pièce sans prix → Jokko demande combien elle a coûté.
+
 ## Bénéfices (13/11/2026, demande de Fallou)
 
 - Écran « Bénéfices » (ancien « Bilan », patron seulement, `Bilan.tsx`, calculs `src/data/report.ts`) : ventes − prix d'achat de ce qui est vendu (`sales.cost`) = bénéfice sur les ventes ; − dépenses − pertes = gagné (ou perdu). Les achats de marchandise (`kind: achat`) ne sont pas des dépenses : leur coût compte quand l'article est vendu.

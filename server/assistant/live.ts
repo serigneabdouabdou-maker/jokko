@@ -252,7 +252,7 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 prixDit: { type: Type.STRING, description: "deposer : le prix de la réparation, mots exacts (« 25 000 », « juróomi junni »), si fixé." },
                 avanceDit: { type: Type.STRING, description: "deposer : l'avance payée, mots exacts, s'il y en a." },
                 montantDit: { type: Type.STRING, description: "payer ou rendre : ce que le client paie maintenant, mots exacts." },
-                pieces: { type: Type.ARRAY, items: { type: Type.STRING }, description: "reparee : les pièces posées, comme dites (« écran iPhone 11 », « connecteur »)." },
+                pieces: { type: Type.ARRAY, items: { type: Type.STRING }, description: "reparee : les pièces posées, comme dites (« écran iPhone 11 », « connecteur »). Pièce achetée exprès : ajoute son prix d'achat dit (« écran iPhone 11 à 5 000 »)." },
                 resteEnDette: { type: Type.BOOLEAN, description: "rendre : vrai si le reste non payé va en dette du client." },
                 garantieJours: { type: Type.NUMBER, description: "deposer ou rendre : garantie en jours si le réparateur la donne." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },

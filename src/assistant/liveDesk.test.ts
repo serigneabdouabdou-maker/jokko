@@ -405,3 +405,15 @@ describe("Un métier = ses articles, et ses mots", () => {
     expect(shop().products.every((p) => !p.aliases?.length)).toBe(true);
   });
 });
+
+describe("réparateur : pièce achetée exprès, dite avec son prix", () => {
+  it("« écran Tecno à 5 000 » : la pièce compte 5 000, la main-d'œuvre est dite", () => {
+    const { desk, shop, set } = setup();
+    set({ ...seedShop(), activity: "Réparation de téléphones et pièces détachées", products: [] });
+    desk.handle({ name: "reparation", args: { action: "deposer", clientName: "Modou", appareil: "Tecno Spark 10", panne: "écran cassé", prixDit: "15 000", heard: "Modou dépose un Tecno, écran, 15 000" } });
+    const done = desk.handle({ name: "reparation", args: { action: "reparee", ticket: "R-001", pieces: ["écran Tecno à 5 000"], heard: "R-001 réparé, écran Tecno à 5 000" } });
+    expect(done).toMatchObject({ statut: "enregistre", main_oeuvre: { francs: 10000 } });
+    expect(shop().repairs![0].parts[0]).toMatchObject({ label: "écran Tecno", cost: 5000 });
+    expect(shop().expenses[0]).toMatchObject({ amount: 5000, kind: "achat" });
+  });
+});

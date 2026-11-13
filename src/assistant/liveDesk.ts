@@ -9,7 +9,7 @@ import { Basket } from "./basket";
 import { debtWords } from "./debtMode";
 import { addCouture, deliverCouture, findCouture, isOpen as coutureOpen, knownMeasures, MEASURES, ordersOf as coutureOrders, payCouture, remaining as coutureRest, setStep, STEP_LABEL } from "../data/couture";
 import { missingForOrder, readSpokenCouture, spokenMoney } from "../data/coutureVoice";
-import { addRepair, deliverRepair, findRepair, markRepaired, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
+import { addRepair, deliverRepair, findRepair, markRepaired, type PartInput, payRepair, remaining, repairProfit, repairsOf } from "../data/repairs";
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName, UNITS } from "./wolofNames";
 import { foreignArticle } from "../data/metierWords";
 import { metierOf } from "../data/metiers";
@@ -115,11 +115,18 @@ export class LiveDesk {
     if (!found) return { statut: "incomplet", besoin: "le numéro du ticket (R-…) ou le nom du client de la réparation" };
     if (action === "reparee") {
       const names = Array.isArray(args.pieces) ? args.pieces.map((x) => String(x ?? "").trim()).filter(Boolean) : [];
-      const parts = names.map((n) => {
-        const hit = pickByName(shop.products, n);
-        return hit.item ? { productId: hit.item.id } : { label: n, cost: 0 };
+      // « écran iPhone 11 à 5 000 » : pièce achetée exprès, avec son prix d'achat (sortie de caisse).
+      const priced = names.map((n) => {
+        const m = n.match(/^(.*?)(?:\s+(?:à|a|ci|pour|=)\s+|\s*:\s*)(.+)$/i);
+        const cost = m ? said(m[2]) : null;
+        return cost && m![1].trim() ? { name: m![1].trim(), cost } : { name: n, cost: null };
       });
-      const missingPieces = names.filter((n) => !pickByName(shop.products, n).item);
+      const parts: PartInput[] = priced.map(({ name, cost }) => {
+        const hit = pickByName(shop.products, name);
+        if (hit.item) return { productId: hit.item.id };
+        return cost ? { label: name, cost, fromCash: true } : { label: name, cost: 0 };
+      });
+      const missingPieces = priced.filter((p) => !p.cost && !pickByName(shop.products, p.name).item).map((p) => p.name);
       const after = markRepaired(shop, found.id, parts);
       if (!after) return { statut: "incomplet", besoin: "une réparation encore ouverte" };
       const r = repairsOf(after).find((x) => x.id === found.id)!;
@@ -130,7 +137,10 @@ export class LiveDesk {
         pieces: r.parts.map((p) => p.label),
         benefice: r.price ? W(repairProfit(r)) : null,
         reste: W(remaining(r)),
-        ...(missingPieces.length ? { pieces_hors_stock: missingPieces, consigne_pieces: "Ces pièces ne sont pas dans le stock : leur prix d'achat n'est pas compté. Dis-le en une phrase." } : {}),
+        main_oeuvre: r.price ? W(repairProfit(r)) : null,
+        ...(missingPieces.length
+          ? { pieces_sans_prix: missingPieces, consigne_pieces: "Ces pièces ne sont pas dans le stock et leur prix d'achat n'est pas dit : demande combien il les a achetées. S'il le dit, rappelle reparee avec seulement ces pièces et leur prix (« écran à 5 000 »)." }
+          : r.price ? { consigne_calcul: "Dis en une phrase : le client paie le prix, les pièces ont coûté tant, il gagne la main-d'œuvre (main_oeuvre.wolof)." } : {}),
       };
     }
     if (action === "payer") {
