@@ -19,6 +19,7 @@ import {
   debtors,
   expectedCash,
   loadProfile,
+  isLow,
   lowStock,
   money,
   newShop,
@@ -63,6 +64,7 @@ import { Services } from "@/components/jokko/Services";
 import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
 import { type Segment, SEGMENTS } from "@/data/clientFiles";
+import { searchProducts } from "@/data/partSearch";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -1689,7 +1691,11 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   const [price, setPrice] = useState("1000");
   const [editing, setEditing] = useState<string | null>(null);
   const [tool, setTool] = useState<"voix" | "prix" | "etiquettes" | "reception" | null>(null);
+  const [query, setQuery] = useState("");
   const toggle = (t: typeof tool) => setTool((cur) => (cur === t ? null : t));
+  // Beaucoup d'articles (pièces du fournisseur) : on cherche par nom ou par téléphone compatible (« BF6 »).
+  const searchable = shop.products.length > 15;
+  const shown = searchable && query.trim().length >= 2 ? searchProducts(shop.products, query, 100).map((h) => h.product) : shop.products;
   const codeOwner = (code: string) =>
     shop.products.find((p) => (p.barcode && normalizeCode(p.barcode) === code) || (p.retail?.barcode && normalizeCode(p.retail.barcode) === code))?.id;
   return (
@@ -1710,9 +1716,13 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
       {canEdit && tool === "prix" && <PriceTool shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "etiquettes" && <Labels shop={shop} commit={commit} onClose={() => setTool(null)} />}
       {canEdit && tool === "reception" && <ReceiveLots shop={shop} commit={commit} onClose={() => setTool(null)} />}
+      {searchable && (
+        <Input className="h-11 stock-search" placeholder={`Cherche parmi ${shop.products.length} articles (nom, modèle : BF6, iPhone 11…)`} aria-label="Chercher un article" value={query} onChange={(e) => setQuery(e.target.value)} />
+      )}
+      {searchable && query.trim().length >= 2 && shown.length === 0 && <p className="note">Aucun article trouvé.</p>}
       <div className="stock-list">
-        {shop.products.map((p) => {
-          const low = p.stock <= p.min;
+        {shown.map((p) => {
+          const low = isLow(p);
           const fill = Math.max(4, Math.min(100, (p.stock / Math.max(1, p.min * 3)) * 100));
           return (
             editing === p.id ? (
@@ -1736,7 +1746,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
               <div className="stock-name">
                 <b>{p.name}</b>
                 <small className="num">
-                  {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}vente {amount(p.price)}
+                  {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}{p.price ? `vente ${amount(p.price)}` : "vente : prix à fixer"}
                   {p.retail ? ` · détail ${amount(p.retail.price)}/${p.retail.unit}` : ""}
                 </small>
               </div>

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Repair, type Shop, money } from "@/model";
+import { type Product, type Repair, type Shop, money } from "@/model";
 import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
+import { productNamedIn, searchProducts } from "@/data/partSearch";
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -23,6 +24,39 @@ function Breakdown({ r }: { r: Repair }) {
 }
 
 /**
+ * Chercher une pièce par son nom ou par le téléphone (« BF6 ») : l'écran universel qui va dessus sort aussi,
+ * avec son prix d'achat (pris dans le stock, modifiable ensuite).
+ */
+function PartPicker({ products, query, setQuery, onPick, label }: { products: Product[]; query: string; setQuery: (q: string) => void; onPick: (p: Product) => void; label: string }) {
+  const hits = searchProducts(products, query, 6);
+  return (
+    <div className="part-pick">
+      <Input className="h-11" placeholder={label} aria-label={label} value={query} onChange={(e) => setQuery(e.target.value)} />
+      {query.trim().length >= 2 &&
+        (hits.length ? (
+          <ul className="part-hits">
+            {hits.map((h) => (
+              <li key={h.product.id}>
+                <button type="button" onClick={() => onPick(h.product)}>
+                  <b>{h.product.name}</b>
+                  <small>
+                    {h.product.cost !== undefined ? `achat ${money(h.product.cost)}` : "prix d'achat ?"}
+                    {" · "}
+                    {h.product.stock > 0 ? `${h.product.stock} en stock` : "à commander"}
+                    {h.via ? ` · va aussi sur ${h.via}` : ""}
+                  </small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <small className="note">Aucune pièce trouvée : tape le prix d'achat toi-même.</small>
+        ))}
+    </div>
+  );
+}
+
+/**
  * Atelier : le carnet de réparations.
  * Dépôt (client, téléphone, appareil, panne, prix, avance) → Réparé (pièces prises dans le stock) → Rendu (le client paie le reste,
  * ou le reste va en dette). Bénéfice = prix − prix d'achat des pièces.
@@ -31,6 +65,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
   const [open, setOpen] = useState<string | null>(null);
+  const [partQuery, setPartQuery] = useState("");
+  const [picked, setPicked] = useState<Product | null>(null);
   const [filter, setFilter] = useState<"cours" | "rendu">("cours");
   const list = repairsOf(shop).filter((r) => (filter === "cours" ? r.status === "depot" || r.status === "repare" : r.status === "rendu"));
   const waiting = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
@@ -47,9 +83,13 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
 
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
-    const { shop: next } = addRepair(shop, { ...form, price, advance: n(form.advance) });
+    // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
+    const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : form.problem;
+    const { shop: next } = addRepair(shop, { ...form, problem, price, advance: n(form.advance) });
     commit(next);
     setForm({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
+    setPicked(null);
+    setPartQuery("");
     setAdding(false);
   }
 
@@ -96,6 +136,26 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
           )}
           <Input className="h-11" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
           <Input className="h-11" placeholder="Panne (écran cassé, connecteur…)" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
+          {shop.products.length > 0 && (
+            <PartPicker
+              products={shop.products}
+              query={partQuery}
+              setQuery={setPartQuery}
+              label="Pièce à poser : cherche (BF6, iPhone 11, batterie KF6…)"
+              onPick={(p) => {
+                setPicked(p);
+                setPartQuery("");
+                if (p.cost !== undefined) setForm({ ...form, piece: String(p.cost) });
+              }}
+            />
+          )}
+          {picked && (
+            <p className="note" role="status">
+              Pièce : <b>{picked.name}</b>
+              {picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)} (tu peux le changer ci-dessous)` : " · prix d'achat à taper ci-dessous"}{" "}
+              <button type="button" className="link" onClick={() => setPicked(null)}>Enlever</button>
+            </p>
+          )}
           <div className="repair-price">
             <label>
               <small>Prix d'achat de la pièce</small>
@@ -145,8 +205,12 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   const [fromCash, setFromCash] = useState(true);
   const [pay, setPay] = useState("");
   const [price, setPrice] = useState(r.price ? String(r.price) : "");
+  // La pièce choisie au dépôt (écrite dans la panne) est déjà cherchée.
+  const [partQuery, setPartQuery] = useState(() => productNamedIn(shop.products, r.problem)?.name ?? "");
   const days = waitingDays(r);
-  const pieces = shop.products.filter((p) => p.stock > 0);
+  const inStock = shop.products.filter((p) => p.stock > 0);
+  // Peu de pièces en stock : boutons directs ; beaucoup (catalogue du fournisseur) : la recherche suffit.
+  const pieces = inStock.length <= 12 ? inStock : inStock.filter((p) => parts.includes(p.id));
   const rest = remaining(r);
   const ready = r.status === "repare";
   const notify = r.phone
@@ -178,6 +242,22 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
           )}
           {r.status === "depot" && (
             <>
+              <PartPicker
+                products={shop.products}
+                query={partQuery}
+                setQuery={setPartQuery}
+                label="Cherche la pièce posée (BF6, iPhone 11…)"
+                onPick={(p) => {
+                  setPartQuery("");
+                  if (p.stock > 0) {
+                    if (!parts.includes(p.id)) setParts([...parts, p.id]);
+                  } else {
+                    // Pas en stock : achetée exprès ; le prix d'achat du fournisseur est mis, modifiable avant « Ajouter ».
+                    setBuyName(p.name);
+                    setBuyCost(p.cost !== undefined ? String(p.cost) : "");
+                  }
+                }}
+              />
               <small className="note">Pièces posées (elles sortent du stock) :</small>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {pieces.map((p) => (
@@ -185,7 +265,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                     {p.name}
                   </Button>
                 ))}
-                {pieces.length === 0 && <small className="note">Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès.</small>}
+                {pieces.length === 0 && <small className="note">{inStock.length ? "Cherche la pièce ci-dessus." : "Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès."}</small>}
               </div>
               <small className="note">Pièce achetée exprès pour cette réparation :</small>
               <div className="repair-buy">

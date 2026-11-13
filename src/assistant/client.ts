@@ -56,10 +56,17 @@ export type InterpretOutcome =
 export const toAssistantLanguage = (lang: Lang): AssistantLanguage => (lang === "ff" ? "fuc" : lang);
 export const fromAssistantLanguage = (lang: AssistantLanguage): Lang => (lang === "fuc" ? "ff" : lang);
 
+/** Ordre des articles pour Gemini : en stock, puis épuisés, puis pièces du catalogue jamais vendues (stock 0, sans prix de vente). */
+const contextRank = (p: Shop["products"][number]) => (p.stock > 0 ? 0 : p.price > 0 ? 1 : 2);
+
 export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
   return {
     language: toAssistantLanguage(lang),
-    products: shop.products.slice(0, 300).map((p) => ({
+    // 300 articles au plus : ceux en stock d'abord, pour qu'un catalogue de pièces du fournisseur ne chasse pas les vrais articles.
+    products: [...shop.products]
+      .sort((a, b) => contextRank(a) - contextRank(b))
+      .slice(0, 300)
+      .map((p) => ({
       id: p.id,
       // Les autres noms (wolof, surnoms) aident Gemini à choisir le bon article.
       name: (p.aliases?.length ? `${p.name} (aussi : ${p.aliases.join(", ")})` : p.name).slice(0, 80),

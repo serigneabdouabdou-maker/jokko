@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
-import { type Profile, type Shop, expectedCash, money, PAYMENT_LABELS, roleIn } from "@/model";
+import { type Profile, type Shop, expectedCash, isLow, money, PAYMENT_LABELS, roleIn } from "@/model";
 import { supabase } from "@/data/supabase";
 import { loadShops, type LoadClient } from "@/data/sync";
 import { detectAlerts, openedAt } from "@/data/alerts";
@@ -174,8 +174,8 @@ export function Remote({ profile }: { profile: Profile }) {
             {wa && <Button className="h-11 rounded-full px-5" onClick={() => window.open(wa, "_blank", "noopener")}>M'envoyer sur WhatsApp</Button>}
             <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => void navigator.clipboard?.writeText(summary)}>Copier</Button>
           </div>
-          {shop.products.filter((p) => p.stock <= p.min).length > 0 && (
-            <p className="note">Stock bas : {shop.products.filter((p) => p.stock <= p.min).map((p) => `${p.name} (${p.stock} ${p.unit})`).join(", ")}</p>
+          {shop.products.filter(isLow).length > 0 && (
+            <p className="note">Stock bas : {shop.products.filter(isLow).map((p) => `${p.name} (${p.stock} ${p.unit})`).join(", ")}</p>
           )}
         </div>
       )}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon, Notice } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { money, type Profile, roleIn, type Shop } from "@/model";
+import { isLow, money, type Profile, roleIn, type Shop } from "@/model";
 import { supabase } from "@/data/supabase";
 import { loadShops, type LoadClient } from "@/data/sync";
 import { allDebts, consolidatedStock, shopDays, type StockRow, totalDay } from "@/data/multiShop";
@@ -112,7 +112,7 @@ export function AllShops({ profile, setProfile }: { profile: Profile; setProfile
                     <td><b>{r.name}</b><br /><small>{r.unit}</small></td>
                     {shops.map((s) => {
                       const cell = r.perShop[s.id];
-                      return <td key={s.id} className="num" data-tone={cell && cell.stock <= cell.min ? "warn" : undefined}>{cell ? qty(cell.stock) : "—"}</td>;
+                      return <td key={s.id} className="num" data-tone={cell && isLow(cell) ? "warn" : undefined}>{cell ? qty(cell.stock) : "—"}</td>;
                     })}
                     <td className="num"><b>{qty(r.total)}</b></td>
                     <td><Button variant="ghost" className="h-9 rounded-full px-3" onClick={() => setMoving(r)}>Transférer</Button></td>

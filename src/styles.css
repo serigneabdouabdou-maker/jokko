@@ -700,6 +700,12 @@
   .repair-calc.is-loss, .repair-calc.is-loss b { color: var(--j-danger); }
   .repair-buy { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 6px; }
   .repair-bought { margin: 0; padding-left: 18px; font-size: 14px; }
+  .part-pick { display: grid; gap: 6px; }
+  .part-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .part-hits button { width: 100%; min-height: 44px; display: grid; gap: 2px; text-align: left; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--j-line); background: var(--j-soft-2); color: inherit; font: inherit; cursor: pointer; }
+  .part-hits button:hover, .part-hits button:focus-visible { border-color: var(--j-yellow); }
+  .part-hits small { font-size: 13px; color: var(--j-ink-2); }
+  .stock-search { margin: 8px 0; }
   @media (max-width: 560px) {
     .repair-price { grid-template-columns: 1fr 1fr; }
     .repair-price > span { display: none; }

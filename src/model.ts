@@ -411,8 +411,14 @@ export function expectedCash(shop: Shop): number {
   return shop.openingCash + dayCashSales(shop) + dayRepaid(shop) - dayExpenses(shop);
 }
 
+/**
+ * Stock bas : à ou sous le seuil. Seuil 0 = pas d'alerte (pièces d'un catalogue fournisseur à stock 0,
+ * article qu'on ne suit pas) ; un stock négatif reste signalé.
+ */
+export const isLow = (p: Pick<Product, "stock" | "min">): boolean => (p.min > 0 ? p.stock <= p.min : p.stock < 0);
+
 export function lowStock(shop: Shop): Product[] {
-  return shop.products.filter((p) => p.stock <= p.min);
+  return shop.products.filter(isLow);
 }
 
 export function debtors(shop: Shop): Client[] {

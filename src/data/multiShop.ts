@@ -1,4 +1,4 @@
-import { expectedCash, type Shop } from "../model.ts";
+import { expectedCash, isLow, type Shop } from "../model.ts";
 import { buildReport, periodOf } from "./report.ts";
 
 /**
@@ -31,7 +31,7 @@ export function shopDays(shops: Shop[], now = new Date()): ShopDay[] {
       expenses: r.expenses,
       cash: expectedCash(shop),
       debts: shop.clients.reduce((t, c) => t + Math.max(0, c.debt), 0),
-      lowStock: shop.products.filter((p) => p.stock <= p.min).length,
+      lowStock: shop.products.filter(isLow).length,
     };
   });
 }
@@ -66,7 +66,7 @@ export function consolidatedStock(shops: Shop[]): StockRow[] {
       const prev = row.perShop[shop.id];
       row.perShop[shop.id] = { productId: prev?.productId ?? p.id, stock: (prev?.stock ?? 0) + p.stock, min: Math.max(prev?.min ?? 0, p.min) };
       row.total += p.stock;
-      if (p.stock <= p.min) row.low = true;
+      if (isLow(p)) row.low = true;
       rows.set(key, row);
     }
   }
