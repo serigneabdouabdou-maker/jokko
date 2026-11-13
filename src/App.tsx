@@ -1633,11 +1633,11 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} by={profile.owner || profile.phone} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
+          {screen === "clients" && <ClientFiles shop={shop} canEdit={patron} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
-          {screen === "atelier" && <ClientFiles shop={shop} canEdit={patron} />}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}
@@ -1792,11 +1792,8 @@ function Clients({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   return (
     <section className="sheet">
       <div className="sheet-head">
-        <h2>Clients</h2>
+        <h2>Ajouter un client</h2>
         <span className="count num">{shop.clients.length}</span>
-      </div>
-      <div className="list">
-        {shop.clients.map((c) => <article key={c.id}><span>{c.name}<small className="num">+{c.phone}</small></span><b className={`num${c.debt > 0 ? " owes" : ""}`}>{amount(c.debt)}</b></article>)}
       </div>
       <div className="add-row">
         <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />

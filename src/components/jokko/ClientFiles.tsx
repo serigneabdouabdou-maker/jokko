@@ -5,9 +5,27 @@ import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
 import { campaignMessage, type ClientFile, rankClients, type Segment, SEGMENTS } from "@/data/clientFiles";
 import { whatsappLink } from "@/data/debts";
+import { metierOf } from "@/data/metiers";
 
 const ORDER: Segment[] = ["fidele", "bon", "nouveau", "relancer", "payeur"];
 const date = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—");
+const KIND_LABEL = { reparation: "Réparation", service: "Service", achat: "Achat", commande: "Commande", facture: "Facture" } as const;
+
+/** Ce que garde la fiche, dit avec les mots du métier. */
+function intro(activity: string): string {
+  switch (metierOf(activity).id) {
+    case "reparation":
+      return "Chaque client garde son historique : appareils, pannes, dates, prix, services, garanties.";
+    case "couture":
+      return "Chaque client garde son historique : commandes, habits, mesures, avances, restes à payer.";
+    case "restauration":
+    case "boulangerie":
+      return "Chaque habitué garde son historique : ce qu'il prend, quand, combien, son crédit.";
+    default:
+      return "Chaque client garde son historique : ce qu'il achète, quand, combien, ses factures et ses dettes.";
+  }
+}
+
 const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 /**
@@ -38,7 +56,7 @@ export function ClientFiles({ shop, canEdit }: { shop: Shop; canEdit: boolean })
         <h2>Fiches clients</h2>
         <b className="num sheet-total">{ranked.filter((f) => f.visits > 0).length} clients</b>
       </div>
-      <p className="note">Chaque client garde son historique : appareils, pannes, dates, prix, services. Quand il revient, tu sais tout de suite qui c'est.</p>
+      <p className="note">{intro(shop.activity)} Quand il revient, tu sais tout de suite qui c'est.</p>
 
       <div className="seg" role="tablist" aria-label="Groupes de clients">
         <button type="button" role="tab" aria-selected={segment === "tous"} className={segment === "tous" ? "on" : ""} onClick={() => setSegment("tous")}>Tous</button>
@@ -59,7 +77,7 @@ export function ClientFiles({ shop, canEdit }: { shop: Shop; canEdit: boolean })
           {campaign && (
             <div className="fields">
               <Input className="h-10" placeholder="Ton offre, si tu veux (ex. −10 % sur l'écran cette semaine)" aria-label="Offre" value={offer} onChange={(e) => setOffer(e.target.value)} />
-              <p className="note">Exemple : « {campaignMessage(list[0], shop.name, offer)} »</p>
+              <p className="note">Exemple : « {campaignMessage(list[0], shop.name, offer, shop.activity)} »</p>
               <p className="note">Touche chaque client : WhatsApp s'ouvre avec le message prêt, tu n'as plus qu'à envoyer.</p>
             </div>
           )}
@@ -69,14 +87,14 @@ export function ClientFiles({ shop, canEdit }: { shop: Shop; canEdit: boolean })
       <div className="list">
         {list.length === 0 && <p className="note">Aucun client ici pour le moment.</p>}
         {list.slice(0, 60).map((f) => {
-          const link = campaign && f.client.phone ? whatsappLink(f.client.phone, campaignMessage(f, shop.name, offer)) : null;
+          const link = campaign && f.client.phone ? whatsappLink(f.client.phone, campaignMessage(f, shop.name, offer, shop.activity)) : null;
           return (
             <article key={f.client.id} className={f.segment === "payeur" ? "is-late" : ""}>
               <span onClick={() => setOpen(open === f.client.id ? null : f.client.id)} style={{ cursor: "pointer" }}>
-                <b>{f.client.name}</b> <small className={`seg-badge seg-${f.segment}`}>{SEGMENTS[f.segment].label.replace(/s$/, "")}</small>
+                <b>{f.client.name}</b> <small className={`seg-badge seg-${f.segment}`}>{SEGMENTS[f.segment].one}</small>
                 <small>
                   {f.visits} visite{f.visits > 1 ? "s" : ""} · {money(f.spent)} · dernière : {date(f.lastAt)}
-                  {f.devices.length ? ` · ${f.devices.slice(0, 2).join(", ")}` : ""}
+                  {f.devices.length ? ` · ${f.devices.slice(0, 2).join(", ")}` : f.favorites.length ? ` · ${f.favorites.slice(0, 2).join(", ")}` : ""}
                 </small>
               </span>
               <div className="debt-actions">
@@ -114,6 +132,7 @@ function Fiche({ f, shopName }: { f: ClientFile; shopName: string }) {
       <p className="note">
         {f.client.phone ? `Téléphone : ${f.client.phone}. ` : "Pas de numéro noté. "}
         {f.devices.length ? `Appareils : ${f.devices.join(", ")}. ` : ""}
+        {f.favorites.length ? `Achète souvent : ${f.favorites.join(", ")}. ` : ""}
         {f.underWarranty.length ? `Sous garantie : ${f.underWarranty.map((r) => `${r.number} (${r.device})`).join(", ")}. ` : ""}
         {f.late ? "Dette en retard : à régler avant un nouveau crédit." : ""}
       </p>
@@ -122,6 +141,9 @@ function Fiche({ f, shopName }: { f: ClientFile; shopName: string }) {
           <Button variant="outline" className="h-9 rounded-full px-3" onClick={() => window.open(wa, "_blank", "noopener")}><Icon name="whatsapp" size="sm" /> WhatsApp</Button>
           <Button variant="outline" className="h-9 rounded-full px-3" onClick={() => window.open(`tel:${f.client.phone}`, "_self")}>Appeler</Button>
         </div>
+      )}
+      {f.client.measures && Object.keys(f.client.measures).length > 0 && (
+        <p className="note">Mesures : {Object.entries(f.client.measures).map(([k, v]) => `${k} ${v}`).join(" · ")} (cm)</p>
       )}
       <h4>Historique</h4>
       {f.entries.length === 0 ? (
@@ -132,7 +154,7 @@ function Fiche({ f, shopName }: { f: ClientFile; shopName: string }) {
             <li key={i}>
               <small>{date(e.at)}</small>
               <span>
-                <b>{e.kind === "reparation" ? "Réparation" : e.kind === "service" ? "Service" : "Achat"} · {e.title}</b>
+                <b>{KIND_LABEL[e.kind]} · {e.title}</b>
                 {e.detail ? ` — ${e.detail}` : ""}
                 {e.status ? <em> ({e.status})</em> : null}
               </span>

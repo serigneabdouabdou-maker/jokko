@@ -3,6 +3,7 @@ import { newShop, type Shop } from "@/model";
 import { addRepair, deliverRepair, markRepaired } from "./repairs";
 import { sellService } from "./services";
 import { campaignMessage, clientFile, knownClient, rankClients } from "./clientFiles";
+import { buildDemoShop } from "./demo";
 
 const DAY = 86_400_000;
 const now = new Date("2026-11-13T12:00:00");
@@ -60,5 +61,21 @@ describe("fiches clients du réparateur", () => {
     const ranked = rankClients(atelier(), now);
     expect(campaignMessage(ranked[0], "Sall GSM")).toContain("client fidèle");
     expect(campaignMessage(ranked.find((f) => f.segment === "payeur")!, "Sall GSM")).toContain("6000 F");
+  });
+
+  it("tous les métiers : tailleur (commandes, mesures) et boutique (articles achetés souvent)", () => {
+    const tailor = buildDemoShop(now, "couture");
+    const awa = rankClients(tailor, now).find((f) => f.client.name === "Awa Diop")!;
+    expect(awa.entries.filter((e) => e.kind === "commande").length).toBe(2);
+    // Les paiements « Couture C-… » sont dans la commande, pas en double.
+    expect(awa.entries.some((e) => e.kind === "achat" && e.title.startsWith("Couture"))).toBe(false);
+    expect(campaignMessage(awa, tailor.name, "", tailor.activity)).toMatch(/Salaam Awa/);
+
+    const shop = buildDemoShop(now, "alimentation");
+    const files = rankClients(shop, now);
+    const buyer = files.find((f) => f.favorites.length > 0)!;
+    expect(buyer.visits).toBeGreaterThan(0);
+    const fresh = { ...buyer, segment: "nouveau" as const };
+    expect(campaignMessage(fresh, shop.name, "", shop.activity)).toContain(`Ton ${buyer.favorites[0].toLowerCase()} est disponible`);
   });
 });
