@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { newShop, type Profile, type Shop, uid } from "@/model";
 import { supabase } from "@/data/supabase";
 import { flushNow } from "@/data/store";
-import { shopWithMetier } from "@/data/metiers";
+import { activityDefined, shopWithMetier } from "@/data/metiers";
 
 /** Supprime une entreprise au serveur (le patron qui l'a créée, en retapant son nom). */
 async function deleteShop(shopId: string, name: string): Promise<string | null> {
@@ -45,7 +45,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
   const taken = activity ? shopWithMetier(profile.shops, activity, profile.roles) : undefined;
 
   function create() {
-    if (!activity || (taken && !branch)) return;
+    if (!activityDefined(activity) || (taken && !branch)) return;
     const fresh: Shop = newShop(name.trim(), activity.trim(), city.trim());
     // Deuxième point de vente du même métier (offre Avancé) : mêmes articles et prix si demandé, stock à zéro ; clients, caisse et dettes à part.
     const created: Shop = taken && branch && copyProducts ? { ...fresh, products: taken.products.map((p) => ({ ...p, id: uid("p"), stock: 0 })) } : fresh;
@@ -129,7 +129,7 @@ export function ShopManager({ profile, setProfile, canAdd }: { profile: Profile;
           )}
           <p className="note">Chaque entreprise a son propre stock, sa caisse, ses ventes et ses dettes. Tu passes de l’une à l’autre en touchant son nom ci-dessus.</p>
           <div className="row">
-            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim() || !activity || (Boolean(taken) && !branch)}>Créer l'entreprise</Button>
+            <Button type="submit" className="h-11 rounded-full px-5" disabled={!name.trim() || !activityDefined(activity) || (Boolean(taken) && !branch)}>Créer l'entreprise</Button>
             <Button type="button" variant="ghost" className="h-11 rounded-full px-5" onClick={() => setMode("")}>Annuler</Button>
           </div>
         </form>

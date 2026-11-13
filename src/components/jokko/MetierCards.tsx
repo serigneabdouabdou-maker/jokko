@@ -109,6 +109,7 @@ export function MetierCards({ value, onChange, compact = false }: { value: strin
           );
         })}
       </div>
+      {on === "autre" && !typed && <p className="note metier-required" role="status">Écris ton activité pour continuer : Jokko se règle dessus.</p>}
       {on === "autre" && (
         <Input
           className="h-11"

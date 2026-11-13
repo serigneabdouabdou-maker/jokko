@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiringSoon, METIERS, metierInstruction, metierOf, modulesOf, screensOf, conseillerInstruction } from "./metiers";
+import { activityDefined, expiringSoon, METIERS, metierInstruction, metierOf, modulesOf, screensOf, conseillerInstruction } from "./metiers";
 
 describe("métiers", () => {
   it("reconnaît le métier, même écrit à la main", () => {
@@ -138,5 +138,10 @@ describe("une entreprise par métier", () => {
     expect(shopWithMetier(shops, "Couture, tailleur", {}, "a")).toBeUndefined();
     expect(shopWithMetier(shops, "Pharmacie", { c: "vendeur" })).toBeUndefined();
     expect(shopWithMetier(shops, "Restaurant, dibiterie, fast-food, jus", {})).toBeUndefined();
+  });
+
+  it("activité obligatoire : vide ou « Autre activité » sans précision = à définir", () => {
+    for (const a of ["", "  ", "Autre activité", "autre", "Autres", "x", "rien"]) expect(activityDefined(a)).toBe(false);
+    for (const a of ["Couture, tailleur", "Salon de coiffure", "Cosmétiques et parfums", "Multiservices"]) expect(activityDefined(a)).toBe(true);
   });
 });

@@ -240,6 +240,19 @@ export function metierOf(activity: string | undefined | null): Metier {
   return METIERS.find((m) => m.id !== "autre" && (m.keywords.test(a) || m.keywords.test(p))) ?? METIERS[METIERS.length - 1];
 }
 
+/**
+ * L'activité de la boutique est-elle connue ? (règle de Fallou, 13/11/2026 : « si l'utilisateur ne dit pas son activité,
+ * le système doit l'obliger à la définir »). Vide, « Autre activité » ou « autre » sans précision = non :
+ * le patron doit choisir son métier, ou écrire son activité (« salon de coiffure »), avant d'utiliser Jokko.
+ */
+export function activityDefined(activity: string | undefined | null): boolean {
+  const a = (activity ?? "").trim();
+  if (!a) return false;
+  const p = plain(a);
+  if (p === plain(METIERS[METIERS.length - 1].label) || /^(autre|autres|divers|rien|aucune?|na|x+)$/.test(p)) return false;
+  return /[a-z]{3}/.test(p);
+}
+
 /** Modules de la boutique : ceux de son métier + ceux ajoutés par le patron dans les réglages. */
 export function modulesOf(activity: string | undefined | null, extra: readonly string[] = []): Set<ModuleId> {
   const m = metierOf(activity);

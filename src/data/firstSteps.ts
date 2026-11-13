@@ -1,5 +1,5 @@
 import type { Shop } from "../model.ts";
-import { metierOf, type MetierId } from "./metiers.ts";
+import { activityDefined, metierOf, type MetierId } from "./metiers.ts";
 
 /**
  * Premiers pas (12/11/2026) : sur 15 boutiques inscrites, 5 seulement avaient noté une vente et 2 étaient revenues
@@ -31,7 +31,7 @@ export function firstSteps(
   const metier = metierOf(shop.activity);
   const sold = shop.sales.length > 0 || (shop.repairs?.length ?? 0) > 0 || (shop.couture?.length ?? 0) > 0;
   const steps: Step[] = [];
-  if (metier.id === "autre") {
+  if (!activityDefined(shop.activity)) {
     steps.push({ id: "metier", title: "Choisis ton métier", hint: "Jokko se règle sur ton métier : écrans, exemples et mots qu'il comprend.", done: false });
   }
   steps.push(

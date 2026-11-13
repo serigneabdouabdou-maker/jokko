@@ -63,7 +63,7 @@ import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
 import { Couture } from "@/components/jokko/Couture";
-import { expiringSoon, METIERS, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf, shopWithMetier } from "@/data/metiers";
+import { activityDefined, expiringSoon, METIERS, metierOf, MODULES, modulesOf, OPTIONAL_SCREENS, type OptionalScreen, screenLabel, screensOf, shopWithMetier } from "@/data/metiers";
 import { fitShopLots, removeLot } from "@/data/lots";
 import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
@@ -277,6 +277,8 @@ export function App() {
       />
     );
   }
+  // Activité pas dite (« Autre activité » sans précision) : le patron la choisit avant d'entrer (règle de Fallou, 13/11/2026).
+  if (roleIn(profile) === "patron" && !activityDefined(currentShop(profile).activity)) return <MetierGate profile={profile} setProfile={setProfile} />;
   return <Desk key="real" profile={profile} setProfile={setProfile} onDemo={() => setDemo(demoProfile(profile))} />;
 }
 
@@ -440,7 +442,7 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
             {metier && <MetierSetup value={metier} />}
             <Button
               className="h-12 rounded-full text-[15px] font-semibold"
-              disabled={!metier.trim()}
+              disabled={!activityDefined(metier)}
               onClick={() => {
                 rememberMetier(metier);
                 setStep("compte");
@@ -520,6 +522,57 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
         )}
       </section>
       {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
+    </main>
+  );
+}
+
+/**
+ * Boutique dont l'activité n'a pas été dite (vide ou « Autre activité » sans précision) : Jokko ne peut pas se régler.
+ * Le patron choisit son métier, ou écrit son activité, avant d'entrer. Ses données restent dans la même boutique.
+ */
+function MetierGate({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+  const shop = currentShop(profile);
+  // Le nom aide souvent (« Dabakh couture ») : ce métier est proposé d'office.
+  const [activity, setActivity] = useState(() => {
+    const guess = metierOf(shop.name);
+    return guess.id !== "autre" && guess.id !== METIERS[0].id ? guess.label : "";
+  });
+  const [note, setNote] = useState("");
+  const taken = activityDefined(activity) ? shopWithMetier(profile.shops, activity, profile.roles, shop.id) : undefined;
+
+  function confirm() {
+    if (!activityDefined(activity)) return;
+    if (taken) {
+      setNote(`Tu as déjà « ${taken.name} » pour ce métier. Une entreprise = un métier : choisis l'activité de « ${shop.name} », ou ouvre « ${taken.name} ».`);
+      return;
+    }
+    setProfile(replaceShop(profile, { ...shop, activity: activity.trim() }));
+  }
+
+  return (
+    <main className="gate">
+      <section className="gate-copy">
+        <JokkoMark size={52} />
+        <p className="eyebrow">{shop.name}</p>
+        <h1>Quel est <em className="accent">ton métier ?</em></h1>
+        <p className="lede">Jokko se règle sur ton métier : ses écrans, ses exemples et les mots qu'il comprend. Choisis-le pour continuer. Tes ventes, tes clients et ton stock restent tels quels.</p>
+      </section>
+      <section className="gate-card">
+        <div className="fields">
+          <div className="field">
+            <Label>Ton métier</Label>
+            <MetierCards value={activity} onChange={(v) => { setActivity(v); setNote(""); }} compact />
+          </div>
+          {activityDefined(activity) && <MetierSetup value={activity} />}
+          {note && (
+            <p className="note jk-notice" role="status">
+              {note}{" "}
+              {taken && <button type="button" className="link" onClick={() => setProfile({ ...profile, shopId: taken.id })}>Ouvrir « {taken.name} »</button>}
+            </p>
+          )}
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!activityDefined(activity)} onClick={confirm}>C'est mon métier</Button>
+        </div>
+      </section>
     </main>
   );
 }
@@ -620,11 +673,11 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
       <section className="gate-card">
         <SignupSteps at={2} />
         <div className="fields">
-          {picking || !activity.trim() ? (
+          {picking || !activityDefined(activity) ? (
             <div className="field">
               <Label>Ton métier</Label>
               <MetierCards value={activity} onChange={(v) => { setActivity(v); rememberMetier(v); }} compact />
-              {activity.trim() && <Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => setPicking(false)}>C'est mon métier</Button>}
+              {activityDefined(activity) && <Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => setPicking(false)}>C'est mon métier</Button>}
             </div>
           ) : (
             <>
@@ -658,7 +711,7 @@ function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: 
             <Label htmlFor="city">Quartier ou ville</Label>
             <Input id="city" className="h-11" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pikine" />
           </div>
-          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim() || !activity.trim()} onClick={finish}>Créer mon entreprise</Button>
+          <Button className="h-12 rounded-full text-[15px] font-semibold" disabled={!owner.trim() || !shopName.trim() || !activityDefined(activity)} onClick={finish}>Créer mon entreprise</Button>
         </div>
       </section>
     </main>
