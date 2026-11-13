@@ -114,6 +114,8 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Résumé du soir enrichi (13/11/2026) : `shortSummary` (`src/data/summary.ts`, utilisé par `notify` kind `summary`, chaque heure pour les profils dont `summary_hour` = l'heure, offre Avancé) : ventes, gagné aujourd'hui, réparations rendues et main-d'œuvre gagnée, services, gagné du mois, alertes graves. `notify` charge les ventes depuis le 1er du mois et les réparations ; ses imports GitHub suivent la version de `summary.ts` (changer le numéro de version et redéployer `notify` après un changement de `summary.ts`, `sync.ts`, `alerts.ts`). Fallou : 20 h.
 
+- Bilan de la semaine (13/11/2026) : tâche `jokko-bilan-semaine` (dimanche 20 h 17 Dakar) → `private.week_watch()` / `private.week_list()` / `private.week_profit()` : gagné de la semaine (lundi → dimanche, même règle que `buildReport`) comparé à la semaine d'avant, en % ; réparateur : 3 réparations qui ont le plus rapporté (prix − pièces) et pièce la plus posée ; autres : 3 articles qui rapportent le plus. Plus de la moitié des ventes sans prix d'achat → on donne les ventes, pas un faux bénéfice (« Mets les prix d'achat dans Stock »). Rien vendu en 2 semaines = rien envoyé. Toucher → Bénéfices.
+
 ## Bénéfices (13/11/2026, demande de Fallou)
 
 - Écran « Bénéfices » (ancien « Bilan », patron seulement, `Bilan.tsx`, calculs `src/data/report.ts`) : ventes − prix d'achat de ce qui est vendu (`sales.cost`) = bénéfice sur les ventes ; − dépenses − pertes = gagné (ou perdu). Les achats de marchandise (`kind: achat`) ne sont pas des dépenses : leur coût compte quand l'article est vendu.
