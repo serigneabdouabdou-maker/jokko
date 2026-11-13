@@ -9,6 +9,7 @@ import { type Expense, isLow, type OrderLine, type Product, type Shop, uid } fro
 import { productNamedIn, squash } from "./partSearch.ts";
 
 const DAY = 86_400_000;
+const PREPARED = /^(plat|portion|part|verre|baguette)s?$/i;
 
 /** Combien d'unités de chaque article sont parties en 30 jours (ventes + pièces posées sur les réparations). */
 export function usageMap(shop: Shop, now = new Date(), days = 30): Map<string, number> {
@@ -58,6 +59,8 @@ export function orderPlan(shop: Shop, now = new Date()): { order: Advice[]; advi
   // 2) Stock sous le seuil, ou pièces qui partent et ne tiendront pas une semaine.
   const usedMap = usageMap(shop, now);
   for (const p of shop.products) {
+    // Plats et portions préparés (restaurant, boulangerie) : on les cuisine, on ne les commande pas.
+    if (PREPARED.test(p.unit.trim())) continue;
     const used = usedMap.get(p.id) ?? 0;
     const twoWeeks = Math.ceil((used * 14) / 30);
     if (isLow(p)) add(p, Math.max(p.min * 2 - p.stock, twoWeeks - p.stock, 1), `il en reste ${fmt(p.stock)} (seuil ${fmt(p.min)})`);

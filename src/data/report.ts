@@ -218,6 +218,23 @@ export function monthlyReport(shop: Shop, year: number, now = new Date()): { row
   };
 }
 
+export type DayRow = { day: string; label: string; revenue: number; grossProfit: number; spent: number; netProfit: number; salesCount: number };
+
+/** Jour par jour sur une période (au plus 62 jours, jusqu'à aujourd'hui) : seulement les jours avec des ventes ou des dépenses, le plus récent d'abord. */
+export function dailyReport(shop: Shop, period: Period, now = new Date()): DayRow[] {
+  const rows: DayRow[] = [];
+  const end = Math.min(period.to.getTime(), new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime());
+  for (let d = new Date(period.from); d.getTime() < end && rows.length < 62; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    const to = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    const label = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    const r = buildReport(shop, { kind: "jour", from: d, to, label });
+    const spent = r.expenses + r.losses;
+    if (!r.salesCount && !spent) continue;
+    rows.push({ day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, label, revenue: r.revenue, grossProfit: r.grossProfit, spent, netProfit: r.grossProfit - spent, salesCount: r.salesCount });
+  }
+  return rows.reverse();
+}
+
 const CATEGORIES: Array<[RegExp, string]> = [
   [/woyofal|electricit|courant|senelec/, "Électricité"],
   [/\beau\b|sen'?eau/, "Eau"],

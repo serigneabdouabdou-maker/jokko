@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
-import { buildReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
+import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
@@ -20,7 +20,8 @@ const qty = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString("
  * Et l'inventaire du mois : compter le stock, les manques deviennent des pertes.
  */
 export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
-  const [kind, setKind] = useState<PeriodKind>("jour");
+  // Ce mois d'abord : le bénéfice de chaque jour se lit dans « Jour par jour ».
+  const [kind, setKind] = useState<PeriodKind>("mois");
   const [counting, setCounting] = useState(false);
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [result, setResult] = useState("");
@@ -29,6 +30,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   const year = report.period.from.getFullYear();
   const months = useMemo(() => monthlyReport(shop, year), [shop, year]);
   const spending = useMemo(() => expenseBreakdown(shop, report.period), [shop, report.period]);
+  const days = useMemo(() => (kind === "mois" || kind === "mois_dernier" ? dailyReport(shop, report.period) : []), [shop, kind, report.period]);
   const bestMonth = months.rows.filter((r) => r.salesCount > 0).sort((a, b) => b.netProfit - a.netProfit)[0];
 
   async function share() {
@@ -106,6 +108,28 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         <p className="note">
           Marchandise achetée : {money(report.purchases)}. Cet argent est sorti de la caisse, mais ce n'est pas une perte : il est dans ton stock, et son coût compte quand tu vends.
         </p>
+      )}
+
+      {days.length > 0 && (
+        <>
+          <h3>Jour par jour · {report.period.label}</h3>
+          <div className="import-preview">
+            <table className="bilan-months">
+              <thead><tr><th>Jour</th><th>Ventes</th><th>Bénéfice ventes</th><th>Dépenses</th><th>Gagné</th></tr></thead>
+              <tbody>
+                {days.map((d) => (
+                  <tr key={d.day}>
+                    <td>{d.label} <small>({d.salesCount})</small></td>
+                    <td className="num">{money(d.revenue)}</td>
+                    <td className="num">{money(d.grossProfit)}</td>
+                    <td className="num">{d.spent ? `− ${money(d.spent)}` : money(0)}</td>
+                    <td className="num" data-tone={d.netProfit < 0 ? "bad" : d.netProfit > 0 ? "good" : undefined}>{money(d.netProfit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <h3>Où part ton argent</h3>

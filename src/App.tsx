@@ -247,6 +247,37 @@ export function App() {
     };
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Données changées ailleurs (autre téléphone, vendeur, ajout fait par CFC) : rechargées quand l'appli revient
+  // au premier plan, et toutes les 5 min, au plus une fois toutes les 2 min. Une écriture faite pendant le chargement gagne.
+  useEffect(() => {
+    if (!session) return;
+    let last = Date.now();
+    let busy = false;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || busy || Date.now() - last < 120_000) return;
+      busy = true;
+      last = Date.now();
+      const before = profileRef.current;
+      void bootstrap(session).then(
+        (loaded) => {
+          busy = false;
+          if (profileRef.current !== before || loaded.userId !== before?.userId) return;
+          profileRef.current = loaded;
+          setProfileState(loaded);
+        },
+        () => {
+          busy = false;
+        },
+      );
+    };
+    document.addEventListener("visibilitychange", refresh);
+    const timer = setInterval(refresh, 5 * 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      clearInterval(timer);
+    };
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setProfile = useCallback((next: Profile) => {
     persist(profileRef.current, next);
     profileRef.current = next;
