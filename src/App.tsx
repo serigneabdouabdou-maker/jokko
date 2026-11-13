@@ -83,7 +83,8 @@ import { FirstSteps } from "@/components/jokko/FirstSteps";
 import { chosenMetier, forgetMetier, METIER_LOOK, MetierCards, MetierSetup, rememberMetier } from "@/components/jokko/MetierCards";
 import { buildReport, inventoryDue, periodOf } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
-import { acceptTerms, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
+import { acceptTerms, compatLearn, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
+import { fingerprint, learnedBetween, shopFamilies } from "@/data/compat";
 import { playQuotaClip, QUOTA_MESSAGES, quotaVariant, type QuotaVariant } from "@/assistant/quotaVoice";
 import { CONDITIONS, CONFIDENTIALITE, type LegalDoc, TERMS_VERSION } from "@/legal";
 import { LegalSheet } from "@/components/jokko/Legal";
@@ -965,6 +966,36 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     // En démo, l'usage de Jokko compte pour la vraie boutique (le serveur ne connaît pas la boutique exemple).
     setAssistantShop(demo ? demo.realShopId : shop.id);
   }, [shop.id, demo]);
+  // Réseau Jokko des pièces : ce que l'atelier apprend (réparations faites, compatibles du fournisseur) part dans la base commune.
+  const learnedFrom = useRef<Shop | null>(null);
+  useEffect(() => {
+    const prev = learnedFrom.current;
+    learnedFrom.current = shop;
+    if (demo || isDemoShop(shop) || metierOf(shop.activity).id !== "reparation") return;
+    if (prev && prev !== shop) {
+      const fresh = learnedBetween(prev, shop);
+      if (fresh.length) void compatLearn(shop.id, fresh);
+    }
+    // Tout ce que la boutique sait, envoyé une fois (puis seulement quand ça change, au plus une fois par jour).
+    const all = shopFamilies(shop);
+    const key = `jokko.reseau-pieces.${shop.id}`;
+    const print = `${fingerprint(all)}|${new Date().toISOString().slice(0, 10)}`;
+    let last = "";
+    try {
+      last = localStorage.getItem(key) ?? "";
+    } catch {
+      /* stockage indisponible */
+    }
+    if (!all.length || last.split("|")[0] === print.split("|")[0] || last.split("|")[1] === print.split("|")[1]) return;
+    void compatLearn(shop.id, all).then((ok) => {
+      if (!ok) return;
+      try {
+        localStorage.setItem(key, print);
+      } catch {
+        /* stockage indisponible */
+      }
+    });
+  }, [shop, demo]);
   useEffect(() => {
     if (assistant !== "ready" || live || !direct) return;
     const warm = () => {

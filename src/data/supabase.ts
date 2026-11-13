@@ -305,3 +305,31 @@ export function countLiveExchange() {
     () => undefined,
   );
 }
+
+// ---------- Réseau Jokko des pièces (base commune des réparateurs) ----------
+
+/** Envoie ce que la boutique a appris (modèles qui partagent une pièce). Hors ligne : on réessaiera plus tard. */
+export async function compatLearn(shopId: string, families: Array<{ kind: string; source: string; models: string[] }>): Promise<boolean> {
+  if (!shopId || shopId.startsWith("demo") || !families.length) return true;
+  for (let i = 0; i < families.length; i += 250) {
+    const { error } = await supabase.rpc("compat_learn", { p_shop: shopId, p_families: families.slice(i, i + 250) });
+    if (error) return false;
+  }
+  return true;
+}
+
+export async function compatLookup(keys: string[]): Promise<Array<{ model: string; other: string; kind: string; poses: number; fournisseurs: number; ateliers: number }>> {
+  if (!keys.length) return [];
+  const { data, error } = await supabase.rpc("compat_lookup", { p_keys: keys.slice(0, 12) });
+  return error || !Array.isArray(data) ? [] : data;
+}
+
+export async function compatTacLookup(tac: string): Promise<Array<{ model: string; label: string; ateliers: number }>> {
+  const { data, error } = await supabase.rpc("compat_tac_lookup", { p_tac: tac });
+  return error || !Array.isArray(data) ? [] : data;
+}
+
+export function compatTacLearn(shopId: string, tac: string, model: string, label: string) {
+  if (!shopId || shopId.startsWith("demo")) return;
+  void supabase.rpc("compat_tac_learn", { p_shop: shopId, p_tac: tac, p_model: model, p_label: label }).then(() => undefined, () => undefined);
+}
