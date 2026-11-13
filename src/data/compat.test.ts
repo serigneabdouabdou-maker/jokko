@@ -94,3 +94,21 @@ describe("suffixes des codes", () => {
     expect(modelKeys("Redmi 9A")).toEqual(["redmi9a"]);
   });
 });
+
+describe("IMEI au dépôt", async () => {
+  const { imeiLooksWrong, mainModelKey } = await import("./modelKeys");
+  const { cleanImei } = await import("./repairs");
+  it("clé de contrôle", () => {
+    expect(imeiLooksWrong("490154203237518")).toBe(false);
+    expect(imeiLooksWrong("490154203237519")).toBe(true);
+    expect(imeiLooksWrong("35974953")).toBe(false);
+  });
+  it("code du modèle d'abord", () => {
+    expect(mainModelKey("Tecno Spark 10 (KI5Q)")).toBe("ki5q");
+    expect(mainModelKey("iPhone 11")).toBe("iphone11");
+  });
+  it("IMEI gardé propre", () => {
+    expect(cleanImei("35 974953 123456 7")).toBe("359749531234567");
+    expect(cleanImei("abc")).toBeUndefined();
+  });
+});

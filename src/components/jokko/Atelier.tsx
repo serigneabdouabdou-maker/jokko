@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,41 @@ import { productNamedIn, searchProducts } from "@/data/partSearch";
 import { Commandes, PartLookup } from "./Commandes";
 import { laborStats, suggestedPrice } from "@/data/pricing";
 import { orderPlan } from "@/data/reorder";
+import { imeiLooksWrong, mainModelKey, tacOf } from "@/data/modelKeys";
+import { modelOfTac } from "@/data/phoneBook";
+import { compatTacLearn, compatTacLookup } from "@/data/supabase";
+
+type ImeiInfo = { state: "cherche" } | { state: "trouve"; label: string; from: "base" | "atelier" } | { state: "inconnu" } | { state: "faux" };
+
+/**
+ * IMEI tapé au dépôt (*#06#) : le modèle se remplit tout seul (ateliers Jokko d'abord, puis base publique).
+ * Inconnu : le réparateur écrit l'appareil, et Jokko l'apprend pour tous les ateliers à l'enregistrement.
+ */
+function useImeiModel(imei: string, onFound: (label: string) => void): ImeiInfo | null {
+  const [info, setInfo] = useState<ImeiInfo | null>(null);
+  const found = useRef(onFound);
+  found.current = onFound;
+  useEffect(() => {
+    const tac = tacOf(imei);
+    if (!tac) return setInfo(null);
+    if (imeiLooksWrong(imei)) return setInfo({ state: "faux" });
+    let stop = false;
+    setInfo({ state: "cherche" });
+    void (async () => {
+      const learned = navigator.onLine !== false ? await compatTacLookup(tac) : [];
+      const hit = learned[0] ? { label: learned[0].label, from: "atelier" as const } : await modelOfTac(tac).then((m) => (m ? { label: m.label, from: "base" as const } : null));
+      if (stop) return;
+      if (hit) {
+        setInfo({ state: "trouve", ...hit });
+        found.current(hit.label);
+      } else setInfo({ state: "inconnu" });
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [imei]);
+  return info;
+}
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -66,7 +101,16 @@ function PartPicker({ products, query, setQuery, onPick, label }: { products: Pr
  */
 export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
+  const [form, setForm] = useState({ clientName: "", phone: "", imei: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
+  const autoDevice = useRef("");
+  const imeiInfo = useImeiModel(form.imei, (label) =>
+    setForm((f) => {
+      // On ne remplace jamais un appareil écrit à la main.
+      if (f.device.trim() && f.device !== autoDevice.current) return f;
+      autoDevice.current = label;
+      return { ...f, device: label };
+    }),
+  );
   const [open, setOpen] = useState<string | null>(null);
   const [partQuery, setPartQuery] = useState("");
   const [picked, setPicked] = useState<Product | null>(null);
@@ -92,7 +136,12 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : form.problem;
     const { shop: next } = addRepair(shop, { ...form, problem, price, advance: n(form.advance) });
     commit(next);
-    setForm({ clientName: "", phone: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
+    // Réseau Jokko : cet IMEI = cet appareil (8 premiers chiffres seulement), appris pour tous les ateliers.
+    const tac = tacOf(form.imei);
+    const key = mainModelKey(form.device);
+    if (tac && key && !imeiLooksWrong(form.imei) && (imeiInfo?.state === "inconnu" || form.device !== autoDevice.current)) compatTacLearn(shop.id, tac, key, form.device.trim());
+    autoDevice.current = "";
+    setForm({ clientName: "", phone: "", imei: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
     setPicked(null);
     setPartQuery("");
     setAdding(false);
@@ -145,6 +194,15 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                 <button type="button" className="link" onClick={() => setForm({ ...form, clientName: knownFile.client.name, phone: knownFile.client.phone })}>Reprendre son numéro ({knownFile.client.phone})</button>
               )}
             </div>
+          )}
+          <Input className="h-11 num" inputMode="numeric" placeholder="IMEI (facultatif : tape *#06# sur le téléphone)" aria-label="IMEI de l'appareil" value={form.imei} onChange={(e) => setForm({ ...form, imei: e.target.value })} />
+          {imeiInfo && (
+            <small className={`note${imeiInfo.state === "faux" || imeiInfo.state === "inconnu" ? " is-late" : ""}`} role="status">
+              {imeiInfo.state === "cherche" && "Je cherche le modèle…"}
+              {imeiInfo.state === "trouve" && `📱 ${imeiInfo.label} (${imeiInfo.from === "atelier" ? "appris par les ateliers Jokko" : "base publique, vérifie sur le téléphone"})`}
+              {imeiInfo.state === "inconnu" && "IMEI pas encore connu : écris l'appareil, Jokko l'apprendra pour tous les ateliers."}
+              {imeiInfo.state === "faux" && "Cet IMEI semble mal recopié : vérifie les 15 chiffres."}
+            </small>
           )}
           <Input className="h-11" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
           <Input className="h-11" placeholder="Panne (écran cassé, connecteur…)" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
@@ -246,6 +304,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
           {r.problem ? ` · ${r.problem}` : ""}
           {r.status !== "rendu" ? ` · depuis ${days} j` : r.returnedAt ? ` · rendu le ${new Date(r.returnedAt).toLocaleDateString("fr-FR")}` : ""}
           {underWarranty(r) ? " · sous garantie" : ""}
+          {r.imei ? ` · IMEI ${r.imei}` : ""}
         </small>
       </span>
       <div className="debt-actions">

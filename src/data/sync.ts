@@ -59,7 +59,7 @@ const toRow = {
   repairs: (r: Repair, shopId: string): Row => ({
     id: r.id, shop_id: shopId, at: r.at, number: r.number, client_id: opt(r.clientId), client_name: r.clientName, phone: r.phone,
     device: r.device, problem: r.problem, price: r.price, paid: r.paid, parts: r.parts, status: r.status,
-    repaired_at: opt(r.repairedAt), returned_at: opt(r.returnedAt), warranty_days: opt(r.warrantyDays),
+    repaired_at: opt(r.repairedAt), returned_at: opt(r.returnedAt), warranty_days: opt(r.warrantyDays), imei: opt(r.imei),
   }),
   couture_orders: (o: CoutureOrder, shopId: string): Row => ({
     id: o.id, shop_id: shopId, at: o.at, number: o.number, client_id: opt(o.clientId), client_name: o.clientName, phone: o.phone,
@@ -573,6 +573,8 @@ function readRepair(r: Row): Repair {
   if (optStr(r.returned_at)) repair.returnedAt = iso(r.returned_at);
   const warranty = optNum(r.warranty_days);
   if (warranty) repair.warrantyDays = warranty;
+  const imei = optStr(r.imei);
+  if (imei && /^\d{8,17}$/.test(imei)) repair.imei = imei;
   return repair;
 }
 

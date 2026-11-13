@@ -68,6 +68,28 @@ export function modelKeys(text: string): string[] {
   return [...out];
 }
 
+/** Un IMEI de 15 chiffres a une clé de contrôle (Luhn) : faux = un chiffre mal recopié. */
+export function imeiLooksWrong(text: string): boolean {
+  const d = text.replace(/[\s.-]/g, "");
+  if (!/^\d{15}$/.test(d)) return false;
+  let sum = 0;
+  for (let i = 0; i < 15; i++) {
+    let n = Number(d[i]);
+    if (i % 2 === 1) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+  }
+  return sum % 10 !== 0;
+}
+
+/** La clé qui ressemble le plus à un code de modèle (« ki5q » plutôt que « spark10 »). */
+export function mainModelKey(text: string): string | undefined {
+  const keys = modelKeys(text);
+  return keys.find((k) => /^[a-z]{1,3}\d/.test(k) && k.length <= 7) ?? keys[0];
+}
+
 /** Le texte tapé est-il un IMEI (ou son début de 8 chiffres) ? Renvoie le code du modèle (8 premiers chiffres). */
 export function tacOf(text: string): string | null {
   const digits = text.replace(/[\s.-]/g, "");

@@ -61,6 +61,8 @@ export type Repair = {
   returnedAt?: string;
   /** Garantie en jours, si le réparateur en donne une. */
   warrantyDays?: number;
+  /** IMEI de l'appareil (*#06#), si le réparateur l'a noté : il identifie le modèle et le téléphone du client. */
+  imei?: string;
 };
 
 export type Client = {

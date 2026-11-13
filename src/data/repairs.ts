@@ -65,7 +65,13 @@ function paymentSale(r: Repair, amount: number, what: string, cost?: number, wor
   return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment: "especes" as const };
 }
 
-export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; warrantyDays?: number };
+export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; warrantyDays?: number; imei?: string };
+
+/** IMEI gardé seulement s'il ressemble à un IMEI (8 à 17 chiffres, espaces enlevés). */
+export const cleanImei = (s?: string): string | undefined => {
+  const d = (s ?? "").replace(/[\s.-]/g, "");
+  return /^\d{8,17}$/.test(d) ? d : undefined;
+};
 
 /** Dépôt d'un appareil, avec avance éventuelle (elle entre dans la caisse). */
 export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: Repair } {
@@ -87,6 +93,7 @@ export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: R
     parts: [],
     status: "depot",
     ...(input.warrantyDays ? { warrantyDays: input.warrantyDays } : {}),
+    ...(cleanImei(input.imei) ? { imei: cleanImei(input.imei) } : {}),
   };
   const sales = advance > 0 ? [paymentSale(repair, advance, "avance", undefined, payWord(shop)), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, repairs: [repair, ...repairsOf(shop)] }, repair };
