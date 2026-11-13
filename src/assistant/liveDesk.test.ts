@@ -427,3 +427,44 @@ describe("réparateur : service sans pièce dit à la voix", () => {
     expect(shop().sales[0]).toMatchObject({ label: "Service · Décodage", amount: 5000, licenceId: "lic-1" });
   });
 });
+
+describe("multiservice : bâche et photocopies dites à la voix (calcul fait par le code)", () => {
+  const multi = () => ({
+    ...seedShop(),
+    activity: "Multiservice",
+    products: [{ id: "bache", name: "Bâche (rouleau)", unit: "m²", stock: 40, min: 10, price: 0, cost: 1800 }],
+    services: [
+      { id: "srv-b", name: "Bâche grand format", price: 5000, unit: "m2" as const, matter: { productId: "bache", per: 1 } },
+      { id: "srv-n", name: "Photocopie noir A4", price: 25, unit: "page" as const },
+      { id: "srv-c", name: "Photocopie couleur A4", price: 100, unit: "page" as const },
+    ],
+  });
+  it("« bâche 2 sur 1,5 » = 3 m² × 5 000 = 15 000, la bâche sort du stock", () => {
+    const { desk, shop, set } = setup();
+    set(multi());
+    const done = desk.handle({ name: "enregistrer", args: { type: "sale", productName: "bâche", amount: 3, heard: "bâche 2 sur 1,5 pour Moussa" } });
+    expect(done).toMatchObject({ statut: "enregistre", montant: { francs: 15000 }, calcul: "2 × 1,5 = 3 m² × 5 000 F = 15 000 F" });
+    expect(shop().sales[0]).toMatchObject({ label: "Service · Bâche grand format (2 × 1,5 m = 3 m²)", amount: 15000, cost: 5400 });
+    expect(shop().products[0].stock).toBe(37);
+  });
+  it("bâche sans mesures : Jokko demande, rien n'est enregistré", () => {
+    const { desk, shop, set } = setup();
+    set(multi());
+    const before = shop().sales.length;
+    const done = desk.handle({ name: "enregistrer", args: { type: "sale", productName: "bâche", heard: "une bâche pour Moussa" } });
+    expect(done).toMatchObject({ statut: "incomplet" });
+    expect(shop().sales).toHaveLength(before);
+  });
+  it("photocopie sans dire noir ou couleur : Jokko demande lequel", () => {
+    const { desk, set } = setup();
+    set(multi());
+    expect(desk.handle({ name: "enregistrer", args: { type: "sale", productName: "photocopie", heard: "50 photocopies" } })).toMatchObject({ statut: "incomplet" });
+  });
+  it("mode secours (vocal) : « 50 photocopies noir » = 1 250 F", () => {
+    const { desk, shop, set } = setup();
+    set(multi());
+    const r = desk.record({ type: "sale", productId: null, productName: "photocopie noir", quantity: 50, amount: null, clientId: null, clientName: null, label: null }, "50 photocopies noir");
+    expect(r.ok).toBe(true);
+    expect(shop().sales[0]).toMatchObject({ label: "Service · Photocopie noir A4 × 50 pages", amount: 1250 });
+  });
+});

@@ -246,6 +246,7 @@ export const METIERS: Metier[] = [
       "vente de maillots et t-shirts (par taille S, M, L, XL : chaque taille est un article), vente d'encre et de papier, " +
       "conception de logos, d'affiches, de cartes de visite et de projets (service sans marchandise). " +
       "Un service sans marchandise est une vente (« 50 photocopies à 25 F » = 50 × 25 F, calculé par l'outil) ; le bénéfice = prix − papier, encre, flex ou bâche utilisés. " +
+      "Bâche, vinyle, autocollant : mets le nom du service dans productName et les mesures dites telles quelles dans heard (« bâche 2 sur 1,5 ») ; ne calcule jamais les m² ni le prix : l'outil le fait et te renvoie le calcul à redire. S'il manque les mesures, l'outil te dit de les demander. " +
       "Une commande à livrer plus tard (« 20 maillots floqués pour l'ASC, avance 30 000 ») se note dans l'écran Services et commandes, avec l'avance.",
     vivres: false,
     ex: { stock: "« 10 rames de papier à 3 500 ; 2 cartouches d'encre ; 1 rouleau de flex vert de 25 mètres »", search: "papier, encre, flex, maillot…", invoice: "« Facture ASC Mboss, 20 maillots floqués, 70 000 »", prompts: ["50 photocopies à 25", "Bâche de 2 mètres sur 1,5", "Ajoute une vente de 2 000", "Qui me doit de l'argent ?", "Caisse du jour", "Il me reste combien de papier ?", "Bénéfice de la semaine"], units: "rame, pièce, unité…" },
