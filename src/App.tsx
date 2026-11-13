@@ -62,7 +62,7 @@ import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
 import { Services } from "@/components/jokko/Services";
 import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
-import type { Segment } from "@/data/clientFiles";
+import { type Segment, SEGMENTS } from "@/data/clientFiles";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -756,7 +756,11 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   /** Modèle choisi dans le Studio (« Je commande ce modèle ») : il ouvre la fiche de commande déjà remplie. */
   const [coutureDraft, setCoutureDraft] = useState<CoutureModel | null>(null);
   /** Groupe de clients ouvert depuis le rappel de la semaine (campagne prête). */
-  const [clientsFocus, setClientsFocus] = useState<Segment | null>(null);
+  // Notification du lundi (./?ecran=clients&groupe=relancer) : le groupe s'ouvre directement, campagne prête.
+  const [clientsFocus, setClientsFocus] = useState<Segment | null>(() => {
+    const g = new URLSearchParams(window.location.search).get("groupe");
+    return g && g in SEGMENTS ? (g as Segment) : null;
+  });
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;

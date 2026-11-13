@@ -3,7 +3,7 @@
 //  - { kind: "journal", id } : une action dans une boutique ; le patron est prévenu des alertes GRAVES,
 //    et (selon son choix) des ventes, dépenses, factures et dettes payées — un panier = une seule notification.
 //  - { kind: "summary" } : chaque heure ; résumé du jour à ceux qui l'ont demandé à cette heure (heure de Dakar).
-//  - { kind: "boutique", shop, title, body } : message de CFC aux patrons d'une boutique (offre activée…).
+//  - { kind: "boutique", shop, title, body, url? } : message aux patrons d'une boutique (offre activée, clients à relancer…).
 // Les règles d'alerte et le résumé sont les mêmes que dans l'appli (fichiers du dépôt, figés sur une version).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
@@ -260,7 +260,9 @@ Deno.serve(async (req) => {
     if (body.kind === "boutique" && typeof body.shop === "string" && typeof body.title === "string" && typeof body.body === "string") {
       // Message de CFC aux patrons d'une boutique (ex. « Ton offre Médium est activée »).
       const tag = typeof body.tag === "string" && /^[a-z0-9-]{1,40}$/.test(body.tag) ? body.tag : `cfc-${Date.now()}`;
-      const sent = await push(await patronsOf(body.shop), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url: "./?ecran=offre", tag });
+      // Écran à ouvrir au toucher (ex. « ./?ecran=clients&groupe=relancer ») ; sinon « Mon offre ».
+      const url = typeof body.url === "string" && /^\.\/\?ecran=[a-z]+(&groupe=[a-z]+)?$/.test(body.url) ? body.url : "./?ecran=offre";
+      const sent = await push(await patronsOf(body.shop), { title: body.title.slice(0, 80), body: body.body.slice(0, 200), url, tag });
       return Response.json({ sent });
     }
     if (body.kind === "test" && typeof body.user === "string") {
