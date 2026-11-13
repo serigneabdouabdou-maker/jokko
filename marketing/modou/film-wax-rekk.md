@@ -49,3 +49,7 @@ Texte (enregistré, `galerie/accueil/voix/doc-v1…v8.wav`) :
 - v2 montée : média Higgsfield `cb4e1343-6aeb-42ab-96e9-d05a7f20cd04` (65,7 s), sous-titres français (images Pillow, ffmpeg 5.1 sans `text_align`).
 - À refaire sans paroles (bouches fermées) : plan 2 nuit `7ece3871-dd4b-44e6-8251-378875d98dd7` (en cours), plan 11 appel final (à lancer) → v3.
 - Défaut vu : l'écran du téléphone de la supérette affiche des prix en « $ » (image IA) — à corriger si on refait le plan 7.
+
+## Version 3 (13/11/2026, 21 h 17)
+- Plans 2 et 11 remplacés par les versions muettes (`7ece3871…`, `e4553c1e…`). Média Higgsfield `9dd57ce1-acfa-4874-b6e2-3d116332a594` (65,7 s). Script de montage complet : `film/build.sh` dans la sandbox Higgsfield (recopié ici si besoin de refaire).
+- Reste connu : prix en « $ » sur l'écran du téléphone de la supérette (plan 7).
