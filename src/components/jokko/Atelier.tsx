@@ -11,8 +11,11 @@ import { Commandes, PartLookup } from "./Commandes";
 import { laborStats, suggestedPrice } from "@/data/pricing";
 import { orderPlan } from "@/data/reorder";
 import { imeiLooksWrong, mainModelKey, tacOf } from "@/data/modelKeys";
-import { modelOfTac } from "@/data/phoneBook";
-import { compatTacLearn, compatTacLookup } from "@/data/supabase";
+import { expandKeys, modelOfTac, sameNames } from "@/data/phoneBook";
+import { compatLookup, compatTacLearn, compatTacLookup } from "@/data/supabase";
+import { evidenceText, type StockMatch, stockFor } from "@/data/compat";
+import { kindOf } from "@/data/pricing";
+import { modelKeys } from "@/data/modelKeys";
 
 type ImeiInfo = { state: "cherche" } | { state: "trouve"; label: string; from: "base" | "atelier" } | { state: "inconnu" } | { state: "faux" };
 
@@ -90,6 +93,55 @@ function PartPicker({ products, query, setQuery, onPick, label }: { products: Pr
         ) : (
           <small className="note">Aucune pièce trouvée : tape le prix d'achat toi-même.</small>
         ))}
+    </div>
+  );
+}
+
+const DOT: Record<string, string> = { pose: "🟢", fournisseur: "🔵", atelier: "🟡" };
+
+/**
+ * « Réparé » : les pièces qui vont sur CET appareil, proposées en premier (stock d'abord), d'après le nom des pièces
+ * et le réseau Jokko des pièces. Le type de pièce de la panne passe devant (écran cassé → écrans).
+ */
+function FitParts({ shop, device, problem, chosen, onPick }: { shop: Shop; device: string; problem: string; chosen: string[]; onPick: (p: Product) => void }) {
+  const [matches, setMatches] = useState<StockMatch[] | null>(null);
+  useEffect(() => {
+    let stop = false;
+    void (async () => {
+      const names = await sameNames();
+      const keys = expandKeys(modelKeys(device), names);
+      if (!keys.length) return !stop && setMatches([]);
+      const links = navigator.onLine !== false ? await compatLookup(keys) : [];
+      if (!stop) setMatches(stockFor(shop.products, keys, links));
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [device, shop.products]);
+  if (!matches?.length) return null;
+  const want = kindOf(problem);
+  const list = [...matches]
+    .sort((a, b) => Number(b.kind === want) - Number(a.kind === want) || Number(b.product.stock > 0) - Number(a.product.stock > 0))
+    .slice(0, 6);
+  return (
+    <div className="fit-parts">
+      <small className="note">Pièces qui vont sur {device} :</small>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {list.map((m) => {
+          const e = m.evidence ? evidenceText(m.evidence) : null;
+          return (
+            <Button key={m.product.id} variant={chosen.includes(m.product.id) ? "default" : "outline"} className="h-auto min-h-9 rounded-2xl px-3 py-1 text-left" onClick={() => onPick(m.product)}>
+              <span style={{ display: "grid" }}>
+                <span>{m.product.name}</span>
+                <small style={{ fontWeight: 400 }}>
+                  {m.product.stock > 0 ? `${m.product.stock} en stock` : `à acheter${m.product.cost !== undefined ? ` · ${money(m.product.cost)}` : ""}`}
+                  {e ? ` · ${DOT[e.level]} ${e.text}` : ""}
+                </small>
+              </span>
+            </Button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -287,6 +339,16 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   const [partQuery, setPartQuery] = useState(() => productNamedIn(shop.products, r.problem)?.name ?? "");
   const days = waitingDays(r);
   const inStock = shop.products.filter((p) => p.stock > 0);
+  function pick(p: Product) {
+    setPartQuery("");
+    if (p.stock > 0) {
+      if (!parts.includes(p.id)) setParts([...parts, p.id]);
+    } else {
+      // Pas en stock : achetée exprès ; le prix d'achat du fournisseur est mis, modifiable avant « Ajouter ».
+      setBuyName(p.name);
+      setBuyCost(p.cost !== undefined ? String(p.cost) : "");
+    }
+  }
   // Peu de pièces en stock : boutons directs ; beaucoup (catalogue du fournisseur) : la recherche suffit.
   const pieces = inStock.length <= 12 ? inStock : inStock.filter((p) => parts.includes(p.id));
   const rest = remaining(r);
@@ -321,21 +383,13 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
           )}
           {r.status === "depot" && (
             <>
+              <FitParts shop={shop} device={r.device} problem={r.problem} chosen={parts} onPick={pick} />
               <PartPicker
                 products={shop.products}
                 query={partQuery}
                 setQuery={setPartQuery}
                 label="Cherche la pièce posée (BF6, iPhone 11…)"
-                onPick={(p) => {
-                  setPartQuery("");
-                  if (p.stock > 0) {
-                    if (!parts.includes(p.id)) setParts([...parts, p.id]);
-                  } else {
-                    // Pas en stock : achetée exprès ; le prix d'achat du fournisseur est mis, modifiable avant « Ajouter ».
-                    setBuyName(p.name);
-                    setBuyCost(p.cost !== undefined ? String(p.cost) : "");
-                  }
-                }}
+                onPick={pick}
               />
               <small className="note">Pièces posées (elles sortent du stock) :</small>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
