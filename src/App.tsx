@@ -61,6 +61,8 @@ import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
 import { Services } from "@/components/jokko/Services";
 import { ClientFiles } from "@/components/jokko/ClientFiles";
+import { ClientNudge } from "@/components/jokko/ClientNudge";
+import type { Segment } from "@/data/clientFiles";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -753,11 +755,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   useEffect(() => clearWantedPlan(), []);
   /** Modèle choisi dans le Studio (« Je commande ce modèle ») : il ouvre la fiche de commande déjà remplie. */
   const [coutureDraft, setCoutureDraft] = useState<CoutureModel | null>(null);
+  /** Groupe de clients ouvert depuis le rappel de la semaine (campagne prête). */
+  const [clientsFocus, setClientsFocus] = useState<Segment | null>(null);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
     return wantedPlan ? "offre" : "parler";
   });
+  // Le groupe choisi depuis le rappel de la semaine ne vaut que pour cette visite de l'écran Clients.
+  useEffect(() => {
+    if (screen !== "clients") setClientsFocus(null);
+  }, [screen]);
   useEffect(() => {
     void ensurePush();
   }, []);
@@ -1532,6 +1540,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                 </section>
               )}
               {!demo && <ForfaitChip shop={shop} onPlans={patron ? () => setScreen("offre") : undefined} />}
+              {patron && <ClientNudge shop={shop} onOpen={(segment) => { setClientsFocus(segment); setScreen("clients"); }} />}
               {!demo && patron && <FirstSteps shop={shop} userId={profile.userId} onMic={() => void toggleMic()} onGo={(to) => (to === "stock" && !allowed("stock") ? void toggleMic() : setScreen(to))} />}
               <section className="sheet talk">
                 <div className="sheet-head">
@@ -1633,7 +1642,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "conseiller" && patron && (can(shop, "conseiller") ? <Advisor shop={shop} /> : <Upsell feature="conseiller" title="Le Conseiller IA" onPlans={() => setScreen("offre")} />)}
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} by={profile.owner || profile.phone} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
-          {screen === "clients" && <ClientFiles shop={shop} canEdit={patron} />}
+          {screen === "clients" && <ClientFiles key={clientsFocus ?? "tous"} shop={shop} canEdit={patron} focus={clientsFocus} />}
           {screen === "clients" && <Clients shop={shop} commit={commit} />}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}

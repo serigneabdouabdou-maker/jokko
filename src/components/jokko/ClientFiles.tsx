@@ -32,12 +32,13 @@ const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g
  * Fiches clients : l'historique de chaque client (appareils, pannes, dates, prix, services, dettes),
  * et les clients classés (fidèles, bons, nouveaux, à relancer, mauvais payeurs) pour les campagnes WhatsApp.
  */
-export function ClientFiles({ shop, canEdit }: { shop: Shop; canEdit: boolean }) {
+export function ClientFiles({ shop, canEdit, focus }: { shop: Shop; canEdit: boolean; focus?: Segment | null }) {
   const ranked = useMemo(() => rankClients(shop), [shop]);
-  const [segment, setSegment] = useState<Segment | "tous">("tous");
+  // Ouvert depuis le rappel de la semaine : le bon groupe, campagne prête.
+  const [segment, setSegment] = useState<Segment | "tous">(focus ?? "tous");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const [campaign, setCampaign] = useState(false);
+  const [campaign, setCampaign] = useState(Boolean(focus) && canEdit);
   const [offer, setOffer] = useState("");
   const [sent, setSent] = useState<string[]>([]);
 

@@ -79,3 +79,24 @@ describe("fiches clients du réparateur", () => {
     expect(campaignMessage(fresh, shop.name, "", shop.activity)).toContain(`Ton ${buyer.favorites[0].toLowerCase()} est disponible`);
   });
 });
+
+describe("rappel de la semaine", () => {
+  it("clients fidèles partis et dettes en retard ; rien à dire = pas de carte", async () => {
+    const { weeklyNudge, weekKey } = await import("./clientFiles");
+    const s = atelier();
+    // Awa (3 visites) n'est plus venue depuis 70 jours : à relancer.
+    const old = {
+      ...s,
+      repairs: s.repairs!.map((r) => (r.clientName === "Awa Diop" ? { ...r, at: ago(90), returnedAt: ago(85) } : r)),
+      sales: s.sales.map((x) => (x.clientId === s.clients.find((c) => c.name === "Awa Diop")!.id ? { ...x, at: ago(x.label.startsWith("Service") ? 70 : 90) } : x)),
+    };
+    const n = weeklyNudge(old, now)!;
+    expect(n.relancer.map((f) => f.client.name)).toEqual(["Awa Diop"]);
+    expect(n.payeurs.map((f) => f.client.name)).toEqual(["Fatou Ba"]);
+    expect(n.owed).toBe(6000);
+    expect(n.week).toBe("2026-11-09");
+    expect(weekKey(new Date("2026-11-15T22:00:00"))).toBe("2026-11-09");
+    expect(weekKey(new Date("2026-11-16T07:00:00"))).toBe("2026-11-16");
+    expect(weeklyNudge(newShop("Vide", "Couture, tailleur"), now)).toBeNull();
+  });
+});

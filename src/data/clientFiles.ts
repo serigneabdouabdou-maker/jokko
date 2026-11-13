@@ -199,3 +199,22 @@ export function campaignMessage(file: ClientFile, shopName: string, offer = "", 
       return `Salaam ${first}, ${shopName} est à ton service. ${line}.${extra}`;
   }
 }
+
+/** Lundi de la semaine (AAAA-MM-JJ) : le rappel revient une fois par semaine. */
+export function weekKey(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Rappel de la semaine (écran Parler, à partir du lundi) : les clients qui venaient souvent et ne viennent plus,
+ * et les dettes en retard. null s'il n'y a rien à faire.
+ */
+export function weeklyNudge(shop: Shop, now = new Date()): { relancer: ClientFile[]; payeurs: ClientFile[]; owed: number; week: string } | null {
+  const files = rankClients(shop, now);
+  const relancer = files.filter((f) => f.segment === "relancer");
+  const payeurs = files.filter((f) => f.segment === "payeur");
+  if (!relancer.length && !payeurs.length) return null;
+  return { relancer, payeurs, owed: payeurs.reduce((a, f) => a + f.debt, 0), week: weekKey(now) };
+}
