@@ -27,6 +27,7 @@ export function shopRow(s: Shop): Row {
     services: s.services ?? [],
     licences: s.licences ?? [],
     to_order: s.toOrder ?? [],
+    suppliers: s.suppliers ?? [],
   };
 }
 
@@ -395,10 +396,13 @@ export function rowsToShop(rows: ShopRows): Shop {
             at: str(x.at),
             ...(optStr(x.productId) ? { productId: str(x.productId) } : {}),
             name: str(x.name),
-            qty: Math.max(1, num(x.qty)),
+            qty: Math.max(0, num(x.qty)),
             why: (x.why === "recherche" || x.why === "conseil" ? x.why : "main") as "main" | "recherche" | "conseil",
           })),
         }
+      : {}),
+    ...(Array.isArray(s.suppliers) && s.suppliers.length
+      ? { suppliers: (s.suppliers as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), phone: str(x.phone) })) }
       : {}),
     ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"

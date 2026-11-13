@@ -222,7 +222,11 @@ export type Shop = {
   licences?: Licence[];
   /** Liste « À commander » chez le fournisseur (pièces cherchées sans résultat, manquantes, notées par le patron). */
   toOrder?: OrderLine[];
+  /** Fournisseurs (nom + numéro WhatsApp) : la commande prête leur est envoyée en un toucher. Le premier = principal. */
+  suppliers?: Supplier[];
 };
+
+export type Supplier = { id: string; name: string; phone: string };
 
 /** Une ligne de la commande à préparer pour le fournisseur. */
 export type OrderLine = {
@@ -231,6 +235,7 @@ export type OrderLine = {
   /** Article du stock ; absent pour une pièce cherchée qui n'existe pas encore. */
   productId?: string;
   name: string;
+  /** 0 = conseil écarté par le patron (« pas cette fois ») : Jokko ne le propose plus pendant 7 jours. */
   qty: number;
   /** Pourquoi : notée à la main, cherchée sans résultat (client qui demande), conseil de Jokko. */
   why: "main" | "recherche" | "conseil";

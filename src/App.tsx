@@ -66,6 +66,7 @@ import { ClientNudge } from "@/components/jokko/ClientNudge";
 import { type Segment, SEGMENTS } from "@/data/clientFiles";
 import { searchProducts } from "@/data/partSearch";
 import { addToOrder } from "@/data/reorder";
+import { applySuggestedPrices, laborStats, suggestedPrice } from "@/data/pricing";
 import { Commandes } from "@/components/jokko/Commandes";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
@@ -1698,6 +1699,10 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   // Beaucoup d'articles (pièces du fournisseur) : on cherche par nom ou par téléphone compatible (« BF6 »).
   const searchable = shop.products.length > 15;
   const shown = searchable && query.trim().length >= 2 ? searchProducts(shop.products, query, 100).map((h) => h.product) : shop.products;
+  // Prix conseillé (prix d'achat + ta main-d'œuvre habituelle, apprise de tes ventes) pour les articles sans prix de vente.
+  const stats = useMemo(() => laborStats(shop), [shop]);
+  const unpriced = shop.products.filter((p) => !p.price && p.cost);
+  const [priceNote, setPriceNote] = useState("");
   const codeOwner = (code: string) =>
     shop.products.find((p) => (p.barcode && normalizeCode(p.barcode) === code) || (p.retail?.barcode && normalizeCode(p.retail.barcode) === code))?.id;
   return (
@@ -1736,6 +1741,19 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
           )}
         </div>
       )}
+      {canEdit && unpriced.length > 0 && (
+        <div className="price-suggest">
+          <p className="note">
+            {unpriced.length} article{unpriced.length > 1 ? "s" : ""} sans prix de vente. Jokko peut mettre le prix conseillé : prix d'achat + ta main-d'œuvre habituelle
+            {` (écran ${amount(stats.Écran.labor)}, batterie ${amount(stats.Batterie.labor)}, plaquette ${amount(stats.Plaquette.labor)}`}
+            {stats.Écran.learned ? ", appris de tes ventes" : ""}), arrondi aux 500 F. Tu pourras changer chaque prix.
+          </p>
+          <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { const done = applySuggestedPrices(shop); commit(done.shop); setPriceNote(`✓ Prix conseillé mis sur ${done.count} article${done.count > 1 ? "s" : ""}.`); }}>
+            <Icon name="etiquette" size="sm" /> Mettre les prix conseillés
+          </Button>
+        </div>
+      )}
+      {priceNote && <p className="note jk-notice" role="status">{priceNote}</p>}
       {canEdit && <Commandes shop={shop} commit={commit} />}
       <div className="stock-list">
         {shown.map((p) => {
@@ -1763,7 +1781,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
               <div className="stock-name">
                 <b>{p.name}</b>
                 <small className="num">
-                  {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}{p.price ? `vente ${amount(p.price)}` : "vente : prix à fixer"}
+                  {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}{p.price ? `vente ${amount(p.price)}` : (() => { const sp = suggestedPrice(p, stats); return sp ? `vente conseillée ${amount(sp.price)}` : "vente : prix à fixer"; })()}
                   {p.retail ? ` · détail ${amount(p.retail.price)}/${p.retail.unit}` : ""}
                 </small>
               </div>

@@ -718,6 +718,9 @@
   .qty-step { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .qty-step b { min-width: 22px; text-align: center; }
   .order-receive { margin-top: 8px; }
+  .suppliers { display: grid; gap: 6px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--j-line); }
+  .supplier-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+  .price-hint { font-size: 13px; color: var(--j-ink-2); }
   @media (max-width: 560px) {
     .repair-price { grid-template-columns: 1fr 1fr; }
     .repair-price > span { display: none; }

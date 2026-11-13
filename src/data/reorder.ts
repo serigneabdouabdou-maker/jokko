@@ -27,15 +27,20 @@ export const usage = (shop: Shop, productId: string, now = new Date(), days = 30
 
 export type Advice = { key: string; productId?: string; name: string; qty: number; cost?: number; reason: string; line?: OrderLine };
 
-/** La commande (lignes gardées) et les conseils de Jokko (pas encore dans la commande). */
-export function orderPlan(shop: Shop, now = new Date()): { order: Advice[]; advice: Advice[]; total: number } {
+/**
+ * La commande prête : les lignes gardées (notées, cherchées, conseils modifiés) + les conseils de Jokko,
+ * qui y entrent tout seuls (commande automatique) sauf ceux écartés depuis moins de 7 jours.
+ */
+export function orderPlan(shop: Shop, now = new Date()): { order: Advice[]; advice: Advice[]; ready: Advice[]; total: number } {
   const byId = new Map(shop.products.map((p) => [p.id, p]));
-  const order: Advice[] = (shop.toOrder ?? []).map((l) => {
+  const lines = shop.toOrder ?? [];
+  const ignored = new Set(lines.filter((l) => l.qty <= 0 && l.productId && now.getTime() - Date.parse(l.at) < 7 * DAY).map((l) => l.productId!));
+  const order: Advice[] = lines.filter((l) => l.qty > 0).map((l) => {
     const p = l.productId ? byId.get(l.productId) : undefined;
     const reason = l.why === "recherche" ? "un client l'a demandée" : l.why === "conseil" ? "conseil de Jokko" : "notée par toi";
     return { key: l.id, ...(p ? { productId: p.id, cost: p.cost } : {}), name: p?.name ?? l.name, qty: l.qty, reason, line: l };
   });
-  const taken = new Set(order.flatMap((o) => (o.productId ? [o.productId] : [])));
+  const taken = new Set([...order.flatMap((o) => (o.productId ? [o.productId] : [])), ...ignored]);
   const advice: Advice[] = [];
   const add = (p: Product, qty: number, reason: string) => {
     if (taken.has(p.id)) return;
@@ -59,8 +64,9 @@ export function orderPlan(shop: Shop, now = new Date()): { order: Advice[]; advi
     else if (used > 0 && p.stock < Math.max(1, Math.ceil((used * 7) / 30)))
       add(p, Math.max(twoWeeks - p.stock, 1), p.stock <= 0 ? `fini ; ${used} partie${used > 1 ? "s" : ""} en 30 jours` : `il en reste ${fmt(p.stock)} ; ${used} parties en 30 jours`);
   }
-  const total = order.reduce((a, o) => a + (o.cost ?? 0) * o.qty, 0);
-  return { order, advice, total };
+  const ready = [...order, ...advice];
+  const total = ready.reduce((a, o) => a + (o.cost ?? 0) * o.qty, 0);
+  return { order, advice, ready, total };
 }
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }));
@@ -73,7 +79,7 @@ export function addToOrder(shop: Shop, input: { name: string; productId?: string
   const list = shop.toOrder ?? [];
   const same = list.find((l) => (input.productId ? l.productId === input.productId : !l.productId && squash(l.name) === squash(name)));
   const toOrder = same
-    ? list.map((l) => (l === same ? { ...l, qty: l.qty + qty } : l))
+    ? list.map((l) => (l === same ? { ...l, qty: (l.qty > 0 ? l.qty : 0) + qty } : l))
     : [...list, { id: uid("cmd"), at: now.toISOString(), ...(input.productId ? { productId: input.productId } : {}), name, qty, why: input.why }];
   return { ...shop, toOrder };
 }
@@ -87,21 +93,31 @@ export function removeFromOrder(shop: Shop, id: string): Shop {
   return { ...shop, toOrder: (shop.toOrder ?? []).filter((l) => l.id !== id) };
 }
 
+/**
+ * Changer une ligne de la commande prête : un conseil devient une ligne gardée avec la nouvelle quantité ;
+ * 0 sur un conseil = « pas cette fois » (écarté 7 jours).
+ */
+export function changeLine(shop: Shop, line: Advice, qty: number, now = new Date()): Shop {
+  const q = Math.max(0, Math.round(qty));
+  if (line.line) return q > 0 ? setOrderQty(shop, line.line.id, q) : removeFromOrder(shop, line.line.id);
+  const rest = (shop.toOrder ?? []).filter((l) => !(line.productId && l.productId === line.productId));
+  return { ...shop, toOrder: [...rest, { id: uid("cmd"), at: now.toISOString(), ...(line.productId ? { productId: line.productId } : {}), name: line.name, qty: q, why: "conseil" }] };
+}
+
 /** Message prêt pour le fournisseur : « 4 Écran Tecno BF6 » par ligne, comme ses factures. */
 export function orderMessage(shop: Shop, order: Advice[]): string {
   const lines = order.map((o) => `${o.qty} ${o.name}`);
   return [`Salaam, commande de ${shop.name} :`, ...lines, "Merci !"].join("\n");
 }
 
-/** WhatsApp sans numéro : le patron choisit son fournisseur dans ses contacts. */
+/** WhatsApp sans numéro : le patron choisit son fournisseur dans ses contacts (quand aucun numéro n'est noté). */
 export const shareOnWhatsapp = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
 /**
  * Commande reçue : chaque pièce entre dans le stock (une pièce cherchée qui n'existait pas devient un article).
  * Payée avec l'argent de la caisse : une sortie « achat » par ligne (la caisse reste juste ; ce n'est pas une dépense du bénéfice).
  */
-export function receiveOrder(shop: Shop, opts: { fromCash: boolean } = { fromCash: false }, now = new Date()): { shop: Shop; count: number } {
-  const lines = shop.toOrder ?? [];
+export function receiveOrder(shop: Shop, lines: Array<Pick<Advice, "productId" | "name" | "qty">>, opts: { fromCash: boolean } = { fromCash: false }, now = new Date()): { shop: Shop; count: number } {
   if (!lines.length) return { shop, count: 0 };
   let products = [...shop.products];
   const expenses: Expense[] = [];
@@ -117,5 +133,7 @@ export function receiveOrder(shop: Shop, opts: { fromCash: boolean } = { fromCas
     }
     if (opts.fromCash && p.cost) expenses.push({ id: uid("e"), at: now.toISOString(), label: `Achat ${l.qty} ${p.name}`, amount: p.cost * l.qty, kind: "achat", productId: p.id, qty: l.qty });
   }
-  return { shop: { ...shop, products, expenses: [...expenses, ...shop.expenses], toOrder: [] }, count: lines.length };
+  // Les lignes reçues quittent la commande ; les conseils écartés restent écartés.
+  const toOrder = (shop.toOrder ?? []).filter((l) => l.qty <= 0);
+  return { shop: { ...shop, products, expenses: [...expenses, ...shop.expenses], toOrder }, count: lines.length };
 }

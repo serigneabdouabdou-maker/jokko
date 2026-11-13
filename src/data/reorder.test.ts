@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Product, Repair, Sale, Shop } from "../model.ts";
-import { addToOrder, orderMessage, orderPlan, receiveOrder, removeFromOrder, setOrderQty, usage } from "./reorder.ts";
+import { addToOrder, changeLine, orderMessage, orderPlan, receiveOrder, removeFromOrder, setOrderQty, usage } from "./reorder.ts";
 
 const now = new Date("2026-11-13T12:00:00Z");
 const day = (n: number) => new Date(now.getTime() - n * 86_400_000).toISOString();
@@ -59,14 +59,31 @@ describe("commandes au fournisseur", () => {
   it("commande reçue : le stock monte, la pièce nouvelle devient un article, la caisse baisse seulement si payée avec la caisse", () => {
     let s = addToOrder(shop(), { name: "Écran Tecno BF6", productId: "bf6", qty: 4, why: "main" }, now);
     s = addToOrder(s, { name: "écran Infinix Hot 40", why: "recherche" }, now);
-    const free = receiveOrder(s, { fromCash: false }, now);
+    const free = receiveOrder(s, orderPlan(s, now).ready, { fromCash: false }, now);
     expect(free.count).toBe(2);
     expect(free.shop.products.find((p) => p.id === "bf6")?.stock).toBe(4);
     expect(free.shop.products.find((p) => p.name === "Écran Infinix Hot 40")?.stock).toBe(1);
     expect(free.shop.toOrder).toEqual([]);
     expect(free.shop.expenses).toEqual([]);
-    const cash = receiveOrder(s, { fromCash: true }, now);
+    const cash = receiveOrder(s, orderPlan(s, now).ready, { fromCash: true }, now);
     expect(cash.shop.expenses).toHaveLength(1);
     expect(cash.shop.expenses[0]).toMatchObject({ amount: 4 * 3700, kind: "achat", productId: "bf6", qty: 4 });
+  });
+
+  it("commande automatique : les conseils sont déjà dans la commande prête ; « pas cette fois » les écarte 7 jours ; changer la quantité garde la ligne", () => {
+    const s = shop({ repairs: [repair("R-005", "Écran Tecno BF6", "depot")] });
+    const plan = orderPlan(s, now);
+    expect(plan.ready.map((r) => r.productId)).toEqual(["bf6"]);
+    expect(plan.total).toBe(3700);
+    const advice = plan.ready[0]!;
+    const skipped = changeLine(s, advice, 0, now);
+    expect(orderPlan(skipped, now).ready).toEqual([]);
+    expect(orderPlan(skipped, new Date(now.getTime() + 8 * 86_400_000)).ready.map((r) => r.productId)).toEqual(["bf6"]);
+    const three = changeLine(s, advice, 3, now);
+    expect(orderPlan(three, now).ready).toMatchObject([{ productId: "bf6", qty: 3, reason: "conseil de Jokko" }]);
+    // Reçue : la ligne quitte la commande, l'écran entre en stock.
+    const got = receiveOrder(three, orderPlan(three, now).ready, { fromCash: false }, now);
+    expect(got.shop.products.find((p) => p.id === "bf6")?.stock).toBe(3);
+    expect(got.shop.toOrder).toEqual([]);
   });
 });

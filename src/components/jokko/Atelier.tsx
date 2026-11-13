@@ -8,6 +8,8 @@ import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
 import { productNamedIn, searchProducts } from "@/data/partSearch";
 import { Commandes, PartLookup } from "./Commandes";
+import { laborStats, suggestedPrice } from "@/data/pricing";
+import { orderPlan } from "@/data/reorder";
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -73,6 +75,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const waiting = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
   const owed = waiting.reduce((a, r) => a + remaining(r), 0);
   const month = workshopMonth(shop);
+  // Commande automatique : ce que Jokko conseille d'acheter (dépôts, stock bas, pièces qui partent vite).
+  const ready = shop.products.length ? orderPlan(shop).ready : [];
   // Calcul du prix : pièce + main-d'œuvre = prix pour le client (ou prix − pièce = main-d'œuvre).
   const piece = n(form.piece);
   const labor = n(form.labor);
@@ -109,6 +113,12 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         <article><span>Pièces</span><b className="num">− {money(month.parts)}</b></article>
         <article className="kpi-main" data-tone={month.labor < 0 ? "bad" : "good"}><span>Main-d'œuvre gagnée ce mois</span><b className="num">{money(month.labor)}</b></article>
       </div>
+      {ready.length > 0 && (
+        <p className="note jk-notice" role="status">
+          Commande prête : {ready.length} pièce{ready.length > 1 ? "s" : ""} à acheter ({ready.slice(0, 2).map((r) => r.name).join(", ")}{ready.length > 2 ? "…" : ""}).{" "}
+          <a className="link" href="#commande">Voir et envoyer</a>
+        </p>
+      )}
       {shop.products.length > 0 && <PartLookup shop={shop} commit={commit} />}
       <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
         <Button className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
@@ -147,14 +157,21 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
               onPick={(p) => {
                 setPicked(p);
                 setPartQuery("");
-                if (p.cost !== undefined) setForm({ ...form, piece: String(p.cost) });
+                // Main-d'œuvre : celle du prix de vente de la pièce, sinon celle que tu prends d'habitude (prix conseillé).
+                const sp = p.price > 0 && p.cost !== undefined ? { labor: p.price - p.cost } : suggestedPrice(p, laborStats(shop));
+                setForm({
+                  ...form,
+                  ...(p.cost !== undefined ? { piece: String(p.cost) } : {}),
+                  ...(!form.labor && !form.price && sp && sp.labor > 0 ? { labor: String(sp.labor) } : {}),
+                });
               }}
             />
           )}
           {picked && (
             <p className="note" role="status">
               Pièce : <b>{picked.name}</b>
-              {picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)} (tu peux le changer ci-dessous)` : " · prix d'achat à taper ci-dessous"}{" "}
+              {picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)}` : " · prix d'achat à taper ci-dessous"}
+              {piece + labor > 0 ? ` · prix conseillé ${money(piece + labor)} (main-d'œuvre ${money(labor)}). Tout se change ci-dessous.` : ""}{" "}
               <button type="button" className="link" onClick={() => setPicked(null)}>Enlever</button>
             </p>
           )}
