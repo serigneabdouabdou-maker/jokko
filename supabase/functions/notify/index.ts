@@ -8,9 +8,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 import { importPKCS8, SignJWT } from "npm:jose@5.9.6";
-import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/alerts.ts";
-import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/sync.ts";
-import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/8f7f67f42bf6f4883fd3a66d27a3902f5d72f36b/src/data/summary.ts";
+import { detectAlerts } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/86b5cc7315ecc41be64e33eebc5d76ac509e5546/src/data/alerts.ts";
+import { rowsToShop, type ShopRows } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/86b5cc7315ecc41be64e33eebc5d76ac509e5546/src/data/sync.ts";
+import { shortSummary } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/86b5cc7315ecc41be64e33eebc5d76ac509e5546/src/data/summary.ts";
 import { activityNotice, activityTargets, type ActivityPref } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/a15d9575a1e3c6ae465afd684774cea89a64fc2d/src/data/activity.ts";
 
 type Row = Record<string, unknown>;
