@@ -84,7 +84,7 @@ describe("diffShop", () => {
     const op = diffShop(null, fixture()).find((o) => o.id === "s-1");
     expect(op?.row).toEqual({
       id: "s-1", shop_id: "shop-1", at: "2026-10-30T09:00:00.000Z", label: "Divers", amount: 500,
-      qty: null, product_id: null, client_id: null, cost: null, retail: false, unit: null, payment: "especes", ticket: null,
+      qty: null, product_id: null, client_id: null, cost: null, retail: false, unit: null, payment: "especes", ticket: null, licence_id: null,
     });
   });
 
