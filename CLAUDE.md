@@ -172,6 +172,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Tailleurs : « Ajouter mes modèles » (photos de ses créations dans sa galerie, essayables par ses clients).
+- Mercerie : bouton « Mercerie de départ » (fils de 10 couleurs, boutons, fermetures, élastique, galons, prix de départ modifiables) — demandé de rappeler le 13/11/2026.
 
 ## Routine hebdomadaire
 
