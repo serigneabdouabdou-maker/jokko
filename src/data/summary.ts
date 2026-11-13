@@ -27,11 +27,26 @@ export function daySummary(shop: Shop, alerts: Alert[], counted: JournalRow | un
 }
 
 
-/** Version courte pour une notification du soir (une ou deux lignes). */
+/**
+ * Notification du soir (200 caractères au plus) : ce que la journée a rapporté.
+ * Ventes, bénéfice du jour, réparations rendues et main-d'œuvre gagnée, services, total gagné du mois, alertes graves.
+ * Le mois demande les ventes depuis le 1er (la fonction notify les charge).
+ */
 export function shortSummary(shop: Shop, graveAlerts: number, now = new Date()): { title: string; body: string } {
   const r = buildReport(shop, periodOf("jour", now));
-  return {
-    title: `Résumé du jour · ${shop.name}`,
-    body: `Ventes ${amount(r.revenue)} (${r.salesCount}) · Bénéfice ${amount(r.netProfit)} · ${graveAlerts ? `${graveAlerts} alerte${graveAlerts > 1 ? "s" : ""} grave${graveAlerts > 1 ? "s" : ""}` : "aucune alerte grave"}`,
-  };
+  const month = buildReport(shop, periodOf("mois", now));
+  const parts: string[] = [];
+  if (r.salesCount) parts.push(`Ventes ${amount(r.revenue)} (${r.salesCount}) · ${r.netProfit < 0 ? "Perte" : "Gagné"} aujourd'hui ${amount(Math.abs(r.netProfit))}.`);
+  else parts.push(r.expenses ? `Aucune vente aujourd'hui · dépenses ${amount(r.expenses)}.` : "Aucune vente aujourd'hui.");
+  // Réparateurs : appareils rendus aujourd'hui et main-d'œuvre gagnée (prix − pièces).
+  const back = (shop.repairs ?? []).filter((x) => x.status === "rendu" && x.returnedAt && sameDay(x.returnedAt, now));
+  if (back.length) {
+    const labor = back.reduce((a, x) => a + x.price - x.parts.reduce((b, p) => b + p.cost * (p.qty || 1), 0), 0);
+    parts.push(`${back.length} réparation${back.length > 1 ? "s" : ""} rendue${back.length > 1 ? "s" : ""}, main-d'œuvre ${amount(labor)}.`);
+  }
+  const services = shop.sales.filter((x) => sameDay(x.at, now) && x.label.startsWith("Service · ")).length;
+  if (services) parts.push(`${services} service${services > 1 ? "s" : ""}.`);
+  parts.push(`Ce mois : ${amount(month.netProfit)}.`);
+  if (graveAlerts) parts.push(`${graveAlerts} alerte${graveAlerts > 1 ? "s" : ""} grave${graveAlerts > 1 ? "s" : ""} à voir.`);
+  return { title: `Ta journée · ${shop.name}`, body: parts.join(" ") };
 }

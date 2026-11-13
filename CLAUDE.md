@@ -112,6 +112,8 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 
 - Rappel du matin (13/11/2026, demande de Fallou : « tout ce qui devrait être rappel ») : tâche `jokko-rappel-matin` (8 h 37 Dakar, chaque jour) → `private.morning_watch()` lit `private.morning_list()` et envoie une notification au patron (`notify` kind `boutique`, tag `matin-AAAAMMJJ`) : commande prête (mêmes règles que `orderPlan`, plats et portions exclus ; « pièces » chez un réparateur, « articles » ailleurs), appareils réparés qui attendent leur client, appareils au dépôt depuis > 7 jours, habits prêts pas récupérés, dettes à échéance, licences qui finissent dans 7 jours. Rien à dire = rien envoyé. Toucher → Atelier (réparateur), Couture ou Stock.
 
+- Résumé du soir enrichi (13/11/2026) : `shortSummary` (`src/data/summary.ts`, utilisé par `notify` kind `summary`, chaque heure pour les profils dont `summary_hour` = l'heure, offre Avancé) : ventes, gagné aujourd'hui, réparations rendues et main-d'œuvre gagnée, services, gagné du mois, alertes graves. `notify` charge les ventes depuis le 1er du mois et les réparations ; ses imports GitHub suivent la version de `summary.ts` (changer le numéro de version et redéployer `notify` après un changement de `summary.ts`, `sync.ts`, `alerts.ts`). Fallou : 20 h.
+
 ## Bénéfices (13/11/2026, demande de Fallou)
 
 - Écran « Bénéfices » (ancien « Bilan », patron seulement, `Bilan.tsx`, calculs `src/data/report.ts`) : ventes − prix d'achat de ce qui est vendu (`sales.cost`) = bénéfice sur les ventes ; − dépenses − pertes = gagné (ou perdu). Les achats de marchandise (`kind: achat`) ne sont pas des dépenses : leur coût compte quand l'article est vendu.

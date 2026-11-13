@@ -17,7 +17,7 @@ type Row = Record<string, unknown>;
 type JournalRow = { id: number; shop_id: string; at: string; user_id: string | null; tbl: string; row_id: string; action: "ajout" | "modification" | "suppression"; before: Row | null; after: Row | null };
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-const CHILDREN = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts"] as const;
+const CHILDREN = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs"] as const;
 let config: { vapid_public: string; vapid_private: string; notify_secret: string } | null = null;
 
 async function loadConfig() {
@@ -204,7 +204,9 @@ async function onSummary() {
       // Le résumé du soir fait partie de l'offre Avancé (essai compris).
       const { data: plan } = await admin.rpc("effective_plan", { p_shop: m.shop_id });
       if (plan !== "avance") continue;
-      const shop = await loadShop(m.shop_id as string, dayStart.toISOString());
+      // Ventes depuis le 1er du mois : le résumé dit aussi ce que le mois a rapporté.
+      const monthStart = new Date(Date.UTC(dayStart.getUTCFullYear(), dayStart.getUTCMonth(), 1));
+      const shop = await loadShop(m.shop_id as string, monthStart.toISOString());
       if (!shop) continue;
       const patrons = await patronsOf(shop.id);
       const { data: rows } = await admin.from("journal").select("*").eq("shop_id", shop.id).gte("at", dayStart.toISOString()).limit(2000);
