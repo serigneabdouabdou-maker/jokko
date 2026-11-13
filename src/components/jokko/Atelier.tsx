@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { type Repair, type Shop, money } from "@/model";
 import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { whatsappLink } from "@/data/debts";
+import { clientFile, knownClient } from "@/data/clientFiles";
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -40,6 +41,9 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const labor = n(form.labor);
   const typedPrice = n(form.price);
   const price = typedPrice || (piece || labor ? piece + labor : 0);
+  // Client qui revient : même numéro ou même nom → sa fiche (visites, appareils, garantie, dette).
+  const known = adding ? knownClient(shop, form.clientName, form.phone) : undefined;
+  const knownFile = known ? clientFile(shop, known) : undefined;
 
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
@@ -76,6 +80,20 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         <div className="list" style={{ gap: 8, display: "grid" }}>
           <Input className="h-11" placeholder="Nom du client" aria-label="Nom du client" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} />
           <Input className="h-11" inputMode="tel" placeholder="Téléphone du client (77 …)" aria-label="Téléphone du client" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          {knownFile && (
+            <div className={`known-client${knownFile.late ? " is-late" : ""}`} role="status">
+              <b>Client connu : {knownFile.client.name}</b>
+              <small>
+                {knownFile.visits} visite{knownFile.visits > 1 ? "s" : ""} · {money(knownFile.spent)} dépensés
+                {knownFile.entries[0] ? ` · dernière fois le ${new Date(knownFile.entries[0].at).toLocaleDateString("fr-FR")} : ${knownFile.entries[0].title}${knownFile.entries[0].detail ? ` (${knownFile.entries[0].detail})` : ""}` : ""}
+              </small>
+              {knownFile.underWarranty.length > 0 && <small>Sous garantie : {knownFile.underWarranty.map((r) => `${r.number} ${r.device}`).join(", ")}</small>}
+              {(knownFile.debt > 0 || knownFile.owedRepairs > 0) && <small>Il doit encore {money(knownFile.debt + knownFile.owedRepairs)}{knownFile.late ? " (en retard)" : ""}.</small>}
+              {!form.phone && knownFile.client.phone && (
+                <button type="button" className="link" onClick={() => setForm({ ...form, clientName: knownFile.client.name, phone: knownFile.client.phone })}>Reprendre son numéro ({knownFile.client.phone})</button>
+              )}
+            </div>
+          )}
           <Input className="h-11" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
           <Input className="h-11" placeholder="Panne (écran cassé, connecteur…)" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
           <div className="repair-price">

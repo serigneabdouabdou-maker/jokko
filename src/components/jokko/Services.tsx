@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Payment, PAYMENT_LABELS, type ServiceItem, type Shop, money } from "@/model";
+import { clientFor } from "@/data/repairs";
 import { addCommonServices, addLicence, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth } from "@/data/services";
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -21,6 +22,7 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
   const [picked, setPicked] = useState<ServiceItem | null>(null);
   const [amount, setAmount] = useState("");
   const [payment, setPayment] = useState<Payment>("especes");
+  const [who, setWho] = useState({ name: "", phone: "" });
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ id: "", name: "", price: "", licenceId: "" });
@@ -29,12 +31,16 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
     setPicked(s);
     setAmount(String(s.price));
     setPayment("especes");
+    setWho({ name: "", phone: "" });
     setNote("");
   }
 
   function cash() {
     if (!picked) return;
-    const done = sellService(shop, { name: picked.name, amount: n(amount), licenceId: picked.licenceId, payment });
+    // Client noté (facultatif) : le service entre dans sa fiche.
+    const known = who.name.trim() || who.phone.replace(/\D/g, "").length >= 9 ? clientFor(shop, who.name, who.phone.replace(/\D/g, "")) : null;
+    const base = known ? { ...shop, clients: known.clients } : shop;
+    const done = sellService(base, { name: picked.name, amount: n(amount), licenceId: picked.licenceId, payment, ...(known ? { clientId: known.client.id } : {}) });
     if (!done) return;
     commit(done.shop);
     setNote(`✓ ${picked.name} encaissé : ${money(done.sale.amount)} (${PAYMENT_LABELS[payment]}). Tout est main-d'œuvre.`);
@@ -81,6 +87,10 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
             <small>Prix payé pour « {picked.name} »</small>
             <Input className="h-11 num" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Prix payé" />
           </label>
+          <div className="service-who">
+            <Input className="h-10" placeholder="Client (facultatif)" aria-label="Nom du client" value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })} />
+            <Input className="h-10" inputMode="tel" placeholder="Téléphone (77 …)" aria-label="Téléphone du client" value={who.phone} onChange={(e) => setWho({ ...who, phone: e.target.value })} />
+          </div>
           <div className="seg" role="radiogroup" aria-label="Paiement">
             {PAY.map((p) => (
               <button key={p} type="button" role="radio" aria-checked={payment === p} className={payment === p ? "on" : ""} onClick={() => setPayment(p)}>{PAYMENT_LABELS[p]}</button>

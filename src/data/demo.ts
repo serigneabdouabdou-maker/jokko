@@ -456,7 +456,8 @@ const reparation: Kit = {
     for (let d = 6; d >= 0; d--) {
       [0, 1].forEach((k) => {
         const srv = services[(d + k) % services.length];
-        sales.push({ id: id(`s-srv-${d}-${k}`), at: at(d, 11 + k * 4), label: `Service · ${srv.name}`, amount: srv.price, ...(srv.licenceId ? { licenceId: srv.licenceId } : {}) });
+        const who = clients[(d * 2 + k) % clients.length];
+        sales.push({ id: id(`s-srv-${d}-${k}`), at: at(d, 11 + k * 4), label: `Service · ${srv.name}`, amount: srv.price, clientId: who.id, ...(srv.licenceId ? { licenceId: srv.licenceId } : {}) });
       });
     }
     return { repairs, sales, services, licences };

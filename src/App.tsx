@@ -60,6 +60,7 @@ import { StockImport } from "@/components/jokko/StockImport";
 import { ProductEditor } from "@/components/jokko/ProductEditor";
 import { Bilan, ProfitStrip } from "@/components/jokko/Bilan";
 import { Services } from "@/components/jokko/Services";
+import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -1636,6 +1637,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
           {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}
           {screen === "atelier" && <Atelier shop={shop} commit={commit} />}
+          {screen === "atelier" && <ClientFiles shop={shop} canEdit={patron} />}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}

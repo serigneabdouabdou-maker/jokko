@@ -35,8 +35,14 @@ export const remaining = (r: Repair) => Math.max(0, r.price - r.paid);
 /** Bénéfice de la réparation : prix − prix d'achat des pièces. */
 export const repairProfit = (r: Repair) => r.price - partsCost(r);
 
-/** Client du cahier (même nom, écrit autrement compris) ou nouveau client. */
-function clientFor(shop: Shop, name: string, phone: string): { clients: Client[]; client: Client } {
+/**
+ * Client du cahier ou nouveau client : d'abord le même numéro de téléphone (le plus sûr), puis le même nom
+ * (écrit autrement compris). Ainsi un client qui revient retrouve sa fiche et son historique.
+ */
+export function clientFor(shop: Shop, name: string, phone: string): { clients: Client[]; client: Client } {
+  const tail = (p: string) => p.replace(/\D/g, "").slice(-9);
+  const byPhone = tail(phone).length === 9 ? shop.clients.find((c) => tail(c.phone) === tail(phone)) : undefined;
+  if (byPhone) return { clients: shop.clients, client: byPhone };
   const found = pickByName(shop.clients, name);
   const known = found.item && !nameClash(found.item.name, name) ? found.item : undefined;
   if (known) {
