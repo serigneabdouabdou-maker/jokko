@@ -26,6 +26,7 @@ export function shopRow(s: Shop): Row {
     modules: s.modules ?? [],
     services: s.services ?? [],
     licences: s.licences ?? [],
+    to_order: s.toOrder ?? [],
   };
 }
 
@@ -386,6 +387,18 @@ export function rowsToShop(rows: ShopRows): Shop {
       : {}),
     ...(Array.isArray(s.licences) && s.licences.length
       ? { licences: (s.licences as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), cost: num(x.cost), startAt: str(x.startAt), months: num(x.months) || 12 })) }
+      : {}),
+    ...(Array.isArray(s.to_order) && s.to_order.length
+      ? {
+          toOrder: (s.to_order as Row[]).map((x) => ({
+            id: str(x.id),
+            at: str(x.at),
+            ...(optStr(x.productId) ? { productId: str(x.productId) } : {}),
+            name: str(x.name),
+            qty: Math.max(1, num(x.qty)),
+            why: (x.why === "recherche" || x.why === "conseil" ? x.why : "main") as "main" | "recherche" | "conseil",
+          })),
+        }
       : {}),
     ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"

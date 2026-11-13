@@ -65,6 +65,8 @@ import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
 import { type Segment, SEGMENTS } from "@/data/clientFiles";
 import { searchProducts } from "@/data/partSearch";
+import { addToOrder } from "@/data/reorder";
+import { Commandes } from "@/components/jokko/Commandes";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
 import { Atelier } from "@/components/jokko/Atelier";
@@ -1719,7 +1721,22 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
       {searchable && (
         <Input className="h-11 stock-search" placeholder={`Cherche parmi ${shop.products.length} articles (nom, modèle : BF6, iPhone 11…)`} aria-label="Chercher un article" value={query} onChange={(e) => setQuery(e.target.value)} />
       )}
-      {searchable && query.trim().length >= 2 && shown.length === 0 && <p className="note">Aucun article trouvé.</p>}
+      {searchable && query.trim().length >= 2 && shown.length === 0 && (
+        <div className="part-missing" role="status">
+          <p className="note is-late">« {query.trim()} » n'est pas dans ton stock.</p>
+          {canEdit && (
+            <div className="row">
+              <Button className="h-10 rounded-full px-4" onClick={() => { commit(addToOrder(shop, { name: query.trim().charAt(0).toUpperCase() + query.trim().slice(1), why: "recherche" })); setQuery(""); }}>
+                <Icon name="ajouter" size="sm" /> À commander
+              </Button>
+              <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { const id = uid("p"); commit({ ...shop, products: [...shop.products, { id, name: query.trim().charAt(0).toUpperCase() + query.trim().slice(1), unit: "pièce", stock: 0, min: 0, price: 0 }] }); setQuery(""); setEditing(id); }}>
+                Créer l'article
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {canEdit && <Commandes shop={shop} commit={commit} />}
       <div className="stock-list">
         {shown.map((p) => {
           const low = isLow(p);

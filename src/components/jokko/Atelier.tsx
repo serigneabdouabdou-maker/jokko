@@ -7,6 +7,7 @@ import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payR
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
 import { productNamedIn, searchProducts } from "@/data/partSearch";
+import { Commandes, PartLookup } from "./Commandes";
 
 const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: "Réparé · attend le client", rendu: "Rendu", annule: "Annulé" };
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
@@ -108,6 +109,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         <article><span>Pièces</span><b className="num">− {money(month.parts)}</b></article>
         <article className="kpi-main" data-tone={month.labor < 0 ? "bad" : "good"}><span>Main-d'œuvre gagnée ce mois</span><b className="num">{money(month.labor)}</b></article>
       </div>
+      {shop.products.length > 0 && <PartLookup shop={shop} commit={commit} />}
       <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
         <Button className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouveau dépôt
@@ -193,6 +195,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
           <RepairRow key={r.id} r={r} shop={shop} commit={commit} open={open === r.id} toggle={() => setOpen(open === r.id ? null : r.id)} />
         ))}
       </div>
+      {shop.products.length > 0 && <Commandes shop={shop} commit={commit} />}
     </section>
   );
 }
