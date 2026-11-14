@@ -50,11 +50,14 @@ function send(req: Request, status: number, body: unknown, headers: Record<strin
 const logger = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+/** Taille de la demande écrite (octets) et nombre d'articles envoyés : console, onglet « Taille des demandes ». */
+const sizes = new WeakMap<Request, { bytes: number; products: number | null }>();
 function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?: number) {
   const shop = req.headers.get("x-jokko-shop");
+  const size = sizes.get(req);
   void logger
     .from("gemini_calls")
-    .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null) })
+    .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null), ...(size ? { bytes: size.bytes, sent_products: size.products } : {}) })
     .then(() => undefined, () => undefined);
 }
 const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
@@ -92,6 +95,7 @@ async function body<T extends z.ZodType>(req: Request, max: number, schema: T): 
   }
   const text = await req.text();
   if (text.length > max) {
+    if (max === MAX_TEXT_BODY) sizes.set(req, { bytes: text.length, products: null });
     // Trace dans gemini_calls (statut 413) : la console prévient CFC (private.payload_watch).
     const route = new URL(req.url).pathname.split("/").filter(Boolean).pop() ?? "";
     logCall(req, LOG_KIND[route] ?? "texte", null, false, 413);
@@ -103,6 +107,9 @@ async function body<T extends z.ZodType>(req: Request, max: number, schema: T): 
   } catch {
     return { ok: false, res: send(req, 400, { error: "invalid_json" }) };
   }
+  // Mesure des demandes qui portent la fiche de la boutique (écrit, direct, conseil) ; pas l'audio, les photos ni la voix.
+  const products = (raw as { shopContext?: { products?: unknown[] } } | null)?.shopContext?.products;
+  if (max === MAX_TEXT_BODY && Array.isArray(products)) sizes.set(req, { bytes: text.length, products: products.length });
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".") || "(racine)"))].slice(0, 10);

@@ -234,3 +234,16 @@
 .cx-service small { color: var(--j-ink-3); font-size: 12.5px; }
 .cx-uptime { font-size: 13px; color: var(--j-ink-2); }
 .cx-bug-msg { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* Taille des demandes (onglet « Taille des demandes ») */
+.cx-table-wrap { overflow-x: auto; }
+.cx-gauge { width: 140px; height: 8px; border-radius: 99px; background: var(--j-line); overflow: hidden; margin-bottom: 4px; }
+.cx-gauge > span { display: block; height: 100%; border-radius: 99px; background: var(--cx-good); }
+.cx-gauge[data-tone="warn"] > span { background: var(--cx-warn); }
+.cx-gauge[data-tone="bad"] > span { background: var(--j-danger); }
+.cx-spark { display: flex; align-items: flex-end; gap: 3px; height: 32px; width: 84px; }
+.cx-spark > i { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--j-line); }
+.cx-spark > i[data-tone="good"] { background: var(--cx-good); }
+.cx-spark > i[data-tone="warn"] { background: var(--cx-warn); }
+.cx-spark > i[data-tone="bad"] { background: var(--j-danger); }
+.cx-table td[data-tone="bad"] { color: var(--j-danger); font-weight: 700; }
