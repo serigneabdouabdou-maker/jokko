@@ -1,15 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
-import { settleAmounts } from "../../src/assistant/wolofNumbers.ts";
+import { moneyAmountsSaid, settleAmounts } from "../../src/assistant/wolofNumbers.ts";
 import { conseillerInstruction } from "../../src/data/metiers.ts";
 import { localizeInstruction } from "../../src/data/metierWords.ts";
-import { ADVICE_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
+import { ADVICE_INSTRUCTION, BATCH_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildBatchPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
   type Interpretation,
   type InterpretRequest,
   type Advice,
   type AdviceRequest,
+  type Batch,
+  type BatchRequest,
+  batchJsonSchema,
+  batchSchema,
   adviceJsonSchema,
   adviceSchema,
   type ListenRequest,
@@ -130,6 +134,28 @@ export async function understandOrder(request: InterpretRequest, options: Interp
   );
   const ids = new Set(request.shopContext.products.map((p) => p.id));
   return { ...guess, items: guess.items.map((i) => (i.productId && !ids.has(i.productId) ? { ...i, productId: null } : i)) };
+}
+
+/**
+ * Plusieurs opérations collées d'un coup : Gemini les sépare, le code relit chaque montant dans SA ligne
+ * (jamais un total calculé par Gemini) et retire les ids inconnus.
+ */
+export async function understandBatch(request: BatchRequest, options: InterpretOptions): Promise<Batch> {
+  const result = await run(options, batchSchema, batchJsonSchema(), buildBatchPrompt(request.message, request.shopContext), undefined, BATCH_INSTRUCTION);
+  const products = new Set(request.shopContext.products.map((p) => p.id));
+  const clients = new Set(request.shopContext.clients.map((c) => c.id));
+  return {
+    ignored: result.ignored,
+    operations: result.operations.map(({ line, action }) => {
+      const a = { ...action, productId: action.productId && products.has(action.productId) ? action.productId : null, clientId: action.clientId && clients.has(action.clientId) ? action.clientId : null };
+      // Montant relu dans la ligne (« 9 000 F », pas le « 35 » de « ZTE A35 ») : si la ligne dit un seul montant, c'est lui ;
+      // plusieurs montants et celui de Gemini n'y est pas : montant vide, le patron complète (jamais un total calculé).
+      const said = moneyAmountsSaid(line);
+      if (said.length === 1 && !(a.unitPrice && said[0] === a.unitPrice)) a.amount = said[0]!;
+      else if (said.length > 1 && a.amount !== null && !said.includes(a.amount) && !(a.unitPrice && said.includes(a.unitPrice))) a.amount = null;
+      return { line, action: a };
+    }),
+  };
 }
 
 /** Conseiller : explique le diagnostic et propose des actions (modèle standard, plus réfléchi que le léger). */

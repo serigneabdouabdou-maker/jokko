@@ -2020,3 +2020,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .part-lookup .compat-teach { display: grid; gap: 6px; }
 .part-lookup .compat-teach .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .part-lookup .compat-teach .row > * { min-width: 0; }
+.batch-card .batch-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.batch-card .batch-lines li { padding: 8px 10px; border-radius: 12px; background: var(--j-wash); }
+.batch-card .batch-lines li.is-off { opacity: 0.6; }
+.batch-card .batch-lines label { display: flex; gap: 10px; align-items: flex-start; }
+.batch-card .batch-lines label > span { display: grid; gap: 2px; min-width: 0; }
+.batch-card .batch-lines small { color: var(--j-ink-3); font-size: 12px; overflow-wrap: anywhere; }
+.batch-card .batch-lines small.is-late { color: var(--j-danger); }
+.batch-card .batch-ignored { font-size: 13px; color: var(--j-ink-3); margin: 6px 0; }
+.batch-card .batch-ignored ul { margin: 4px 0 0; padding-left: 18px; }
+.batch-card .order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

@@ -50,11 +50,12 @@ import {
   assistantStatus,
   buildShopContext,
   guessOrder,
+  batchMessage,
   interpretMessage,
   listenAudio,
 } from "@/assistant/client";
 import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive } from "@/assistant/live";
-import { LiveDesk, normalizeAction } from "@/assistant/liveDesk";
+import { LiveDesk, normalizeAction, pickByName } from "@/assistant/liveDesk";
 import { AmountLedger, guardReply, moneyAmountsSaid } from "@/assistant/wolofNumbers";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
@@ -126,6 +127,8 @@ import { PriceSyncBanner } from "@/components/jokko/PriceSync";
 import { priceChanges, type PriceChange } from "@/data/multiShop";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
+import { BatchCard } from "@/components/jokko/BatchCard";
+import { type BatchCardData, forRecord, looksLikeBatch, markDuplicates } from "@/assistant/batch";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { ensurePush } from "@/pwa";
@@ -135,7 +138,7 @@ const MAX_RECORDING_MS = 30_000;
 const TEXT_SESSION_IDLE_MS = 3 * 60_000;
 
 /** Message du fil de discussion ; card = panier compris dans une liste en vrac. */
-type LogMessage = ChatMessage & { card?: OrderCardData };
+type LogMessage = ChatMessage & { card?: OrderCardData; batch?: BatchCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
@@ -1348,6 +1351,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       handle.tell(input);
       return;
     }
+    // Plusieurs opérations collées d'un coup (texte long, plusieurs lignes avec un montant) : liste à vérifier.
+    if (assistant !== "off" && looksLikeBatch(input) && (await tryBatch(input))) return;
     if (can(shop, "chat") && (await tryOrder(input))) return;
     setReply(null);
     setVoice("comprehension");
@@ -1393,6 +1398,47 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     }
     const entry = desk.commit(before, applied.shop, applied.summary, "");
     updateCard(id, { order: { ...order, payment }, status: "enregistre", entryId: entry.id, summary: applied.summary, note: undefined });
+  }
+
+  /** Long texte : Gemini sépare les opérations ; carte à vérifier (déjà enregistré aujourd'hui = décoché). */
+  async function tryBatch(input: string): Promise<boolean> {
+    setReply(null);
+    setVoice("comprehension");
+    const outcome = await batchMessage(input, buildShopContext(shop, profile.lang, input));
+    setVoice("repos");
+    if (!outcome.ok) {
+      say(outcome.message);
+      fail(outcome.message);
+      return true;
+    }
+    if (!outcome.operations.length) {
+      say(outcome.ignored.length ? "Je n’ai trouvé aucune opération à enregistrer dans ce texte (seulement des totaux ou des consignes)." : "Je n’ai trouvé aucune opération à enregistrer. Écris une opération par ligne, avec son montant.");
+      return true;
+    }
+    const items = markDuplicates(currentShop(profileRef.current), outcome.operations);
+    setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: "", at: new Date().toISOString(), batch: { items, ignored: outcome.ignored, status: "attente" } }]);
+    return true;
+  }
+
+  function updateBatch(id: string, change: (b: BatchCardData) => BatchCardData) {
+    setMessages((list) => list.map((m) => (m.id === id && m.batch ? { ...m, batch: change(m.batch) } : m)));
+  }
+
+  /** « Tout enregistrer » : chaque opération cochée passe par les mêmes règles que la voix (services, montants, clients). */
+  function saveBatch(id: string, card: BatchCardData) {
+    let done = 0;
+    const failed: string[] = [];
+    for (const item of card.items) {
+      if (!item.keep) continue;
+      const now = currentShop(profileRef.current);
+      const ready = forRecord(item.action, now, (name) => Boolean(pickByName(now.services ?? [], name).item));
+      const action = normalizeAction({ ...ready, prixUnitaire: ready.unitPrice ?? undefined }, now);
+      const saved = action ? desk.record(action, item.line) : null;
+      if (saved?.ok) done++;
+      else failed.push(item.line.slice(0, 60));
+    }
+    updateBatch(id, (b) => ({ ...b, status: "enregistre", done, failed }));
+    say(failed.length ? `${done} opération(s) enregistrée(s). À refaire : ${failed.length}.` : `${done} opération(s) enregistrée(s).`);
   }
 
   function undoOrder(id: string, entryId?: string) {
@@ -1634,7 +1680,15 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                 </div>
                 <div className="log">
                   {messages.map((m) =>
-                    m.card ? (
+                    m.batch ? (
+                      <BatchCard
+                        key={m.id}
+                        card={m.batch}
+                        onToggle={(i) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, keep: !it.keep } : it)) }))}
+                        onSave={() => saveBatch(m.id, m.batch!)}
+                        onCancel={() => updateBatch(m.id, (b) => ({ ...b, status: "annule" }))}
+                      />
+                    ) : m.card ? (
                       <OrderCard
                         key={m.id}
                         card={m.card}

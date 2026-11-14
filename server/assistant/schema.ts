@@ -132,6 +132,35 @@ export const orderGuessSchema = z.strictObject({
 
 export type OrderGuess = z.infer<typeof orderGuessSchema>;
 
+/**
+ * Plusieurs opérations collées d'un coup (14/11/2026, demande de Fallou : « si j'écris pour enregistrer, ça ne va pas ») :
+ * Gemini sépare chaque opération (vente, service, dépense, achat, dette) ; les totaux, récapitulatifs et consignes sont ignorés.
+ * Le patron vérifie la liste avant d'enregistrer.
+ */
+export const batchRequestSchema = z.strictObject({
+  message: z.string().trim().min(1).max(6000),
+  shopContext: shopContextSchema,
+});
+
+export const batchSchema = z.strictObject({
+  operations: z
+    .array(
+      z.strictObject({
+        line: z.string().max(240),
+        action: draftActionSchema,
+      }),
+    )
+    .max(40),
+  ignored: z.array(z.string().max(240)).max(40),
+});
+
+export type BatchRequest = z.infer<typeof batchRequestSchema>;
+export type Batch = z.infer<typeof batchSchema>;
+
+export function batchJsonSchema(): Record<string, unknown> {
+  return jsonSchema(batchSchema);
+}
+
 export function orderGuessJsonSchema(): Record<string, unknown> {
   return jsonSchema(orderGuessSchema);
 }

@@ -204,6 +204,30 @@ export async function interpretMessage(message: string, shopContext: ShopContext
 /** Demande refusée parce que trop lourde : la vraie raison, jamais « Gemini ne répond pas ». CFC est prévenu par la console. */
 export const TOO_BIG = "Ta boutique est très grande et cette demande était trop lourde pour Jokko. CFC est prévenu. Ferme complètement l’appli, rouvre-la, puis réessaie.";
 
+/** Plusieurs opérations collées d'un coup : Gemini les sépare (route « batch »), le patron vérifie avant d'enregistrer. */
+export type BatchOutcome = { ok: true; operations: Array<{ line: string; action: DraftAction }>; ignored: string[] } | { ok: false; message: string };
+
+export async function batchMessage(message: string, shopContext: ShopContext, signal?: AbortSignal): Promise<BatchOutcome> {
+  let response: Response;
+  try {
+    response = await api("batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message.slice(0, 6000), shopContext }),
+      signal,
+    });
+  } catch {
+    return { ok: false, message: "Jokko ne joint pas le serveur. Vérifie la connexion." };
+  }
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (response.ok && body && Array.isArray(body.operations)) {
+    return { ok: true, operations: body.operations as Array<{ line: string; action: DraftAction }>, ignored: Array.isArray(body.ignored) ? (body.ignored as string[]) : [] };
+  }
+  if (response.status === 413) return { ok: false, message: TOO_BIG };
+  if (response.status === 400) return { ok: false, message: "Le texte est trop long : envoie au plus 40 opérations à la fois." };
+  return { ok: false, message: typeof body?.message === "string" ? body.message : "Jokko n'a pas pu lire la liste. Réessaie dans un instant." };
+}
+
 export type Heard = { transcript: string; interpretation: Interpretation };
 
 export type ListenOutcome =
