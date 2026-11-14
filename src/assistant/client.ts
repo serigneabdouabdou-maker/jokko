@@ -67,6 +67,14 @@ const contextRank = (p: Shop["products"][number]) => (p.stock > 0 ? 0 : p.price 
  */
 export const CONTEXT_BYTES = { products: 16_000, clients: 5_000, repairs: 4_000, expiring: 2_000 } as const;
 
+/**
+ * Poids total de la fiche (toutes listes) : la place que les clients, dépôts et péremptions n'utilisent pas va aux articles
+ * (14/11/2026 : réparateur avec 4 clients et peu de dépôts → presque 2 fois plus d'articles vus par Gemini).
+ * 27 Ko + la phrase (500) + les chiffres restent sous les 32 Ko acceptés.
+ */
+export const CONTEXT_TOTAL_BYTES = 27_000;
+const PRODUCTS_MAX_BYTES = 24_000;
+
 const byteSize = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length + 1;
 
 /** Les premiers éléments de la liste, tant que le poids permis n'est pas dépassé (et `max` au plus). */
@@ -87,7 +95,7 @@ export function fitByBytes<T>(items: T[], budget: number, max: number): T[] {
  * Articles pour Gemini : en stock d'abord, puis ceux qui ont un prix, puis le catalogue du fournisseur.
  * Ceux laissés de côté restent reconnus par l'appli elle-même (recherche par nom après la réponse de Gemini).
  */
-export function fitProducts(products: Shop["products"], focus = ""): ShopContext["products"] {
+export function fitProducts(products: Shop["products"], focus = "", budget: number = CONTEXT_BYTES.products): ShopContext["products"] {
   // Les articles nommés dans la phrase passent devant tout le reste : Gemini voit toujours la bonne pièce,
   // même dans une boutique de 10 000 articles.
   const named = new Map<string, number>();
@@ -114,16 +122,24 @@ export function fitProducts(products: Shop["products"], focus = ""): ShopContext
       min: p.min,
       price: p.price,
     }));
-  return fitByBytes(items, CONTEXT_BYTES.products, 300);
+  return fitByBytes(items, budget, 300);
 }
 
 /** focus : la phrase du commerçant (écrit), pour mettre devant les articles dont il parle. */
 export function buildShopContext(shop: Shop, lang: Lang, focus = ""): ShopContext {
-  return {
+  const open = (shop.repairs ?? []).filter((r) => r.status === "depot" || r.status === "repare").slice(0, 60);
+  const repairs = fitByBytes(
+    open.map((r) => ({
+      number: r.number.slice(0, 12), client: r.clientName.slice(0, 80), device: r.device.slice(0, 80), problem: r.problem.slice(0, 160),
+      status: r.status as "depot" | "repare", price: r.price, paid: r.paid,
+      days: Math.max(0, Math.floor((Date.now() - new Date(r.repairedAt ?? r.at).getTime()) / 86_400_000)),
+    })),
+    CONTEXT_BYTES.repairs,
+    60,
+  );
+  const soon = fitByBytes(expiringSoon(shop.products, 30).map((p) => ({ name: p.name.slice(0, 80), expiresAt: p.expiresAt ?? "", daysLeft: p.daysLeft })), CONTEXT_BYTES.expiring, 60);
+  const rest = {
     language: toAssistantLanguage(lang),
-    // Articles en stock d'abord, puis ceux qui ont un prix, puis le catalogue du fournisseur ; jamais plus lourd que
-    // CONTEXT_PRODUCTS_BYTES (sinon le serveur refuse la demande : erreur 413, « Gemini ne répond pas »).
-    products: fitProducts(shop.products, focus),
     // Clients qui doivent de l'argent d'abord (questions de dettes), puis les autres.
     clients: fitByBytes(
       [...shop.clients].sort((a, b) => Number(b.debt > 0) - Number(a.debt > 0)).map((c) => ({ id: c.id, name: c.name, debt: c.debt })),
@@ -138,24 +154,13 @@ export function buildShopContext(shop: Shop, lang: Lang, focus = ""): ShopContex
     },
     ...(shop.activity?.trim() ? { activity: shop.activity.trim().slice(0, 80) } : {}),
     ...(shop.modules?.length ? { modules: shop.modules.slice(0, 10) } : {}),
-    ...(() => {
-      const open = (shop.repairs ?? []).filter((r) => r.status === "depot" || r.status === "repare").slice(0, 60);
-      const repairs = fitByBytes(
-        open.map((r) => ({
-          number: r.number.slice(0, 12), client: r.clientName.slice(0, 80), device: r.device.slice(0, 80), problem: r.problem.slice(0, 160),
-          status: r.status as "depot" | "repare", price: r.price, paid: r.paid,
-          days: Math.max(0, Math.floor((Date.now() - new Date(r.repairedAt ?? r.at).getTime()) / 86_400_000)),
-        })),
-        CONTEXT_BYTES.repairs,
-        60,
-      );
-      return repairs.length ? { repairs } : {};
-    })(),
-    ...(() => {
-      const soon = fitByBytes(expiringSoon(shop.products, 30).map((p) => ({ name: p.name.slice(0, 80), expiresAt: p.expiresAt ?? "", daysLeft: p.daysLeft })), CONTEXT_BYTES.expiring, 60);
-      return soon.length ? { expiring: soon } : {};
-    })(),
+    ...(repairs.length ? { repairs } : {}),
+    ...(soon.length ? { expiring: soon } : {}),
   };
+  // Articles en stock d'abord, puis ceux qui ont un prix, puis le catalogue du fournisseur, dans la place qui reste
+  // (sinon le serveur refuse la demande : erreur 413).
+  const room = Math.max(CONTEXT_BYTES.products / 2, Math.min(PRODUCTS_MAX_BYTES, CONTEXT_TOTAL_BYTES - byteSize(rest)));
+  return { ...rest, products: fitProducts(shop.products, focus, room) };
 }
 
 export async function assistantStatus(signal?: AbortSignal): Promise<Exclude<AssistantStatus, "checking">> {

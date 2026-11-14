@@ -4,8 +4,8 @@ import { ko, payloadTone, payloadTrend } from "./payload";
 describe("taille des demandes (console)", () => {
   it("niveaux", () => {
     expect(payloadTone(10_000, 32_768)).toBe("good");
-    expect(payloadTone(22_000, 32_768)).toBe("warn");
-    expect(payloadTone(30_000, 32_768)).toBe("bad");
+    expect(payloadTone(27_000, 32_768)).toBe("warn");
+    expect(payloadTone(31_500, 32_768)).toBe("bad");
   });
   it("tendance du dernier jour mesuré", () => {
     expect(payloadTrend([{ max: 10_000 }, { max: 0 }, { max: 15_000 }])).toBe(50);

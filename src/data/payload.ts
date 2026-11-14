@@ -21,10 +21,13 @@ export async function payloadStats(): Promise<PayloadStats | null> {
   return error ? null : (data as PayloadStats);
 }
 
-/** Niveau d'une taille par rapport à la limite visée : vert < 60 %, orange < 85 %, rouge au-delà. */
+/**
+ * Niveau d'une taille par rapport à la limite : vert < 75 % ; orange = fiche pleine (grande boutique : Gemini voit une partie
+ * des articles et cherche les autres, c'est normal) ; rouge ≥ 95 % = anormal, l'appli coupe d'habitude vers 85 %.
+ */
 export function payloadTone(bytes: number, limit: number): "good" | "warn" | "bad" {
   const s = limit > 0 ? bytes / limit : 0;
-  return s >= 0.85 ? "bad" : s >= 0.6 ? "warn" : "good";
+  return s >= 0.95 ? "bad" : s >= 0.75 ? "warn" : "good";
 }
 
 /** Tendance : le plus gros jour récent comparé aux jours d'avant (en %), null sans comparaison. */

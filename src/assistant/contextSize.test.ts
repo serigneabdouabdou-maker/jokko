@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { seedShop, type Shop } from "../model";
-import { buildShopContext } from "./client";
+import { buildShopContext, fitProducts } from "./client";
 
 describe("demande envoyée à Gemini : jamais plus de 32 Ko", () => {
   it("boutique de réparation avec 641 pièces, 400 clients et 60 dépôts", () => {
@@ -32,5 +32,20 @@ describe("les articles nommés dans la phrase passent devant", () => {
     const shop = { ...base, products } as unknown as Shop;
     expect(buildShopContext(shop, "fr").products.some((p) => p.id === "cible")).toBe(false);
     expect(buildShopContext(shop, "fr", "combien pour l'écran X6525 ?").products[0]!.id).toBe("cible");
+  });
+});
+
+describe("la place libre va aux articles", () => {
+  it("peu de clients et de dépôts → beaucoup plus d'articles, toujours sous 32 Ko", () => {
+    const base = seedShop();
+    const products = Array.from({ length: 641 }, (_, i) => ({ id: `p-${crypto.randomUUID()}`, name: `Écran Tecno KG${i}K`, unit: "pièce", stock: 0, min: 0, price: 0 }));
+    const small = { ...base, clients: base.clients.slice(0, 4), repairs: [], products } as unknown as Shop;
+    const big = { ...small, clients: Array.from({ length: 400 }, (_, i) => ({ id: `c-${crypto.randomUUID()}`, name: `Client numéro ${i} de Mboss`, phone: "", debt: 5000 })) } as unknown as Shop;
+    const few = buildShopContext(small, "fr");
+    const many = buildShopContext(big, "fr");
+    // Avant : 16 Ko fixes pour les articles ; maintenant la place libre leur revient (jusqu'à 24 Ko).
+    expect(few.products.length).toBeGreaterThan(fitProducts(products as unknown as Shop["products"]).length * 1.4);
+    expect(few.products.length).toBeGreaterThan(many.products.length);
+    for (const ctx of [few, many]) expect(JSON.stringify({ message: "x".repeat(500), shopContext: ctx }).length).toBeLessThan(32 * 1024);
   });
 });
