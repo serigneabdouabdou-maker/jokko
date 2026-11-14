@@ -14,6 +14,7 @@ import {
   type BatchRequest,
   type BatchPhotoRequest,
   batchJsonSchema,
+  clipToSchema,
   batchSchema,
   adviceJsonSchema,
   adviceSchema,
@@ -219,7 +220,7 @@ async function run<T extends z.ZodType>(
   } catch {
     throw new AssistantOutputError("Gemini n'a pas renvoyé de JSON.");
   }
-  const parsed = schema.safeParse(json);
+  const parsed = schema.safeParse(clipToSchema(json, schema));
   if (!parsed.success) {
     const where = parsed.error.issues.map((issue) => issue.path.join(".") || "(racine)").join(", ");
     throw new AssistantOutputError(`Réponse Gemini non conforme : ${where}`);

@@ -233,5 +233,35 @@ export function heardJsonSchema(): Record<string, unknown> {
 function jsonSchema(schema: z.ZodType): Record<string, unknown> {
   const out = z.toJSONSchema(schema) as Record<string, unknown>;
   delete out.$schema;
-  return out;
+  return withoutItemLimits(out) as Record<string, unknown>;
+}
+
+/**
+ * Gemini refuse « maxItems » / « minItems » dans une liste d'objets (400 INVALID_ARGUMENT, mesuré le 14/11/2026
+ * sur la liste des opérations écrites). On ne les envoie jamais ; l'appli coupe la liste elle-même (clipToSchema).
+ */
+function withoutItemLimits(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(withoutItemLimits);
+  if (!node || typeof node !== "object") return node;
+  return Object.fromEntries(Object.entries(node).filter(([k]) => k !== "maxItems" && k !== "minItems").map(([k, v]) => [k, withoutItemLimits(v)]));
+}
+
+/** Coupe chaque liste de la réponse au nombre permis par le schéma (les limites que Gemini ne reçoit pas). */
+export function clipToSchema(value: unknown, schema: z.ZodType): unknown {
+  return clip(value, z.toJSONSchema(schema));
+}
+
+function clip(value: unknown, node: unknown): unknown {
+  if (!node || typeof node !== "object") return value;
+  const n = node as { maxItems?: number; items?: unknown; properties?: Record<string, unknown>; anyOf?: unknown[] };
+  if (Array.isArray(value)) {
+    const kept = typeof n.maxItems === "number" ? value.slice(0, n.maxItems) : value;
+    return n.items ? kept.map((v) => clip(v, n.items)) : kept;
+  }
+  if (value && typeof value === "object") {
+    if (n.properties) return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, clip(v, n.properties![k])]));
+    const branch = n.anyOf?.find((b) => b && typeof b === "object" && (b as { type?: string }).type === "object");
+    return branch ? clip(value, branch) : value;
+  }
+  return value;
 }

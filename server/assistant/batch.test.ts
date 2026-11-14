@@ -47,3 +47,18 @@ describe("photo d'une page du cahier", async () => {
     expect(batch.operations[0]!.action.amount).toBe(5000);
   });
 });
+
+describe("forme de réponse acceptée par Gemini", () => {
+  it("jamais de maxItems/minItems envoyé (Google répond 400) ; la liste est coupée à 40 par l'appli", async () => {
+    const { adviceJsonSchema, batchJsonSchema, heardJsonSchema, interpretationJsonSchema, orderGuessJsonSchema } = await import("./schema.ts");
+    for (const s of [batchJsonSchema(), orderGuessJsonSchema(), adviceJsonSchema(), interpretationJsonSchema(), heardJsonSchema()]) {
+      expect(JSON.stringify(s)).not.toMatch(/maxItems|minItems/);
+    }
+    const generate = vi.fn<Generate>(async () =>
+      JSON.stringify({ operations: Array.from({ length: 55 }, (_, i) => op(`Vente ${i} : 1 000 F`, { amount: 1000 })), ignored: Array.from({ length: 50 }, () => "total") }),
+    );
+    const batch = await understandBatch({ message: "texte collé", shopContext }, { apiKey: "test", generate });
+    expect(batch.operations).toHaveLength(40);
+    expect(batch.ignored).toHaveLength(40);
+  });
+});
