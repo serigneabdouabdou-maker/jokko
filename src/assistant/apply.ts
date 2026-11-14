@@ -78,7 +78,7 @@ export function isRetailUnit(said: string | null | undefined, retailUnit: string
  * Applique une écriture complète à la boutique. Renvoie null s'il manque une information
  * (montant, article, client…) : rien n'est alors modifié.
  */
-export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
+export function applyDraft(shop: Shop, action: DraftAction & { cost?: number }): Applied | null {
   const product = action.productId ? shop.products.find((p) => p.id === action.productId) : undefined;
   const quantity = action.quantity !== null && Number.isFinite(action.quantity) ? action.quantity : null;
   const given = action.amount !== null && Number.isFinite(action.amount) && action.amount > 0 ? Math.round(action.amount) : null;
@@ -109,7 +109,8 @@ export function applyDraft(shop: Shop, action: DraftAction): Applied | null {
     if (!total) return null;
     // Quantité retirée du stock, en unités de gros (50 sachets = 1 sac).
     const baseQty = product && qty ? (retail ? qty / retail.perUnit : qty) : 0;
-    const cost = product?.cost !== undefined && baseQty ? Math.round(baseQty * product.cost) : undefined;
+    // Prix d'achat écrit par le patron pour CETTE vente (liste collée « vente 1 500, achat 300 ») : il passe avant celui du stock.
+    const cost = action.cost !== undefined && Number.isFinite(action.cost) && action.cost >= 0 ? Math.round(action.cost) : product?.cost !== undefined && baseQty ? Math.round(baseQty * product.cost) : undefined;
     const unit = product ? (retail ? retail.unit : product.unit) : undefined;
     const label = product?.name ?? (action.label?.trim() || action.productName?.trim() || "Vente");
     const sale: Sale = { id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id, ticket: nextTicket(shop) };

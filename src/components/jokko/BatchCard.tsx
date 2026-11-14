@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type BatchCardData, describeAction } from "@/assistant/batch";
+import { type BatchCardData, batchTotals, describeAction } from "@/assistant/batch";
+
+const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
 
 /**
  * Carte du chat : plusieurs opérations comprises dans un long texte. Le patron coche ce qu'il faut enregistrer
@@ -22,6 +24,8 @@ export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCar
               {waiting && <Checkbox checked={item.keep} onCheckedChange={() => onToggle(i)} aria-label={`Enregistrer : ${describeAction(item.action)}`} />}
               <span>
                 <b>{describeAction(item.action)}</b>
+                {item.cost !== undefined && item.action.amount ? <small>Achat {f(item.cost)} · bénéfice {f(item.action.amount - item.cost)}</small> : null}
+                {item.service ? <small>Service : tout est main-d’œuvre (bénéfice {item.action.amount ? f(item.action.amount) : "?"})</small> : null}
                 <small>« {item.line.slice(0, 120)} »</small>
                 {item.duplicate && <small className="is-late">Déjà enregistré aujourd’hui ? ({item.duplicate}) — décoché</small>}
                 {!item.action.amount && !item.action.unitPrice && <small className="is-late">Pas de montant : décoché</small>}
@@ -30,6 +34,15 @@ export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCar
           </li>
         ))}
       </ul>
+      {(() => {
+        const t = batchTotals(card.items);
+        return t.sales > 0 ? (
+          <p className="note">
+            Coché : ventes <b>{f(t.sales)}</b>{t.known > 0 ? <> · achats {f(t.cost)} · bénéfice <b>{f(t.profit)}</b></> : null}
+            {t.unknown > 0 ? ` (${t.unknown} vente${t.unknown > 1 ? "s" : ""} sans prix d’achat : bénéfice non compté)` : ""}
+          </p>
+        ) : null;
+      })()}
       {card.ignored.length > 0 && (
         <details className="batch-ignored">
           <summary>{card.ignored.length} ligne{card.ignored.length > 1 ? "s" : ""} pas enregistrée{card.ignored.length > 1 ? "s" : ""} (totaux, consignes…)</summary>

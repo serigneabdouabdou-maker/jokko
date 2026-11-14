@@ -249,7 +249,7 @@ export class LiveDesk {
     return { statut: "outil_inconnu" };
   }
 
-  record(action: DraftAction, heard = "", callId?: string, learn?: Learned | null): Recorded {
+  record(action: DraftAction & { cost?: number }, heard = "", callId?: string, learn?: Learned | null): Recorded {
     const key = JSON.stringify([action, heard.trim().toLowerCase()]);
     const last = this.history[0];
     if (last?.key === key && Date.now() - last.at < DUPLICATE_MS && last.after.id === this.deps.getShop().id) {

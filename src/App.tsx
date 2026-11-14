@@ -129,7 +129,7 @@ import { priceChanges, type PriceChange } from "@/data/multiShop";
 import { normalizeCode } from "@/data/barcode";
 import { OrderCard, type OrderCardData } from "@/components/jokko/OrderCard";
 import { BatchCard } from "@/components/jokko/BatchCard";
-import { type BatchCardData, forRecord, looksLikeBatch, markDuplicates } from "@/assistant/batch";
+import { type BatchCardData, forRecord, looksLikeBatch, markDuplicates, settleItems, withLineFacts } from "@/assistant/batch";
 import { applyOrder, looksLikeOrder, type Order, orderFromGuess, orderMissing, orderPayment, parseOrder } from "@/assistant/order";
 import { InstallBanner, InstallSettings } from "@/components/jokko/Install";
 import { ensurePush } from "@/pwa";
@@ -1422,7 +1422,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       );
       return true;
     }
-    const items = markDuplicates(currentShop(profileRef.current), outcome.operations);
+    const items = markDuplicates(currentShop(profileRef.current), settleItems(outcome.operations));
     setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: "", at: new Date().toISOString(), batch: { items, ignored: outcome.ignored, status: "attente" } }]);
     return true;
   }
@@ -1442,7 +1442,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       const now = currentShop(profileRef.current);
       const ready = forRecord(item.action, now, (name) => Boolean(pickByName(now.services ?? [], name).item));
       const action = normalizeAction({ ...ready, prixUnitaire: ready.unitPrice ?? undefined }, now);
-      const saved = action ? desk.record(action, item.line) : null;
+      const saved = action ? desk.record(withLineFacts(action, item), item.line) : null;
       if (saved?.ok) done++;
       else failed.push(item.line.slice(0, 60));
     }
