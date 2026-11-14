@@ -52,7 +52,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
         <Button variant="ghost" className="h-9 rounded-full px-3" onClick={() => setTicket(receiptFor(shop, s))}><Icon name="imprimer" size="sm" /> Ticket</Button>
       )}
       {canEdit && !open && (
-        <div className="debt-actions" style={{ width: "100%", flexBasis: "100%", gap: 8, marginTop: 6 }}>
+        <div className="row-actions">
           {sure ? (
             <>
               <small className="note" style={{ flex: 1 }}>Supprimer cette vente ?{s.productId ? " L'article revient en stock." : ""}</small>

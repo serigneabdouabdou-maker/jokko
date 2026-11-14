@@ -221,12 +221,14 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         </p>
       )}
       {shop.products.length > 0 && <PartLookup shop={shop} commit={commit} />}
-      <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
-        <Button className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
+      <div className="list-bar">
+        <Button className="h-11 rounded-full px-5" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouveau dépôt
         </Button>
-        <Button variant={filter === "cours" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("cours")}>En cours</Button>
-        <Button variant={filter === "rendu" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("rendu")}>Rendus</Button>
+        <div className="seg" role="tablist" aria-label="Réparations à montrer">
+          <button type="button" role="tab" aria-selected={filter === "cours"} className={filter === "cours" ? "on" : ""} onClick={() => setFilter("cours")}>En cours</button>
+          <button type="button" role="tab" aria-selected={filter === "rendu"} className={filter === "rendu" ? "on" : ""} onClick={() => setFilter("rendu")}>Rendus</button>
+        </div>
       </div>
 
       {adding && (
@@ -360,7 +362,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   return (
     <article className={days > 30 && r.status !== "rendu" ? "is-late" : ""}>
       <span onClick={toggle} style={{ cursor: "pointer" }}>
-        <b>{r.number}</b> · {r.clientName} · {r.device}
+        <span className="row-title"><b>{r.number}</b> · {r.clientName} · {r.device}</span>
         <small>
           {STATUS[r.status]}
           {r.problem ? ` · ${r.problem}` : ""}

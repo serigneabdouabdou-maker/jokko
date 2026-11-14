@@ -2031,3 +2031,193 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .batch-card .batch-ignored ul { margin: 4px 0 0; padding-left: 18px; }
 .batch-card .order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chips .chip-photo { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; border-style: dashed; }
+
+/* =====================================================================
+   Refonte téléphone (14/11/2026, demande de Fallou : « bien ordonné, bien limité dans l'écran,
+   adapté à n'importe quel téléphone moderne »).
+   - Barre du haut : rubrique ouverte + entreprise + bouton Menu (toutes les rubriques en grille).
+   - Contenu : rien ne dépasse de l'écran, rien ne se superpose ; titres et chiffres à la taille d'un téléphone.
+   ===================================================================== */
+.mbar-title, .mbar-sync, .mbar-menu, .mnav { display: none; }
+
+@media (max-width: 1023px) {
+  .side {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 60px;
+    padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  }
+  .side .side-nav { display: none !important; }
+  .side-brand .jmark { width: 36px !important; height: 36px !important; }
+  .mbar-title { display: grid; flex: 1 1 auto; min-width: 0; line-height: 1.15; }
+  .mbar-title b { font-family: "Bricolage Grotesque", "Geist Variable", sans-serif; font-size: 18px; font-weight: 720; letter-spacing: -0.025em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mbar-title small { font-size: 12.5px; color: var(--j-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mbar-sync { display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; color: var(--j-ok); background: color-mix(in oklab, var(--j-ok) 10%, transparent); }
+  .mbar-sync.is-en_attente { color: var(--j-ink-3); background: var(--j-wash); }
+  .mbar-sync.is-hors_ligne { color: var(--j-danger); background: color-mix(in oklab, var(--j-danger) 10%, transparent); }
+  .mbar-sync.is-demo { color: var(--j-ink-2); background: var(--j-soft-2); }
+  .mbar-menu {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    min-height: 44px; padding: 0 14px 0 12px; border-radius: 999px; border: 0;
+    background: var(--j-ink); color: var(--j-white); font: inherit; font-size: 14.5px; font-weight: 650; cursor: pointer;
+    transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  }
+  .mbar-menu .jk-icon { color: var(--j-yellow); }
+  .mbar-menu:active { transform: scale(0.96); }
+  .mbar-menu:focus-visible { outline: 2px solid var(--j-yellow); outline-offset: 2px; }
+
+  .mnav {
+    display: flex; align-items: flex-end; justify-content: center;
+    position: fixed; inset: 0; z-index: 80;
+    background: color-mix(in oklab, var(--j-ink) 42%, transparent);
+    backdrop-filter: blur(3px);
+    animation: fade var(--t-fast) var(--ease) both;
+  }
+  .mnav-sheet {
+    width: min(100%, 620px); max-height: min(88dvh, 760px); overflow-y: auto; overscroll-behavior: contain;
+    background: var(--j-white); border-radius: 26px 26px 0 0;
+    padding: 10px 14px max(18px, env(safe-area-inset-bottom));
+    box-shadow: 0 -18px 50px -20px rgba(23, 25, 31, 0.35);
+    animation: mnav-up var(--t-mid) var(--ease) both;
+  }
+  .mnav-sheet::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: var(--j-line); margin: 0 auto 10px; }
+  @keyframes mnav-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .mnav-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 12px; }
+  .mnav-head > div { display: grid; min-width: 0; }
+  .mnav-head b { font-family: "Bricolage Grotesque", "Geist Variable", sans-serif; font-size: 19px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mnav-head small { color: var(--j-ink-3); font-size: 13px; }
+  .mnav-close { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--j-line); background: var(--j-card); display: inline-grid; place-items: center; cursor: pointer; }
+  .mnav-all { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .mnav-all button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    min-height: 88px; padding: 12px 6px; border-radius: 18px;
+    border: 1px solid var(--j-line); background: var(--j-card); box-shadow: 0 1px 0 rgba(23, 25, 31, 0.04);
+    font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; color: var(--j-ink); text-align: center; cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  }
+  .mnav-all button:active { transform: scale(0.96); }
+  .mnav-all button.on { background: var(--j-soft-2); border-color: color-mix(in oklab, var(--j-yellow) 55%, var(--j-line)); }
+  .mnav-ico { width: 42px; height: 42px; border-radius: 14px; display: inline-grid; place-items: center; background: var(--j-wash); color: var(--j-ink); }
+  .mnav-all button.on .mnav-ico { background: var(--j-yellow); }
+  @media (min-width: 560px) { .mnav-all { grid-template-columns: repeat(4, minmax(0, 1fr)); } .mnav { align-items: center; } .mnav-sheet { border-radius: 26px; } }
+
+  /* L'entreprise est déjà dans la barre du haut : pas de grand titre répété. */
+  .main > .top { display: none; }
+  .screen { margin-top: 4px; }
+}
+
+/* ---------- Contenu : téléphone ---------- */
+@media (max-width: 639px) {
+  .main { padding: 12px 12px calc(118px + env(safe-area-inset-bottom)); }
+  .screen { overflow-wrap: break-word; min-width: 0; }
+  .work, .cash { grid-template-columns: minmax(0, 1fr); }
+  .screen > * + *, .work > * + * { margin-top: 0; }
+  .work { gap: 12px; }
+
+  /* Cartes : moins de marge, titres à la taille d'un téléphone */
+  .sheet { padding: 14px; border-radius: 18px; }
+  .sheet h2 { font-size: 20px; line-height: 1.2; letter-spacing: -0.025em; }
+  .sheet h3 { font-size: 16px; margin: 16px 0 8px; }
+  .sheet-total, .sheet .sheet-total { font-size: 20px; }
+  .sheet-head { gap: 6px 10px; margin-bottom: 8px; }
+  .note { font-size: 13.5px; }
+  /* Carte dans une carte : on retire le cadre pour gagner de la place */
+  .sheet .sheet { padding: 12px; border-radius: 14px; box-shadow: none; border-color: transparent; background: var(--j-wash); }
+  .sheet .sheet .sheet { padding: 10px; background: var(--j-card); }
+
+  /* Rien ne dépasse : champs, images, boutons, listes */
+  .screen :is(input, select, textarea) { max-width: 100%; min-width: 0; font-size: 16px; }
+  .screen :is(img, video, canvas, svg:not(.jk-icon)) { max-width: 100%; }
+  .screen :is(.row, .grid-2, .order-actions) > * { min-width: 0; }
+  .screen [data-slot="button"] { max-width: 100%; white-space: normal; height: auto; min-height: 44px; line-height: 1.2; padding-block: 8px; text-align: center; }
+  .screen [data-slot="button"].w-9, .screen [data-slot="button"][class*="w-9"] { width: 44px; height: 44px; padding: 0; }
+  .screen .link { text-align: left; }
+  .screen :is(.sheet-head, .row) > .link, .screen .sheet-head button.link { white-space: nowrap; }
+
+  /* Exemples à toucher : une ligne qui glisse, au lieu d'une colonne qui prend tout l'écran */
+  .talk .chips { flex-wrap: nowrap; overflow-x: auto; margin: 10px 0; padding: 2px 0 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .talk .chips::-webkit-scrollbar { display: none; }
+  .talk .chips button { flex: none; white-space: nowrap; scroll-snap-align: start; }
+  .talk { min-height: 0; }
+
+  /* Tableaux : on glisse de côté, chaque chiffre reste sur une ligne */
+  .screen table { display: block; max-width: 100%; overflow-x: auto; font-size: 13px; -webkit-overflow-scrolling: touch; }
+  .screen th, .screen td { padding: 8px 8px; white-space: nowrap; }
+  .screen th:first-child, .screen td:first-child { position: sticky; left: 0; background: var(--j-card); z-index: 1; }
+
+  /* Lignes avec boutons (commande, recherche de pièce) : le texte passe au-dessus, les boutons dessous */
+  .lookup-hits li, .order-list li { flex-wrap: wrap; }
+  .lookup-hits li > div, .order-list li > span { flex: 1 1 100%; }
+  .qty-step { flex-wrap: wrap; }
+
+  /* Gros chiffres */
+  .stat.stat-cash .stat-big { font-size: 34px; }
+}
+
+/* Très petits téléphones (≤ 360 px) */
+@media (max-width: 360px) {
+  .main { padding-inline: 10px; }
+  .sheet { padding: 12px; }
+  .mbar-sync { display: none; }
+  .mnav-all button { min-height: 80px; font-size: 12.5px; }
+}
+
+/* Barre d'une liste : action principale + choix « En cours / Rendus » (tous écrans) */
+.list-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; }
+.seg button { min-height: 38px; white-space: nowrap; }
+.seg button:focus-visible { outline: 2px solid var(--j-yellow); outline-offset: 2px; }
+.seg-badge { justify-self: start; width: fit-content; }
+.row-title { display: block; font-weight: 500; }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; flex-basis: 100%; margin-top: 6px; }
+@media (max-width: 639px) {
+  .list-bar > [data-slot="button"] { flex: 1 1 auto; }
+  /* Choix (périodes, groupes) : une seule ligne qui glisse, jamais coupée en deux */
+  .seg { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { flex: 1 0 auto; padding: 6px 14px; }
+  .sheet-head > .seg { flex-basis: 100%; }
+  /* Petits boutons d'une ligne (Modifier, Supprimer, Ticket) : sur une seule ligne */
+  .row-actions [data-slot="button"], .debt-actions [data-slot="button"] { padding-inline: 12px; font-size: 13.5px; }
+  .row:has(> [data-slot="checkbox"]) { flex-wrap: nowrap; align-items: flex-start; }
+  .row:has(> [data-slot="checkbox"]) > [data-slot="checkbox"] { margin-top: 2px; }
+  .row:has(> [data-slot="checkbox"]) > label { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+  /* Chiffre des ventes du jour (Caisse) : l'étiquette au-dessus, le chiffre dessous */
+  .stat-sales { flex-direction: column !important; align-items: flex-start; }
+}
+@media (max-width: 639px) {
+  /* Modifier · Supprimer · Ticket : trois boutons égaux sur une ligne */
+  .row-actions:not(:has(> small)) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .row-actions:not(:has(> small)) > [data-slot="button"] { width: 100%; padding-inline: 6px; gap: 5px; }
+}
+@layer components {
+  @media (max-width: 639px) {
+    .stat-sales { flex-direction: column !important; align-items: flex-start; gap: 4px; }
+  }
+}
+
+/* Lignes des listes : « C-001 · Awa Diop · Grand boubou » reste d'un seul tenant (tous écrans) */
+.list article > span { display: block; }
+.list article > span > small:not(.seg-badge), .list article > span > .meter, .list article > span > div, .list article > span > p { display: block; margin-top: 2px; }
+@media (max-width: 639px) {
+  .list-bar { align-items: stretch; }
+  .list-bar > .seg { flex: 1 1 100%; }
+  .debt-actions:has(> [data-slot="button"]) { justify-content: flex-start; }
+}
+@media (max-width: 639px) {
+  .list-bar > [data-slot="button"] { flex: 1 1 140px; }
+  /* Boutons d'une ligne (Il a payé · Modifier · Supprimer) : rangés en colonnes égales */
+  .debt-actions:has(> [data-slot="button"]):not(:has(> small, > input, > .num, > b)) { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); width: 100%; }
+  .debt-actions:has(> [data-slot="button"]):not(:has(> small, > input, > .num, > b)) > [data-slot="button"] { width: 100%; }
+  /* Montant + « reste … » : chaque montant sur une seule ligne */
+  .list article > .debt-actions > :is(.num, small) { white-space: nowrap; }
+}
+
+/* Ligne ouverte (réparation, commande, vente…) : le détail passe en dessous, sur toute la largeur (tous écrans) */
+.list article { flex-wrap: wrap; }
+.list article > span:first-child { flex: 1 1 0; min-width: 0; }
+.list article > :is(div[style*="width: 100%"], div[style*="flex-basis: 100%"], form, .row-actions, .repair-open) { flex: 1 1 100%; min-width: 0; }
+.list article > .debt-actions:has(> .num) { flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+@media (max-width: 639px) { .st-rubrics, .st-ages { margin-inline: -12px; padding-inline: 12px; } }
+@media (max-width: 360px) { .st-rubrics, .st-ages { margin-inline: -10px; padding-inline: 10px; } }

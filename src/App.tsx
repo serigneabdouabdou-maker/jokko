@@ -805,6 +805,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     const g = new URLSearchParams(window.location.search).get("groupe");
     return g && g in SEGMENTS ? (g as Segment) : null;
   });
+  const [menuOpen, setMenuOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
@@ -1587,6 +1588,29 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     if ((!patron && PATRON_SCREENS.includes(screen)) || !allowed(screen)) setScreen("parler");
   }, [patron, screen, shop.activity, shop.modules?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Menu ouvert : la page derrière ne défile plus, Échap le ferme.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = before;
+      window.removeEventListener("keydown", close);
+    };
+  }, [menuOpen]);
+  const navItems = NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && allowed(id)).map(
+    ([id, label]) => [id, screenLabel(shop.activity, id, label)] as const,
+  );
+  const go = (id: Screen) => {
+    setScreen(id);
+    setMenuOpen(false);
+    if (!busy && voice !== "ecoute") setReply(null);
+    window.scrollTo({ top: 0 });
+  };
+  const current = navItems.find(([id]) => id === screen)?.[1] ?? "Jokko";
+
   return (
     <div className="desk">
       <aside className="side">
@@ -1594,9 +1618,21 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <JokkoMark size={34} listening={voice === "ecoute" && live?.phase !== "parle"} wave={wave} />
           <span>Jokko</span>
         </div>
+        {/* Téléphone et tablette : barre du haut = rubrique ouverte + nom de l'entreprise + bouton Menu (toutes les rubriques en grille). */}
+        <div className="mbar-title">
+          <b>{current}</b>
+          <small>{shop.name}</small>
+        </div>
+        <span className={`mbar-sync is-${demo ? "demo" : sync}`} title={demo ? "Démo" : SYNC_LABELS[sync]}>
+          <Icon name={sync === "hors_ligne" && !demo ? "horsLigne" : "sauvegarde"} size="sm" label={demo ? "Démo" : SYNC_LABELS[sync]} />
+        </span>
+        <button type="button" className="mbar-menu" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
+          <Icon name="menu" size="md" />
+          <span>Menu</span>
+        </button>
         <nav className="side-nav" aria-label="Rubriques">
-          {NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && allowed(id)).map(([id, label]) => (
-            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); if (!busy && voice !== "ecoute") setReply(null); }}><Icon name={NAV_ICONS[id]} /><span>{screenLabel(shop.activity, id, label)}</span></button>
+          {navItems.map(([id, label]) => (
+            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
           ))}
         </nav>
         <div className="side-foot">
@@ -1604,6 +1640,28 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <Badge variant="secondary" className="capitalize">{role}</Badge>
         </div>
       </aside>
+
+      {menuOpen && (
+        <div className="mnav" role="dialog" aria-modal="true" aria-label="Toutes les rubriques" onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}>
+          <div className="mnav-sheet">
+            <div className="mnav-head">
+              <div>
+                <b>{shop.name}</b>
+                <small>{profile.owner} · <span className="capitalize">{role}</span>{demo ? " · Démo" : ` · ${SYNC_LABELS[sync]}`}</small>
+              </div>
+              <button type="button" className="mnav-close" onClick={() => setMenuOpen(false)}><Icon name="fermer" size="md" label="Fermer le menu" /></button>
+            </div>
+            <nav className="mnav-all" aria-label="Rubriques">
+              {navItems.map(([id, label]) => (
+                <button key={id} type="button" className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}>
+                  <span className="mnav-ico"><Icon name={NAV_ICONS[id]} size="md" /></span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
 
       <main className="main">
         <header className="top">

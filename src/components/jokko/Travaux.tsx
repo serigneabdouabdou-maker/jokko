@@ -44,10 +44,12 @@ export function Travaux({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         Maillots floqués, bâches, cartes de visite, logos… : note la commande avec l'avance, touche « Prêt » pour prévenir le client sur WhatsApp, puis « Livré ».
         {open.length ? ` Reste à encaisser : ${money(owed)}.` : ""}
       </p>
-      <div className="row">
+      <div className="list-bar">
         <Button className="h-11 rounded-full px-5" onClick={() => setAdding((v) => !v)}><Icon name="ajouter" size="sm" /> Nouvelle commande</Button>
-        <Button variant={filter === "cours" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("cours")}>En cours</Button>
-        <Button variant={filter === "livre" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("livre")}>Livrées</Button>
+        <div className="seg" role="tablist" aria-label="Commandes à montrer">
+          <button type="button" role="tab" aria-selected={filter === "cours"} className={filter === "cours" ? "on" : ""} onClick={() => setFilter("cours")}>En cours</button>
+          <button type="button" role="tab" aria-selected={filter === "livre"} className={filter === "livre" ? "on" : ""} onClick={() => setFilter("livre")}>Livrées</button>
+        </div>
       </div>
 
       {adding && (

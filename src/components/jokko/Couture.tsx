@@ -164,21 +164,23 @@ export function Couture({ shop, commit, lang = "wo", draft = null, clearDraft, o
         {late ? `${late} commande${late > 1 ? "s" : ""} en retard. ` : ""}
         {owed ? `Reste à encaisser : ${money(owed)}.` : "Rien à encaisser."} Chaque client reçoit un lien pour suivre son habit.
       </p>
-      <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
+      <div className="list-bar">
         <Button className="h-12 rounded-full px-5" variant={voice === "ecoute" ? "destructive" : "default"} disabled={voice === "lecture"} onClick={() => void dictate()}>
           <Icon name="micro" size="sm" /> {voice === "ecoute" ? "J'ai fini" : voice === "lecture" ? "Jokko écrit…" : "Dicter une commande"}
         </Button>
+        <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
+          <Icon name="ajouter" size="sm" /> Nouvelle commande
+        </Button>
         {onStudio && (
-          <Button variant="outline" className="h-10 rounded-full px-4" onClick={onStudio}>
+          <Button variant="outline" className="h-11 rounded-full px-4" onClick={onStudio}>
             <Icon name="photo" size="sm" /> Choisir un modèle
           </Button>
         )}
-        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setAdding((a) => !a)}>
-          <Icon name="ajouter" size="sm" /> Nouvelle commande
-        </Button>
-        <Button variant={filter === "cours" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("cours")}>En cours</Button>
-        <Button variant={filter === "prets" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("prets")}>Prêts ({ready.length})</Button>
-        <Button variant={filter === "livres" ? "default" : "outline"} className="h-10 rounded-full px-4" onClick={() => setFilter("livres")}>Livrés</Button>
+        <div className="seg" role="tablist" aria-label="Commandes à montrer">
+          <button type="button" role="tab" aria-selected={filter === "cours"} className={filter === "cours" ? "on" : ""} onClick={() => setFilter("cours")}>En cours</button>
+          <button type="button" role="tab" aria-selected={filter === "prets"} className={filter === "prets" ? "on" : ""} onClick={() => setFilter("prets")}>Prêts ({ready.length})</button>
+          <button type="button" role="tab" aria-selected={filter === "livres"} className={filter === "livres" ? "on" : ""} onClick={() => setFilter("livres")}>Livrés</button>
+        </div>
       </div>
 
       {voiceNote && <p className="note" role="status">{voiceNote}</p>}

@@ -83,6 +83,7 @@ import {
   Images,
   UtensilsCrossed,
   Printer,
+  LayoutGrid,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -111,6 +112,7 @@ export const ICONS = {
   distance: RadioTower,
   offre: Gem,
   reglages: Settings,
+  menu: LayoutGrid,
   langue: Languages,
   position: MapPin,
   // CFC (page d'accueil)
