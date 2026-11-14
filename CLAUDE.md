@@ -82,6 +82,12 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - **Services dictés** (13/11/2026) : `src/data/serviceVoice.ts` (`serviceFromVoice`, `readSize`, `readCount`, `saysEach`), branché dans `liveDesk` (outil `enregistrer`, réponse avec `calcul`) et dans `record` (mode secours vocal/écrit). « bâche 2 sur 1,5 » → 2 × 1,5 = 3 m² × prix = total, matière sortie du stock ; « 1m50 sur 80 cm », « deux mètres sur un mètre cinquante », « 4 sur 2 et demi » ; « à 4 000 le mètre carré » = prix du m², « pour 25 000 » = total ; « 50 photocopies », « flocage 20 maillots ». Sans mesures → Jokko demande ; « photocopie » seul avec noir et couleur → Jokko demande lequel. Un article du stock passe avant, sauf la matière du service ou un article à prix 0.
 - Tests : `src/data/multiservice.test.ts`, `src/data/serviceVoice.test.ts`, bloc multiservice de `liveDesk.test.ts`.
 
+## Plusieurs opérations écrites d'un coup (14/11/2026, demande de Fallou : « si j'écris pour enregistrer, ça ne va pas »)
+
+- Avant : un message de plus de 500 lettres était refusé (« La phrase n'a pas pu être envoyée »), et Jokko n'enregistrait qu'une opération par phrase.
+- Texte long (> 450 lettres) ou plusieurs lignes avec un montant (`looksLikeBatch`, `src/assistant/batch.ts`) → route `batch` de `assistant` (comptée « texte », une seule demande Gemini, 6 000 lettres et 40 opérations au plus ; `understandBatch`, `BATCH_INSTRUCTION`, `batchSchema`) : chaque opération à part (vente, service, dépense, achat, dette, remboursement), totaux / récapitulatifs / consignes mis dans `ignored`. Le montant de chaque opération est relu dans SA ligne (`moneyAmountsSaid`, pas le « 35 » de « ZTE A35 »), jamais un total de Gemini.
+- Carte `BatchCard` dans le chat : cases à cocher ; déjà enregistré aujourd'hui (même montant + un mot du libellé, `markDuplicates`) ou sans montant = décoché ; « Tout enregistrer (n) » passe chaque ligne par `normalizeAction` + `desk.record` (mêmes règles que la voix, services du catalogue compris). Un service que Gemini n'a pas lié à un article n'est jamais retrouvé par son nom dans le stock (`forRecord` : « Réparation écran ZTE A35 » ne sort pas l'écran ZTE A35). Tests : `src/assistant/batch.test.ts`, `server/assistant/batch.test.ts`.
+
 ## Restauration et boulangerie (livrées le 10/11/2026)
 
 - Métiers `restauration` (restaurant, dibiterie, fast-food, jus, petit-déjeuner) et `boulangerie` dans `src/data/metiers.ts` ; module `cuisine` (ajoutable à une autre boutique dans les réglages).

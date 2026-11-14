@@ -5,9 +5,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/live.ts";
-import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandBatch, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0ec3a5c1596c718551ec09d19efa911b2674e8d1/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0ec3a5c1596c718551ec09d19efa911b2674e8d1/server/assistant/live.ts";
+import { adviceRequestSchema, batchRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/0ec3a5c1596c718551ec09d19efa911b2674e8d1/server/assistant/schema.ts";
 
 // Marge : l'appli garde sa demande sous 32 Ko (fitByBytes) ; le serveur accepte jusqu'à 64 Ko pour les anciennes versions.
 const MAX_TEXT_BODY = 64 * 1024;
@@ -60,7 +60,7 @@ function logCall(req: Request, kind: string, lang: unknown, ok: boolean, status?
     .insert({ shop_id: shop, kind, lang: typeof lang === "string" ? lang : null, ok, status: status ?? (ok ? 200 : null), ...(size ? { bytes: size.bytes, sent_products: size.products } : {}) })
     .then(() => undefined, () => undefined);
 }
-const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", advice: "conseil", speak: "voix", stock: "stock" };
+const LOG_KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", batch: "texte", advice: "conseil", speak: "voix", stock: "stock" };
 
 /** Vérifie les jetons localement (clé publique de Supabase gardée en mémoire) : pas d'aller-retour réseau. */
 const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -376,7 +376,7 @@ async function tryOn(photo: string, photoType: string, modelId: string): Promise
 }
 
 // ---------- Offres : chaque appel à Gemini est compté et limité par le serveur (table assistant_usage) ----------
-const KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", advice: "conseil", stock: "stock", speak: "voix" };
+const KIND: Record<string, string> = { live: "direct", listen: "vocal", couture: "vocal", essayage: "image", interpret: "texte", order: "texte", batch: "texte", advice: "conseil", stock: "stock", speak: "voix" };
 type Quota = { ok: boolean; tier: string; limit: number; used: number; reason?: string };
 
 function quotaMessage(q: Quota, kind: string): string {
@@ -474,6 +474,14 @@ Deno.serve(async (req) => {
       const b = await body(req, MAX_TEXT_BODY, interpretRequestSchema);
       if (!b.ok) return b.res;
       const result = await understandOrder(b.data, env());
+      logCall(req, "texte", b.data.shopContext.language, true);
+      return send(req, 200, result);
+    }
+    if (route === "batch") {
+      // Plusieurs opérations collées d'un coup : une seule demande, comptée comme un écrit.
+      const b = await body(req, MAX_TEXT_BODY, batchRequestSchema);
+      if (!b.ok) return b.res;
+      const result = await understandBatch(b.data, env());
       logCall(req, "texte", b.data.shopContext.language, true);
       return send(req, 200, result);
     }
