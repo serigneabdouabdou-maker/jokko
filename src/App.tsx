@@ -358,7 +358,7 @@ const LIVE_SILENCE_MS = 30_000;
 
 type AuthMode = "creer" | "entrer" | "oubli";
 
-function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
+export function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void }) {
   const [mode, setMode] = useState<AuthMode>(startMode);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -578,7 +578,7 @@ function Login({ mode: startMode, onBack }: { mode: AuthMode; onBack: () => void
  * Boutique dont l'activité n'a pas été dite (vide ou « Autre activité » sans précision) : Jokko ne peut pas se régler.
  * Le patron choisit son métier, ou écrit son activité, avant d'entrer. Ses données restent dans la même boutique.
  */
-function MetierGate({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+export function MetierGate({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const shop = currentShop(profile);
   // Le nom aide souvent (« Dabakh couture ») : ce métier est proposé d'office.
   const [activity, setActivity] = useState(() => {
@@ -626,7 +626,7 @@ function MetierGate({ profile, setProfile }: { profile: Profile; setProfile: (p:
 }
 
 /** Compte créé avant l'arrivée des conditions (ou nouvelle version) : on demande de les accepter une fois. */
-function TermsGate({ profile, onAccepted }: { profile: Profile; onAccepted: () => void }) {
+export function TermsGate({ profile, onAccepted }: { profile: Profile; onAccepted: () => void }) {
   const [agreed, setAgreed] = useState(false);
   const [reading, setReading] = useState<LegalDoc | null>(null);
   const [busy, setBusy] = useState(false);
@@ -697,7 +697,7 @@ function MetierBadge({ value }: { value: string }) {
   );
 }
 
-function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
+export function ShopSetup({ profile, setProfile }: { profile: Profile; setProfile: (p: Profile) => void }) {
   const [owner, setOwner] = useState(profile.owner);
   const [shopName, setShopName] = useState("");
   const [activity, setActivity] = useState(chosenMetier);
