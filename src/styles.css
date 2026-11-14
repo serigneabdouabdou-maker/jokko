@@ -2030,3 +2030,4 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .batch-card .batch-ignored { font-size: 13px; color: var(--j-ink-3); margin: 6px 0; }
 .batch-card .batch-ignored ul { margin: 4px 0 0; padding-left: 18px; }
 .batch-card .order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chips .chip-photo { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; border-style: dashed; }

@@ -29,3 +29,21 @@ describe("plusieurs opérations collées d'un coup", () => {
     expect(batch.ignored).toHaveLength(2);
   });
 });
+
+describe("photo d'une page du cahier", async () => {
+  const { understandBatchPhoto } = await import("./interpret.ts");
+  it("la photo part avec la consigne du cahier ; montants relus dans chaque ligne recopiée", async () => {
+    const generate = vi.fn<Generate>(async () =>
+      JSON.stringify({
+        operations: [op("Décodage Itel 5000", { productName: "décodage", amount: 50000 })],
+        ignored: ["Total 45 000", "(illisible)"],
+      }),
+    );
+    const image = { mimeType: "image/jpeg" as const, data: "A".repeat(2000) };
+    const batch = await understandBatchPhoto({ image, shopContext }, { apiKey: "test", generate });
+    const call = generate.mock.calls[0][0];
+    expect(call.audio).toEqual(image);
+    expect(call.systemInstruction).toMatch(/page du cahier/);
+    expect(batch.operations[0]!.action.amount).toBe(5000);
+  });
+});

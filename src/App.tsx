@@ -51,6 +51,7 @@ import {
   buildShopContext,
   guessOrder,
   batchMessage,
+  batchPhoto,
   interpretMessage,
   listenAudio,
 } from "@/assistant/client";
@@ -1401,10 +1402,10 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   }
 
   /** Long texte : Gemini sépare les opérations ; carte à vérifier (déjà enregistré aujourd'hui = décoché). */
-  async function tryBatch(input: string): Promise<boolean> {
+  async function tryBatch(input: string | File): Promise<boolean> {
     setReply(null);
     setVoice("comprehension");
-    const outcome = await batchMessage(input, buildShopContext(shop, profile.lang, input));
+    const outcome = typeof input === "string" ? await batchMessage(input, buildShopContext(shop, profile.lang, input)) : await batchPhoto(input, buildShopContext(shop, profile.lang));
     setVoice("repos");
     if (!outcome.ok) {
       say(outcome.message);
@@ -1412,13 +1413,21 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       return true;
     }
     if (!outcome.operations.length) {
-      say(outcome.ignored.length ? "Je n’ai trouvé aucune opération à enregistrer dans ce texte (seulement des totaux ou des consignes)." : "Je n’ai trouvé aucune opération à enregistrer. Écris une opération par ligne, avec son montant.");
+      say(
+        typeof input !== "string"
+          ? "Je n’ai trouvé aucune opération sur la photo. Prends la page de plus près, bien éclairée et droite."
+          : outcome.ignored.length
+            ? "Je n’ai trouvé aucune opération à enregistrer dans ce texte (seulement des totaux ou des consignes)."
+            : "Je n’ai trouvé aucune opération à enregistrer. Écris une opération par ligne, avec son montant.",
+      );
       return true;
     }
     const items = markDuplicates(currentShop(profileRef.current), outcome.operations);
     setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: "", at: new Date().toISOString(), batch: { items, ignored: outcome.ignored, status: "attente" } }]);
     return true;
   }
+
+  const cahierInput = useRef<HTMLInputElement>(null);
 
   function updateBatch(id: string, change: (b: BatchCardData) => BatchCardData) {
     setMessages((list) => list.map((m) => (m.id === id && m.batch ? { ...m, batch: change(m.batch) } : m)));
@@ -1676,8 +1685,27 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                   </p>
                 </div>
                 <div className="chips">
+                  {assistant !== "off" && (
+                    <button type="button" className="chip-photo" disabled={busy} onClick={() => cahierInput.current?.click()}>
+                      <Icon name="photo" size="sm" /> Photo du cahier
+                    </button>
+                  )}
                   {prompts.map((p) => <button key={p} disabled={busy} onClick={() => void send(p)}>{p}</button>)}
                 </div>
+                <input
+                  ref={cahierInput}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    setMessages((m) => [...m, { id: uid("m"), role: "user", text: "📷 Photo du cahier", at: new Date().toISOString() }]);
+                    void tryBatch(file);
+                  }}
+                />
                 <div className="log">
                   {messages.map((m) =>
                     m.batch ? (

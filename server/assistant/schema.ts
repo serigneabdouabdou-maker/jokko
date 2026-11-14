@@ -154,7 +154,17 @@ export const batchSchema = z.strictObject({
   ignored: z.array(z.string().max(240)).max(40),
 });
 
+/** Photo d'une page du cahier de ventes (JPEG réduit par l'appli, ≈ 200 Ko). */
+export const batchPhotoRequestSchema = z.strictObject({
+  image: z.strictObject({
+    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    data: z.string().min(1000).max(5_800_000).regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  }),
+  shopContext: shopContextSchema,
+});
+
 export type BatchRequest = z.infer<typeof batchRequestSchema>;
+export type BatchPhotoRequest = z.infer<typeof batchPhotoRequestSchema>;
 export type Batch = z.infer<typeof batchSchema>;
 
 export function batchJsonSchema(): Record<string, unknown> {

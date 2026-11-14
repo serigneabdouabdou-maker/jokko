@@ -228,6 +228,49 @@ export async function batchMessage(message: string, shopContext: ShopContext, si
   return { ok: false, message: typeof body?.message === "string" ? body.message : "Jokko n'a pas pu lire la liste. Réessaie dans un instant." };
 }
 
+/** Photo réduite à 1600 px en JPEG (≈ 200 Ko), en base64 : rapide à envoyer, même avec une petite connexion. */
+export async function shrinkPhoto(file: File): Promise<{ mimeType: string; data: string } | null> {
+  let blob: Blob = file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b ?? file), "image/jpeg", 0.82));
+  } catch {
+    // ancien téléphone : la photo telle quelle
+  }
+  if (blob.size > 4_000_000) return null;
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  const type = (blob.type || "image/jpeg").split(";")[0]!;
+  return { mimeType: ["image/jpeg", "image/png", "image/webp"].includes(type) ? type : "image/jpeg", data };
+}
+
+/** Photo d'une page du cahier de ventes : même liste à cocher que le texte collé (route « cahier », comptée comme une lecture photo). */
+export async function batchPhoto(file: File, shopContext: ShopContext): Promise<BatchOutcome> {
+  const image = await shrinkPhoto(file);
+  if (!image) return { ok: false, message: "La photo est trop lourde. Reprends-la sans zoom." };
+  let response: Response;
+  try {
+    response = await api("cahier", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image, shopContext }) });
+  } catch {
+    return { ok: false, message: "Jokko ne joint pas le serveur. Vérifie la connexion." };
+  }
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (response.ok && body && Array.isArray(body.operations)) {
+    return { ok: true, operations: body.operations as Array<{ line: string; action: DraftAction }>, ignored: Array.isArray(body.ignored) ? (body.ignored as string[]) : [] };
+  }
+  if (response.status === 413) return { ok: false, message: "La photo est trop lourde. Reprends-la sans zoom." };
+  return { ok: false, message: typeof body?.message === "string" ? body.message : "Jokko n'a pas pu lire la photo. Reprends-la de plus près, bien éclairée et droite." };
+}
+
 export type Heard = { transcript: string; interpretation: Interpretation };
 
 export type ListenOutcome =

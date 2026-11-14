@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { moneyAmountsSaid, settleAmounts } from "../../src/assistant/wolofNumbers.ts";
 import { conseillerInstruction } from "../../src/data/metiers.ts";
 import { localizeInstruction } from "../../src/data/metierWords.ts";
-import { ADVICE_INSTRUCTION, BATCH_INSTRUCTION, buildAdvicePrompt, buildAudioPrompt, buildBatchPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
+import { ADVICE_INSTRUCTION, BATCH_INSTRUCTION, BATCH_PHOTO_NOTE, buildAdvicePrompt, buildAudioPrompt, buildBatchPrompt, buildOrderPrompt, buildPrompt, ORDER_INSTRUCTION, SYSTEM_INSTRUCTION } from "./prompt.ts";
 import {
   type Heard,
   type Interpretation,
@@ -12,6 +12,7 @@ import {
   type AdviceRequest,
   type Batch,
   type BatchRequest,
+  type BatchPhotoRequest,
   batchJsonSchema,
   batchSchema,
   adviceJsonSchema,
@@ -142,8 +143,25 @@ export async function understandOrder(request: InterpretRequest, options: Interp
  */
 export async function understandBatch(request: BatchRequest, options: InterpretOptions): Promise<Batch> {
   const result = await run(options, batchSchema, batchJsonSchema(), buildBatchPrompt(request.message, request.shopContext), undefined, BATCH_INSTRUCTION);
-  const products = new Set(request.shopContext.products.map((p) => p.id));
-  const clients = new Set(request.shopContext.clients.map((c) => c.id));
+  return cleanBatch(result, request.shopContext);
+}
+
+/** Photo d'une page du cahier de ventes : mêmes règles, Gemini recopie chaque ligne avant de la classer. */
+export async function understandBatchPhoto(request: BatchPhotoRequest, options: InterpretOptions): Promise<Batch> {
+  const result = await run(
+    options,
+    batchSchema,
+    batchJsonSchema(),
+    buildBatchPrompt("(voir la photo jointe : une page du cahier de ventes)", request.shopContext),
+    request.image,
+    BATCH_INSTRUCTION + BATCH_PHOTO_NOTE,
+  );
+  return cleanBatch(result, request.shopContext);
+}
+
+function cleanBatch(result: Batch, context: ShopContext): Batch {
+  const products = new Set(context.products.map((p) => p.id));
+  const clients = new Set(context.clients.map((c) => c.id));
   return {
     ignored: result.ignored,
     operations: result.operations.map(({ line, action }) => {
