@@ -2134,7 +2134,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .screen [data-slot="button"] { max-width: 100%; white-space: normal; height: auto; min-height: 44px; line-height: 1.2; padding-block: 8px; text-align: center; }
   .screen [data-slot="button"].w-9, .screen [data-slot="button"][class*="w-9"] { width: 44px; height: 44px; padding: 0; }
   .screen .link { text-align: left; }
-  .screen :is(.sheet-head, .row) > .link, .screen .sheet-head button.link { white-space: nowrap; }
+  .screen :is(.sheet-head, .row, .fs-head) > .link { white-space: nowrap; flex: none; }
 
   /* Exemples à toucher : une ligne qui glisse, au lieu d'une colonne qui prend tout l'écran */
   .talk .chips { flex-wrap: nowrap; overflow-x: auto; margin: 10px 0; padding: 2px 0 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
