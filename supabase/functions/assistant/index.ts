@@ -5,11 +5,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/12d9d055d74516c8c55ffc85c80292f4e43ee357/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/12d9d055d74516c8c55ffc85c80292f4e43ee357/server/assistant/live.ts";
-import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/12d9d055d74516c8c55ffc85c80292f4e43ee357/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/live.ts";
+import { adviceRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/b8ae6ba6e4bacdaac638b32ca6b7944805cbe54a/server/assistant/schema.ts";
 
-const MAX_TEXT_BODY = 32 * 1024;
+// Marge : l'appli garde sa demande sous 32 Ko (fitByBytes) ; le serveur accepte jusqu'à 64 Ko pour les anciennes versions.
+const MAX_TEXT_BODY = 64 * 1024;
 const MAX_AUDIO_BODY = 3 * 1024 * 1024;
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 30;
@@ -90,7 +91,12 @@ async function body<T extends z.ZodType>(req: Request, max: number, schema: T): 
     return { ok: false, res: send(req, 415, { error: "unsupported_media_type" }) };
   }
   const text = await req.text();
-  if (text.length > max) return { ok: false, res: send(req, 413, { error: "payload_too_large" }) };
+  if (text.length > max) {
+    // Trace dans gemini_calls (statut 413) : la console prévient CFC (private.payload_watch).
+    const route = new URL(req.url).pathname.split("/").filter(Boolean).pop() ?? "";
+    logCall(req, LOG_KIND[route] ?? "texte", null, false, 413);
+    return { ok: false, res: send(req, 413, { error: "payload_too_large", message: "Demande trop lourde : ferme complètement l'appli, rouvre-la, puis réessaie." }) };
+  }
   let raw: unknown;
   try {
     raw = JSON.parse(text);
