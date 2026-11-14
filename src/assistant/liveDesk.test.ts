@@ -468,3 +468,16 @@ describe("multiservice : bâche et photocopies dites à la voix (calcul fait par
     expect(shop().sales[0]).toMatchObject({ label: "Service · Photocopie noir A4 × 50 pages", amount: 1250 });
   });
 });
+
+describe("grande boutique : chercher un article hors de la liste envoyée à Gemini", () => {
+  it("chercher_article trouve une pièce parmi 700, avec son id", () => {
+    const { desk, set } = setup();
+    const products = Array.from({ length: 700 }, (_, i) => ({ id: `p${i}`, name: `Écran Tecno K${i}X`, unit: "pièce", stock: 0, min: 0, price: 0 }));
+    products.push({ id: "bf6", name: "Écran Tecno BF6", unit: "pièce", stock: 3, min: 0, price: 12000 });
+    set({ ...seedShop(), activity: "Réparation de téléphones", products });
+    const r = desk.handle({ name: "chercher_article", args: { nom: "écran BF6" } }) as { statut: string; articles: Array<{ id: string }> };
+    expect(r.statut).toBe("trouve");
+    expect(r.articles[0]!.id).toBe("bf6");
+    expect(desk.handle({ name: "chercher_article", args: { nom: "frigo" } })).toMatchObject({ statut: "introuvable" });
+  });
+});

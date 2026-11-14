@@ -1260,7 +1260,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
 
   async function interpretText(input: string): Promise<boolean> {
     if (!(await isReady())) return false;
-    const outcome = await interpretMessage(input, buildShopContext(shop, profile.lang));
+    const outcome = await interpretMessage(input, buildShopContext(shop, profile.lang, input));
     if (!outcome.ok) {
       if (outcome.reason === "not_configured") {
         setAssistant("off");
@@ -1417,7 +1417,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     let order = parseOrder(input, shop);
     // Mots flous (wolof, fautes) : Gemini léger propose les articles, le code garde les calculs.
     if ((order.unknown.length || !order.lines.length) && assistant !== "off") {
-      const guess = await guessOrder(input, buildShopContext(shop, profile.lang));
+      const guess = await guessOrder(input, buildShopContext(shop, profile.lang, input));
       const better = guess ? orderFromGuess(guess, input, shop) : null;
       if (better && better.lines.length >= order.lines.length) order = better;
       else if (!order.lines.length) return false;

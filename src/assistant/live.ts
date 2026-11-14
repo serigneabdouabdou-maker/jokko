@@ -1,6 +1,6 @@
 import type { LiveServerMessage, Session } from "@google/genai";
 import { api, noteLiveFailure } from "../data/supabase";
-import type { ShopContext } from "./client";
+import { type ShopContext, TOO_BIG } from "./client";
 import { audioContext, base64ToBytes, bytesToBase64, PcmPlayer, rateOf } from "./pcm";
 import { ClearSpeaker, type SpeechLang } from "./clearVoice";
 import { BargeIn, CallGate, NoiseGate } from "./listenFilter";
@@ -122,6 +122,7 @@ async function fetchTicket(context: ShopContext): Promise<LiveTicket> {
   }
   const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (response.status === 503) throw new LiveStartError("Gemini n’est pas configuré sur le serveur.", "not_configured");
+  if (response.status === 413) throw new LiveStartError(TOO_BIG, "unavailable");
   // Offre ou limite du jour : on passe en message vocal, avec l'explication du serveur.
   if (response.status === 402) throw new LiveStartError(typeof body?.message === "string" ? body.message : "La conversation en direct n’est pas disponible.", "quota", typeof body?.reason === "string" ? body.reason : undefined);
   if (!response.ok || typeof body?.token !== "string" || typeof body.model !== "string") {

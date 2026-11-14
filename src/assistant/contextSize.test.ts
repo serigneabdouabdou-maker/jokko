@@ -23,3 +23,14 @@ describe("demande envoyée à Gemini : jamais plus de 32 Ko", () => {
     expect(ctx.clients[0]!.debt).toBeGreaterThan(0);
   });
 });
+
+describe("les articles nommés dans la phrase passent devant", () => {
+  it("une pièce du catalogue (stock 0, sans prix) citée par le commerçant est envoyée à Gemini", () => {
+    const base = seedShop();
+    const products = Array.from({ length: 900 }, (_, i) => ({ id: `p${i}`, name: `Écran Tecno ZZ${i} universel`, unit: "pièce", stock: i < 400 ? 1 : 0, min: 0, price: 0 }));
+    products.push({ id: "cible", name: "Écran Infinix X6525", unit: "pièce", stock: 0, min: 0, price: 0 });
+    const shop = { ...base, products } as unknown as Shop;
+    expect(buildShopContext(shop, "fr").products.some((p) => p.id === "cible")).toBe(false);
+    expect(buildShopContext(shop, "fr", "combien pour l'écran X6525 ?").products[0]!.id).toBe("cible");
+  });
+});

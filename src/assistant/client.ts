@@ -2,6 +2,8 @@ import { api } from "../data/supabase";
 import type { OrderGuess } from "./order";
 import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
 import { expiringSoon } from "../data/metiers";
+import { searchProducts } from "../data/partSearch";
+import { modelKeys } from "../data/modelKeys";
 
 export type AssistantLanguage = "wo" | "fr" | "en" | "fuc";
 export type AssistantIntent = "sale" | "stock_query" | "debt_query" | "expense" | "cash_query" | "invoice" | "unknown";
@@ -85,9 +87,23 @@ export function fitByBytes<T>(items: T[], budget: number, max: number): T[] {
  * Articles pour Gemini : en stock d'abord, puis ceux qui ont un prix, puis le catalogue du fournisseur.
  * Ceux laissés de côté restent reconnus par l'appli elle-même (recherche par nom après la réponse de Gemini).
  */
-export function fitProducts(products: Shop["products"]): ShopContext["products"] {
+export function fitProducts(products: Shop["products"], focus = ""): ShopContext["products"] {
+  // Les articles nommés dans la phrase passent devant tout le reste : Gemini voit toujours la bonne pièce,
+  // même dans une boutique de 10 000 articles.
+  const named = new Map<string, number>();
+  if (focus.trim()) {
+    // Un modèle (« x6525 ») compte beaucoup plus qu'un mot courant (« écran ») qui va sur des centaines d'articles.
+    const keys = new Set(modelKeys(focus));
+    const words = [...new Set([...keys, ...focus.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9+]+/).filter((w) => w.length >= 3)])];
+    for (const w of words.slice(0, 12)) {
+      const hits = searchProducts(products, w, 15);
+      const weight = keys.has(w) ? 10 : hits.length >= 15 ? 0.1 : 1;
+      for (const h of hits) named.set(h.product.id, (named.get(h.product.id) ?? 0) + weight);
+    }
+  }
+  const rank = (p: Shop["products"][number]) => (named.has(p.id) ? -1 : contextRank(p));
   const items = [...products]
-    .sort((a, b) => contextRank(a) - contextRank(b))
+    .sort((a, b) => rank(a) - rank(b) || (named.get(b.id) ?? 0) - (named.get(a.id) ?? 0))
     .slice(0, 400)
     .map((p) => ({
       id: p.id,
@@ -101,12 +117,13 @@ export function fitProducts(products: Shop["products"]): ShopContext["products"]
   return fitByBytes(items, CONTEXT_BYTES.products, 300);
 }
 
-export function buildShopContext(shop: Shop, lang: Lang): ShopContext {
+/** focus : la phrase du commerçant (écrit), pour mettre devant les articles dont il parle. */
+export function buildShopContext(shop: Shop, lang: Lang, focus = ""): ShopContext {
   return {
     language: toAssistantLanguage(lang),
     // Articles en stock d'abord, puis ceux qui ont un prix, puis le catalogue du fournisseur ; jamais plus lourd que
     // CONTEXT_PRODUCTS_BYTES (sinon le serveur refuse la demande : erreur 413, « Gemini ne répond pas »).
-    products: fitProducts(shop.products),
+    products: fitProducts(shop.products, focus),
     // Clients qui doivent de l'argent d'abord (questions de dettes), puis les autres.
     clients: fitByBytes(
       [...shop.clients].sort((a, b) => Number(b.debt > 0) - Number(a.debt > 0)).map((c) => ({ id: c.id, name: c.name, debt: c.debt })),
@@ -172,9 +189,15 @@ export async function interpretMessage(message: string, shopContext: ShopContext
   if (response.status === 400) {
     return { ok: false, reason: "invalid", message: "La phrase n’a pas pu être envoyée. Raccourcis-la et réessaie." };
   }
+  if (response.status === 413) {
+    return { ok: false, reason: "unavailable", message: TOO_BIG };
+  }
   const fallback = typeof body?.message === "string" ? body.message : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
   return { ok: false, reason: "unavailable", message: fallback };
 }
+
+/** Demande refusée parce que trop lourde : la vraie raison, jamais « Gemini ne répond pas ». CFC est prévenu par la console. */
+export const TOO_BIG = "Ta boutique est très grande et cette demande était trop lourde pour Jokko. CFC est prévenu. Ferme complètement l’appli, rouvre-la, puis réessaie.";
 
 export type Heard = { transcript: string; interpretation: Interpretation };
 

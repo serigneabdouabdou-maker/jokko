@@ -55,6 +55,7 @@ Comprendre le commerçant
 
 Boutique
 - Le contexte ci-dessous décrit la boutique au début. Il change pendant la journée : appelle lire_boutique avant de citer un stock, une dette ou la caisse si quelque chose a pu bouger.
+- ARTICLE PAS DANS TA LISTE : le contexte ne montre qu'une partie des articles d'une grande boutique. Si le commerçant parle d'un article (ou d'un modèle de téléphone) que tu ne vois pas, appelle chercher_article avec le nom dit AVANT de dire qu'il n'existe pas ; utilise ensuite l'id renvoyé.
 - TOUT LE STOCK : si le commerçant demande son stock en entier (« dis-moi tout le stock », « liste tout », « lis-moi tout ce qui reste », « wan ma li ci stock bi », « lu ma am ci stock bi »), appelle lire_boutique et lis CHAQUE article avec ce qu'il en reste, un par un, du premier au dernier, sans en sauter aucun et sans t'arrêter après deux ou trois. Dis chaque stock avec les mots de montants_en_wolof.stock (ou en français : « riz : 12 sacs ; huile : 3 bidons ; sucre : 40 kilos… »). S'il y en a beaucoup, enchaîne-les ; ne coupe jamais la liste au milieu.
 - Utilise les id exacts du contexte pour les articles et les clients. N'invente ni article, ni montant.
 - Clients : mets TOUJOURS dans clientName le nom que le commerçant a dit. Ne prends jamais le premier client de la liste par défaut. Si le nom dit ne correspond à aucun client que tu connais, appelle lire_boutique (la liste a pu changer) avant d'enregistrer. Si deux clients ont un nom proche, ou si l'outil répond "quel client", demande lequel en disant les deux noms.
@@ -293,6 +294,17 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 heard: { type: Type.STRING, description: "La phrase du tailleur, mot pour mot." },
               },
               required: ["action"],
+            },
+          },
+          {
+            name: "chercher_article",
+            description: "Cherche un article dans TOUT le stock de la boutique (le contexte n'en montre qu'une partie) : nom, autre nom ou modèle de téléphone (« écran BF6 »). Renvoie les articles trouvés avec id, stock et prix.",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                nom: { type: Type.STRING, description: "Le nom de l'article ou le modèle, comme le commerçant l'a dit." },
+              },
+              required: ["nom"],
             },
           },
           {

@@ -13,6 +13,8 @@ import { addRepair, deliverRepair, findRepair, markRepaired, type PartInput, pay
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName, UNITS } from "./wolofNames";
 import { foreignArticle } from "../data/metierWords";
 import { serviceFromVoice } from "../data/serviceVoice";
+import { searchProducts } from "../data/partSearch";
+import { modelKeys } from "../data/modelKeys";
 import { metierOf } from "../data/metiers";
 
 export { expandHeard, pickByName, plain, sameName };
@@ -519,6 +521,30 @@ export class LiveDesk {
 
     if (call.name === "couture") {
       return this.couture(args, call.id);
+    }
+
+    if (call.name === "chercher_article") {
+      const shop = this.deps.getShop();
+      const said = typeof args.nom === "string" ? args.nom.trim() : "";
+      if (said.length < 2) return { statut: "incomplet", besoin: "le nom de l'article" };
+      const seen = new Set<string>();
+      const hits = [said, ...modelKeys(said)]
+        .flatMap((q) => searchProducts(shop.products, q, 8))
+        .filter((h) => !seen.has(h.product.id) && seen.add(h.product.id))
+        .slice(0, 8);
+      if (!hits.length) return { statut: "introuvable", consigne: "Cet article n'est pas dans la boutique. Dis-le en une phrase ; s'il le vend quand même, propose de l'ajouter au stock." };
+      return {
+        statut: "trouve",
+        articles: hits.map((h) => ({
+          id: h.product.id,
+          nom: h.product.name,
+          stock: h.product.stock > 0 ? `${wolofNumber(h.product.stock)} ${h.product.unit}` : "amul (stock fini)",
+          prix: h.product.price,
+          ...(h.product.price > 0 ? { prix_en_wolof: francsToWolof(h.product.price) } : {}),
+          ...(h.via ? { va_aussi_sur: h.via } : {}),
+        })),
+        consigne: "S'il y en a plusieurs, demande lequel en disant leurs noms. Pour une vente ou un stock, rappelle enregistrer avec l'id choisi.",
+      };
     }
 
     if (call.name === "numero_client") {
