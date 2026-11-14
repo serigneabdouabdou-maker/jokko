@@ -5,9 +5,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
-import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandBatch, understandBatchPhoto, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/d220bb399a16dd1e466c6fd22d7b817c6ef6e947/server/assistant/interpret.ts";
-import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/d220bb399a16dd1e466c6fd22d7b817c6ef6e947/server/assistant/live.ts";
-import { adviceRequestSchema, batchPhotoRequestSchema, batchRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/d220bb399a16dd1e466c6fd22d7b817c6ef6e947/server/assistant/schema.ts";
+import { AssistantOutputError, AssistantUpstreamError, GeminiNotConfiguredError, interpret, listen, understandBatch, understandBatchPhoto, understandOrder, advise } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/bdc0092cca1963755f96c19ceef3f221b54009e1/server/assistant/interpret.ts";
+import { createLiveSession, LiveUnavailableError } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/bdc0092cca1963755f96c19ceef3f221b54009e1/server/assistant/live.ts";
+import { adviceRequestSchema, batchPhotoRequestSchema, batchRequestSchema, interpretRequestSchema, listenRequestSchema, liveRequestSchema, speakRequestSchema } from "https://raw.githubusercontent.com/serigneabdouabdou-maker/jokko/bdc0092cca1963755f96c19ceef3f221b54009e1/server/assistant/schema.ts";
 
 // Marge : l'appli garde sa demande sous 32 Ko (fitByBytes) ; le serveur accepte jusqu'à 64 Ko pour les anciennes versions.
 const MAX_TEXT_BODY = 64 * 1024;
