@@ -6,8 +6,21 @@
 import { type Shop, money, todayStamp } from "../model.ts";
 import type { DraftAction } from "./client.ts";
 import { moneyAmountsSaid } from "./wolofNumbers.ts";
+import { partForSale } from "../data/partSearch.ts";
+import { kindOf } from "../data/pricing.ts";
 
-export type BatchItem = { line: string; action: DraftAction; keep: boolean; duplicate?: string; cost?: number; service?: boolean };
+export type BatchItem = {
+  line: string;
+  action: DraftAction;
+  keep: boolean;
+  duplicate?: string;
+  cost?: number;
+  service?: boolean;
+  /** Pièce du stock qui sort avec cette vente (stock avant la vente). */
+  part?: { name: string; stock: number; cost?: number };
+  /** Plusieurs pièces possibles : rien ne sort du stock, le patron le fera à la main. */
+  choices?: string[];
+};
 export type BatchCardData = { items: BatchItem[]; ignored: string[]; status: "attente" | "enregistre" | "annule"; done?: number; failed?: string[] };
 
 /** Un texte long, ou plusieurs lignes avec chacune un montant : ce sont plusieurs opérations. */
@@ -56,13 +69,32 @@ const SERVICE_WORDS = /configur|d[ée]codage|d[ée]blocage|d[ée]verrouill|r[ée
  * Chaque opération relue par le code : montant de la vente et prix d'achat écrits dans SA ligne,
  * et service pur (aucune pièce, aucun prix d'achat écrit) reconnu.
  */
-export function settleItems(operations: { line: string; action: DraftAction }[]): { line: string; action: DraftAction; cost?: number; service?: boolean }[] {
+export function settleItems(
+  operations: { line: string; action: DraftAction }[],
+  products: Shop["products"] = [],
+): Omit<BatchItem, "keep" | "duplicate">[] {
   return operations.map(({ line, action }) => {
     if (action.type !== "sale") return { line, action };
     const { sale, cost } = lineAmounts(line);
-    const next = sale ? { ...action, amount: sale, unitPrice: null } : action;
-    const service = cost === undefined && !action.productId && SERVICE_WORDS.test(`${action.label ?? ""} ${action.productName ?? ""} ${line}`);
-    return { line, action: next, ...(cost !== undefined && (!next.amount || cost <= next.amount * 10) ? { cost } : {}), ...(service ? { service: true } : {}) };
+    let next: DraftAction = sale ? { ...action, amount: sale, unitPrice: null } : action;
+    const said = `${action.label ?? ""} ${action.productName ?? ""}`.trim() || line;
+    const service = cost === undefined && !action.productId && SERVICE_WORDS.test(`${said} ${line}`);
+    // Pièce du stock (même type, même modèle) : elle sortira du stock dès que le stock sera compté (jamais sous 0).
+    let choices: string[] | undefined;
+    if (!next.productId && !service && products.length) {
+      const found = partForSale(products, said, kindOf);
+      if (found.product) next = { ...next, productId: found.product.id, quantity: next.quantity && next.quantity > 0 ? next.quantity : 1 };
+      else if (found.choices) choices = found.choices.map((p) => p.name);
+    }
+    const product = next.productId ? products.find((p) => p.id === next.productId) : undefined;
+    return {
+      line,
+      action: next,
+      ...(cost !== undefined && (!next.amount || cost <= next.amount * 10) ? { cost } : {}),
+      ...(service ? { service: true } : {}),
+      ...(product ? { part: { name: product.name, stock: product.stock, ...(product.cost !== undefined ? { cost: product.cost * (next.quantity && next.quantity > 0 ? next.quantity : 1) } : {}) } } : {}),
+      ...(choices ? { choices } : {}),
+    };
   });
 }
 
@@ -134,7 +166,7 @@ export function batchTotals(items: BatchItem[]): { sales: number; cost: number; 
   for (const i of items) {
     if (!i.keep || i.action.type !== "sale" || !i.action.amount) continue;
     sales += i.action.amount;
-    const c = i.cost ?? (i.service ? 0 : undefined);
+    const c = i.cost ?? (i.service ? 0 : i.part?.cost);
     if (c === undefined) unknown++;
     else {
       known++;

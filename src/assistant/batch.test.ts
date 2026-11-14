@@ -93,3 +93,49 @@ describe("liste de Fallou du 14/11 : vente, achat, bénéfice sur chaque ligne",
     expect(lineAmounts("Écran X : prix de vente 15.000, prix d'achat 5.000")).toEqual({ sale: 15000, cost: 5000 });
   });
 });
+
+describe("pièce du stock sur une ligne écrite (stock pas encore compté)", () => {
+  const P = (name: string, cost: number, aliases?: string[]) => ({ id: squashId(name), name, unit: "pièce", stock: 0, min: 0, price: 0, cost, ...(aliases ? { aliases } : {}) });
+  const squashId = (n: string) => "p-" + n.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  // Extrait du vrai stock de « Boutique mbéne cissé » (14/11/2026).
+  const products = [
+    P("Écran Tecno BG6", 4500, ["BG6M", "KJ5", "Pop 8", "X6525", "X6528"]),
+    P("Écran Tecno BG6M", 3800, ["BG6", "KJ5", "X6525", "X6528"]),
+    P("Écran Tecno CG6", 4500, ["KF6", "KF8", "KG6"]),
+    P("Écran Tecno KF6", 4000, ["BD3", "CG6", "KE5", "KG6", "Spark 7"]),
+    P("Écran Tecno Spark 7", 4750, ["KF6", "KG6"]),
+    P("Écran Tecno Spark 7P", 4750),
+    P("Batterie Tecno Spark 7", 1600),
+    P("Écran iPhone 11 Pro Max", 8000),
+    P("Écran iPhone 11 Pro Max (copie)", 8000),
+    P("Écran iPhone 11 Pro Max (original)", 18000),
+    P("Écran Tecno KD7", 3700, ["CC6", "KC8"]),
+    P("Écran Tecno KC8", 4500, ["KD7"]),
+  ] as unknown as Shop["products"];
+  const sale = (label: string, amount: number) => ({ line: `${label} : vente ${amount} F`, action: action({ label, productName: label, amount }) });
+
+  it("même type et même modèle : la pièce est liée (elle sortira du stock), jamais sous 0", () => {
+    const items = settleItems([sale("LCD BG6", 10000), sale("LCD Camon 17 CG6", 10000), sale("LCD Spark 7", 10000), sale("Écran iPhone 11 Pro Max", 20000)], products);
+    expect(items.map((i) => i.part?.name)).toEqual(["Écran Tecno BG6", "Écran Tecno CG6", "Écran Tecno Spark 7", "Écran iPhone 11 Pro Max"]);
+    expect(items[0]!.action.quantity).toBe(1);
+    const shop = { ...seedShop(), products };
+    const applied = applyDraft(shop, withLineFacts(items[2]!.action, { cost: 4000 }))!;
+    expect(applied.shop.sales[0]).toMatchObject({ amount: 10000, cost: 4000, productId: products[4]!.id });
+    expect(applied.shop.products.find((p) => p.id === products[4]!.id)!.stock).toBe(0);
+  });
+
+  it("autre type de pièce, pas de modèle, ou plusieurs possibles : rien ne sort du stock", () => {
+    const items = settleItems([sale("Plaquette KD7", 1500), sale("Chargeur", 3000), sale("LCD KD7", 9000)], products);
+    expect(items[0]!.part).toBeUndefined();
+    expect(items[1]!.part).toBeUndefined();
+    expect(items[2]!.part?.name).toBe("Écran Tecno KD7");
+    const two = settleItems([sale("Écran iPhone 11 Pro", 15000)], [...products, P("Écran iPhone 11 Pro (A)", 8000), P("Écran iPhone 11 Pro (B)", 9000)] as unknown as Shop["products"]);
+    expect(two[0]!.part).toBeUndefined();
+    expect(two[0]!.choices).toHaveLength(2);
+  });
+
+  it("le bénéfice sans prix d'achat écrit prend le prix d'achat du stock", () => {
+    const items = settleItems([sale("LCD Spark 7", 10000)], products).map((i) => ({ ...i, keep: true }));
+    expect(batchTotals(items)).toMatchObject({ sales: 10000, cost: 4750, profit: 5250, unknown: 0 });
+  });
+});

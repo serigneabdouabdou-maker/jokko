@@ -5,6 +5,7 @@
  * Les téléphones compatibles sont les « autres noms » de l'article (`aliases`).
  */
 import type { Product } from "../model.ts";
+import { modelKeys } from "./modelKeys.ts";
 
 /** « Écran Tecno BF6 » → « ecrantecnobf6 » : sans accents, sans espaces ni ponctuation. */
 export const squash = (s: string): string =>
@@ -74,4 +75,30 @@ export function productNamedIn(products: Product[], text: string): Product | und
   return products
     .filter((p) => p.name.length >= 4 && t.includes(squash(p.name)))
     .sort((a, b) => b.name.length - a.name.length)[0];
+}
+
+/**
+ * La pièce du stock vendue sur une ligne écrite (« LCD Spark 7 : vente 10 000 F ») — 14/11/2026, demande de Fallou :
+ * même type de pièce (écran = LCD, plaquette, batterie…) ET même modèle. Le nom de l'article d'abord ;
+ * un téléphone compatible (« va aussi sur ») seulement si aucun article ne porte ce modèle dans son nom.
+ * Plusieurs pièces possibles (« Écran iPhone 11 Pro Max » copie / original) : on garde celle sans précision
+ * entre parenthèses si elle est seule, sinon on ne devine pas (rien ne sort du stock).
+ */
+export function partForSale(products: Product[], label: string, kindOf: (s: string) => string): { product?: Product; choices?: Product[] } {
+  const keys = new Set(modelKeys(label));
+  const kind = kindOf(label);
+  if (!keys.size) {
+    // Sans modèle (« Chargeur ») : seulement un article qui porte exactement ce nom.
+    const same = products.filter((p) => squash(p.name) === squash(label));
+    return same.length === 1 ? { product: same[0]! } : {};
+  }
+  if (kind === "Autre") return {};
+  const sameKind = products.filter((p) => kindOf(p.name) === kind);
+  const direct = sameKind.filter((p) => modelKeys(p.name).some((k) => keys.has(k)));
+  const pool = direct.length ? direct : sameKind.filter((p) => (p.aliases ?? []).some((a) => modelKeys(a).some((k) => keys.has(k))));
+  if (pool.length === 1) return { product: pool[0]! };
+  if (!pool.length) return {};
+  const plainOnes = pool.filter((p) => !/\(/.test(p.name));
+  if (plainOnes.length === 1 && pool.every((p) => p === plainOnes[0] || squash(p.name.replace(/\(.*?\)/g, "")) === squash(plainOnes[0]!.name))) return { product: plainOnes[0]! };
+  return { choices: pool.slice(0, 4) };
 }

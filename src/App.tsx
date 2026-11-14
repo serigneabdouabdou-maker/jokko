@@ -1422,7 +1422,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       );
       return true;
     }
-    const items = markDuplicates(currentShop(profileRef.current), settleItems(outcome.operations));
+    const items = markDuplicates(currentShop(profileRef.current), settleItems(outcome.operations, currentShop(profileRef.current).products));
     setMessages((m) => [...m, { id: uid("m"), role: "jokko", text: "", at: new Date().toISOString(), batch: { items, ignored: outcome.ignored, status: "attente" } }]);
     return true;
   }

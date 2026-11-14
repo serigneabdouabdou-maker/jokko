@@ -481,3 +481,19 @@ describe("grande boutique : chercher un article hors de la liste envoyée à Gem
     expect(desk.handle({ name: "chercher_article", args: { nom: "frigo" } })).toMatchObject({ statut: "introuvable" });
   });
 });
+
+describe("liste écrite : la pièce liée passe tout le chemin d'enregistrement", () => {
+  it("LCD Spark 7 lié au stock : vente au prix écrit, prix d'achat écrit, stock 3 → 2", async () => {
+    const { settleItems, forRecord, withLineFacts } = await import("./batch");
+    const { desk, shop, set } = setup();
+    const part = { id: "p-spark7", name: "Écran Tecno Spark 7", unit: "pièce", stock: 3, min: 0, price: 0, cost: 4750 };
+    set({ ...shop(), activity: "Réparation de téléphones", products: [...shop().products, part] } as Shop);
+    const [item] = settleItems([{ line: "LCD Spark 7 : vente 10 000 F, achat 4 000 F, bénéfice 6 000 F.", action: { ...blank, label: "LCD Spark 7", productName: "LCD Spark 7", amount: 10000 } }], shop().products);
+    const ready = forRecord(item!.action, shop(), () => false);
+    const action = normalizeAction({ ...ready, prixUnitaire: ready.unitPrice ?? undefined }, shop())!;
+    const saved = desk.record(withLineFacts(action, item!), item!.line);
+    expect(saved.ok).toBe(true);
+    expect(shop().sales[0]).toMatchObject({ amount: 10000, cost: 4000, productId: "p-spark7" });
+    expect(shop().products.find((p) => p.id === "p-spark7")!.stock).toBe(2);
+  });
+});

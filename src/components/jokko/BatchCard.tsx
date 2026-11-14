@@ -25,6 +25,8 @@ export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCar
               <span>
                 <b>{describeAction(item.action)}</b>
                 {item.cost !== undefined && item.action.amount ? <small>Achat {f(item.cost)} · bénéfice {f(item.action.amount - item.cost)}</small> : null}
+                {item.part ? <small>Sort du stock : {item.part.name}{item.part.stock > 0 ? ` (il en reste ${item.part.stock})` : " (stock pas encore compté : reste à 0)"}</small> : null}
+                {item.choices ? <small className="is-late">Plusieurs pièces possibles ({item.choices.join(", ")}) : rien ne sort du stock</small> : null}
                 {item.service ? <small>Service : tout est main-d’œuvre (bénéfice {item.action.amount ? f(item.action.amount) : "?"})</small> : null}
                 <small>« {item.line.slice(0, 120)} »</small>
                 {item.duplicate && <small className="is-late">Déjà enregistré aujourd’hui ? ({item.duplicate}) — décoché</small>}
