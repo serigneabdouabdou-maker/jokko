@@ -96,6 +96,12 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 - Contrôle : script de mesure (puppeteer, 360 et 412 px, tous les écrans de 5 métiers) = 0 élément qui sort de l'écran, 0 texte superposé.
 - Accueil, inscription, connexion, « Ta boutique », conditions (même jour) : bloc « Accueil, inscription, connexion » en fin de `styles.css` — `.gate` serré sur téléphone (titre 32–40 px, carte 16 px), choix du métier compact sans texte coupé, liens des conditions sur une ligne normale, grand logo du milieu de l'accueil (`.lx-sting`) caché sur téléphone. `Login`, `ShopSetup`, `TermsGate`, `MetierGate` sont exportés pour les captures (harness).
 
+## Connexion depuis une télé et nom « Gemini » (15/11/2026)
+
+- Box Android TV (« AiPro4K », navigateur WebView) : la page s'ouvrait en **http://jokkoapp.com** → les fonctions refusaient l'origine (question préalable OPTIONS 200, POST jamais envoyé, message « problème de réseau »). Corrigé : `worker/index.js` et `src/main.tsx` passent en https ; `login`, `otp`, `assistant` acceptent aussi `http(s)://(www.)jokkoapp.com` ; `login`/`otp` notent dans le journal toute autre origine refusée (« origine refusée : … »). `signup`, `notify`, `wave`… : pas encore (le passage en https suffit).
+- **Le mot « Gemini » n'apparaît jamais à l'écran** (règle de Fallou : pas professionnel) : messages au nom de Jokko (« Jokko ne répond pas pour le moment », « Jokko marche en mode simple… »). Seule exception : la politique de confidentialité (`legal.ts`), qui doit nommer le prestataire (Google). Console CFC : peut garder le mot.
+- `assistantStatus` : une panne réseau passagère ne met plus Jokko en « mode simple » ; seul le serveur qui répond « pas configuré » le fait.
+
 ## Restauration et boulangerie (livrées le 10/11/2026)
 
 - Métiers `restauration` (restaurant, dibiterie, fast-food, jus, petit-déjeuner) et `boulangerie` dans `src/data/metiers.ts` ; module `cuisine` (ajoutable à une autre boutique dans les réglages).
