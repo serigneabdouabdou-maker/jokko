@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Drill, DrillList, DrillOverview } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
 import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
@@ -74,6 +75,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
 
   return (
     <section className="sheet bilan">
+      <DrillOverview>
       <div className="sheet-head">
         <h2>Bénéfices</h2>
         <div className="seg" role="tablist" aria-label="Période">
@@ -92,6 +94,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         {report.licences > 0 && <article><span>Licences (part)</span><b className="num">− {money(report.licences)}</b></article>}
         <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span><b className="num">{money(Math.abs(report.netProfit))}</b></article>
       </div>
+      </DrillOverview>
+      <DrillList title="En détail">
+      <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
         Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
         {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)}{report.licences ? ` − licences ${money(report.licences)}` : ""} = <b>{money(report.netProfit)}</b>.
@@ -110,8 +115,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         </p>
       )}
 
+      </Drill>
       {days.length > 0 && (
-        <>
+        <Drill id="jours" title="Jour par jour" icon="journal" summary={`${days.length} jour${days.length > 1 ? "s" : ""} · meilleur : ${money(Math.max(...days.map((d) => d.netProfit)))}`}>
           <h3>Jour par jour · {report.period.label}</h3>
           <div className="import-preview">
             <table className="bilan-months">
@@ -129,9 +135,10 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
               </tbody>
             </table>
           </div>
-        </>
+        </Drill>
       )}
 
+      <Drill id="depenses" title="Où part ton argent" icon="depense" summary={spending.length ? `${spending[0].label} en premier : ${money(spending[0].amount)}` : "Aucune dépense sur cette période"}>
       <h3>Où part ton argent</h3>
       {spending.length === 0 ? (
         <p className="note">Aucune dépense sur cette période. Dis à Jokko : « dépense 5 000 pour le transport ».</p>
@@ -146,7 +153,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           ))}
         </ul>
       )}
+      </Drill>
 
+      <Drill id="mois" title={`Mois par mois · ${year}`} icon="rapport" summary={bestMonth ? `Meilleur mois : ${bestMonth.label} (${money(bestMonth.netProfit)})` : "Pas encore de mois"}>
       <h3>Mois par mois · {year}</h3>
       {months.rows.length === 0 ? (
         <p className="note">Pas encore de mois dans cette année.</p>
@@ -180,7 +189,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           {bestMonth && months.rows.length > 1 && <p className="note">Ton meilleur mois : {bestMonth.label} ({money(bestMonth.netProfit)} gagnés).</p>}
         </>
       )}
+      </Drill>
 
+      <Drill id="articles" title="Ce qui s'est vendu" icon="vente" summary={report.byProduct.length ? `${report.byProduct.length} article${report.byProduct.length > 1 ? "s" : ""} · ${report.byProduct[0].name} en tête` : "Aucune vente d'article"}>
       <h3>Ce qui s'est vendu</h3>
       {report.byProduct.length === 0 ? (
         <p className="note">Aucune vente d'article sur cette période.</p>
@@ -203,7 +214,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           </table>
         </div>
       )}
+      </Drill>
 
+      <Drill id="inventaire" title="Stock et inventaire" icon="stock" summary={`Stock : ${money(value.atCost)} au prix d'achat`} badge={due ? 1 : 0}>
       <h3>Stock et inventaire</h3>
       <p className="note">
         Valeur du stock : {money(value.atCost)} au prix d'achat, {money(value.atPrice)} au prix de vente.
@@ -228,6 +241,8 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           </div>
         </div>
       )}
+      </Drill>
+      </DrillList>
     </section>
   );
 }

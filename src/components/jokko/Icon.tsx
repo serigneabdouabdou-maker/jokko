@@ -84,6 +84,7 @@ import {
   UtensilsCrossed,
   Printer,
   LayoutGrid,
+  Bell,
 } from "lucide-react";
 
 /** Le sens de chaque icône → son dessin Lucide. */
@@ -113,6 +114,7 @@ export const ICONS = {
   offre: Gem,
   reglages: Settings,
   menu: LayoutGrid,
+  cloche: Bell,
   langue: Languages,
   position: MapPin,
   // CFC (page d'accueil)

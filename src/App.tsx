@@ -70,7 +70,7 @@ import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
 import { type Segment, SEGMENTS } from "@/data/clientFiles";
 import { searchProducts } from "@/data/partSearch";
-import { addToOrder } from "@/data/reorder";
+import { addToOrder, orderPlan } from "@/data/reorder";
 import { applySuggestedPrices, laborStats, suggestedPrice } from "@/data/pricing";
 import { Commandes } from "@/components/jokko/Commandes";
 import { Debts } from "@/components/jokko/Debts";
@@ -116,6 +116,9 @@ import { GREETINGS, greetingDue, greetPreferred, markGreeted, playGreeting, setG
 import { noisePreferred, setNoisePreferred } from "@/assistant/listenFilter";
 import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can, effectivePlan } from "@/data/plans";
+import { graveScreens, noticeCounts, type Notice, type NoticeScreen, shopNotices } from "@/data/notices";
+import { Drill, DrillList, DrillOverview, DrillScope } from "@/components/jokko/Drill";
+import { servicesSummary } from "@/data/services";
 import { noteDevice } from "@/data/device";
 import { saveCashCount } from "@/data/team";
 import { waveReady } from "@/data/wave";
@@ -789,6 +792,21 @@ const NOISE = /<[^>]*>/g;
 const DEMO_HIDDEN: Screen[] = ["offre", "distance", "boutiques", "equipe", "journal"];
 type DemoControls = { realShopId: string; restart: () => void; switchTo: (metier: string) => void; quit: () => void };
 
+/** Avis de l'écran ouvert (dette en retard, appareil prêt, ticket effacé…), en haut, sans rien toucher. */
+function ScreenNotices({ list }: { list: Notice[] }) {
+  if (!list.length) return null;
+  return (
+    <div className="screen-notices" role="status">
+      {list.map((n) => (
+        <p key={n.id} className="screen-notice" data-tone={n.tone}>
+          <Icon name={n.tone === "grave" ? "alerte" : "cloche"} size="sm" />
+          <span>{n.text}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; setProfile: (p: Profile) => void; demo?: DemoControls; onDemo?: () => void }) {
   // Une notification touchée ouvre le bon écran (?ecran=distance)
   // Offre choisie sur la page d'accueil avant de créer le compte : on l'ouvre tout de suite.
@@ -806,6 +824,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     return g && g in SEGMENTS ? (g as Segment) : null;
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
@@ -1590,8 +1609,12 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
 
   // Menu ouvert : la page derrière ne défile plus, Échap le ferme.
   useEffect(() => {
-    if (!menuOpen) return;
-    const close = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    if (!menuOpen && !bellOpen) return;
+    const close = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      setBellOpen(false);
+    };
     const before = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", close);
@@ -1599,17 +1622,33 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       document.body.style.overflow = before;
       window.removeEventListener("keydown", close);
     };
-  }, [menuOpen]);
+  }, [menuOpen, bellOpen]);
   const navItems = NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && allowed(id)).map(
     ([id, label]) => [id, screenLabel(shop.activity, id, label)] as const,
   );
   const go = (id: Screen) => {
     setScreen(id);
     setMenuOpen(false);
+    setBellOpen(false);
     if (!busy && voice !== "ecoute") setReply(null);
     window.scrollTo({ top: 0 });
   };
   const current = navItems.find(([id]) => id === screen)?.[1] ?? "Jokko";
+  // Ce qui attend le commerçant, écran par écran : pastilles du menu, cloche, avis en haut de chaque écran.
+  const navIds = navItems.map(([id]) => id).join(",");
+  const notices = useMemo(
+    () => shopNotices(shop, { patron, screens: (id) => navIds.split(",").includes(id), advisor: can(shop, "conseiller") }),
+    [shop, patron, navIds],
+  );
+  const counts = noticeCounts(notices);
+  const graves = graveScreens(notices);
+  const totalNotices = notices.reduce((a, n) => a + n.n, 0);
+  const badgeOf = (id: Screen) => counts[id as NoticeScreen] ?? 0;
+  // Barre du bas (téléphone) : les 4 écrans les plus utilisés du métier, puis « Tout ».
+  const main = (["cuisine", "couture", "atelier"] as Screen[]).find((id) => navItems.some(([x]) => x === id));
+  const tabIds = [...new Set<Screen>(["parler", main ?? "ventes", "stock", "caisse"])].filter((id) => navItems.some(([x]) => x === id)).slice(0, 4);
+  const restBadge = navItems.filter(([id]) => !tabIds.includes(id)).reduce((a, [id]) => a + badgeOf(id), 0);
+  const Badge2 = ({ id, n }: { id?: Screen; n: number }) => (n > 0 ? <span className="badge-dot num" data-tone={id && graves.has(id as NoticeScreen) ? "grave" : undefined}>{n > 99 ? "99+" : n}</span> : null);
 
   return (
     <div className="desk">
@@ -1626,13 +1665,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         <span className={`mbar-sync is-${demo ? "demo" : sync}`} title={demo ? "Démo" : SYNC_LABELS[sync]}>
           <Icon name={sync === "hors_ligne" && !demo ? "horsLigne" : "sauvegarde"} size="sm" label={demo ? "Démo" : SYNC_LABELS[sync]} />
         </span>
+        <button type="button" className="mbar-bell" aria-haspopup="dialog" aria-expanded={bellOpen} onClick={() => setBellOpen(true)} aria-label={totalNotices ? `${totalNotices} choses à voir` : "Rien à voir pour le moment"}>
+          <Icon name="cloche" size="md" />
+          <Badge2 n={totalNotices} id={graves.size ? (([...graves][0]) as Screen) : undefined} />
+        </button>
         <button type="button" className="mbar-menu" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
           <Icon name="menu" size="md" />
           <span>Menu</span>
         </button>
         <nav className="side-nav" aria-label="Rubriques">
           {navItems.map(([id, label]) => (
-            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}><Icon name={NAV_ICONS[id]} /><span>{label}</span></button>
+            <button key={id} className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}><Icon name={NAV_ICONS[id]} /><span>{label}</span><Badge2 id={id} n={badgeOf(id)} /></button>
           ))}
         </nav>
         <div className="side-foot">
@@ -1640,6 +1683,48 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           <Badge variant="secondary" className="capitalize">{role}</Badge>
         </div>
       </aside>
+
+      {bellOpen && (
+        <div className="mnav" role="dialog" aria-modal="true" aria-label="Ce qui t'attend" onClick={(e) => e.target === e.currentTarget && setBellOpen(false)}>
+          <div className="mnav-sheet">
+            <div className="mnav-head">
+              <div>
+                <b>Ce qui t'attend</b>
+                <small>{totalNotices ? `${notices.length} ${notices.length > 1 ? "points" : "point"} à regarder` : "Rien à faire pour le moment"}</small>
+              </div>
+              <button type="button" className="mnav-close" onClick={() => setBellOpen(false)}><Icon name="fermer" size="md" label="Fermer" /></button>
+            </div>
+            {notices.length ? (
+              <ul className="bell-list">
+                {notices.map((n) => (
+                  <li key={n.id}>
+                    <button type="button" data-tone={n.tone} onClick={() => go(n.screen as Screen)}>
+                      <span className="mnav-ico"><Icon name={NAV_ICONS[n.screen as Screen]} size="md" /></span>
+                      <span className="bell-txt"><small>{navItems.find(([id]) => id === n.screen)?.[1]}</small><b>{n.text}</b></span>
+                      <Icon name="suivant" size="sm" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="note bell-empty"><Icon name="ok" size="md" /> Tout est à jour. Jokko te prévient ici dès qu'il y a quelque chose : dette en retard, stock bas, appareil prêt, caisse…</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <nav className="tabbar" aria-label="Écrans principaux">
+        {tabIds.map((id) => (
+          <button key={id} type="button" className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}>
+            <span className="tab-ico"><Icon name={NAV_ICONS[id]} size="md" /><Badge2 id={id} n={badgeOf(id)} /></span>
+            <span>{navItems.find(([x]) => x === id)?.[1]}</span>
+          </button>
+        ))}
+        <button type="button" className={!tabIds.includes(screen) ? "on" : ""} onClick={() => setMenuOpen(true)} aria-haspopup="dialog">
+          <span className="tab-ico"><Icon name="menu" size="md" /><Badge2 n={restBadge} /></span>
+          <span>Tout</span>
+        </button>
+      </nav>
 
       {menuOpen && (
         <div className="mnav" role="dialog" aria-modal="true" aria-label="Toutes les rubriques" onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}>
@@ -1654,7 +1739,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
             <nav className="mnav-all" aria-label="Rubriques">
               {navItems.map(([id, label]) => (
                 <button key={id} type="button" className={screen === id ? "on" : ""} aria-current={screen === id ? "page" : undefined} onClick={() => go(id)}>
-                  <span className="mnav-ico"><Icon name={NAV_ICONS[id]} size="md" /></span>
+                  <span className="mnav-ico"><Icon name={NAV_ICONS[id]} size="md" /><Badge2 id={id} n={badgeOf(id)} /></span>
                   <span>{label}</span>
                 </button>
               ))}
@@ -1694,7 +1779,12 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
         )}
 
         {/* Chaque écran reste sur son sujet : les chiffres du jour (caisse, paiements, dépenses, dettes) sont seulement dans « Caisse ». */}
-        {screen === "caisse" && <section className="stats" aria-label="Chiffres du jour">
+
+
+        <div className="screen" key={screen}>
+          <DrillScope key={screen}>
+          <ScreenNotices list={notices.filter((n) => n.screen === screen)} />
+          {screen === "caisse" && <DrillOverview><section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
             <span className="stat-label"><Icon name="caisse" size="sm" />Caisse attendue</span>
             <Num value={expectedCash(shop)} className="stat-big" />
@@ -1712,9 +1802,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
             <span className="stat-label"><Icon name="dette" size="sm" />{tailor ? "Reste à encaisser" : "Dettes"}</span>
             <Num value={tailor ? coutureOwed(shop) + debtors(shop).reduce((a, c) => a + c.debt, 0) : debtors(shop).reduce((a, c) => a + c.debt, 0)} />
           </article>
-        </section>}
-
-        <div className="screen" key={screen}>
+        </section></DrillOverview>}
           {screen === "parler" && (
             <div className="work">
               {!demo && onDemo && shop.products.length < 3 && (
@@ -1857,9 +1945,17 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "scanner" && (can(shop, "scanner") ? <ScanCheckout shop={shop} commit={commit} role={role} by={profile.owner || profile.phone} /> : <Upsell feature="scanner" title="La caisse par scan" onPlans={() => setScreen(patron ? "offre" : "parler")} />)}
           {screen === "stock" && <Stock shop={shop} commit={commit} canEdit={patron} lang={profile.lang} />}
           {screen === "clients" && <ClientFiles key={clientsFocus ?? "tous"} shop={shop} canEdit={patron} focus={clientsFocus} />}
-          {screen === "clients" && <Clients shop={shop} commit={commit} />}
+          {screen === "clients" && (
+            <Drill id="ajouter" title="Ajouter un client" icon="client" summary={`${shop.clients.length} client${shop.clients.length > 1 ? "s" : ""} dans le carnet`}>
+              <Clients shop={shop} commit={commit} />
+            </Drill>
+          )}
           {screen === "factures" && <Invoices shop={shop} commit={commit} canEditShop={patron} />}
-          {screen === "atelier" && <Services shop={shop} commit={commit} canEdit={patron} />}
+          {screen === "atelier" && (
+            <Drill id="services" title={metierOf(shop.activity).id === "multiservice" ? "Services (photocopie, bâche, flocage…)" : "Services sans pièce"} icon="ia" summary={servicesSummary(shop)}>
+              <Services shop={shop} commit={commit} canEdit={patron} />
+            </Drill>
+          )}
           {screen === "atelier" && (metierOf(shop.activity).id === "multiservice" ? <Travaux shop={shop} commit={commit} /> : <Atelier shop={shop} commit={commit} />)}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
@@ -1873,6 +1969,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
           {screen === "equipe" && patron && (can(shop, "vendeurs") ? <Team shop={shop} /> : <Upsell feature="vendeurs" title="Ajouter des vendeurs" onPlans={() => setScreen("offre")} />)}
           {screen === "journal" && patron && (can(shop, "journal") ? <Journal shop={shop} /> : <Upsell feature="journal" title="Le journal de la boutique" onPlans={() => setScreen("offre")} />)}
           {screen === "reglages" && <Settings profile={profile} setProfile={setProfile} onDemo={demo ? undefined : onDemo} />}
+          </DrillScope>
         </div>
       </main>
 
@@ -1903,6 +2000,7 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   const toggle = (t: typeof tool) => setTool((cur) => (cur === t ? null : t));
   // Beaucoup d'articles (pièces du fournisseur) : on cherche par nom ou par téléphone compatible (« BF6 »).
   const searchable = shop.products.length > 15;
+  const readyCount = useMemo(() => (canEdit ? orderPlan(shop).ready.length : 0), [shop, canEdit]);
   const shown = searchable && query.trim().length >= 2 ? searchProducts(shop.products, query, 100).map((h) => h.product) : shop.products;
   // Prix conseillé (prix d'achat + ta main-d'œuvre habituelle, apprise de tes ventes) pour les articles sans prix de vente.
   const stats = useMemo(() => laborStats(shop), [shop]);
@@ -1961,7 +2059,11 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
         </div>
       )}
       {priceNote && <p className="note jk-notice" role="status">{priceNote}</p>}
-      {canEdit && <Commandes shop={shop} commit={commit} />}
+      {canEdit && (
+        <Drill id="commande" title="À commander au fournisseur" icon="stock" summary={readyCount ? `Commande prête : ${readyCount} article${readyCount > 1 ? "s" : ""}` : "Rien à commander pour le moment"} badge={readyCount ? 1 : 0}>
+          <Commandes shop={shop} commit={commit} />
+        </Drill>
+      )}
       <div className="stock-list">
         {shown.map((p) => {
           const low = isLow(p);
@@ -2091,6 +2193,8 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
   const gap = (Number(counted) || 0) - expected;
   return (
     <section className="cash">
+      <DrillList title="La caisse">
+      <Drill id="cloture" title="Compter et clôturer la caisse" icon="caisse" summary={`Attendu dans le tiroir : ${amount(expected)}`} badge={zr.missing.length} tone={zr.missing.length ? "grave" : undefined}>
       <article className="sheet cash-main">
         <h2>Clôture de caisse</h2>
         <p className="cash-label">Attendu dans le tiroir</p>
@@ -2150,6 +2254,8 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
         {closing === "erreur" && <p className="note" data-tone="error">Pas de connexion internet : réessaie quand le réseau revient.</p>}
         {canEdit && <Button variant="outline" className="h-11 rounded-full" onClick={() => commit({ ...shop, openingCash: Number(counted) || 0 })}>Reprendre ce montant demain matin</Button>}
       </article>
+      </Drill>
+      <Drill id="ventes-jour" title="Ventes d’aujourd’hui" icon="vente" summary={`${todaySales(shop).length} vente${todaySales(shop).length > 1 ? "s" : ""} · ${amount(daySales(shop))}`}>
       <article className="sheet">
         <div className="sheet-head">
           <h2>Ventes d’aujourd’hui</h2>
@@ -2174,6 +2280,8 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           </div>
         )}
       </article>
+      </Drill>
+      </DrillList>
     </section>
   );
 }
@@ -2186,7 +2294,7 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
   const file = useMemo(() => toCsv(shop), [shop]);
   return (
     <section className="sheet settings">
-      <h2>Réglages</h2>
+      <DrillOverview><h2>Réglages</h2></DrillOverview>
       {onDemo && (
         <div className="demo-invite">
           <div>
@@ -2196,9 +2304,17 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
           <Button variant="outline" className="h-11 rounded-full px-5" onClick={onDemo}>Essayer la démo</Button>
         </div>
       )}
+      <DrillList>
+      <Drill id="appli" title="Installer Jokko et notifications" icon="cloche" summary="Jokko sur l'écran d'accueil, alertes, résumé du soir">
       <InstallSettings userId={roleIn(profile) === "patron" && can(shop, "resume") ? profile.userId : undefined} />
-      {roleIn(profile) === "patron" && !isDemoShop(shop) && <ShopManager profile={profile} setProfile={setProfile} canAdd={can(shop, "boutiques")} />}
+      </Drill>
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
+        <Drill id="entreprises" title="Mes entreprises" icon="boutique" summary={profile.shops.length > 1 ? `${profile.shops.length} entreprises · ouverte : ${shop.name}` : shop.name}>
+        <ShopManager profile={profile} setProfile={setProfile} canAdd={can(shop, "boutiques")} />
+        </Drill>
+      )}
+      {roleIn(profile) === "patron" && !isDemoShop(shop) && (
+        <Drill id="metier" title="Métier et fonctions" icon="ia" summary={metierOf(shop.activity).label}>
         <div className="field">
           <Label htmlFor="metier">Métier de « {shop.name} »</Label>
           <div className="metier-chip">
@@ -2241,9 +2357,15 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
           <p className="note">Une entreprise = un métier. Jokko s'y adapte : écrans, vocabulaire, exemples, unités. Les fonctions des autres métiers n'apparaissent pas.</p>
           <ModulesSetting shop={shop} onChange={(modules) => setProfile(replaceShop(profile, { ...shop, modules }))} />
         </div>
+        </Drill>
       )}
-      {roleIn(profile) === "patron" && <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />}
+      {roleIn(profile) === "patron" && (
+        <Drill id="wave" title="Paiement Wave" icon="caisse" summary={shop.waveLink ? "Lien Wave enregistré" : "Ajoute ton lien Wave pour être payé"}>
+          <WaveSettings shop={shop} onLink={(waveLink) => setProfile(replaceShop(profile, { ...shop, waveLink }))} />
+        </Drill>
+      )}
       {roleIn(profile) === "patron" && !isDemoShop(shop) && (
+        <Drill id="lieu" title="Où est ta boutique" icon="boutique" summary={shop.location ? "Position enregistrée" : "Ajoute la position (vitrine, clients)"}>
         <ShopLocation
           shop={shop}
           onChange={(location) => {
@@ -2252,7 +2374,9 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
             setProfile(replaceShop(profile, location ? { ...rest, location } : rest));
           }}
         />
+        </Drill>
       )}
+      <Drill id="langue" title="Langue et voix" icon="micro" summary={`${LANGS.find(([id]) => id === profile.lang)?.[1] ?? ""} · ${profile.speak ? "réponses lues à voix haute" : "réponses écrites"}`}>
       <div className="settings-grid">
         <div className="field">
           <Label>Langue</Label>
@@ -2275,6 +2399,13 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
           </div>
         )}
       </div>
+      <div className="row">
+        <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
+        <Label htmlFor="speak">Lire les réponses à voix haute</Label>
+      </div>
+      <ClearVoiceSetting />
+      </Drill>
+      <Drill id="donnees" title="Mes données et conditions" icon="journal" summary="Exporter tes ventes, conditions, confidentialité">
       <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
       <p className="note">
         <button type="button" className="link" onClick={() => setReading(CONDITIONS)}>Conditions d’utilisation</button>
@@ -2282,19 +2413,18 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
         <button type="button" className="link" onClick={() => setReading(CONFIDENTIALITE)}>Politique de confidentialité</button>
       </p>
       {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
-      <div className="row">
-        <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
-        <Label htmlFor="speak">Lire les réponses à voix haute</Label>
-      </div>
-      <ClearVoiceSetting />
+      <Button variant="outline" className="h-11 rounded-full" onClick={() => download(`jokko-${shop.name}.csv`, file)}>Exporter mes données (CSV)</Button>
+      </Drill>
+      </DrillList>
+      <DrillOverview>
       <div className="row actions">
-        <Button variant="outline" className="h-11 rounded-full" onClick={() => download(`jokko-${shop.name}.csv`, file)}>Exporter CSV</Button>
         <Button variant="outline" className="h-11 rounded-full" onClick={() => {
           void signOut().then((ok) => {
             if (!ok) window.alert("Des ventes ne sont pas encore sauvegardées. Connecte-toi à internet, puis réessaie.");
           });
         }}>Se déconnecter</Button>
       </div>
+      </DrillOverview>
     </section>
   );
 }

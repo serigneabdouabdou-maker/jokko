@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
+import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Product, type Repair, type Shop, money } from "@/model";
 import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
@@ -199,8 +200,15 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     setAdding(false);
   }
 
+  const phone = usePhone();
+  const commandes = shop.products.length > 0 ? (
+    <Drill id="commande" title="Commande au fournisseur" icon="stock" summary={ready.length ? `Commande prête : ${ready.length} pièce${ready.length > 1 ? "s" : ""} à acheter` : "Rien à commander pour le moment"} badge={ready.length ? 1 : 0}>
+      <Commandes shop={shop} commit={commit} />
+    </Drill>
+  ) : null;
   return (
     <section className="sheet">
+      <DrillOverview>
       <div className="sheet-head">
         <h2>Atelier · réparations</h2>
         <b className="num sheet-total">{waiting.length} en cours</b>
@@ -208,19 +216,30 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       <p className="note">
         {waiting.length ? `Reste à encaisser sur les appareils au dépôt : ${money(owed)}.` : "Aucun appareil au dépôt."} Tu peux aussi le dire à Jokko : « Awa dépose un iPhone 11, écran cassé, 25 000, avance 5 000 ».
       </p>
+      </DrillOverview>
+      <DrillList>
+      <Drill id="mois" title="L'atelier ce mois-ci" icon="rapport" summary={`${month.done} rendue${month.done > 1 ? "s" : ""} · main-d'œuvre ${money(month.labor)}`}>
       <div className="kpis atelier-month" aria-label="L'atelier ce mois-ci">
         <article><span>Rendues ce mois</span><b className="num">{month.done}</b></article>
         <article><span>Encaissé</span><b className="num">{money(month.revenue)}</b></article>
         <article><span>Pièces</span><b className="num">− {money(month.parts)}</b></article>
         <article className="kpi-main" data-tone={month.labor < 0 ? "bad" : "good"}><span>Main-d'œuvre gagnée ce mois</span><b className="num">{money(month.labor)}</b></article>
       </div>
-      {ready.length > 0 && (
+      </Drill>
+      {!phone && ready.length > 0 && (
         <p className="note jk-notice" role="status">
           Commande prête : {ready.length} pièce{ready.length > 1 ? "s" : ""} à acheter ({ready.slice(0, 2).map((r) => r.name).join(", ")}{ready.length > 2 ? "…" : ""}).{" "}
           <a className="link" href="#commande">Voir et envoyer</a>
         </p>
       )}
-      {shop.products.length > 0 && <PartLookup shop={shop} commit={commit} />}
+      {shop.products.length > 0 && (
+        <Drill id="piece" title="Un client demande une pièce ?" icon="scanner" summary="Cherche par modèle (BF6, Spark 10…) ou par IMEI">
+          <PartLookup shop={shop} commit={commit} />
+        </Drill>
+      )}
+      {phone && commandes}
+      </DrillList>
+      <DrillOverview>
       <div className="list-bar">
         <Button className="h-11 rounded-full px-5" onClick={() => setAdding((a) => !a)}>
           <Icon name="ajouter" size="sm" /> Nouveau dépôt
@@ -324,7 +343,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
           <RepairRow key={r.id} r={r} shop={shop} commit={commit} open={open === r.id} toggle={() => setOpen(open === r.id ? null : r.id)} />
         ))}
       </div>
-      {shop.products.length > 0 && <Commandes shop={shop} commit={commit} />}
+      </DrillOverview>
+      {!phone && commandes}
     </section>
   );
 }

@@ -235,3 +235,12 @@ export function servicesMonth(shop: Shop, now = new Date()): { count: number; ea
   // Gagné = prix − matière utilisée (flex, bâche…) quand elle est connue.
   return { count: list.length, earned: list.reduce((a, s) => a + s.amount - (s.cost ?? 0), 0) };
 }
+
+/** Résumé d'une ligne pour le sommaire de l'Atelier : « 14 ce mois · 76 000 F » ou ce qu'il reste à faire. */
+export function servicesSummary(shop: Shop, now = new Date()): string {
+  const list = servicesOf(shop);
+  if (!list.length) return "Mets tes services et tes prix (décodage, configuration…)";
+  const m = servicesMonth(shop, now);
+  const fmt = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
+  return m.count ? `${m.count} ce mois · ${fmt(m.earned)}` : `${list.length} service${list.length > 1 ? "s" : ""} prêt${list.length > 1 ? "s" : ""} à encaisser`;
+}
