@@ -32,7 +32,8 @@ const ALLOWED = ([...new Set([...DEFAULT_ORIGINS, ...(Deno.env.get("JOKKO_ORIGIN
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   return {
-    "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : ALLOWED[0],
+    // jokkoapp.com ouvert en http:// (navigateur de télé) : accepté aussi.
+    "Access-Control-Allow-Origin": ALLOWED.includes(origin) || /^https?:\/\/(www\.)?jokkoapp\.com$/.test(origin) ? origin : ALLOWED[0],
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-jokko-shop",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
@@ -131,7 +132,7 @@ function failure(req: Request, error: unknown): Response {
       ? "Jokko se repose quelques minutes. Les boutons de l'appli marchent toujours : réessaie un peu plus tard."
       : error.status === 429
       ? "Jokko est très demandé en ce moment. Réessaie dans une minute."
-      : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
+      : "Jokko ne répond pas pour le moment. Réessaie dans un instant.";
     return send(req, 502, { error: error.code, message });
   }
   console.warn("[jokko] erreur inattendue", error instanceof Error ? error.name : "");

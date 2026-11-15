@@ -50,7 +50,7 @@ export type Generate = (request: GenerateRequest) => Promise<string>;
 export class GeminiNotConfiguredError extends Error {
   code = "gemini_not_configured";
   constructor() {
-    super("Gemini n'est pas configuré sur le serveur.");
+    super("Jokko n'est pas disponible pour le moment.");
   }
 }
 

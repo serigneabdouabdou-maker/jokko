@@ -154,8 +154,8 @@ async function post<T extends z.ZodType>(
     if (error instanceof AssistantUpstreamError) {
       console.warn(`[jokko] assistant: Gemini indisponible${error.status ? ` (${error.status})` : ""}`);
       const message = error.status === 429
-        ? "Le quota Gemini du jour est atteint. Réessaie plus tard ou active la facturation."
-        : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
+        ? "Jokko est très demandé aujourd'hui. Réessaie plus tard."
+        : "Jokko ne répond pas pour le moment. Réessaie dans un instant.";
       return send(res, 502, { error: error.code, message });
     }
     console.warn("[jokko] assistant: erreur inattendue");

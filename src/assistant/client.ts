@@ -166,11 +166,12 @@ export function buildShopContext(shop: Shop, lang: Lang, focus = ""): ShopContex
 export async function assistantStatus(signal?: AbortSignal): Promise<Exclude<AssistantStatus, "checking">> {
   try {
     const response = await api("status", { signal });
-    if (!response.ok) return "off";
+    // Seul le serveur qui dit « pas configuré » met Jokko en mode simple ; un souci de réseau passager ne le coupe pas.
+    if (!response.ok) return response.status === 503 ? "off" : "ready";
     const body = (await response.json()) as { configured?: unknown };
-    return body.configured === true ? "ready" : "off";
+    return body.configured === false ? "off" : "ready";
   } catch {
-    return "off";
+    return "ready";
   }
 }
 
@@ -189,7 +190,7 @@ export async function interpretMessage(message: string, shopContext: ShopContext
   const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (response.ok && isInterpretation(body)) return { ok: true, data: body };
   if (response.status === 503 && body?.error === "gemini_not_configured") {
-    return { ok: false, reason: "not_configured", message: "Gemini n’est pas configuré sur le serveur." };
+    return { ok: false, reason: "not_configured", message: "Jokko n’est pas disponible pour le moment." };
   }
   if (response.status === 400) {
     return { ok: false, reason: "invalid", message: "La phrase n’a pas pu être envoyée. Raccourcis-la et réessaie." };
@@ -197,7 +198,7 @@ export async function interpretMessage(message: string, shopContext: ShopContext
   if (response.status === 413) {
     return { ok: false, reason: "unavailable", message: TOO_BIG };
   }
-  const fallback = typeof body?.message === "string" ? body.message : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
+  const fallback = typeof body?.message === "string" ? body.message : "Jokko ne répond pas pour le moment. Réessaie dans un instant.";
   return { ok: false, reason: "unavailable", message: fallback };
 }
 
@@ -294,12 +295,12 @@ export async function listenAudio(audio: { mimeType: string; data: string }, sho
     return { ok: true, data: { transcript: body.transcript, interpretation: body.interpretation } };
   }
   if (response.status === 503 && body?.error === "gemini_not_configured") {
-    return { ok: false, reason: "not_configured", message: "Gemini n’est pas configuré sur le serveur." };
+    return { ok: false, reason: "not_configured", message: "Jokko n’est pas disponible pour le moment." };
   }
   if (response.status === 400 || response.status === 413) {
     return { ok: false, reason: "invalid", message: "Le message vocal n’a pas pu être envoyé. Parle moins de 30 secondes et réessaie." };
   }
-  const fallback = typeof body?.message === "string" ? body.message : "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
+  const fallback = typeof body?.message === "string" ? body.message : "Jokko ne répond pas pour le moment. Réessaie dans un instant.";
   return { ok: false, reason: "unavailable", message: fallback };
 }
 

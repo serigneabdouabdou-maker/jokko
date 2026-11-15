@@ -1289,7 +1289,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       return;
     }
     if (!(await isReady())) {
-      const message = "Le micro passe par Gemini sur le serveur, qui n’est pas configuré. Écris la phrase.";
+      const message = "La voix de Jokko n’est pas disponible pour le moment. Écris la phrase.";
       say(message);
       fail(message);
       return;
@@ -1362,7 +1362,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     try {
       handled = await interpretText(input);
     } catch {
-      const message = "Gemini ne répond pas pour le moment. Réessaie dans un instant.";
+      const message = "Jokko ne répond pas pour le moment. Réessaie dans un instant.";
       say(message);
       fail(message);
       handled = true;
@@ -1738,7 +1738,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                         ? "Parle normalement, en wolof ou en français. Jokko enregistre tout de suite. Dis « déedéet » ou touche Annuler pour défaire."
                         : "Touche le micro et parle normalement : Jokko t’écoute en continu et enregistre tout de suite. Tu peux toujours annuler."
                       : assistant === "off"
-                        ? "Gemini n’est pas configuré sur le serveur. Jokko comprend les phrases de boutique en local."
+                        ? "Jokko marche en mode simple pour le moment : il comprend les phrases courantes de boutique."
                         : "Connexion à Jokko…"}
                   </p>
                 </div>

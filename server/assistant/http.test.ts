@@ -40,7 +40,7 @@ describe("POST /api/assistant/interpret", () => {
 
     const response = await post(base, { message: "Jaay naa 2 huile", shopContext });
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "gemini_not_configured", message: "Gemini n'est pas configuré sur le serveur." });
+    expect(await response.json()).toEqual({ error: "gemini_not_configured", message: "Jokko n'est pas disponible pour le moment." });
 
     const status = await fetch(`${base}/api/assistant/status`);
     expect(status.status).toBe(200);

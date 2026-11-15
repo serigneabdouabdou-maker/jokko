@@ -31,7 +31,8 @@ describe("mode sans clé Gemini", () => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new TypeError("network");
     }));
-    await expect(assistantStatus()).resolves.toBe("off");
+    // Une panne réseau passagère ne coupe pas Jokko (seul le serveur peut dire « pas configuré ») ; la demande, elle, échoue proprement.
+    await expect(assistantStatus()).resolves.toBe("ready");
     const outcome = await interpretMessage("caisse", buildShopContext(currentShop(blankProfile()), "fr"));
     expect(outcome).toMatchObject({ ok: false, reason: "unavailable" });
   });
@@ -50,6 +51,6 @@ describe("mode sans clé Gemini", () => {
   it("une réponse 503 gemini_not_configured devient not_configured", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "gemini_not_configured" }), { status: 503 })));
     const outcome = await interpretMessage("Jaay naa 2 huile", buildShopContext(currentShop(blankProfile()), "wo"));
-    expect(outcome).toEqual({ ok: false, reason: "not_configured", message: "Gemini n’est pas configuré sur le serveur." });
+    expect(outcome).toEqual({ ok: false, reason: "not_configured", message: "Jokko n’est pas disponible pour le moment." });
   });
 });
