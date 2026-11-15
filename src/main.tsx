@@ -10,6 +10,10 @@ import { setupPwa } from "./pwa";
 import { setupNative } from "./native";
 import { watchBugs } from "./data/bugs";
 
+// Page ouverte en http:// (navigateur de télé, vieux téléphone) : on repasse en https, sinon la connexion échoue.
+if (window.location.protocol === "http:" && window.location.hostname.endsWith("jokkoapp.com")) {
+  window.location.replace(window.location.href.replace(/^http:/, "https:"));
+}
 watchBugs("boutique");
 setupNative();
 setupPwa();

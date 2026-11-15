@@ -6,6 +6,18 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const DEFAULT_ORIGINS = ["https://jokkoapp.com", "https://www.jokkoapp.com", "https://jokko.serigneabdouabdou.workers.dev", "https://serigneabdouabdou-maker.github.io", "http://localhost:5173", "http://localhost:4173"];
 const ALLOWED = ([...new Set([...DEFAULT_ORIGINS, ...(Deno.env.get("JOKKO_ORIGINS") ?? "").split(",")])].filter(Boolean).join(",")).split(",").map((o) => o.trim());
+// jokkoapp.com ouvert en http:// (navigateur de télé qui ajoute « http:// » tout seul) : accepté aussi.
+// Toute autre origine refusée est notée dans le journal, pour trouver vite un appareil qui n'arrive pas à se connecter.
+const OWN = /^https?:\/\/(www\.)?jokkoapp\.com$/;
+const refused = new Set<string>();
+function allowedOrigin(origin: string): boolean {
+  if (ALLOWED.includes(origin) || OWN.test(origin)) return true;
+  if (origin && !refused.has(origin)) {
+    refused.add(origin);
+    console.warn(`[jokko] origine refusée : ${origin.slice(0, 120)}`);
+  }
+  return false;
+}
 const URL_ = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(URL_, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false, autoRefreshToken: false } });
 const anon = () => createClient(URL_, Deno.env.get("SUPABASE_ANON_KEY")!, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -15,7 +27,7 @@ let pepper: string | null = null;
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   return {
-    "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : ALLOWED[0],
+    "Access-Control-Allow-Origin": allowedOrigin(origin) ? origin : ALLOWED[0],
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     Vary: "Origin",

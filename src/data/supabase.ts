@@ -168,7 +168,7 @@ async function login(phone: string, code: string, created: boolean): Promise<Aut
     return { ok: false, reason: "network", message: "Connexion impossible pour le moment. Réessaie." };
   } catch {
     noteAuth("connexion", "reseau");
-    return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
+    return { ok: false, reason: "network", message: "Jokko n’arrive pas à joindre le serveur depuis cet appareil. Vérifie internet et réessaie. Sur une télé, ouvre https://jokkoapp.com dans Chrome." };
   }
 }
 
@@ -203,7 +203,7 @@ export async function signUp(rawPhone: string, code: string, termsVersion: strin
     return entered.ok ? entered : { ok: false, reason: "network", message: "Compte créé. Touche « Me connecter » pour entrer." };
   } catch {
     noteAuth("inscription", "reseau");
-    return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
+    return { ok: false, reason: "network", message: "Jokko n’arrive pas à joindre le serveur depuis cet appareil. Vérifie internet et réessaie. Sur une télé, ouvre https://jokkoapp.com dans Chrome." };
   }
 }
 
@@ -271,7 +271,7 @@ export async function resetCode(rawPhone: string, otp: string, code: string): Pr
     return { ok: false, reason: "network", message: "Impossible pour le moment. Réessaie." };
   } catch {
     noteAuth("code_oublie", "reseau");
-    return { ok: false, reason: "network", message: "Pas de connexion internet. Réessaie." };
+    return { ok: false, reason: "network", message: "Jokko n’arrive pas à joindre le serveur depuis cet appareil. Vérifie internet et réessaie. Sur une télé, ouvre https://jokkoapp.com dans Chrome." };
   }
 }
 

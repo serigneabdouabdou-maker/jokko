@@ -54,6 +54,12 @@ async function preview(url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Navigateur de télé ou vieux téléphone qui ouvre « http://jokkoapp.com » : on passe en https
+    // (sinon la connexion au compte, le micro et l'appli installée ne marchent pas).
+    if (url.protocol === "http:" && url.hostname.endsWith("jokkoapp.com")) {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
     const shared = url.pathname === "/" && (url.searchParams.has("v") || url.searchParams.has("modele"));
     if (!shared) return env.ASSETS.fetch(request);
     const [page, card] = await Promise.all([
