@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Drill, DrillList, DrillOverview } from "@/components/jokko/Drill";
+import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
 import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
@@ -73,6 +73,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
     );
   }
 
+  const phone = usePhone();
   return (
     <section className="sheet bilan">
       <DrillOverview>
@@ -86,14 +87,26 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       </div>
       <p className="note">{report.period.label} · {report.salesCount} vente(s)</p>
 
+      {phone ? (
+        <div className="kpi-hero" data-tone={report.netProfit < 0 ? "bad" : "good"}>
+          <span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span>
+          <b className="num">{money(Math.abs(report.netProfit))}</b>
+          <dl className="kpi-mini">
+            <div><dt>Ventes</dt><dd className="num">{money(report.revenue)}</dd></div>
+            <div><dt>Bénéfice ventes</dt><dd className="num">{money(report.grossProfit)}</dd></div>
+            <div><dt>{report.licences ? "Dépenses, pertes, licences" : "Dépenses et pertes"}</dt><dd className="num">− {money(report.expenses + report.losses + report.licences)}</dd></div>
+          </dl>
+        </div>
+      ) : (
       <div className="kpis">
-        <article><span>Ventes</span><b className="num">{money(report.revenue)}</b></article>
-        <article><span>Bénéfice sur les ventes</span><b className="num">{money(report.grossProfit)}</b></article>
-        <article><span>Dépenses</span><b className="num">− {money(report.expenses)}</b></article>
-        <article><span>Pertes</span><b className="num">− {money(report.losses)}</b></article>
-        {report.licences > 0 && <article><span>Licences (part)</span><b className="num">− {money(report.licences)}</b></article>}
-        <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span><b className="num">{money(Math.abs(report.netProfit))}</b></article>
-      </div>
+          <article><span>Ventes</span><b className="num">{money(report.revenue)}</b></article>
+          <article><span>Bénéfice sur les ventes</span><b className="num">{money(report.grossProfit)}</b></article>
+          <article><span>Dépenses</span><b className="num">− {money(report.expenses)}</b></article>
+          <article><span>Pertes</span><b className="num">− {money(report.losses)}</b></article>
+          {report.licences > 0 && <article><span>Licences (part)</span><b className="num">− {money(report.licences)}</b></article>}
+          <article className="kpi-main" data-tone={report.netProfit < 0 ? "bad" : "good"}><span>{report.netProfit < 0 ? "Ce que tu as perdu" : "Ce que tu as gagné"}</span><b className="num">{money(Math.abs(report.netProfit))}</b></article>
+        </div>
+      )}
       </DrillOverview>
       <DrillList title="En détail">
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
