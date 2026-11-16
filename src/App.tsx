@@ -13,6 +13,9 @@ import {
   type Shop,
   currentShop,
   dayCashSales,
+  isToday,
+  dayChannel,
+  dayPaidElsewhere,
   dayRepaid,
   dayExpenses,
   daySales,
@@ -23,7 +26,6 @@ import {
   lowStock,
   money,
   newShop,
-  PAYMENT_LABELS,
   replaceShop,
   roleIn,
   toCsv,
@@ -2206,16 +2208,31 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
           {dayRepaid(shop) > 0 && <div><dt>+ Dettes remboursées</dt><dd className="num">{amount(dayRepaid(shop))}</dd></div>}
           <div><dt>− Dépenses</dt><dd className="num">{amount(dayExpenses(shop))}</dd></div>
         </dl>
-        {daySales(shop) !== dayCashSales(shop) && (
-          <p className="note">
-            Hors tiroir aujourd’hui :{" "}
-            {(["wave", "om", "credit"] as const)
-              .map((m) => [m, shop.sales.filter((s) => s.payment === m && new Date(s.at).toDateString() === new Date().toDateString()).reduce((a, s) => a + s.amount, 0)] as const)
-              .filter(([, v]) => v > 0)
-              .map(([m, v]) => `${PAYMENT_LABELS[m]} ${amount(v)}`)
-              .join(" · ")}
-          </p>
-        )}
+        {(() => {
+          const wave = dayChannel(shop, "wave");
+          const om = dayChannel(shop, "om");
+          const elsewhere = dayPaidElsewhere(shop);
+          const credit = shop.sales.filter((x) => x.payment === "credit" && isToday(x.at)).reduce((a, x) => a + x.amount, 0);
+          if (!wave.received && !wave.paid && !om.received && !om.paid && !elsewhere && !credit) return null;
+          const line = (name: string, c: { received: number; paid: number; net: number }) => (c.received || c.paid ? (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd className="num">{c.net < 0 ? "− " : c.net > 0 ? "+ " : ""}{amount(Math.abs(c.net))}</dd>
+              <small>Reçu {amount(c.received)} − payé {amount(c.paid)} : ton solde {name} doit avoir bougé de {c.net < 0 ? "− " : "+ "}{amount(Math.abs(c.net))} aujourd’hui.</small>
+            </div>
+          ) : null);
+          return (
+            <>
+              <p className="cash-label" style={{ marginTop: 14 }}>Hors tiroir aujourd’hui</p>
+              <dl className="offdrawer">
+                {line("Wave", wave)}
+                {line("Orange Money", om)}
+                {elsewhere > 0 && <div><dt>Payé autrement</dt><dd className="num">− {amount(elsewhere)}</dd><small>Agent, banque, poche : pas sorti du tiroir.</small></div>}
+                {credit > 0 && <div><dt>Ventes à crédit</dt><dd className="num">{amount(credit)}</dd><small>Pas encore payées : dans les dettes.</small></div>}
+              </dl>
+            </>
+          );
+        })()}
       </article>
       <article className="sheet cash-count">
         <div className="field">

@@ -465,6 +465,22 @@ export function dayRepaid(shop: Pick<Shop, "repayments">, payment: Repayment["pa
   return (shop.repayments ?? []).filter((r) => isToday(r.at) && (payment === "all" || r.payment === payment)).reduce((a, r) => a + r.amount, 0);
 }
 
+/**
+ * Argent du jour hors tiroir, par canal (16/11/2026, demande de Fallou : vérifier son solde Wave le soir) :
+ * reçu (ventes + dettes remboursées) − payé (dépenses et achats payés par ce canal) = ce que le solde doit avoir bougé.
+ */
+export function dayChannel(shop: Shop, channel: "wave" | "om"): { received: number; paid: number; net: number } {
+  const sold = shop.sales.filter((s) => isToday(s.at) && s.payment === channel).reduce((a, s) => a + s.amount, 0);
+  const received = sold + dayRepaid(shop, channel);
+  const paid = shop.expenses.filter((e) => isToday(e.at) && e.kind !== "perte" && e.paidWith === channel).reduce((a, e) => a + e.amount, 0);
+  return { received, paid, net: received - paid };
+}
+
+/** Payé aujourd'hui par un autre moyen (agent, banque, poche) : ni tiroir, ni Wave, ni Orange Money. */
+export function dayPaidElsewhere(shop: Shop): number {
+  return shop.expenses.filter((e) => isToday(e.at) && e.kind !== "perte" && e.paidWith === "autre").reduce((a, e) => a + e.amount, 0);
+}
+
 export function expectedCash(shop: Shop): number {
   return shop.openingCash + dayCashSales(shop) + dayRepaid(shop) - dayExpenses(shop);
 }

@@ -470,19 +470,16 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   // La pièce choisie au dépôt (écrite dans la panne) est déjà cherchée.
   const [partQuery, setPartQuery] = useState("");
   const days = waitingDays(r);
-  const inStock = shop.products.filter((p) => p.stock > 0);
+  // Pièce de ta liste (même à stock 0, stock pas encore compté) : posée, son prix d'achat compte, le stock ne descend jamais sous 0.
   function pick(p: Product) {
     setPartQuery("");
-    if (p.stock > 0) {
-      if (!parts.includes(p.id)) setParts([...parts, p.id]);
-    } else {
-      // Pas en stock : achetée exprès ; le prix d'achat du fournisseur est mis, modifiable avant « Ajouter ».
-      setBuyName(p.name);
-      setBuyCost(p.cost !== undefined ? String(p.cost) : "");
-    }
+    setBare(false);
+    if (!parts.includes(p.id)) setParts([...parts, p.id]);
   }
-  // Peu de pièces en stock : boutons directs ; beaucoup (catalogue du fournisseur) : la recherche suffit.
-  const pieces = inStock.length <= 12 ? inStock : inStock.filter((p) => parts.includes(p.id));
+  const [fix, setFix] = useState<0 | 1 | 2>(0);
+  const chosen = parts.map((id) => shop.products.find((p) => p.id === id)).filter((p): p is Product => Boolean(p));
+  const boughtTotal = bought.reduce((a, b) => a + b.cost, 0);
+  const labor = r.price - boughtTotal - chosen.reduce((a, p) => a + (p.cost ?? 0), 0);
   const rest = remaining(r);
   const ready = r.status === "repare";
   const notify = r.phone
@@ -513,95 +510,106 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
               <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => commit(setRepairPrice(shop, r.id, n(price)))}>Fixer le prix</Button>
             </div>
           )}
-          {r.status === "depot" && (
-            <>
-              <FitParts shop={shop} device={r.device} problem={r.problem} chosen={parts} onPick={pick} />
-              <PartPicker
-                products={shop.products}
-                query={partQuery}
-                setQuery={setPartQuery}
-                label="Cherche la pièce posée (BF6, iPhone 11…)"
-                onPick={pick}
-              />
-              <small className="note">Pièces posées (elles sortent du stock) :</small>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {parts.filter((id) => !pieces.some((p) => p.id === id)).map((id) => {
-                  const p = shop.products.find((x) => x.id === id);
-                  return p ? (
-                    <Button key={id} variant="default" className="h-9 rounded-full px-3" onClick={() => setParts(parts.filter((x) => x !== id))}>
-                      ✓ {p.name}{p.cost !== undefined ? ` (${money(p.cost)})` : ""}{planned?.id === id ? " · prévue au dépôt" : ""} ✕
+          {r.status === "depot" && fix === 0 && (
+            <Button className="h-11 rounded-full" onClick={() => setFix(1)}>
+              <Icon name="reparation" size="sm" /> Réparé…
+            </Button>
+          )}
+          {r.status === "depot" && fix > 0 && (
+            <div className="wizard wizard-inline" role="group" aria-label="Réparé">
+              <div className="wizard-head">
+                <small>Réparé · étape {fix} sur 2</small>
+                <b>{fix === 1 ? "Quelle pièce as-tu posée ?" : "Vérifie et confirme"}</b>
+                <span className="wizard-bar" aria-hidden="true"><i style={{ width: `${fix * 50}%` }} /></span>
+              </div>
+
+              {fix === 1 && (
+                <div className="wizard-body">
+                  {chosen.length > 0 && (
+                    <div className="wizard-chips">
+                      {chosen.map((p) => (
+                        <button key={p.id} type="button" className="on" onClick={() => setParts(parts.filter((x) => x !== p.id))}>
+                          ✓ {p.name}{p.cost !== undefined ? ` (${money(p.cost)})` : ""}{planned?.id === p.id ? " · prévue au dépôt" : ""} ✕
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {bought.length > 0 && (
+                    <div className="wizard-chips">
+                      {bought.map((b, i) => (
+                        <button key={i} type="button" className="on" onClick={() => setBought(bought.filter((_, j) => j !== i))}>✓ {b.label} ({money(b.cost)}) · achetée exprès ✕</button>
+                      ))}
+                    </div>
+                  )}
+                  <FitParts shop={shop} device={r.device} problem={r.problem} chosen={parts} onPick={pick} />
+                  <PartPicker products={shop.products} query={partQuery} setQuery={setPartQuery} label="Cherche une autre pièce (BF6, iPhone 11…)" onPick={pick} />
+                  <details className="repair-buy-more">
+                    <summary>Pièce achetée exprès (pas dans ta liste)</summary>
+                    <div className="repair-buy">
+                      <Input className="h-10" placeholder="Pièce (écran, batterie…)" aria-label="Pièce achetée" value={buyName} onChange={(e) => setBuyName(e.target.value)} />
+                      <Input className="h-10" inputMode="numeric" placeholder="Prix d'achat (F)" aria-label="Prix d'achat de la pièce" value={buyCost} onChange={(e) => setBuyCost(e.target.value)} />
+                      <Button variant="outline" className="h-10 rounded-full px-3" disabled={!buyName.trim() || !n(buyCost)} onClick={() => { setBought([...bought, { label: buyName.trim(), cost: n(buyCost) }]); setBuyName(""); setBuyCost(""); setBare(false); }}>
+                        <Icon name="ajouter" size="sm" /> Ajouter
+                      </Button>
+                    </div>
+                  </details>
+                  {!chosen.length && !bought.length && (
+                    <Button variant={bare ? "default" : "outline"} className="h-11 rounded-full" onClick={() => setBare(!bare)}>
+                      {bare ? "✓ " : ""}Aucune pièce (décodage, logiciel, nettoyage…)
                     </Button>
-                  ) : null;
-                })}
-                {pieces.map((p) => (
-                  <Button key={p.id} variant={parts.includes(p.id) ? "default" : "outline"} className="h-9 rounded-full px-3" onClick={() => setParts(parts.includes(p.id) ? parts.filter((x) => x !== p.id) : [...parts, p.id])}>
-                    {p.name}
-                  </Button>
-                ))}
-                {pieces.length === 0 && parts.length === 0 && <small className="note">{inStock.length ? "Cherche la pièce ci-dessus." : "Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès."}</small>}
-              </div>
-              <small className="note">Pièce achetée exprès pour cette réparation :</small>
-              <div className="repair-buy">
-                <Input className="h-10" placeholder="Pièce (écran, batterie…)" aria-label="Pièce achetée" value={buyName} onChange={(e) => setBuyName(e.target.value)} />
-                <Input className="h-10" inputMode="numeric" placeholder="Prix d'achat (F)" aria-label="Prix d'achat de la pièce" value={buyCost} onChange={(e) => setBuyCost(e.target.value)} />
-                <Button
-                  variant="outline"
-                  className="h-10 rounded-full px-3"
-                  disabled={!buyName.trim() || !n(buyCost)}
-                  onClick={() => {
-                    setBought([...bought, { label: buyName.trim(), cost: n(buyCost) }]);
-                    setBuyName("");
-                    setBuyCost("");
-                  }}
-                >
-                  <Icon name="ajouter" size="sm" /> Ajouter
+                  )}
+                </div>
+              )}
+
+              {fix === 2 && (
+                <div className="wizard-body">
+                  <dl className="wizard-recap">
+                    <div><dt>Prix pour le client</dt><dd className="num">{r.price ? money(r.price) : "pas encore fixé"}</dd></div>
+                    {chosen.map((p) => <div key={p.id}><dt>{p.name}</dt><dd className="num">− {money(p.cost ?? 0)}</dd></div>)}
+                    {bought.map((b, i) => <div key={i}><dt>{b.label} (achetée exprès)</dt><dd className="num">− {money(b.cost)}</dd></div>)}
+                    {!chosen.length && !bought.length && <div><dt>Pièce</dt><dd>Aucune</dd></div>}
+                    {r.price > 0 && <div><dt>Main-d'œuvre gagnée</dt><dd className="num" data-tone={labor < 0 ? "bad" : "good"}>{money(labor)}</dd></div>}
+                  </dl>
+                  {r.price > 0 && labor < 0 && <p className="note" data-tone="error">Attention : les pièces coûtent plus que le prix. Tu perds {money(-labor)}.</p>}
+                  {bought.length > 0 && (
+                    <CashSourcePicker title="La pièce achetée, tu l'as payée comment ?" amount={boughtTotal} value={source || defaultCashSource(boughtTotal)} onChange={setSource} />
+                  )}
+                </div>
+              )}
+
+              <div className="wizard-nav">
+                <Button variant="outline" className="h-12 rounded-full px-5" onClick={() => setFix(fix === 2 ? 1 : 0)}>
+                  <Icon name="retour" size="sm" /> {fix === 2 ? "Retour" : "Annuler"}
                 </Button>
+                {fix === 1 ? (
+                  <Button className="h-12 rounded-full px-6" disabled={!chosen.length && !bought.length && !bare} onClick={() => setFix(2)}>
+                    Suivant <Icon name="suivant" size="sm" />
+                  </Button>
+                ) : (
+                  <Button
+                    className="h-12 rounded-full px-6"
+                    disabled={bought.length > 0 && !(source || defaultCashSource(boughtTotal))}
+                    onClick={() => {
+                      const paidWith = source || defaultCashSource(boughtTotal) || undefined;
+                      const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
+                      const next = markRepaired(shop, r.id, inputs);
+                      if (next) commit(next);
+                    }}
+                  >
+                    <Icon name="ok" size="sm" /> OK, réparé
+                  </Button>
+                )}
               </div>
-              {bought.length > 0 && (
-                <>
-                  <ul className="repair-bought">
-                    {bought.map((b, i) => (
-                      <li key={i}>
-                        {b.label} · {money(b.cost)}{" "}
-                        <button type="button" className="link" onClick={() => setBought(bought.filter((_, j) => j !== i))}>Enlever</button>
-                      </li>
-                    ))}
-                  </ul>
-                  <CashSourcePicker title="La pièce, tu l'as payée comment ?" amount={bought.reduce((a, b) => a + b.cost, 0)} value={source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0))} onChange={setSource} />
-                </>
-              )}
-              {r.price > 0 && (parts.length > 0 || bought.length > 0) && (
-                <p className="repair-calc">
-                  Avec ces pièces : main-d'œuvre{" "}
-                  <b>{money(r.price - bought.reduce((a, b) => a + b.cost, 0) - parts.reduce((a, id) => a + (shop.products.find((p) => p.id === id)?.cost ?? 0), 0))}</b>
-                </p>
-              )}
-              <Button
-                className="h-10 rounded-full"
-                disabled={bought.length > 0 && !(source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)))}
-                onClick={() => {
-                  // Sans aucune pièce : on demande d'abord (tout serait compté en main-d'œuvre).
-                  if (!parts.length && !bought.length && !bare) return setBare(true);
-                  const paidWith = source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)) || undefined;
-                  const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
-                  const next = markRepaired(shop, r.id, inputs);
-                  if (next) commit(next);
-                }}
-              >
-                <Icon name="reparation" size="sm" /> {bare && !parts.length && !bought.length ? "Oui, réparé sans pièce (tout est main-d'œuvre)" : "Réparé"}
-              </Button>
-              {bare && !parts.length && !bought.length && (
-                <small className="note" data-tone="error">Aucune pièce notée : tout le prix sera compté comme ta main-d'œuvre. Si tu as posé une pièce, cherche-la ci-dessus.</small>
-              )}
-            </>
+              {fix === 1 && !chosen.length && !bought.length && !bare && <small className="note">Choisis la pièce posée, ou « Aucune pièce » : la pièce compte dans ton bénéfice.</small>}
+            </div>
           )}
           {r.parts.length > 0 && (
             <small className="note">
               Pièces : {r.parts.map((p) => `${p.label} (${money(p.cost)})`).join(", ")} · total {money(partsCost(r))}
             </small>
           )}
-          <Breakdown r={r} />
-          {r.status !== "rendu" && (
+          {fix === 0 && <Breakdown r={r} />}
+          {r.status !== "rendu" && fix === 0 && (
             <>
               {r.price > 0 && rest === 0 ? (
                 <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Déjà tout payé ({money(r.paid)}) : rien à encaisser au rendu.</span></p>

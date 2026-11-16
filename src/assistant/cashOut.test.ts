@@ -68,3 +68,23 @@ describe("sorties d'argent : d'où vient l'argent (16/11/2026)", () => {
     expect(needsSource(items[1]!)).toBe(false);
   });
 });
+
+describe("Caisse : hors tiroir aujourd'hui (16/11/2026)", () => {
+  it("Wave : reçu (ventes + dettes remboursées) − payé = mouvement du solde", async () => {
+    const { dayChannel, dayPaidElsewhere } = await import("../model");
+    const now = new Date().toISOString();
+    const shop: Shop = {
+      ...seedShop(),
+      sales: [{ id: "s1", at: now, label: "Vente", amount: 15000, payment: "wave" } as never, { id: "s2", at: now, label: "Vente", amount: 3000, payment: "especes" } as never],
+      repayments: [{ id: "r1", at: now, clientId: "c", clientName: "Awa", amount: 5000, payment: "wave" }],
+      expenses: [
+        { id: "e1", at: now, label: "Loyer", amount: 30000, paidWith: "wave" },
+        { id: "e2", at: now, label: "Transport", amount: 2000 },
+        { id: "e3", at: now, label: "Licence", amount: 45000, paidWith: "autre" },
+      ],
+    };
+    expect(dayChannel(shop, "wave")).toEqual({ received: 20000, paid: 30000, net: -10000 });
+    expect(dayChannel(shop, "om")).toEqual({ received: 0, paid: 0, net: 0 });
+    expect(dayPaidElsewhere(shop)).toBe(45000);
+  });
+});
