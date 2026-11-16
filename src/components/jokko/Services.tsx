@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Payment, PAYMENT_LABELS, type ServiceItem, type ServiceUnit, type Shop, money } from "@/model";
+import { LICENCE_PAID_LABELS, type LicencePaidWith, type Payment, PAYMENT_LABELS, type ServiceItem, type ServiceUnit, type Shop, money } from "@/model";
 import { metierOf } from "@/data/metiers";
 import { clientFor } from "@/data/repairs";
 import { addCommonServices, addLicence, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth, UNIT_WORDS } from "@/data/services";
@@ -205,21 +205,31 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
 /** Licences des outils (décodage…) : payées d'un coup, réparties sur leur durée dans les bénéfices. */
 function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const licences = licencesOf(shop);
+  const today = () => new Date().toISOString().slice(0, 10);
+  type Form = { name: string; cost: string; months: string; startAt: string; paidWith: LicencePaidWith | ""; paidNote: string };
+  const empty = (): Form => ({ name: "", cost: "", months: "12", startAt: today(), paidWith: "", paidNote: "" });
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", cost: "", months: "12", startAt: new Date().toISOString().slice(0, 10), fromCash: false });
+  const [form, setForm] = useState<Form>(empty);
   const [note, setNote] = useState("");
 
-  function save(base?: { name: string; cost: number; months: number; startAt?: string }) {
-    const input = base ?? { name: form.name, cost: n(form.cost), months: n(form.months) || 12, startAt: form.startAt || undefined };
-    // Le tiroir ne baisse que si la licence a été payée avec ses espèces aujourd'hui (16/11/2026 : 135 000 F de licences
-    // payées ailleurs avaient mis la caisse à − 106 000 F, la case était cochée d'avance).
-    const paidToday = form.fromCash && (!input.startAt || input.startAt === new Date().toISOString().slice(0, 10));
-    const done = addLicence(shop, { ...input, fromCash: base ? false : paidToday });
+  // La question « comment tu l'as payée ? » est posée à chaque licence, même au renouvellement : rien n'est coché d'avance.
+  function open(base?: { name: string; cost: number; months: number; startAt?: string }) {
+    setForm(base ? { ...empty(), name: base.name, cost: String(base.cost), months: String(base.months), startAt: base.startAt ?? today() } : empty());
+    setNote("");
+    setAdding(true);
+  }
+
+  function save() {
+    if (!form.paidWith) return;
+    const done = addLicence(shop, { name: form.name, cost: n(form.cost), months: n(form.months) || 12, startAt: form.startAt || undefined, paidWith: form.paidWith, paidNote: form.paidNote });
     if (!done) return;
     commit(done.shop);
     const perMonth = Math.round(done.licence.cost / done.licence.months);
-    setNote(`✓ Licence ${done.licence.name} : ${money(done.licence.cost)} pour ${done.licence.months} mois. Dans tes bénéfices, elle compte ${money(perMonth)} par mois.`);
-    setForm({ name: "", cost: "", months: "12", startAt: new Date().toISOString().slice(0, 10), fromCash: false });
+    const cash = form.paidWith === "tiroir"
+      ? form.startAt >= today() ? ` ${money(done.licence.cost)} sont sortis du tiroir aujourd'hui.` : ` Sortie du tiroir notée le ${day(new Date(`${form.startAt}T12:00:00`))} (la caisse d'aujourd'hui ne bouge pas).`
+      : ` Payée par ${LICENCE_PAID_LABELS[form.paidWith]} : la caisse ne bouge pas, c'est noté pour justifier.`;
+    setNote(`✓ Licence ${done.licence.name} : ${money(done.licence.cost)} pour ${done.licence.months} mois, ${money(perMonth)} par mois dans tes bénéfices.${cash}`);
+    setForm(empty());
     setAdding(false);
   }
 
@@ -227,7 +237,7 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
     <div className="licences">
       <div className="sheet-head">
         <h3>Mes licences</h3>
-        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => setAdding((v) => !v)}>
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => (adding ? setAdding(false) : open())}>
           <Icon name="ajouter" size="sm" /> Nouvelle licence
         </Button>
       </div>
@@ -241,16 +251,33 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
             <span>mois</span>
           </label>
           <label className="row">
-            <span>Achetée le</span>
-            <Input className="h-10 num" type="date" aria-label="Date d'achat" value={form.startAt} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, startAt: e.target.value })} style={{ width: 170 }} />
+            <span>{form.startAt > today() ? "Commence le" : "Achetée le"}</span>
+            <Input className="h-10 num" type="date" aria-label="Date d'achat" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} style={{ width: 170 }} />
           </label>
-          {form.startAt === new Date().toISOString().slice(0, 10) && (
-            <label className="row">
-              <input type="checkbox" checked={form.fromCash} onChange={(e) => setForm({ ...form, fromCash: e.target.checked })} />
-              <span>J'ai payé avec les espèces du tiroir aujourd'hui (la caisse baisse de ce montant)</span>
-            </label>
-          )}
-          <Button className="h-10 rounded-full px-4" disabled={!form.name.trim() || !n(form.cost)} onClick={() => save()}>Enregistrer la licence</Button>
+          <fieldset className="licence-paid">
+            <legend>Comment tu l'as payée ?</legend>
+            <div className="seg licence-paid-choices" role="radiogroup" aria-label="Comment tu l'as payée ?">
+              {(Object.keys(LICENCE_PAID_LABELS) as LicencePaidWith[]).map((k) => (
+                <button key={k} type="button" role="radio" aria-checked={form.paidWith === k} className={form.paidWith === k ? "on" : ""} onClick={() => setForm({ ...form, paidWith: k })}>
+                  {LICENCE_PAID_LABELS[k]}
+                </button>
+              ))}
+            </div>
+            {form.paidWith === "tiroir" && (
+              <small className="note" data-tone="error">
+                {form.startAt >= today() ? `${money(n(form.cost))} vont sortir du tiroir aujourd'hui : la caisse attendue baisse d'autant.` : "La sortie du tiroir sera notée au jour de l'achat ; la caisse d'aujourd'hui ne bouge pas."}
+              </small>
+            )}
+            {form.paidWith && form.paidWith !== "tiroir" && (
+              <>
+                <small className="note">La caisse ne bouge pas. Jokko garde ce mode de paiement pour justifier la licence.</small>
+                <Input className="h-10" placeholder="Par qui / référence (facultatif)" aria-label="Justificatif" value={form.paidNote} onChange={(e) => setForm({ ...form, paidNote: e.target.value })} />
+              </>
+            )}
+          </fieldset>
+          <Button className="h-10 rounded-full px-4" disabled={!form.name.trim() || !n(form.cost) || !form.paidWith} onClick={save}>
+            {form.paidWith ? "Enregistrer la licence" : "Choisis comment tu l'as payée"}
+          </Button>
         </div>
       )}
       {note && <p className="note jk-notice" role="status">{note}</p>}
@@ -270,11 +297,14 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
                     {st.uses} service{st.uses > 1 ? "s" : ""} · rapporté {money(st.earned)}
                     {st.paidBack >= 1 ? " · déjà remboursée" : ` · remboursée à ${Math.round(st.paidBack * 100)} %`}
                   </small>
+                  <small>
+                    {l.paidWith ? `Payée : ${LICENCE_PAID_LABELS[l.paidWith]}${l.paidNote ? ` (${l.paidNote})` : ""}${l.paidWith === "tiroir" ? " · sortie de la caisse" : " · la caisse n'a pas bougé"}` : "Mode de paiement pas noté"}
+                  </small>
                   <span className="licence-bar" aria-hidden="true"><i style={{ width: `${Math.round(st.used * 100)}%` }} /></span>
                 </span>
                 <div className="debt-actions">
                   {(st.expired || st.soon) && (
-                    <Button variant="outline" className="h-9 rounded-full px-3" onClick={() => save({ name: l.name, cost: l.cost, months: l.months, ...(st.expired ? {} : { startAt: ymd(st.endsAt) }) })}>Renouveler</Button>
+                    <Button variant="outline" className="h-9 rounded-full px-3" onClick={() => open({ name: l.name, cost: l.cost, months: l.months, ...(st.expired ? {} : { startAt: ymd(st.endsAt) }) })}>Renouveler</Button>
                   )}
                   <button type="button" className="link" onClick={() => commit(removeLicence(shop, l.id))}>Enlever</button>
                 </div>

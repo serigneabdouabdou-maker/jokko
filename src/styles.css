@@ -2373,3 +2373,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .kpi-mini div { min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
 .kpi-mini dt { font-size: 11px; font-weight: 600; color: var(--j-ink-3); line-height: 1.2; }
 .kpi-mini dd { margin: 2px 0 0; font-size: 14px; font-weight: 700; color: var(--j-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Licence : « Comment tu l'as payée ? » (16/11/2026) */
+.licence-paid { border: 0; margin: 4px 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.licence-paid legend { font-weight: 650; font-size: 14px; margin-bottom: 6px; }
+.licence-paid-choices { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible !important; }
+.licence-paid-choices button { white-space: normal !important; min-height: 44px; line-height: 1.2; text-align: center; }

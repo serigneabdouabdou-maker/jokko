@@ -8,7 +8,7 @@
  *   L'argent sort de la caisse le jour de l'achat (sortie « achat »), mais dans les bénéfices son coût est
  *   réparti sur sa durée : 90 000 F sur 12 mois = 7 500 F par mois. Jokko montre aussi ce qu'elle a rapporté.
  */
-import type { Licence, Payment, Sale, ServiceItem, ServiceUnit, Shop } from "../model.ts";
+import type { Licence, LicencePaidWith, Payment, Sale, ServiceItem, ServiceUnit, Shop } from "../model.ts";
 import { metierOf } from "./metiers.ts";
 
 const DAY = 86_400_000;
@@ -157,12 +157,30 @@ export const licenceEnd = (l: Licence) => {
  * Nouvelle licence (ou renouvellement). fromCash : payée avec l'argent de la caisse → sortie « achat » le jour même
  * (la caisse est juste) ; dans les bénéfices, seul le coût réparti par mois compte (licenceCharge).
  */
-export function addLicence(shop: Shop, input: { name: string; cost: number; months?: number; startAt?: string; fromCash?: boolean }, now = new Date()): { shop: Shop; licence: Licence } | null {
+/**
+ * Nouvelle licence. paidWith dit comment elle a été payée (16/11/2026, règle de Fallou : « chaque fois, me demander
+ * si c'est sorti du tiroir ou payé par un autre moyen, pour justifier, mais pas retirer ») : seul « tiroir » sort
+ * l'argent de la caisse, au jour de l'achat ; Wave, Orange Money ou « autre » sont seulement notés.
+ * fromCash (ancien nom) = paidWith « tiroir ».
+ */
+export function addLicence(
+  shop: Shop,
+  input: { name: string; cost: number; months?: number; startAt?: string; fromCash?: boolean; paidWith?: LicencePaidWith; paidNote?: string },
+  now = new Date(),
+): { shop: Shop; licence: Licence } | null {
   const cost = Math.round(input.cost);
   if (!input.name.trim() || cost <= 0) return null;
-  const licence: Licence = { id: newId("lic"), name: input.name.trim(), cost, startAt: input.startAt ?? ymd(now), months: Math.max(1, Math.round(input.months ?? 12)) };
-  const expenses = input.fromCash
-    ? [{ id: newId("e"), at: now.toISOString(), label: `Licence ${licence.name} (${licence.months} mois)`, amount: cost, kind: "achat" as const }, ...shop.expenses]
+  const paidWith: LicencePaidWith | undefined = input.paidWith ?? (input.fromCash ? "tiroir" : undefined);
+  const startAt = input.startAt ?? ymd(now);
+  const licence: Licence = {
+    id: newId("lic"), name: input.name.trim(), cost, startAt, months: Math.max(1, Math.round(input.months ?? 12)),
+    ...(paidWith ? { paidWith } : {}),
+    ...(input.paidNote?.trim() ? { paidNote: input.paidNote.trim().slice(0, 80) } : {}),
+  };
+  // Sortie du tiroir le jour de l'achat (aujourd'hui → maintenant ; un autre jour → ce jour-là, la caisse d'aujourd'hui ne bouge pas).
+  const at = startAt >= ymd(now) ? now.toISOString() : new Date(`${startAt}T12:00:00`).toISOString();
+  const expenses = paidWith === "tiroir"
+    ? [{ id: newId("e"), at, label: `Licence ${licence.name} (${licence.months} mois)`, amount: cost, kind: "achat" as const }, ...shop.expenses]
     : shop.expenses;
   return { shop: { ...shop, expenses, licences: [licence, ...licencesOf(shop)] }, licence };
 }

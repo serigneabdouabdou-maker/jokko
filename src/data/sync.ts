@@ -1,4 +1,4 @@
-import type { CartVoid, Client, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
+import type { CartVoid, Client, Licence, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -398,7 +398,11 @@ export function rowsToShop(rows: ShopRows): Shop {
         }
       : {}),
     ...(Array.isArray(s.licences) && s.licences.length
-      ? { licences: (s.licences as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), cost: num(x.cost), startAt: str(x.startAt), months: num(x.months) || 12 })) }
+      ? { licences: (s.licences as Row[]).map((x) => ({
+          id: str(x.id), name: str(x.name), cost: num(x.cost), startAt: str(x.startAt), months: num(x.months) || 12,
+          ...(["tiroir", "wave", "om", "autre"].includes(str(x.paidWith)) ? { paidWith: str(x.paidWith) as Licence["paidWith"] } : {}),
+          ...(str(x.paidNote) ? { paidNote: str(x.paidNote).slice(0, 80) } : {}),
+        })) }
       : {}),
     ...(Array.isArray(s.to_order) && s.to_order.length
       ? {

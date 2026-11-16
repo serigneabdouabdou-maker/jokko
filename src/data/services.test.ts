@@ -47,3 +47,24 @@ describe("services sans pièce et licences (réparateurs)", () => {
     expect(licenceStats(l.shop, l.licence, now)).toMatchObject({ soon: true, expired: false, perMonth: 3333 });
   });
 });
+
+describe("licence : comment elle a été payée (16/11/2026)", () => {
+  const now = new Date("2026-11-16T12:00:00");
+  it("payée par Wave ou ailleurs : la caisse ne bouge pas, le mode est gardé", () => {
+    for (const paidWith of ["wave", "om", "autre"] as const) {
+      const done = addLicence(empty(), { name: "Chimera", cost: 90000, months: 12, startAt: "2026-11-16", paidWith, paidNote: "agent Touba" }, now)!;
+      expect(done.shop.expenses).toHaveLength(0);
+      expect(done.licence.paidWith).toBe(paidWith);
+      expect(done.licence.paidNote).toBe("agent Touba");
+    }
+  });
+  it("tiroir aujourd'hui : une sortie de caisse aujourd'hui", () => {
+    const done = addLicence(empty(), { name: "Unlock tool", cost: 45000, startAt: "2026-11-16", paidWith: "tiroir" }, now)!;
+    expect(done.shop.expenses).toHaveLength(1);
+    expect(done.shop.expenses[0]!.at.slice(0, 10)).toBe("2026-11-16");
+  });
+  it("tiroir un autre jour : la sortie est notée ce jour-là, pas aujourd'hui", () => {
+    const done = addLicence(empty(), { name: "Unlock tool", cost: 45000, startAt: "2026-09-01", paidWith: "tiroir" }, now)!;
+    expect(done.shop.expenses[0]!.at.slice(0, 10)).toBe("2026-09-01");
+  });
+});

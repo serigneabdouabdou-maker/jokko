@@ -111,7 +111,15 @@ export type ServiceUnit = "fois" | "page" | "piece" | "m2" | "metre";
 export type ServiceItem = { id: string; name: string; price: number; licenceId?: string; unit?: ServiceUnit; matter?: { productId: string; per: number } };
 
 /** Licence d'un outil (décodage…) payée d'un coup, utilisée des mois : son coût est réparti sur sa durée dans les bénéfices. */
-export type Licence = { id: string; name: string; cost: number; startAt: string; months: number };
+/** Comment la licence a été payée : seul « tiroir » sort de l'argent de la caisse ; les autres servent de justificatif. */
+export type LicencePaidWith = "tiroir" | "wave" | "om" | "autre";
+export const LICENCE_PAID_LABELS: Record<LicencePaidWith, string> = {
+  tiroir: "Espèces du tiroir",
+  wave: "Wave",
+  om: "Orange Money",
+  autre: "Autre (agent, banque, déjà payée avant)",
+};
+export type Licence = { id: string; name: string; cost: number; startAt: string; months: number; paidWith?: LicencePaidWith; paidNote?: string };
 
 export type Payment = "especes" | "wave" | "om" | "credit";
 
