@@ -13,7 +13,7 @@ import { addRepair, deliverRepair, findRepair, markRepaired, type PartInput, pay
 import { distinguishes, expandHeard, nameClash, type Named, pickByName, plain, sameName, UNITS } from "./wolofNames";
 import { foreignArticle } from "../data/metierWords";
 import { serviceFromVoice } from "../data/serviceVoice";
-import { searchProducts } from "../data/partSearch";
+import { productNamedIn, searchProducts } from "../data/partSearch";
 import { modelKeys } from "../data/modelKeys";
 import { metierOf } from "../data/metiers";
 
@@ -139,6 +139,9 @@ export class LiveDesk {
         if (hit.item) return { productId: hit.item.id };
         return cost ? { label: name, cost, paidWith } : { label: name, cost: 0 };
       });
+      // « R-005 réparé » sans dire la pièce : celle choisie au dépôt (écrite dans la panne) est posée.
+      const planned = !parts.length ? productNamedIn(shop.products, found.problem) : undefined;
+      if (planned) parts.push({ productId: planned.id });
       const missingPieces = priced.filter((p) => !p.cost && !pickByName(shop.products, p.name).item).map((p) => p.name);
       const after = markRepaired(shop, found.id, parts);
       if (!after) return { statut: "incomplet", besoin: "une réparation encore ouverte" };

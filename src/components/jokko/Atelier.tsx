@@ -351,7 +351,11 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
 }
 
 function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void }) {
-  const [parts, setParts] = useState<string[]>([]);
+  // Pièce choisie au dépôt (écrite dans la panne) : déjà mise dans les pièces posées (16/11/2026 : R-005 et R-006
+  // marquées « Réparé » sans pièce → 19 000 F comptés en main-d'œuvre, les écrans oubliés dans le bénéfice).
+  const planned = r.status === "depot" ? productNamedIn(shop.products, r.problem) : undefined;
+  const [parts, setParts] = useState<string[]>(() => (planned ? [planned.id] : []));
+  const [bare, setBare] = useState(false);
   const [bought, setBought] = useState<Array<{ label: string; cost: number }>>([]);
   const [buyName, setBuyName] = useState("");
   const [buyCost, setBuyCost] = useState("");
@@ -359,7 +363,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   const [pay, setPay] = useState("");
   const [price, setPrice] = useState(r.price ? String(r.price) : "");
   // La pièce choisie au dépôt (écrite dans la panne) est déjà cherchée.
-  const [partQuery, setPartQuery] = useState(() => productNamedIn(shop.products, r.problem)?.name ?? "");
+  const [partQuery, setPartQuery] = useState("");
   const days = waitingDays(r);
   const inStock = shop.products.filter((p) => p.stock > 0);
   function pick(p: Product) {
@@ -416,12 +420,20 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
               />
               <small className="note">Pièces posées (elles sortent du stock) :</small>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {parts.filter((id) => !pieces.some((p) => p.id === id)).map((id) => {
+                  const p = shop.products.find((x) => x.id === id);
+                  return p ? (
+                    <Button key={id} variant="default" className="h-9 rounded-full px-3" onClick={() => setParts(parts.filter((x) => x !== id))}>
+                      ✓ {p.name}{p.cost !== undefined ? ` (${money(p.cost)})` : ""}{planned?.id === id ? " · prévue au dépôt" : ""} ✕
+                    </Button>
+                  ) : null;
+                })}
                 {pieces.map((p) => (
                   <Button key={p.id} variant={parts.includes(p.id) ? "default" : "outline"} className="h-9 rounded-full px-3" onClick={() => setParts(parts.includes(p.id) ? parts.filter((x) => x !== p.id) : [...parts, p.id])}>
                     {p.name}
                   </Button>
                 ))}
-                {pieces.length === 0 && <small className="note">{inStock.length ? "Cherche la pièce ci-dessus." : "Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès."}</small>}
+                {pieces.length === 0 && parts.length === 0 && <small className="note">{inStock.length ? "Cherche la pièce ci-dessus." : "Pas de pièce dans ton stock : note ci-dessous la pièce achetée exprès."}</small>}
               </div>
               <small className="note">Pièce achetée exprès pour cette réparation :</small>
               <div className="repair-buy">
@@ -463,14 +475,19 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                 className="h-10 rounded-full"
                 disabled={bought.length > 0 && !(source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)))}
                 onClick={() => {
+                  // Sans aucune pièce : on demande d'abord (tout serait compté en main-d'œuvre).
+                  if (!parts.length && !bought.length && !bare) return setBare(true);
                   const paidWith = source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)) || undefined;
                   const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
                   const next = markRepaired(shop, r.id, inputs);
                   if (next) commit(next);
                 }}
               >
-                <Icon name="reparation" size="sm" /> Réparé
+                <Icon name="reparation" size="sm" /> {bare && !parts.length && !bought.length ? "Oui, réparé sans pièce (tout est main-d'œuvre)" : "Réparé"}
               </Button>
+              {bare && !parts.length && !bought.length && (
+                <small className="note" data-tone="error">Aucune pièce notée : tout le prix sera compté comme ta main-d'œuvre. Si tu as posé une pièce, cherche-la ci-dessus.</small>
+              )}
             </>
           )}
           {r.parts.length > 0 && (

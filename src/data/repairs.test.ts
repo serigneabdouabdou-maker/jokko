@@ -110,3 +110,17 @@ describe("rendu : jamais deux fois le même argent (16/11/2026, R-005)", () => {
     expect([raised.paid, raised.price]).toEqual([13000, 13000]);
   });
 });
+
+describe("pièce prévue au dépôt (16/11/2026, R-005 / R-006)", () => {
+  it("« R-005 réparé » à la voix sans dire la pièce : la pièce écrite au dépôt est posée, son prix d'achat compte", async () => {
+    const { LiveDesk } = await import("@/assistant/liveDesk");
+    let s: Shop = { ...atelier(), products: [{ id: "p-ki5k", name: "Écran Tecno KI5K", unit: "pièce", stock: 0, min: 0, price: 0, cost: 3700 }] };
+    const { shop, repair } = addRepair(s, { clientName: "Oumy", device: "Ki5k", problem: "Écran cassé · Écran Tecno KI5K", price: 10000, advance: 10000 });
+    s = shop;
+    const d = new LiveDesk({ getShop: () => s, lang: () => "fr", write: (n) => { s = n; }, onSaved: () => {}, onUndone: () => {} });
+    d.handle({ name: "reparation", args: { action: "reparee", ticket: repair.number, heard: "R-001 réparé" } });
+    const r = repairsOf(s).find((x) => x.id === repair.id)!;
+    expect(r.parts.map((p) => [p.label, p.cost])).toEqual([["Écran Tecno KI5K", 3700]]);
+    expect(repairProfit(r)).toBe(6300);
+  });
+});
