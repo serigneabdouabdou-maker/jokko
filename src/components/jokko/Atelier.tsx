@@ -148,6 +148,9 @@ function FitParts({ shop, device, problem, chosen, onPick }: { shop: Shop; devic
   );
 }
 
+const STEPS = ["Le client", "L'appareil", "La panne", "La pièce à poser", "Le prix", "L'avance", "Vérifie et enregistre"];
+const PANNES = ["Écran cassé", "Batterie", "Ne charge pas", "Ne s'allume pas", "Tombé dans l'eau", "Son / micro", "Caméra", "Décodage / logiciel", "Boutons"];
+
 /**
  * Atelier : le carnet de réparations.
  * Dépôt (client, téléphone, appareil, panne, prix, avance) → Réparé (pièces prises dans le stock) → Rendu (le client paie le reste,
@@ -168,6 +171,10 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const [open, setOpen] = useState<string | null>(null);
   const [partQuery, setPartQuery] = useState("");
   const [picked, setPicked] = useState<Product | null>(null);
+  // Dépôt pas à pas (16/11/2026, demande de Fallou : « ça passe, ça passe, tu cliques OK et ça calcule ») :
+  // une question par écran ; la pièce est obligatoire (une pièce ou « Pas de pièce ») pour que le bénéfice soit juste.
+  const [step, setStep] = useState(0);
+  const [noPart, setNoPart] = useState(false);
   const [filter, setFilter] = useState<"cours" | "rendu">("cours");
   const list = repairsOf(shop).filter((r) => (filter === "cours" ? r.status === "depot" || r.status === "repare" : r.status === "rendu"));
   const waiting = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
@@ -184,6 +191,25 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const known = adding ? knownClient(shop, form.clientName, form.phone) : undefined;
   const knownFile = known ? clientFile(shop, known) : undefined;
 
+  function pickPart(p: Product) {
+    setPicked(p);
+    setNoPart(false);
+    setPartQuery("");
+    // Main-d'œuvre : celle du prix de vente de la pièce, sinon celle que tu prends d'habitude (prix conseillé).
+    const sp = p.price > 0 && p.cost !== undefined ? { labor: p.price - p.cost } : suggestedPrice(p, laborStats(shop));
+    setForm((f) => ({
+      ...f,
+      ...(p.cost !== undefined ? { piece: String(p.cost) } : {}),
+      ...(!f.labor && !f.price && sp && sp.labor > 0 ? { labor: String(sp.labor) } : {}),
+    }));
+  }
+  const stepOk = [form.clientName.trim().length > 0, form.device.trim().length > 0, form.problem.trim().length > 0, Boolean(picked) || noPart, true, true, true][step];
+  function closeWizard() {
+    setAdding(false);
+    setStep(0);
+    setNoPart(false);
+  }
+
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
     // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
@@ -198,7 +224,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     setForm({ clientName: "", phone: "", imei: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
     setPicked(null);
     setPartQuery("");
-    setAdding(false);
+    closeWizard();
   }
 
   const phone = usePhone();
@@ -242,7 +268,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       </DrillList>
       <DrillOverview>
       <div className="list-bar">
-        <Button className="h-11 rounded-full px-5" onClick={() => setAdding((a) => !a)}>
+        <Button className="h-11 rounded-full px-5" onClick={() => (adding ? closeWizard() : (setStep(0), setAdding(true)))}>
           <Icon name="ajouter" size="sm" /> Nouveau dépôt
         </Button>
         <div className="seg" role="tablist" aria-label="Réparations à montrer">
@@ -252,98 +278,177 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       </div>
 
       {adding && (
-        <div className="list" style={{ gap: 8, display: "grid" }}>
-          <Input className="h-11" placeholder="Nom du client" aria-label="Nom du client" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} />
-          <Input className="h-11" inputMode="tel" placeholder="Téléphone du client (77 …)" aria-label="Téléphone du client" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          {knownFile && (
-            <div className={`known-client${knownFile.late ? " is-late" : ""}`} role="status">
-              <b>Client connu : {knownFile.client.name}</b>
-              <small>
-                {knownFile.visits} visite{knownFile.visits > 1 ? "s" : ""} · {money(knownFile.spent)} dépensés
-                {knownFile.entries[0] ? ` · dernière fois le ${new Date(knownFile.entries[0].at).toLocaleDateString("fr-FR")} : ${knownFile.entries[0].title}${knownFile.entries[0].detail ? ` (${knownFile.entries[0].detail})` : ""}` : ""}
-              </small>
-              {knownFile.underWarranty.length > 0 && <small>Sous garantie : {knownFile.underWarranty.map((r) => `${r.number} ${r.device}`).join(", ")}</small>}
-              {(knownFile.debt > 0 || knownFile.owedRepairs > 0) && <small>Il doit encore {money(knownFile.debt + knownFile.owedRepairs)}{knownFile.late ? " (en retard)" : ""}.</small>}
-              {!form.phone && knownFile.client.phone && (
-                <button type="button" className="link" onClick={() => setForm({ ...form, clientName: knownFile.client.name, phone: knownFile.client.phone })}>Reprendre son numéro ({knownFile.client.phone})</button>
+        <div className={`wizard${noPart ? " no-part" : ""}`} role="group" aria-label="Nouveau dépôt">
+          <div className="wizard-head">
+            <small>Étape {step + 1} sur {STEPS.length}</small>
+            <b>{STEPS[step]}</b>
+            <span className="wizard-bar" aria-hidden="true"><i style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></span>
+          </div>
+
+          {step === 0 && (
+            <div className="wizard-body">
+              <Input className="h-12" autoFocus placeholder="Nom du client" aria-label="Nom du client" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} />
+              <Input className="h-12" inputMode="tel" placeholder="Téléphone du client (77 …)" aria-label="Téléphone du client" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              {knownFile && (
+                <div className={`known-client${knownFile.late ? " is-late" : ""}`} role="status">
+                  <b>Client connu : {knownFile.client.name}</b>
+                  <small>
+                    {knownFile.visits} visite{knownFile.visits > 1 ? "s" : ""} · {money(knownFile.spent)} dépensés
+                    {knownFile.entries[0] ? ` · dernière fois le ${new Date(knownFile.entries[0].at).toLocaleDateString("fr-FR")} : ${knownFile.entries[0].title}${knownFile.entries[0].detail ? ` (${knownFile.entries[0].detail})` : ""}` : ""}
+                  </small>
+                  {knownFile.underWarranty.length > 0 && <small>Sous garantie : {knownFile.underWarranty.map((r) => `${r.number} ${r.device}`).join(", ")}</small>}
+                  {(knownFile.debt > 0 || knownFile.owedRepairs > 0) && <small>Il doit encore {money(knownFile.debt + knownFile.owedRepairs)}{knownFile.late ? " (en retard)" : ""}.</small>}
+                  {!form.phone && knownFile.client.phone && (
+                    <button type="button" className="link" onClick={() => setForm({ ...form, clientName: knownFile.client.name, phone: knownFile.client.phone })}>Reprendre son numéro ({knownFile.client.phone})</button>
+                  )}
+                </div>
               )}
             </div>
           )}
-          <Input className="h-11 num" inputMode="numeric" placeholder="IMEI (facultatif : tape *#06# sur le téléphone)" aria-label="IMEI de l'appareil" value={form.imei} onChange={(e) => setForm({ ...form, imei: e.target.value })} />
-          {imeiInfo && (
-            <small className={`note${imeiInfo.state === "faux" || imeiInfo.state === "inconnu" ? " is-late" : ""}`} role="status">
-              {imeiInfo.state === "cherche" && "Je cherche le modèle…"}
-              {imeiInfo.state === "trouve" && `📱 ${imeiInfo.label} (${imeiInfo.from === "atelier" ? "appris par les ateliers Jokko" : "base publique, vérifie sur le téléphone"})`}
-              {imeiInfo.state === "inconnu" && "IMEI pas encore connu : écris l'appareil, Jokko l'apprendra pour tous les ateliers."}
-              {imeiInfo.state === "faux" && "Cet IMEI semble mal recopié : vérifie les 15 chiffres."}
-            </small>
+
+          {step === 1 && (
+            <div className="wizard-body">
+              <Input className="h-11 num" inputMode="numeric" placeholder="IMEI (facultatif : tape *#06# sur le téléphone)" aria-label="IMEI de l'appareil" value={form.imei} onChange={(e) => setForm({ ...form, imei: e.target.value })} />
+              {imeiInfo && (
+                <small className={`note${imeiInfo.state === "faux" || imeiInfo.state === "inconnu" ? " is-late" : ""}`} role="status">
+                  {imeiInfo.state === "cherche" && "Je cherche le modèle…"}
+                  {imeiInfo.state === "trouve" && `📱 ${imeiInfo.label} (${imeiInfo.from === "atelier" ? "appris par les ateliers Jokko" : "base publique, vérifie sur le téléphone"})`}
+                  {imeiInfo.state === "inconnu" && "IMEI pas encore connu : écris l'appareil, Jokko l'apprendra pour tous les ateliers."}
+                  {imeiInfo.state === "faux" && "Cet IMEI semble mal recopié : vérifie les 15 chiffres."}
+                </small>
+              )}
+              <Input className="h-12" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
+            </div>
           )}
-          <Input className="h-11" placeholder="Appareil (iPhone 11, Tecno Spark 10…)" aria-label="Appareil" value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} />
-          <Input className="h-11" placeholder="Panne (écran cassé, connecteur…)" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
-          {shop.products.length > 0 && (
-            <PartPicker
-              products={shop.products}
-              query={partQuery}
-              setQuery={setPartQuery}
-              label="Pièce à poser : cherche (BF6, iPhone 11, batterie KF6…)"
-              onPick={(p) => {
-                setPicked(p);
-                setPartQuery("");
-                // Main-d'œuvre : celle du prix de vente de la pièce, sinon celle que tu prends d'habitude (prix conseillé).
-                const sp = p.price > 0 && p.cost !== undefined ? { labor: p.price - p.cost } : suggestedPrice(p, laborStats(shop));
-                setForm({
-                  ...form,
-                  ...(p.cost !== undefined ? { piece: String(p.cost) } : {}),
-                  ...(!form.labor && !form.price && sp && sp.labor > 0 ? { labor: String(sp.labor) } : {}),
-                });
-              }}
-            />
+
+          {step === 2 && (
+            <div className="wizard-body">
+              <div className="wizard-chips">
+                {PANNES.map((p) => {
+                  const on = form.problem.split(", ").includes(p);
+                  return (
+                    <button key={p} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={() => {
+                      const list = form.problem.split(", ").filter(Boolean);
+                      setForm({ ...form, problem: (on ? list.filter((x) => x !== p) : [...list, p]).join(", ") });
+                    }}>{p}</button>
+                  );
+                })}
+              </div>
+              <Input className="h-12" placeholder="Ou écris la panne" aria-label="Panne" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
+            </div>
           )}
-          {picked && (
-            <p className="note" role="status">
-              Pièce : <b>{picked.name}</b>
-              {picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)}` : " · prix d'achat à taper ci-dessous"}
-              {piece + labor > 0 ? ` · prix conseillé ${money(piece + labor)} (main-d'œuvre ${money(labor)}). Tout se change ci-dessous.` : ""}{" "}
-              <button type="button" className="link" onClick={() => setPicked(null)}>Enlever</button>
-            </p>
+
+          {step === 3 && (
+            <div className="wizard-body">
+              {picked ? (
+                <p className="wizard-picked" role="status">
+                  <Icon name="ok" size="sm" />
+                  <span><b>{picked.name}</b>{picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)}` : " · prix d'achat à taper à l'étape suivante"}</span>
+                  <button type="button" className="link" onClick={() => setPicked(null)}>Changer</button>
+                </p>
+              ) : noPart ? (
+                <p className="wizard-picked" role="status">
+                  <Icon name="ok" size="sm" />
+                  <span><b>Pas de pièce</b> · tout le prix est ta main-d'œuvre</span>
+                  <button type="button" className="link" onClick={() => setNoPart(false)}>Changer</button>
+                </p>
+              ) : (
+                <>
+                  {form.device.trim() && <FitParts shop={shop} device={form.device} problem={form.problem} chosen={[]} onPick={pickPart} />}
+                  {shop.products.length > 0 && (
+                    <PartPicker products={shop.products} query={partQuery} setQuery={setPartQuery} label="Cherche la pièce (BF6, iPhone 11, batterie KF6…)" onPick={pickPart} />
+                  )}
+                  <Button variant="outline" className="h-11 rounded-full" onClick={() => { setNoPart(true); setForm({ ...form, piece: "" }); }}>
+                    Pas de pièce (décodage, logiciel, nettoyage…)
+                  </Button>
+                </>
+              )}
+            </div>
           )}
-          <div className="repair-price">
-            <label>
-              <small>Prix d'achat de la pièce</small>
-              <Input className="h-11" inputMode="numeric" placeholder="ex. 5 000" aria-label="Prix d'achat de la pièce" value={form.piece} onChange={(e) => setForm({ ...form, piece: e.target.value })} />
-            </label>
-            <span aria-hidden="true">+</span>
-            <label>
-              <small>Main-d'œuvre</small>
-              <Input className="h-11" inputMode="numeric" placeholder="ex. 10 000" aria-label="Main-d'œuvre" value={form.labor} onChange={(e) => setForm({ ...form, labor: e.target.value })} />
-            </label>
-            <span aria-hidden="true">=</span>
-            <label>
-              <small>Prix pour le client</small>
-              <Input className="h-11" inputMode="numeric" placeholder={piece || labor ? String(piece + labor) : "vide si pas fixé"} aria-label="Prix pour le client" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-            </label>
+
+          {step === 4 && (
+            <div className="wizard-body">
+              <div className="repair-price">
+                <label>
+                  <small>Prix d'achat de la pièce</small>
+                  <Input className="h-11" inputMode="numeric" placeholder="ex. 5 000" aria-label="Prix d'achat de la pièce" value={form.piece} onChange={(e) => setForm({ ...form, piece: e.target.value })} />
+                </label>
+                <span aria-hidden="true">+</span>
+                <label>
+                  <small>Main-d'œuvre</small>
+                  <Input className="h-11" inputMode="numeric" placeholder="ex. 10 000" aria-label="Main-d'œuvre" value={form.labor} onChange={(e) => setForm({ ...form, labor: e.target.value })} />
+                </label>
+                <span aria-hidden="true">=</span>
+                <label>
+                  <small>Prix pour le client</small>
+                  <Input className="h-11" inputMode="numeric" placeholder={piece || labor ? String(piece + labor) : "vide si pas fixé"} aria-label="Prix pour le client" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                </label>
+              </div>
+              {price > 0 && (
+                <p className="repair-calc">
+                  Prix pour le client <b>{money(price)}</b>
+                  {piece ? <> − pièce {money(piece)} = ta main-d'œuvre <b>{money(price - piece)}</b></> : null}
+                  {piece && price - piece < 0 ? " : attention, tu perds de l'argent." : ""}
+                  {piece ? " Tu noteras la pièce quand tu la poses (bouton « Réparé »)." : ""}
+                </p>
+              )}
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="wizard-body">
+              <Input className="h-12 num" inputMode="numeric" autoFocus placeholder="Avance payée maintenant (F)" aria-label="Avance" value={form.advance} onChange={(e) => setForm({ ...form, advance: e.target.value })} />
+              {price > 0 && (
+                <div className="wizard-chips">
+                  {[0, Math.round(price / 2 / 500) * 500, price].filter((v, i, a) => a.indexOf(v) === i).map((v) => (
+                    <button key={v} type="button" className={n(form.advance) === v ? "on" : ""} onClick={() => setForm({ ...form, advance: v ? String(v) : "" })}>
+                      {v === 0 ? "Rien pour le moment" : v === price ? `Tout (${money(v)})` : `La moitié (${money(v)})`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 6 && (
+            <div className="wizard-body">
+              <dl className="wizard-recap">
+                <div><dt>Client</dt><dd>{form.clientName}{form.phone ? ` · ${form.phone}` : ""}</dd></div>
+                <div><dt>Appareil</dt><dd>{form.device}{form.imei ? ` · IMEI ${form.imei}` : ""}</dd></div>
+                <div><dt>Panne</dt><dd>{form.problem || "—"}</dd></div>
+                <div><dt>Pièce</dt><dd>{picked ? `${picked.name} · ${money(piece)}` : "Pas de pièce"}</dd></div>
+                <div><dt>Prix pour le client</dt><dd className="num">{price ? money(price) : "pas encore fixé"}</dd></div>
+                {price > 0 && <div><dt>Ta main-d'œuvre</dt><dd className="num" data-tone={price - piece < 0 ? "bad" : "good"}>{money(price - piece)}</dd></div>}
+                <div><dt>Avance</dt><dd className="num">{money(n(form.advance))}{price ? ` · reste ${money(Math.max(0, price - n(form.advance)))}` : ""}</dd></div>
+              </dl>
+              {price > 0 && price - piece < 0 && <p className="note" data-tone="error">Attention : la pièce coûte plus que le prix. Tu perds {money(piece - price)}.</p>}
+            </div>
+          )}
+
+          <div className="wizard-nav">
+            <Button variant="outline" className="h-12 rounded-full px-5" onClick={() => (step ? setStep(step - 1) : closeWizard())}>
+              <Icon name="retour" size="sm" /> {step ? "Retour" : "Annuler"}
+            </Button>
+            {step < STEPS.length - 1 ? (
+              <Button className="h-12 rounded-full px-6" disabled={!stepOk} onClick={() => setStep(step + 1)}>
+                Suivant <Icon name="suivant" size="sm" />
+              </Button>
+            ) : (
+              <Button className="h-12 rounded-full px-6" onClick={save}>
+                <Icon name="ok" size="sm" /> OK, enregistrer
+              </Button>
+            )}
           </div>
-          {price > 0 && (
-            <p className="repair-calc">
-              Prix pour le client <b>{money(price)}</b>
-              {piece ? <> − pièce {money(piece)} = ta main-d'œuvre <b>{money(price - piece)}</b></> : null}
-              {piece && price - piece < 0 ? " : attention, tu perds de l'argent." : ""}
-              {piece ? " Tu noteras la pièce quand tu la poses (bouton « Réparé »)." : ""}
-            </p>
-          )}
-          <Input className="h-11" inputMode="numeric" placeholder="Avance payée (F)" aria-label="Avance" value={form.advance} onChange={(e) => setForm({ ...form, advance: e.target.value })} />
-          <Button className="h-11 rounded-full" onClick={save} disabled={!form.clientName.trim() || !form.device.trim()}>
-            <Icon name="sauvegarde" size="sm" /> Enregistrer le dépôt
-          </Button>
+          {!stepOk && step === 3 && <small className="note">Choisis la pièce à poser, ou « Pas de pièce » : la pièce comptera dans ton bénéfice.</small>}
         </div>
       )}
 
-      <div className="list">
+      {!adding && <div className="list">
         {list.length === 0 && <p className="note">{filter === "cours" ? "Rien en cours." : "Aucune réparation rendue."}</p>}
         {list.map((r) => (
           <RepairRow key={r.id} r={r} shop={shop} commit={commit} open={open === r.id} toggle={() => setOpen(open === r.id ? null : r.id)} />
         ))}
-      </div>
+      </div>}
       </DrillOverview>
       {!phone && commandes}
     </section>

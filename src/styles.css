@@ -2383,3 +2383,28 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .batch-source small { flex-basis: 100%; }
 .batch-source button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-card); font: inherit; font-size: 13px; font-weight: 600; color: var(--j-ink); cursor: pointer; }
 .batch-source button.on { background: var(--j-ink); color: var(--j-white); border-color: var(--j-ink); }
+
+/* Dépôt pas à pas (16/11/2026) */
+.wizard { display: grid; gap: 14px; margin: 12px 0; padding: 16px; border-radius: 20px; border: 1px solid var(--j-line); background: var(--j-card); animation: drill-in var(--t-mid) var(--ease) both; }
+.wizard-head { display: grid; gap: 4px; }
+.wizard-head small { font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--j-ink-3); }
+.wizard-head b { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+.wizard-bar { height: 6px; border-radius: 999px; background: var(--j-soft-2); overflow: hidden; margin-top: 4px; }
+.wizard-bar i { display: block; height: 100%; border-radius: inherit; background: var(--j-yellow); transition: width var(--t-mid) var(--ease); }
+.wizard-body { display: grid; gap: 10px; min-width: 0; }
+.wizard-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.wizard-chips button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-card); font: inherit; font-size: 14px; font-weight: 600; color: var(--j-ink); cursor: pointer; }
+.wizard-chips button.on { background: var(--j-ink); color: var(--j-white); border-color: var(--j-ink); }
+.wizard-picked { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--j-soft); }
+.wizard-picked span { flex: 1; min-width: 0; }
+.wizard-recap { display: grid; gap: 0; margin: 0; }
+.wizard-recap div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--j-line); }
+.wizard-recap div:last-child { border-bottom: 0; }
+.wizard-recap dt { color: var(--j-ink-3); font-size: 14px; }
+.wizard-recap dd { margin: 0; font-weight: 650; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.wizard-recap dd[data-tone="good"] { color: var(--j-ok, #1f7a3a); }
+.wizard-recap dd[data-tone="bad"] { color: var(--j-danger); }
+.wizard-nav { display: flex; justify-content: space-between; gap: 10px; }
+.wizard-nav > * { flex: 1; }
+.wizard { scroll-margin-top: 76px; }
+.wizard.no-part .repair-price > label:first-child, .wizard.no-part .repair-price > span:first-of-type { display: none; }
