@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type Product, money } from "@/model";
 import { normalizeCode } from "@/data/barcode";
+import { kindOf } from "@/data/pricing";
 
 const toNum = (s: string) => {
   const n = Number(s.replace(/[\s  ]/g, "").replace(",", "."));
@@ -24,7 +25,7 @@ export function ProductEditor({
   units,
 }: {
   product: Product;
-  onSave: (p: Product, stockChanged: boolean) => void;
+  onSave: (p: Product, stockChanged: boolean, opts?: { linkGroup?: boolean }) => void;
   onClose: () => void;
   /** Id de l'article qui porte déjà ce code (pour éviter deux articles avec le même code). */
   codeOwner?: (code: string) => string | undefined;
@@ -45,6 +46,11 @@ export function ProductEditor({
   const [retailPrice, setRetailPrice] = useState(product.retail ? String(product.retail.price) : "");
   const [code, setCode] = useState(product.barcode ?? "");
   const [aliases, setAliases] = useState((product.aliases ?? []).join(", "));
+  // Pièce détachée (écran, batterie…) : les « autres noms » sont les téléphones qui prennent la même pièce.
+  const isPart = kindOf(product.name) !== "Autre";
+  const [linkGroup, setLinkGroup] = useState(true);
+  const [model, setModel] = useState("");
+  const models = aliases.split(/[,;\n]/).map((a) => a.trim()).filter(Boolean);
   const [expires, setExpires] = useState(product.expiresAt ?? "");
   const [retailCode, setRetailCode] = useState(product.retail?.barcode ?? "");
   const [error, setError] = useState("");
@@ -84,7 +90,7 @@ export function ProductEditor({
     if (retailOn && retailCode.trim() && taken(retailCode)) return setError("Ce code-barres du détail est déjà sur un autre article.");
     if (cost && Number.isFinite(c)) next.cost = Math.round(c);
     if (code.trim()) next.barcode = cleanCode(code);
-    const names = [...new Set(aliases.split(/[,;\n]/).map((a) => a.trim()).filter((a) => a && a.toLowerCase() !== next.name.toLowerCase()))].slice(0, 8);
+    const names = [...new Set(aliases.split(/[,;\n]/).map((a) => a.trim()).filter((a) => a && a.toLowerCase() !== next.name.toLowerCase()))].slice(0, 40);
     if (names.length) next.aliases = names;
     if (product.lots?.length) {
       next.lots = product.lots;
@@ -92,7 +98,7 @@ export function ProductEditor({
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(expires)) next.expiresAt = expires;
     if (retailOn) next.retail = { unit: retailUnit.trim(), perUnit: n, price: Math.round(rp), ...(retailCode.trim() ? { barcode: cleanCode(retailCode) } : {}) };
     // Le stock n'est remplacé que si on l'a changé ici (une vente à la voix a pu le modifier entre-temps).
-    onSave(next, stock.trim() !== String(product.stock));
+    onSave(next, stock.trim() !== String(product.stock), { linkGroup: isPart && linkGroup });
   }
 
   return (
@@ -108,11 +114,35 @@ export function ProductEditor({
           <datalist id="pe-units">{(units ?? []).map((u) => <option key={u} value={u} />)}</datalist>
         </div>
       </div>
+      {isPart ? (
+      <div className="field">
+        <Label htmlFor="pe-model">Même pièce que… (téléphones qui prennent cette pièce)</Label>
+        {models.length > 0 && (
+          <div className="wizard-chips">
+            {models.map((m) => (
+              <button key={m} type="button" className="on" onClick={() => setAliases(models.filter((x) => x !== m).join(", "))}>{m} ✕</button>
+            ))}
+          </div>
+        )}
+        <div className="model-add">
+          <Input id="pe-model" className="h-11" value={model} onChange={(e) => setModel(e.target.value)} placeholder="ex. A70, Smart 7, X6516" onKeyDown={(e) => {
+            if (e.key === "Enter" && model.trim()) { e.preventDefault(); setAliases([...models, ...model.split(/[,;]/).map((x) => x.trim()).filter(Boolean)].join(", ")); setModel(""); }
+          }} />
+          <Button type="button" variant="outline" className="h-11 rounded-full px-4" disabled={!model.trim()} onClick={() => { setAliases([...models, ...model.split(/[,;]/).map((x) => x.trim()).filter(Boolean)].join(", ")); setModel(""); }}>Ajouter</Button>
+        </div>
+        <label className="check-row">
+          <input type="checkbox" checked={linkGroup} onChange={(e) => setLinkGroup(e.target.checked)} />
+          <span>Relier aussi les autres pièces de ces modèles (dans les deux sens)</span>
+        </label>
+        <p className="note">Un client arrive avec un de ces téléphones : Jokko propose cette pièce, même si son nom est différent.</p>
+      </div>
+      ) : (
       <div className="field">
         <Label htmlFor="pe-alias">Autres noms, en wolof ou surnoms (séparés par des virgules)</Label>
         <Input id="pe-alias" className="h-11" value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="ex. diwu oto, diwu moteur" />
         <p className="note">Comment tes clients et tes vendeurs appellent cet article : Jokko le reconnaîtra mieux à la voix, surtout en wolof.</p>
       </div>
+      )}
       <div className="field">
         <Label htmlFor="pe-expires">Date de péremption (si l'article périme)</Label>
         {product.lots?.length ? (

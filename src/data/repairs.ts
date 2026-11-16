@@ -61,11 +61,14 @@ export function clientFor(shop: Shop, name: string, phone: string): { clients: C
  */
 const payWord = (shop: Pick<Shop, "activity">) => (metierOf(shop.activity).id === "multiservice" ? "Service · Commande" : "Réparation");
 
-function paymentSale(r: Repair, amount: number, what: string, cost?: number, word = "Réparation") {
-  return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment: "especes" as const };
+/** Moyen de paiement d'un paiement de réparation (espèces = tiroir ; Wave / Orange Money = hors tiroir). */
+export type RepairPayment = "especes" | "wave" | "om";
+
+function paymentSale(r: Repair, amount: number, what: string, cost?: number, word = "Réparation", payment: RepairPayment = "especes") {
+  return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment };
 }
 
-export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; warrantyDays?: number; imei?: string };
+export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; advancePayment?: RepairPayment; warrantyDays?: number; imei?: string };
 
 /** IMEI gardé seulement s'il ressemble à un IMEI (8 à 17 chiffres, espaces enlevés). */
 export const cleanImei = (s?: string): string | undefined => {
@@ -95,7 +98,7 @@ export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: R
     ...(input.warrantyDays ? { warrantyDays: input.warrantyDays } : {}),
     ...(cleanImei(input.imei) ? { imei: cleanImei(input.imei) } : {}),
   };
-  const sales = advance > 0 ? [paymentSale(repair, advance, "avance", undefined, payWord(shop)), ...shop.sales] : shop.sales;
+  const sales = advance > 0 ? [paymentSale(repair, advance, "avance", undefined, payWord(shop), input.advancePayment), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, repairs: [repair, ...repairsOf(shop)] }, repair };
 }
 
@@ -142,18 +145,18 @@ export function markRepaired(shop: Shop, id: string, inputs: PartInput[]): Shop 
 }
 
 /** Paiement en cours de route (acompte). */
-export function payRepair(shop: Shop, id: string, amount: number): Shop | null {
+export function payRepair(shop: Shop, id: string, amount: number, payment: RepairPayment = "especes"): Shop | null {
   const repair = repairsOf(shop).find((r) => r.id === id);
   const pay = Math.round(amount);
   if (!repair || pay <= 0) return null;
-  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(repair, pay, "acompte", undefined, payWord(shop)), ...shop.sales] };
+  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(repair, pay, "acompte", undefined, payWord(shop), payment), ...shop.sales] };
 }
 
 /**
  * Rendu : le client récupère l'appareil. Il paie paidNow ; le reste, s'il y en a, va en dette (restToDebt)
  * ou est abandonné (geste commercial). Le prix d'achat des pièces est porté ici, pour le bénéfice.
  */
-export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDebt: boolean, raisePrice = false): Shop | null {
+export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDebt: boolean, raisePrice = false, payment: RepairPayment = "especes"): Shop | null {
   const repair = repairsOf(shop).find((r) => r.id === id);
   if (!repair || repair.status === "rendu" || repair.status === "annule") return null;
   // Déjà tout payé (16/11/2026 : R-005 payée 10 000 en avance puis encore 10 000 au rendu) : on n'encaisse pas deux fois.
@@ -162,7 +165,7 @@ export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDeb
   const pay = Math.max(0, Math.round(repair.price > 0 && !raisePrice ? Math.min(paidNow, left) : paidNow));
   const rest = Math.max(0, repair.price - repair.paid - pay);
   const cost = partsCost(repair);
-  const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop)), ...shop.sales] : shop.sales;
+  const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop), pay > 0 ? payment : "especes"), ...shop.sales] : shop.sales;
   let clients = shop.clients;
   if (rest > 0 && restToDebt && repair.clientId) {
     clients = clients.map((c) =>

@@ -124,3 +124,13 @@ describe("pièce prévue au dépôt (16/11/2026, R-005 / R-006)", () => {
     expect(repairProfit(r)).toBe(6300);
   });
 });
+
+describe("rendu payé par Wave (16/11/2026)", () => {
+  it("le paiement du rendu garde Wave : la caisse (tiroir) ne bouge pas", async () => {
+    const { expectedCash } = await import("@/model");
+    const { shop, repair } = addRepair({ ...atelier(), openingCash: 0, sales: [] }, { clientName: "Awa", device: "Itel", problem: "écran", price: 10000, advance: 4000, advancePayment: "especes" });
+    const after = deliverRepair(shop, repair.id, 6000, true, false, "wave")!;
+    expect(after.sales.map((s) => [s.amount, s.payment])).toEqual([[6000, "wave"], [4000, "especes"]]);
+    expect(expectedCash(after)).toBe(4000);
+  });
+});

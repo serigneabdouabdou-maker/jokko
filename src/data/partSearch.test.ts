@@ -49,3 +49,27 @@ describe("stock bas", () => {
     expect(isLow({ stock: 3, min: 2 })).toBe(false);
   });
 });
+
+describe("Même pièce que… (16/11/2026)", () => {
+  it("relie l'écran A70 au groupe BF6 / BF7 / KI5K dans les deux sens, sans qu'une pièce se liste elle-même", async () => {
+    const { linkSamePart } = await import("./partSearch");
+    const { kindOf } = await import("./pricing");
+    const P = (id: string, name: string, aliases?: string[]) => ({ id, name, unit: "pièce", stock: 0, min: 0, price: 0, aliases });
+    const products = [
+      P("a70", "Écran Itel A70", ["BF6", "BF7", "KI5K", "Smart 7"]),
+      P("bf6", "Écran Tecno BF6", ["BF7", "KI5K"]),
+      P("bf7", "Écran Tecno BF7"),
+      P("ki5k", "Écran Tecno KI5K", ["A60"]),
+      P("bat", "Batterie Tecno BF6"),
+      P("x", "Écran Samsung A12"),
+    ];
+    const out = linkSamePart(products, "a70", kindOf);
+    const by = (id: string) => out.find((p) => p.id === id)!.aliases ?? [];
+    expect(by("bf6")).toEqual(expect.arrayContaining(["A70", "BF7", "KI5K", "Smart 7"]));
+    expect(by("bf6")).not.toContain("BF6");
+    expect(by("bf7")).toEqual(expect.arrayContaining(["A70", "BF6", "KI5K"]));
+    expect(by("ki5k")).toEqual(expect.arrayContaining(["A60", "A70", "BF6"]));
+    expect(out.find((p) => p.id === "bat")!.aliases).toBeUndefined();
+    expect(out.find((p) => p.id === "x")!.aliases).toBeUndefined();
+  });
+});

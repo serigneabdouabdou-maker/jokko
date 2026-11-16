@@ -2416,3 +2416,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .offdrawer dt { font-weight: 650; }
 .offdrawer dd { margin: 0; text-align: right; font-weight: 700; }
 .offdrawer small { grid-column: 1 / -1; color: var(--j-ink-3); font-size: 13px; }
+.model-add { display: flex; gap: 8px; align-items: center; }
+.model-add > input { flex: 1; min-width: 0; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.35; cursor: pointer; }
+.check-row input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--j-ink); }
+.wizard, .wizard-body, .wizard-inline { min-width: 0; max-width: 100%; }
+.wizard-head { min-width: 0; }
+.wizard-head > * { min-width: 0; overflow-wrap: anywhere; }
+.wizard-head small { letter-spacing: 0.04em; }
+.list article .wizard b, .list article .wizard span, .list article .wizard small, .list article .wizard dd, .list article .wizard dt { white-space: normal; }

@@ -5,7 +5,7 @@ import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Dr
 import { CashSourcePicker, defaultCashSource } from "@/components/jokko/CashSourcePicker";
 import { Input } from "@/components/ui/input";
 import { type CashSource, type Product, type Repair, type Shop, money } from "@/model";
-import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
+import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
 import { productNamedIn, searchProducts } from "@/data/partSearch";
@@ -148,6 +148,7 @@ function FitParts({ shop, device, problem, chosen, onPick }: { shop: Shop; devic
   );
 }
 
+const PAY_LABEL: Record<RepairPayment, string> = { especes: "Espèces", wave: "Wave", om: "Orange Money" };
 const STEPS = ["Le client", "L'appareil", "La panne", "La pièce à poser", "Le prix", "L'avance", "Vérifie et enregistre"];
 const PANNES = ["Écran cassé", "Batterie", "Ne charge pas", "Ne s'allume pas", "Tombé dans l'eau", "Son / micro", "Caméra", "Décodage / logiciel", "Boutons"];
 
@@ -175,6 +176,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   // une question par écran ; la pièce est obligatoire (une pièce ou « Pas de pièce ») pour que le bénéfice soit juste.
   const [step, setStep] = useState(0);
   const [noPart, setNoPart] = useState(false);
+  const [advanceWith, setAdvanceWith] = useState<RepairPayment>("especes");
   const [filter, setFilter] = useState<"cours" | "rendu">("cours");
   const list = repairsOf(shop).filter((r) => (filter === "cours" ? r.status === "depot" || r.status === "repare" : r.status === "rendu"));
   const waiting = repairsOf(shop).filter((r) => r.status === "depot" || r.status === "repare");
@@ -214,7 +216,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     if (!form.clientName.trim() || !form.device.trim()) return;
     // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
     const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : form.problem;
-    const { shop: next } = addRepair(shop, { ...form, problem, price, advance: n(form.advance) });
+    const { shop: next } = addRepair(shop, { ...form, problem, price, advance: n(form.advance), advancePayment: advanceWith });
     commit(next);
     // Réseau Jokko : cet IMEI = cet appareil (8 premiers chiffres seulement), appris pour tous les ateliers.
     const tac = tacOf(form.imei);
@@ -398,6 +400,13 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
           {step === 5 && (
             <div className="wizard-body">
               <Input className="h-12 num" inputMode="numeric" autoFocus placeholder="Avance payée maintenant (F)" aria-label="Avance" value={form.advance} onChange={(e) => setForm({ ...form, advance: e.target.value })} />
+              {n(form.advance) > 0 && (
+                <div className="seg licence-paid-choices" role="radiogroup" aria-label="L'avance, il paie comment ?">
+                  {(["especes", "wave", "om"] as const).map((k) => (
+                    <button key={k} type="button" role="radio" aria-checked={advanceWith === k} className={advanceWith === k ? "on" : ""} onClick={() => setAdvanceWith(k)}>{PAY_LABEL[k]}</button>
+                  ))}
+                </div>
+              )}
               {price > 0 && (
                 <div className="wizard-chips">
                   {[0, Math.round(price / 2 / 500) * 500, price].filter((v, i, a) => a.indexOf(v) === i).map((v) => (
@@ -419,7 +428,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                 <div><dt>Pièce</dt><dd>{picked ? `${picked.name} · ${money(piece)}` : "Pas de pièce"}</dd></div>
                 <div><dt>Prix pour le client</dt><dd className="num">{price ? money(price) : "pas encore fixé"}</dd></div>
                 {price > 0 && <div><dt>Ta main-d'œuvre</dt><dd className="num" data-tone={price - piece < 0 ? "bad" : "good"}>{money(price - piece)}</dd></div>}
-                <div><dt>Avance</dt><dd className="num">{money(n(form.advance))}{price ? ` · reste ${money(Math.max(0, price - n(form.advance)))}` : ""}</dd></div>
+                <div><dt>Avance</dt><dd className="num">{money(n(form.advance))}{n(form.advance) ? ` · ${PAY_LABEL[advanceWith]}` : ""}{price ? ` · reste ${money(Math.max(0, price - n(form.advance)))}` : ""}</dd></div>
               </dl>
               {price > 0 && price - piece < 0 && <p className="note" data-tone="error">Attention : la pièce coûte plus que le prix. Tu perds {money(piece - price)}.</p>}
             </div>
@@ -477,6 +486,10 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
     if (!parts.includes(p.id)) setParts([...parts, p.id]);
   }
   const [fix, setFix] = useState<0 | 1 | 2>(0);
+  // Rendu / acompte pas à pas (16/11/2026) : combien, comment (espèces / Wave / Orange Money), puis récap.
+  const [give, setGive] = useState<"" | "rendu1" | "rendu2" | "acompte">("");
+  const [payWith, setPayWith] = useState<RepairPayment>("especes");
+  const [raise, setRaise] = useState(false);
   const chosen = parts.map((id) => shop.products.find((p) => p.id === id)).filter((p): p is Product => Boolean(p));
   const boughtTotal = bought.reduce((a, b) => a + b.cost, 0);
   const labor = r.price - boughtTotal - chosen.reduce((a, p) => a + (p.cost ?? 0), 0);
@@ -505,8 +518,8 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
       {open && (
         <div style={{ display: "grid", gap: 8, width: "100%", marginTop: 8 }}>
           {r.status !== "rendu" && (
-            <div style={{ display: "flex", gap: 8 }}>
-              <Input className="h-10" inputMode="numeric" placeholder="Prix (F)" aria-label="Prix de la réparation" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
+              <Input className="h-10 min-w-0 flex-1" inputMode="numeric" placeholder="Prix (F)" aria-label="Prix de la réparation" value={price} onChange={(e) => setPrice(e.target.value)} />
               <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => commit(setRepairPrice(shop, r.id, n(price)))}>Fixer le prix</Button>
             </div>
           )}
@@ -608,38 +621,108 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
               Pièces : {r.parts.map((p) => `${p.label} (${money(p.cost)})`).join(", ")} · total {money(partsCost(r))}
             </small>
           )}
-          {fix === 0 && <Breakdown r={r} />}
-          {r.status !== "rendu" && fix === 0 && (
-            <>
-              {r.price > 0 && rest === 0 ? (
-                <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Déjà tout payé ({money(r.paid)}) : rien à encaisser au rendu.</span></p>
-              ) : (
-                <Input className="h-10" inputMode="numeric" placeholder={rest ? `Payé maintenant (reste ${money(rest)})` : "Payé maintenant (F)"} aria-label="Payé maintenant" value={pay} onChange={(e) => setPay(e.target.value)} />
-              )}
-              {r.price > 0 && n(pay) > rest && rest > 0 && (
-                <p className="note" data-tone="error">Le client a déjà payé {money(r.paid)} : il ne reste que {money(rest)}. « Rendu » encaisse seulement {money(rest)}.</p>
-              )}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {!(r.price > 0 && rest === 0) && (
-                  <Button variant="outline" className="h-10 rounded-full px-3" disabled={!n(pay) || (r.price > 0 && n(pay) > rest)} onClick={() => { const next = payRepair(shop, r.id, n(pay)); if (next) { commit(next); setPay(""); } }}>
-                    Acompte
-                  </Button>
-                )}
-                <Button className="h-10 rounded-full px-3" onClick={() => { const next = deliverRepair(shop, r.id, r.price > 0 && rest === 0 ? 0 : n(pay), true); if (next) { commit(next); setPay(""); } }}>
-                  <Icon name="ok" size="sm" /> Rendu au client{rest - n(pay) > 0 ? " (reste en dette)" : ""}
+          {fix === 0 && give === "" && <Breakdown r={r} />}
+          {r.status !== "rendu" && fix === 0 && give === "" && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <Button className="h-11 rounded-full px-4" onClick={() => { setPay(rest ? String(rest) : ""); setPayWith("especes"); setGive("rendu1"); }}>
+                <Icon name="ok" size="sm" /> Rendu au client…
+              </Button>
+              {rest > 0 && (
+                <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => { setPay(""); setPayWith("especes"); setGive("acompte"); }}>
+                  Acompte…
                 </Button>
-                {r.price > 0 && n(pay) > rest && (
-                  <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => { const next = deliverRepair(shop, r.id, n(pay), true, true); if (next) { commit(next); setPay(""); } }}>
-                    Le prix passe à {money(r.paid + n(pay))}
-                  </Button>
+              )}
+              {notify && ready && (
+                <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => window.open(notify, "_blank", "noopener")}>
+                  <Icon name="whatsapp" size="sm" /> Prévenir : c'est prêt
+                </Button>
+              )}
+            </div>
+          )}
+          {r.status !== "rendu" && give !== "" && (
+            <div className="wizard wizard-inline" role="group" aria-label={give === "acompte" ? "Acompte" : "Rendu au client"}>
+              <div className="wizard-head">
+                <small>{give === "acompte" ? "Acompte" : `Rendu au client · étape ${give === "rendu1" ? 1 : 2} sur 2`}</small>
+                <b>{give === "rendu2" ? "Vérifie et confirme" : "Combien le client paie maintenant ?"}</b>
+                {give !== "acompte" && <span className="wizard-bar" aria-hidden="true"><i style={{ width: give === "rendu1" ? "50%" : "100%" }} /></span>}
+              </div>
+
+              {give !== "rendu2" && (
+                <div className="wizard-body">
+                  {r.price > 0 && rest === 0 && give === "rendu1" ? (
+                    <p className="wizard-picked"><Icon name="ok" size="sm" /><span><b>Déjà tout payé</b> ({money(r.paid)}) : rien à encaisser.</span></p>
+                  ) : (
+                    <>
+                      <Input className="h-12 num" inputMode="numeric" placeholder={rest ? `Reste ${money(rest)}` : "Montant (F)"} aria-label="Payé maintenant" value={pay} onChange={(e) => setPay(e.target.value)} />
+                      {rest > 0 && (
+                        <div className="wizard-chips">
+                          <button type="button" className={n(pay) === rest ? "on" : ""} onClick={() => setPay(String(rest))}>Tout le reste ({money(rest)})</button>
+                          {give === "rendu1" && <button type="button" className={pay === "" || n(pay) === 0 ? "on" : ""} onClick={() => setPay("")}>Rien maintenant (tout en dette)</button>}
+                        </div>
+                      )}
+                      {n(pay) > 0 && (
+                        <fieldset className="licence-paid">
+                          <legend>Il paie comment ?</legend>
+                          <div className="seg licence-paid-choices" role="radiogroup" aria-label="Il paie comment ?">
+                            {(["especes", "wave", "om"] as const).map((k) => (
+                              <button key={k} type="button" role="radio" aria-checked={payWith === k} className={payWith === k ? "on" : ""} onClick={() => setPayWith(k)}>{PAY_LABEL[k]}</button>
+                            ))}
+                          </div>
+                          <small className="note">{payWith === "especes" ? "L'argent entre dans le tiroir." : `Sur ton ${PAY_LABEL[payWith]} : le tiroir ne bouge pas.`}</small>
+                        </fieldset>
+                      )}
+                      {r.price > 0 && n(pay) > rest && (
+                        <p className="note" data-tone="error">Le client a déjà payé {money(r.paid)} : il ne reste que {money(rest)}.{give === "rendu1" ? " Touche « Suivant » pour encaisser seulement le reste, ou change le prix." : ""}</p>
+                      )}
+                      {r.price > 0 && n(pay) > rest && give === "rendu1" && (
+                        <label className="check-row">
+                          <input type="checkbox" checked={raise} onChange={(e) => setRaise(e.target.checked)} />
+                          <span>Le prix passe à {money(r.paid + n(pay))}</span>
+                        </label>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {give === "rendu2" && (() => {
+                const paid = r.price > 0 && !raise ? Math.min(n(pay), rest) : n(pay);
+                const price = raise ? r.paid + n(pay) : r.price;
+                const debt = Math.max(0, price - r.paid - paid);
+                return (
+                  <div className="wizard-body">
+                    <dl className="wizard-recap">
+                      <div><dt>Prix</dt><dd className="num">{price ? money(price) : "pas fixé"}</dd></div>
+                      <div><dt>Déjà payé</dt><dd className="num">{money(r.paid)}</dd></div>
+                      <div><dt>Payé maintenant</dt><dd className="num">{money(paid)}{paid ? ` · ${PAY_LABEL[payWith]}` : ""}</dd></div>
+                      {debt > 0 && <div><dt>Reste en dette ({r.clientName})</dt><dd className="num" data-tone="bad">{money(debt)}</dd></div>}
+                      {price > 0 && <div><dt>Main-d'œuvre gagnée</dt><dd className="num" data-tone={price - partsCost(r) < 0 ? "bad" : "good"}>{money(price - partsCost(r))}</dd></div>}
+                    </dl>
+                  </div>
+                );
+              })()}
+
+              <div className="wizard-nav">
+                <Button variant="outline" className="h-12 rounded-full px-5" onClick={() => (give === "rendu2" ? setGive("rendu1") : setGive(""))}>
+                  <Icon name="retour" size="sm" /> {give === "rendu2" ? "Retour" : "Annuler"}
+                </Button>
+                {give === "rendu1" && (
+                  <Button className="h-12 rounded-full px-6" onClick={() => setGive("rendu2")}>Suivant <Icon name="suivant" size="sm" /></Button>
                 )}
-                {notify && ready && (
-                  <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => window.open(notify, "_blank", "noopener")}>
-                    <Icon name="whatsapp" size="sm" /> Prévenir : c'est prêt
-                  </Button>
+                {give === "rendu2" && (
+                  <Button className="h-12 rounded-full px-6" onClick={() => {
+                    const next = deliverRepair(shop, r.id, r.price > 0 && rest === 0 && !raise ? 0 : n(pay), true, raise, payWith);
+                    if (next) { commit(next); setGive(""); setPay(""); setRaise(false); }
+                  }}><Icon name="ok" size="sm" /> OK, rendu</Button>
+                )}
+                {give === "acompte" && (
+                  <Button className="h-12 rounded-full px-6" disabled={!n(pay) || (r.price > 0 && n(pay) > rest)} onClick={() => {
+                    const next = payRepair(shop, r.id, n(pay), payWith);
+                    if (next) { commit(next); setGive(""); setPay(""); }
+                  }}><Icon name="ok" size="sm" /> OK, acompte</Button>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

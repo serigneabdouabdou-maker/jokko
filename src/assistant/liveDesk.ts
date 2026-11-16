@@ -17,6 +17,12 @@ import { productNamedIn, searchProducts } from "../data/partSearch";
 import { modelKeys } from "../data/modelKeys";
 import { metierOf } from "../data/metiers";
 
+/** « il a payé par Wave » / « par OM » dans la phrase : paiement de réparation hors tiroir ; sinon espèces. */
+function viaOf(heard: string): "especes" | "wave" | "om" {
+  const via = cashSourceSaid(heard);
+  return via === "wave" || via === "om" ? via : "especes";
+}
+
 export { expandHeard, pickByName, plain, sameName };
 
 const TYPES: DraftActionType[] = ["sale", "expense", "invoice", "stock_adjust", "debt_add", "debt_payment", "purchase"];
@@ -162,7 +168,7 @@ export class LiveDesk {
     if (action === "payer") {
       const amount = said(args.montantDit);
       if (!amount) return NOT_UNDERSTOOD;
-      const after = payRepair(shop, found.id, amount);
+      const after = payRepair(shop, found.id, amount, viaOf(heard));
       if (!after) return NOT_UNDERSTOOD;
       const r = repairsOf(after).find((x) => x.id === found.id)!;
       this.commit(shop, after, `Réparation ${r.number} · acompte ${fr(amount)}`, heard, { callId, amount });
@@ -174,7 +180,7 @@ export class LiveDesk {
       // Jamais deux fois le même argent : au-delà de ce qui reste, Jokko n'encaisse que le reste et le dit.
       const left = found.price > 0 ? remaining(found) : amount;
       const paid = Math.min(amount, left);
-      const after = deliverRepair(shop, found.id, paid, args.resteEnDette === true);
+      const after = deliverRepair(shop, found.id, paid, args.resteEnDette === true, false, viaOf(heard));
       if (!after) return { statut: "incomplet", besoin: "une réparation pas encore rendue" };
       const r = repairsOf(after).find((x) => x.id === found.id)!;
       const rest = Math.max(0, r.price - r.paid);

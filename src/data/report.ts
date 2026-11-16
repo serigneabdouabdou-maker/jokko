@@ -265,7 +265,7 @@ export function expenseBreakdown(shop: Shop, period: Period): Array<{ label: str
     groups.set(label, g);
   }
   const licences = licenceCharge(shop, period.from, period.to);
-  if (licences > 0) groups.set("Licences", { label: "Licences (part de la période)", amount: licences, count: (shop.licences ?? []).length });
+  if (licences > 0) groups.set("Licences", { label: "Part des licences (outils, comptée mois par mois)", amount: licences, count: (shop.licences ?? []).length });
   return [...groups.values()].sort((a, b) => b.amount - a.amount);
 }
 

@@ -71,9 +71,9 @@ import { Services } from "@/components/jokko/Services";
 import { ClientFiles } from "@/components/jokko/ClientFiles";
 import { ClientNudge } from "@/components/jokko/ClientNudge";
 import { type Segment, SEGMENTS } from "@/data/clientFiles";
-import { searchProducts } from "@/data/partSearch";
+import { linkSamePart, searchProducts } from "@/data/partSearch";
 import { addToOrder, orderPlan } from "@/data/reorder";
-import { applySuggestedPrices, laborStats, suggestedPrice } from "@/data/pricing";
+import { applySuggestedPrices, kindOf, laborStats, suggestedPrice } from "@/data/pricing";
 import { Commandes } from "@/components/jokko/Commandes";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
@@ -2083,8 +2083,10 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
                   commit({ ...shop, products: shop.products.filter((x) => x.id !== p.id) });
                   setEditing(null);
                 }}
-                onSave={(next, stockChanged) => {
-                  commit({ ...shop, products: shop.products.map((x) => (x.id === next.id ? { ...next, stock: stockChanged ? next.stock : x.stock } : x)) });
+                onSave={(next, stockChanged, opts) => {
+                  const products = shop.products.map((x) => (x.id === next.id ? { ...next, stock: stockChanged ? next.stock : x.stock } : x));
+                  // « Même pièce que… » : les autres pièces du groupe reçoivent aussi les modèles (dans les deux sens).
+                  commit({ ...shop, products: opts?.linkGroup ? linkSamePart(products, next.id, kindOf) : products });
                   setEditing(null);
                 }}
               />

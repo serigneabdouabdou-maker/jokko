@@ -31,7 +31,7 @@ describe("services sans pièce et licences (réparateurs)", () => {
     expect(r.expenses).toBe(0);
     expect(r.purchases).toBe(90000);
     expect(r.netProfit).toBe(20000 - 7500);
-    expect(expenseBreakdown(s, periodOf("mois", now))[0]).toMatchObject({ label: "Licences (part de la période)", amount: 7500 });
+    expect(expenseBreakdown(s, periodOf("mois", now))[0]).toMatchObject({ label: "Part des licences (outils, comptée mois par mois)", amount: 7500 });
     // Sur toute la durée, la licence compte exactement son prix.
     expect(licenceCharge(s, new Date("2026-01-01"), new Date("2028-01-01"))).toBe(90000);
     expect(monthlyReport(s, 2026, now).total.licences).toBe(7500);

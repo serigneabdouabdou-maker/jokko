@@ -102,3 +102,40 @@ export function partForSale(products: Product[], label: string, kindOf: (s: stri
   if (plainOnes.length === 1 && pool.every((p) => p === plainOnes[0] || squash(p.name.replace(/\(.*?\)/g, "")) === squash(plainOnes[0]!.name))) return { product: plainOnes[0]! };
   return { choices: pool.slice(0, 4) };
 }
+
+/** « Écran Tecno BF6 » → « BF6 » : le modèle seul, pour l'écrire dans les téléphones compatibles d'une autre pièce. */
+export function partModelLabel(name: string): string {
+  return name
+    .replace(/^(écran|ecran|lcd|vitre|batterie|connecteur( de charge)?|nappe|plaquette|dos|châssis|chassis|bouton|caméra|camera|empreinte|haut-parleur|micro)\s+/i, "")
+    .replace(/^(tecno|itel|infinix|samsung|apple|iphone|xiaomi|redmi|oppo|vivo|huawei|nokia|realme|motorola|zte|alcatel|lava|wiko|tcl|honor)\s+/i, (m) => (/^iphone/i.test(m) ? m : ""))
+    .trim() || name;
+}
+
+/**
+ * « Même pièce que… » (16/11/2026, demande de Fallou) : les modèles compatibles d'une pièce sont reportés sur toutes
+ * les pièces du même type de la boutique qui portent un de ces modèles, dans les deux sens (l'écran A70 va sur BF6
+ * ⇒ l'écran BF6 va aussi sur A70). Une pièce ne se liste jamais elle-même.
+ */
+export function linkSamePart(products: Product[], id: string, kindOf: (label: string) => string): Product[] {
+  const base = products.find((p) => p.id === id);
+  if (!base) return products;
+  const kind = kindOf(base.name);
+  const labels = [partModelLabel(base.name), ...(base.aliases ?? [])].map((x) => x.trim()).filter(Boolean);
+  const keyOf = (label: string) => modelKeys(label).join("|") || label.toLowerCase().replace(/\s+/g, "");
+  const groupKeys = new Set(labels.flatMap((l) => modelKeys(l)));
+  if (!groupKeys.size) return products;
+  return products.map((q) => {
+    if (kindOf(q.name) !== kind) return q;
+    const own = modelKeys(q.name);
+    if (!own.some((k) => groupKeys.has(k))) return q;
+    const ownKey = own.join("|");
+    const seen = new Set<string>();
+    const merged = [...(q.aliases ?? []), ...labels].filter((l) => {
+      const k = keyOf(l);
+      if (!l.trim() || k === ownKey || own.includes(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    return merged.length === (q.aliases ?? []).length && merged.every((x, i) => x === q.aliases?.[i]) ? q : { ...q, aliases: merged };
+  });
+}
