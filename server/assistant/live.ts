@@ -70,6 +70,7 @@ Enregistrer (vente, dépense, achat de marchandise, réapprovisionnement, dette,
    Pour une vente avec article et quantité sans montant (« jaay naa ñaari bidon diw »), enregistre aussi tout de suite : l'outil calcule le prix.
 2. Quand l'outil répond statut "enregistre", dis-le en quelques mots dans sa langue, avec le montant. En wolof, dis EXACTEMENT montant_en_wolof renvoyé par l'outil (« Bind naa ko : ñaari bidon diw, ñetti junni. ») ; en français, dis montant_francs (« C'est noté : 2 bidons d'huile, 15 000 F. »). Signale si stock_bas n'est pas vide.
 3. Si l'outil répond "incomplet", ou s'il manque l'article, la quantité, le montant ou le client, pose une seule question courte (« Ñaata ? », « Ban produit ? », « Combien ? ») puis enregistre quand tu as la réponse.
+3 bis. ARGENT QUI SORT : pour une dépense ou un achat de 20 000 F ou plus, si l'outil répond « paye_avec », demande d'où vient l'argent (tiroir, Wave, Orange Money ou autre), puis rappelle enregistrer avec payeAvec. S'il l'a déjà dit dans sa phrase (« payé par Wave », « avec l'argent de la caisse »), mets-le directement dans payeAvec.
 4. Si le commerçant dit que ce que tu viens d'enregistrer est faux ou veut l'annuler (déedéet, du dëgg, baal ma, dindi ko, annule, non c'est pas ça, efface), appelle annuler_derniere, dis que c'est annulé, puis enregistre la bonne version s'il l'a donnée. Un « non » ou « déedéet » qui répond à une question que tu viens de poser n'est PAS une annulation.
 5. PLUSIEURS ARTICLES dans une même vente, un même achat ou une même facture (« deux savons, deux sacs de riz, deux bidons d'huile et de l'eau ») : n'utilise PAS enregistrer, utilise l'outil panier.
    a. Appelle panier « ajouter » avec TOUS les articles entendus, du premier au dernier, dans le MÊME appel (article, quantite, unite), même s'il y en a 10, 15 ou plus. N'en oublie aucun et ne t'arrête pas après deux ou trois. Si le commerçant cite le même article plusieurs fois (« 2 sacs, puis 3 sacs, puis 7 sacs »), mets une entrée à chaque fois : le code additionne (2 + 3 + 7 = 12 sacs). Le code calcule chaque ligne et le total.
@@ -181,6 +182,7 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 delaiJours: { type: Type.NUMBER, description: "Pour une dette : dans combien de jours le client doit payer, s'il l'a dit (sinon vide : 30 jours)." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, écrite comme il l'a dite." },
                 horsMetierConfirme: { type: Type.BOOLEAN, description: "true seulement si l'outil a répondu hors_metier et que le commerçant vient de confirmer que cet article est bien pour sa boutique." },
+                payeAvec: { type: Type.STRING, enum: ["tiroir", "wave", "om", "autre"], description: "Dépense ou achat : d'où vient l'argent, s'il l'a dit (tiroir = espèces de la caisse ; wave ; om = Orange Money ; autre = agent, banque, sa poche). Obligatoire quand l'outil a répondu paye_avec." },
               },
               required: ["type", "heard"],
             },
@@ -254,6 +256,7 @@ function fullLiveConfig(context: ShopContext, voice: string, speed: LiveSpeed): 
                 avanceDit: { type: Type.STRING, description: "deposer : l'avance payée, mots exacts, s'il y en a." },
                 montantDit: { type: Type.STRING, description: "payer ou rendre : ce que le client paie maintenant, mots exacts." },
                 pieces: { type: Type.ARRAY, items: { type: Type.STRING }, description: "reparee : les pièces posées, comme dites (« écran iPhone 11 », « connecteur »). Pièce achetée exprès : ajoute son prix d'achat dit (« écran iPhone 11 à 5 000 »)." },
+                payeAvec: { type: Type.STRING, enum: ["tiroir", "wave", "om", "autre"], description: "reparee : comment la pièce achetée exprès a été payée, s'il l'a dit (tiroir = espèces de la caisse). Obligatoire quand l'outil a répondu paye_avec." },
                 resteEnDette: { type: Type.BOOLEAN, description: "rendre : vrai si le reste non payé va en dette du client." },
                 garantieJours: { type: Type.NUMBER, description: "deposer ou rendre : garantie en jours si le réparateur la donne." },
                 heard: { type: Type.STRING, description: "La phrase du commerçant, mot pour mot." },

@@ -1,6 +1,6 @@
 import { api } from "../data/supabase";
 import type { OrderGuess } from "./order";
-import { type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
+import { type CashSource, type Lang, type Shop, dayExpenses, daySales, expectedCash } from "../model";
 import { expiringSoon } from "../data/metiers";
 import { searchProducts } from "../data/partSearch";
 import { modelKeys } from "../data/modelKeys";
@@ -26,6 +26,8 @@ export type DraftAction = {
   unitPrice?: number | null;
   /** Dette : « ajout » = elle prend encore (on additionne) ; « total » = ce qu'elle doit en tout (on remplace). */
   debtMode?: "ajout" | "total" | null;
+  /** Dépense ou achat : d'où vient l'argent (tiroir, Wave, Orange Money, autre). Vide = tiroir, sauf grosse somme (Jokko demande). */
+  paidWith?: CashSource | null;
 };
 
 export type Interpretation = {

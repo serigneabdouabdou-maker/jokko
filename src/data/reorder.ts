@@ -5,7 +5,7 @@
  *   et qui vont manquer, pièces des appareils au dépôt qui ne sont pas en stock.
  * Le message de commande est prêt pour WhatsApp ; « Reçu » ajoute au stock.
  */
-import { type Expense, isLow, type OrderLine, type Product, type Shop, uid } from "../model.ts";
+import { type CashSource, type Expense, isLow, type OrderLine, type Product, type Shop, uid } from "../model.ts";
 import { productNamedIn, squash } from "./partSearch.ts";
 
 const DAY = 86_400_000;
@@ -120,7 +120,14 @@ export const shareOnWhatsapp = (text: string) => `https://wa.me/?text=${encodeUR
  * Commande reçue : chaque pièce entre dans le stock (une pièce cherchée qui n'existait pas devient un article).
  * Payée avec l'argent de la caisse : une sortie « achat » par ligne (la caisse reste juste ; ce n'est pas une dépense du bénéfice).
  */
-export function receiveOrder(shop: Shop, lines: Array<Pick<Advice, "productId" | "name" | "qty">>, opts: { fromCash: boolean } = { fromCash: false }, now = new Date()): { shop: Shop; count: number } {
+export function receiveOrder(
+  shop: Shop,
+  lines: Array<Pick<Advice, "productId" | "name" | "qty">>,
+  opts: { fromCash?: boolean; paidWith?: CashSource } = {},
+  now = new Date(),
+): { shop: Shop; count: number } {
+  // Chaque achat garde d'où vient l'argent ; seul « tiroir » baisse la caisse. Sans réponse : rien n'est noté (ancien comportement).
+  const paidWith: CashSource | undefined = opts.paidWith ?? (opts.fromCash ? "tiroir" : undefined);
   if (!lines.length) return { shop, count: 0 };
   let products = [...shop.products];
   const expenses: Expense[] = [];
@@ -134,7 +141,7 @@ export function receiveOrder(shop: Shop, lines: Array<Pick<Advice, "productId" |
       p = { id: uid("p"), name: l.name.charAt(0).toUpperCase() + l.name.slice(1), unit: "pièce", stock: l.qty, min: 0, price: 0 };
       products = [...products, p];
     }
-    if (opts.fromCash && p.cost) expenses.push({ id: uid("e"), at: now.toISOString(), label: `Achat ${l.qty} ${p.name}`, amount: p.cost * l.qty, kind: "achat", productId: p.id, qty: l.qty });
+    if (paidWith && p.cost) expenses.push({ id: uid("e"), at: now.toISOString(), label: `Achat ${l.qty} ${p.name}`, amount: p.cost * l.qty, kind: "achat", productId: p.id, qty: l.qty, paidWith });
   }
   // Les lignes reçues quittent la commande ; les conseils écartés restent écartés.
   const toOrder = (shop.toOrder ?? []).filter((l) => l.qty <= 0);

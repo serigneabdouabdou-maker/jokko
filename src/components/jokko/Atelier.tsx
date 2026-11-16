@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
+import { CashSourcePicker, defaultCashSource } from "@/components/jokko/CashSourcePicker";
 import { Input } from "@/components/ui/input";
-import { type Product, type Repair, type Shop, money } from "@/model";
+import { type CashSource, type Product, type Repair, type Shop, money } from "@/model";
 import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
@@ -354,7 +355,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   const [bought, setBought] = useState<Array<{ label: string; cost: number }>>([]);
   const [buyName, setBuyName] = useState("");
   const [buyCost, setBuyCost] = useState("");
-  const [fromCash, setFromCash] = useState(true);
+  const [source, setSource] = useState<CashSource | "">("");
   const [pay, setPay] = useState("");
   const [price, setPrice] = useState(r.price ? String(r.price) : "");
   // La pièce choisie au dépôt (écrite dans la panne) est déjà cherchée.
@@ -449,10 +450,7 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                       </li>
                     ))}
                   </ul>
-                  <label className="row">
-                    <input type="checkbox" checked={fromCash} onChange={(e) => setFromCash(e.target.checked)} />
-                    <span>Payée avec l'argent de la caisse (la caisse baisse de {money(bought.reduce((a, b) => a + b.cost, 0))})</span>
-                  </label>
+                  <CashSourcePicker title="La pièce, tu l'as payée comment ?" amount={bought.reduce((a, b) => a + b.cost, 0)} value={source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0))} onChange={setSource} />
                 </>
               )}
               {r.price > 0 && (parts.length > 0 || bought.length > 0) && (
@@ -463,8 +461,10 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
               )}
               <Button
                 className="h-10 rounded-full"
+                disabled={bought.length > 0 && !(source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)))}
                 onClick={() => {
-                  const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, fromCash }))];
+                  const paidWith = source || defaultCashSource(bought.reduce((a, b) => a + b.cost, 0)) || undefined;
+                  const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
                   const next = markRepaired(shop, r.id, inputs);
                   if (next) commit(next);
                 }}

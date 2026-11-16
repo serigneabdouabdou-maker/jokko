@@ -130,7 +130,7 @@ describe("achat de marchandise", () => {
     const { d, shop: current } = desk();
     const result = d.handle({
       name: "enregistrer",
-      args: { type: "purchase", productName: "sucre", quantity: 2, unite: "sac", montantDit: "20 000", heard: "j'ai acheté 2 sacs de sucre, chaque sac coûte 20 000 francs" },
+      args: { type: "purchase", productName: "sucre", quantity: 2, unite: "sac", montantDit: "20 000", payeAvec: "tiroir", heard: "j'ai acheté 2 sacs de sucre, chaque sac coûte 20 000 francs" },
     });
     expect(result).toMatchObject({ statut: "enregistre", montant_francs: 40_000 });
     expect(current().products[0]).toMatchObject({ stock: 5, cost: 20_000 });
@@ -159,5 +159,17 @@ describe("ventes, dépenses, dettes et factures au prix de l'unité", () => {
   it("facture : 1 200 sacs à 19 500 = 23 400 000", () => {
     const s = applyDraft(shop(), { ...blank, type: "invoice", clientId: "c-moussa", productId: "p-sucre", quantity: 1200, unitPrice: 19_500 })!.shop;
     expect(s.invoices[0]).toMatchObject({ amount: 23_400_000, lines: [{ qty: 1200, unitPrice: 19_500 }] });
+  });
+});
+
+describe("achat de 20 000 F ou plus à la voix (16/11/2026)", () => {
+  it("sans dire d'où vient l'argent : Jokko demande, puis enregistre avec la réponse", () => {
+    let s = shop();
+    const d = new LiveDesk({ getShop: () => s, lang: () => "fr", write: (n) => { s = n; }, onSaved: () => {}, onUndone: () => {} });
+    const ask = d.handle({ name: "enregistrer", args: { type: "purchase", productName: "sucre", quantity: 2, unite: "sac", montantDit: "20 000", heard: "j'ai acheté 2 sacs de sucre, chaque sac coûte 20 000 francs" } });
+    expect(ask).toMatchObject({ statut: "paye_avec", montant: 40000 });
+    const done = d.handle({ name: "enregistrer", args: { type: "purchase", productName: "sucre", quantity: 2, unite: "sac", montantDit: "20 000", payeAvec: "wave", heard: "j'ai acheté 2 sacs de sucre, chaque sac coûte 20 000 francs" } });
+    expect(done).toMatchObject({ statut: "enregistre" });
+    expect(s.expenses[0]).toMatchObject({ amount: 40000, paidWith: "wave" });
   });
 });

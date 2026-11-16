@@ -1,4 +1,4 @@
-import { type Payment, PAYMENT_LABELS, type Sale, type Shop } from "../model.ts";
+import { fromDrawer, type Payment, PAYMENT_LABELS, type Sale, type Shop } from "../model.ts";
 import { type VoidDay, voidsOfDay } from "./voids.ts";
 import { getPaper, type Paper, paperCols } from "./printer.ts";
 
@@ -106,7 +106,8 @@ export function zReport(shop: Pick<Shop, "sales" | "expenses" | "voids" | "repay
     day, tickets: nums.length, first: nums[0] ?? null, last: nums[nums.length - 1] ?? null, missing,
     total: sales.reduce((a, s) => a + s.amount, 0), byPayment,
     untracked: sales.filter((s) => !s.ticket).reduce((a, s) => a + s.amount, 0),
-    expenses: shop.expenses.filter((e) => localDay(new Date(e.at)) === day).reduce((a, e) => a + e.amount, 0),
+    // Sorties du tiroir seulement : une perte ou une dépense payée par Wave / ailleurs ne baisse pas les espèces.
+    expenses: shop.expenses.filter((e) => localDay(new Date(e.at)) === day && fromDrawer(e)).reduce((a, e) => a + e.amount, 0),
     repaid: repaidOn(shop, day),
     voids: voidsOfDay(shop, now),
   };

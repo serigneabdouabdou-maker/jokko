@@ -111,8 +111,25 @@ export type ServiceUnit = "fois" | "page" | "piece" | "m2" | "metre";
 export type ServiceItem = { id: string; name: string; price: number; licenceId?: string; unit?: ServiceUnit; matter?: { productId: string; per: number } };
 
 /** Licence d'un outil (décodage…) payée d'un coup, utilisée des mois : son coût est réparti sur sa durée dans les bénéfices. */
-/** Comment la licence a été payée : seul « tiroir » sort de l'argent de la caisse ; les autres servent de justificatif. */
-export type LicencePaidWith = "tiroir" | "wave" | "om" | "autre";
+/**
+ * D'où vient l'argent d'une sortie (16/11/2026, règle de Fallou) : seul « tiroir » baisse la caisse attendue ;
+ * Wave, Orange Money ou « autre » (agent, banque, poche) sont gardés comme justificatif. Vide = tiroir (anciennes lignes).
+ */
+export type CashSource = "tiroir" | "wave" | "om" | "autre";
+export const CASH_SOURCES: CashSource[] = ["tiroir", "wave", "om", "autre"];
+export const CASH_SOURCE_LABELS: Record<CashSource, string> = { tiroir: "Espèces du tiroir", wave: "Wave", om: "Orange Money", autre: "Autre (agent, banque, poche…)" };
+/** À partir de ce montant, Jokko demande toujours d'où vient l'argent, avant d'enregistrer. */
+export const BIG_CASH_OUT = 20_000;
+/** « payé par Wave », « avec l'argent du tiroir », « par OM »… dans la phrase dite ou écrite. */
+export function cashSourceSaid(text: string | undefined | null): CashSource | undefined {
+  const t = ` ${(text ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")} `;
+  if (/\bwave\b/.test(t)) return "wave";
+  if (/orange\s*money|\bom\b/.test(t)) return "om";
+  if (/tiroir|\bcaisse\b|especes|\bcash\b|xaalis\s+bu\s+ci\s+caisse/.test(t)) return "tiroir";
+  if (/\bagent\b|\bbanque\b|\bvirement\b|\bpoche\b|autre\s+argent|mon\s+argent|deja\s+paye/.test(t)) return "autre";
+  return undefined;
+}
+export type LicencePaidWith = CashSource;
 export const LICENCE_PAID_LABELS: Record<LicencePaidWith, string> = {
   tiroir: "Espèces du tiroir",
   wave: "Wave",
@@ -136,6 +153,8 @@ export type Expense = {
   id: string; at: string; label: string; amount: number; kind?: "depense" | "perte" | "achat";
   /** Achat ou perte d'un article : lequel, et combien d'unités de gros (pour remettre le stock juste si on supprime). */
   productId?: string; qty?: number;
+  /** D'où vient l'argent (vide = tiroir). Une perte ne sort jamais d'argent. */
+  paidWith?: CashSource;
 };
 
 export type InvoiceLine = { label: string; qty: number; unit: string; unitPrice: number; productId?: string };
@@ -422,8 +441,12 @@ export function daySales(shop: Shop): number {
 }
 
 /** Dépenses payées aujourd'hui (les pertes de stock ne sortent pas de la caisse : elles sont exclues). */
+/** Argent vraiment sorti du tiroir : pas une perte, et payé avec les espèces de la caisse. */
+export const fromDrawer = (e: Pick<Expense, "kind" | "paidWith">) => e.kind !== "perte" && (e.paidWith ?? "tiroir") === "tiroir";
+
+/** Sorties du tiroir aujourd'hui (dépenses et achats payés en espèces de la caisse). */
 export function dayExpenses(shop: Shop): number {
-  return shop.expenses.filter((s) => isToday(s.at) && s.kind !== "perte").reduce((a, s) => a + s.amount, 0);
+  return shop.expenses.filter((s) => isToday(s.at) && fromDrawer(s)).reduce((a, s) => a + s.amount, 0);
 }
 
 /** Ventes du jour payées en espèces (Wave, Orange Money et crédit n'entrent pas dans le tiroir). */

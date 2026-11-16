@@ -49,7 +49,7 @@ const toRow = {
     cost: opt(s.cost), retail: s.retail ?? false, unit: opt(s.unit), payment: s.payment ?? "especes", ticket: opt(s.ticket),
     licence_id: opt(s.licenceId),
   }),
-  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense", product_id: opt(e.productId), qty: opt(e.qty) }),
+  expenses: (e: Expense, shopId: string): Row => ({ id: e.id, shop_id: shopId, at: e.at, label: e.label, amount: e.amount, kind: e.kind ?? "depense", product_id: opt(e.productId), qty: opt(e.qty), paid_with: opt(e.paidWith) }),
   invoices: (i: Invoice, shopId: string): Row => ({
     id: i.id, shop_id: shopId, number: i.number, at: i.at, client_id: i.clientId, amount: i.amount, status: i.status,
     lines: i.lines ?? [], due_at: opt(i.dueAt), pdf_path: opt(i.pdfPath),
@@ -492,6 +492,7 @@ export function rowsToShop(rows: ShopRows): Shop {
         if (r.kind === "perte" || r.kind === "achat") expense.kind = r.kind;
         if (r.product_id) expense.productId = str(r.product_id);
         if (num(r.qty) > 0) expense.qty = num(r.qty);
+        if (r.paid_with === "tiroir" || r.paid_with === "wave" || r.paid_with === "om" || r.paid_with === "autre") expense.paidWith = r.paid_with;
         return expense;
       }),
     ),

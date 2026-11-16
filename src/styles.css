@@ -2379,3 +2379,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .licence-paid legend { font-weight: 650; font-size: 14px; margin-bottom: 6px; }
 .licence-paid-choices { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible !important; }
 .licence-paid-choices button { white-space: normal !important; min-height: 44px; line-height: 1.2; text-align: center; }
+.batch-source { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.batch-source small { flex-basis: 100%; }
+.batch-source button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--j-line); background: var(--j-card); font: inherit; font-size: 13px; font-weight: 600; color: var(--j-ink); cursor: pointer; }
+.batch-source button.on { background: var(--j-ink); color: var(--j-white); border-color: var(--j-ink); }

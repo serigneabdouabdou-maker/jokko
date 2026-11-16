@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Product, type Shop, type Supplier, money, uid } from "@/model";
+import { CASH_SOURCE_LABELS, type CashSource, type Product, type Shop, type Supplier, money, uid } from "@/model";
+import { CashSourcePicker, defaultCashSource } from "./CashSourcePicker";
 import { searchProducts } from "@/data/partSearch";
 import { addToOrder, changeLine, orderMessage, orderPlan, receiveOrder, shareOnWhatsapp } from "@/data/reorder";
 import { whatsappLink } from "@/data/debts";
@@ -221,7 +222,7 @@ export function Commandes({ shop, commit }: { shop: Shop; commit: (s: Shop) => v
   const plan = orderPlan(shop);
   const suppliers = shop.suppliers ?? [];
   const [open, setOpen] = useState(plan.ready.length > 0);
-  const [fromCash, setFromCash] = useState(false);
+  const [source, setSource] = useState<CashSource | "">("");
   const [note, setNote] = useState("");
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "" });
@@ -287,17 +288,17 @@ export function Commandes({ shop, commit }: { shop: Shop; commit: (s: Shop) => v
                 <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => { void navigator.clipboard?.writeText(text); setNote("✓ Commande copiée."); }}>Copier</Button>
               </div>
               <div className="order-receive">
-                <label className="row">
-                  <input type="checkbox" checked={fromCash} onChange={(e) => setFromCash(e.target.checked)} />
-                  <span>Payée avec l'argent de la caisse</span>
-                </label>
+                <CashSourcePicker title="La commande, tu l'as payée comment ?" amount={plan.total} value={source || defaultCashSource(plan.total)} onChange={setSource} />
                 <Button
                   variant="outline"
                   className="h-11 rounded-full px-4"
+                  disabled={!(source || defaultCashSource(plan.total))}
                   onClick={() => {
-                    const done = receiveOrder(shop, plan.ready, { fromCash });
+                    const paidWith = (source || defaultCashSource(plan.total)) as CashSource;
+                    const done = receiveOrder(shop, plan.ready, { paidWith });
                     commit(done.shop);
-                    setNote(`✓ Commande reçue : ${done.count} pièce${done.count > 1 ? "s" : ""} ajoutée${done.count > 1 ? "s" : ""} au stock.${fromCash ? " La caisse a baissé du prix de gros." : ""}`);
+                    setSource("");
+                    setNote(`✓ Commande reçue : ${done.count} pièce${done.count > 1 ? "s" : ""} ajoutée${done.count > 1 ? "s" : ""} au stock.${paidWith === "tiroir" ? " La caisse a baissé du prix de gros." : ` Payée par ${CASH_SOURCE_LABELS[paidWith]} : la caisse ne bouge pas.`}`);
                   }}
                 >
                   <Icon name="ok" size="sm" /> Commande reçue : tout mettre en stock

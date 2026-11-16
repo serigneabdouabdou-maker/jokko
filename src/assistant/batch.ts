@@ -3,7 +3,7 @@
  * Gemini sépare les opérations ; le patron voit la liste, décoche ce qui est déjà enregistré, puis « Tout enregistrer ».
  * Les totaux, récapitulatifs et consignes ne deviennent jamais des opérations.
  */
-import { type Shop, money, todayStamp } from "../model.ts";
+import { BIG_CASH_OUT, type Shop, cashSourceSaid, money, todayStamp } from "../model.ts";
 import type { DraftAction } from "./client.ts";
 import { moneyAmountsSaid } from "./wolofNumbers.ts";
 import { partForSale } from "../data/partSearch.ts";
@@ -74,6 +74,11 @@ export function settleItems(
   products: Shop["products"] = [],
 ): Omit<BatchItem, "keep" | "duplicate">[] {
   return operations.map(({ line, action }) => {
+    if (action.type === "expense" || action.type === "purchase") {
+      // « payé par Wave », « avec le tiroir » écrit sur la ligne : gardé ; sinon le patron choisit sur la carte si la somme est grosse.
+      const said = action.paidWith ?? cashSourceSaid(line);
+      return { line, action: said ? { ...action, paidWith: said } : action };
+    }
     if (action.type !== "sale") return { line, action };
     const { sale, cost } = lineAmounts(line);
     let next: DraftAction = sale ? { ...action, amount: sale, unitPrice: null } : action;
@@ -176,3 +181,12 @@ export function batchTotals(items: BatchItem[]): { sales: number; cost: number; 
   }
   return { sales, cost, profit, known, unknown };
 }
+
+/** Montant d'une sortie d'argent (dépense, achat) : dit, sinon quantité × prix. */
+export function outflowAmount(action: DraftAction): number {
+  if (action.type !== "expense" && action.type !== "purchase") return 0;
+  return action.amount ?? (action.unitPrice && action.quantity ? action.unitPrice * Math.abs(action.quantity) : 0);
+}
+
+/** Grosse sortie d'argent cochée dont on ne sait pas encore si elle sort du tiroir : la carte demande avant d'enregistrer. */
+export const needsSource = (item: Pick<BatchItem, "keep" | "action">) => item.keep && !item.action.paidWith && outflowAmount(item.action) >= BIG_CASH_OUT;

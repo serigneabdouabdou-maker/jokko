@@ -1,4 +1,4 @@
-import { type Lang, type Role, type Shop, lowStock, uid } from "../model";
+import { BIG_CASH_OUT, type CashSource, type Lang, type Role, type Shop, cashSourceSaid, lowStock, uid } from "../model";
 import { overdueDebts } from "../data/debts";
 import { buildReport, periodOf } from "../data/report";
 import { applyDraft, roundQty, unitKind } from "./apply";
@@ -124,10 +124,20 @@ export class LiveDesk {
         const cost = m ? said(m[2]) : null;
         return cost && m![1].trim() ? { name: m![1].trim(), cost } : { name: n, cost: null };
       });
+      // Pièces achetées exprès : d'où vient l'argent ? Petite somme = tiroir ; à partir de 20 000 F, Jokko demande.
+      const boughtTotal = priced.filter((p) => p.cost && !pickByName(shop.products, p.name).item).reduce((a, p) => a + (p.cost ?? 0), 0);
+      const paidWith: CashSource | undefined =
+        (["tiroir", "wave", "om", "autre"] as const).find((k) => k === args.payeAvec) ?? cashSourceSaid(heard) ?? (boughtTotal < BIG_CASH_OUT ? "tiroir" : undefined);
+      if (boughtTotal > 0 && !paidWith) {
+        return {
+          statut: "paye_avec", montant: boughtTotal, montant_wolof: francsToWolof(boughtTotal),
+          consigne: `Rien n'est enregistré. Demande en une phrase courte, dans la langue du commerçant (en wolof, dis le montant exactement comme montant_wolof) : « La pièce à ${boughtTotal} F, tu l'as payée avec l'argent du tiroir, ou par Wave, Orange Money ou autrement ? ». Puis rappelle reparee avec les mêmes pièces et payeAvec « tiroir », « wave », « om » ou « autre ».`,
+        };
+      }
       const parts: PartInput[] = priced.map(({ name, cost }) => {
         const hit = pickByName(shop.products, name);
         if (hit.item) return { productId: hit.item.id };
-        return cost ? { label: name, cost, fromCash: true } : { label: name, cost: 0 };
+        return cost ? { label: name, cost, paidWith } : { label: name, cost: 0 };
       });
       const missingPieces = priced.filter((p) => !p.cost && !pickByName(shop.products, p.name).item).map((p) => p.name);
       const after = markRepaired(shop, found.id, parts);
@@ -255,7 +265,8 @@ export class LiveDesk {
     return { statut: "outil_inconnu" };
   }
 
-  record(action: DraftAction & { cost?: number }, heard = "", callId?: string, learn?: Learned | null): Recorded {
+  record(input: DraftAction & { cost?: number }, heard = "", callId?: string, learn?: Learned | null): Recorded {
+    let action = input;
     const key = JSON.stringify([action, heard.trim().toLowerCase()]);
     const last = this.history[0];
     if (last?.key === key && Date.now() - last.at < DUPLICATE_MS && last.after.id === this.deps.getShop().id) {
@@ -284,8 +295,23 @@ export class LiveDesk {
       if (sv.kind === "need") return { ok: false, besoin: sv.besoin };
       if (sv.kind === "sale") return { ok: true, entry: this.commit(before, sv.shop, sv.summary, heard, { key, amount: sv.amount }) };
     }
+    // Sortie d'argent : d'où vient-il ? (dit dans la phrase : « par Wave », « avec le tiroir »…)
+    const outflow = action.type === "expense" || action.type === "purchase";
+    if (outflow && !action.paidWith) {
+      const said = cashSourceSaid(`${heard} ${action.label ?? ""}`);
+      if (said) action = { ...action, paidWith: said };
+    }
     const applied = applyDraft(before, action);
     if (!applied) return { ok: false, besoin: missing(action) };
+    // Grosse sortie (≥ 20 000 F) : jamais enregistrée sans savoir si l'argent sort du tiroir (16/11/2026, règle de Fallou).
+    if (outflow && !action.paidWith && (applied.amount ?? 0) >= BIG_CASH_OUT) {
+      const m = applied.amount ?? 0;
+      return {
+        ok: false,
+        besoin: `de savoir d'où viennent les ${fr(m)} : l'argent du tiroir, ou autrement (Wave, Orange Money, agent…) ? Redis la phrase avec « payé avec le tiroir » ou « payé par Wave »`,
+        question: { sorte: "paye_avec", montant: m, montant_wolof: francsToWolof(m) },
+      };
+    }
     // Carnet de mots de la boutique : le mot appris fait partie de l'écriture, il est oublié si on l'annule.
     const after = learn ? withAlias(applied.shop, learn.productId, learn.word) : applied.shop;
     return { ok: true, entry: this.commit(before, after, applied.summary, heard, { callId, key, amount: applied.amount }) };
@@ -449,6 +475,14 @@ export class LiveDesk {
       const result = this.record(action, heard, call.id, learn);
       if (!result.ok && result.besoin === PATRON_ONLY_MESSAGE) {
         return { statut: "refuse", raison: PATRON_ONLY_MESSAGE, consigne: "N'enregistre rien. Dis en une phrase que seul le patron peut faire ça." };
+      }
+      if (!result.ok && result.question?.sorte === "paye_avec") {
+        const q = result.question;
+        return {
+          statut: "paye_avec",
+          montant: q.montant, montant_wolof: q.montant_wolof,
+          consigne: `Rien n'est enregistré. Demande en une phrase courte, dans la langue du commerçant (en wolof, dis le montant exactement comme montant_wolof) : « Ces ${q.montant} F, tu les as payés avec l'argent du tiroir, ou par Wave, Orange Money ou autrement ? ». Puis rappelle enregistrer avec la même écriture et payeAvec « tiroir », « wave », « om » ou « autre ».`,
+        };
       }
       if (!result.ok && result.question) {
         const q = result.question;
@@ -742,6 +776,7 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
       dueDays: number(args.delaiJours),
       unitPrice: number(args.prixUnitaire),
       debtMode: args.modeDette === "total" || args.debtMode === "total" ? "total" : args.modeDette === "ajout" || args.debtMode === "ajout" ? "ajout" : null,
+      paidWith: (["tiroir", "wave", "om", "autre"] as const).find((k) => k === args.payeAvec) ?? null,
     },
     ambigu,
   };

@@ -1,4 +1,4 @@
-import { type Expense, type Sale, type Shop, isToday } from "../model";
+import { type CashSource, type Expense, type Sale, type Shop, isToday } from "../model";
 import { roundQty } from "../assistant/apply";
 
 /**
@@ -87,12 +87,17 @@ export function stockDelta(e: Pick<Expense, "kind" | "productId" | "qty"> | unde
 }
 
 /** Corrige le montant ou le nom d'une dépense. */
-export function editExpense(shop: Shop, id: string, change: { amount?: number; label?: string }): Shop {
+export function editExpense(shop: Shop, id: string, change: { amount?: number; label?: string; paidWith?: CashSource }): Shop {
   return {
     ...shop,
     expenses: shop.expenses.map((e) =>
       e.id === id
-        ? { ...e, amount: change.amount !== undefined && Number.isFinite(change.amount) && change.amount > 0 ? Math.round(change.amount) : e.amount, label: change.label?.trim() || e.label }
+        ? {
+            ...e,
+            amount: change.amount !== undefined && Number.isFinite(change.amount) && change.amount > 0 ? Math.round(change.amount) : e.amount,
+            label: change.label?.trim() || e.label,
+            ...(change.paidWith && e.kind !== "perte" ? { paidWith: change.paidWith } : {}),
+          }
         : e,
     ),
   };

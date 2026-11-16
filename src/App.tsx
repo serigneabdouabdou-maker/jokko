@@ -1859,6 +1859,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                         key={m.id}
                         card={m.batch}
                         onToggle={(i) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, keep: !it.keep } : it)) }))}
+                        onSource={(i, v) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, action: { ...it.action, paidWith: v } } : it)) }))}
                         onSave={() => saveBatch(m.id, m.batch!)}
                         onCancel={() => updateBatch(m.id, (b) => ({ ...b, status: "annule" }))}
                       />

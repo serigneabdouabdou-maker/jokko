@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Expense, type Shop, money } from "@/model";
+import { CASH_SOURCE_LABELS, type CashSource, type Expense, type Shop, fromDrawer, money } from "@/model";
+import { CashSourcePicker } from "./CashSourcePicker";
 import { editExpense, removeExpense, stockDelta } from "@/data/sales";
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, ""));
@@ -28,6 +29,7 @@ function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; comm
   const [mode, setMode] = useState<"" | "modifier" | "supprimer">("");
   const [label, setLabel] = useState(e.label);
   const [price, setPrice] = useState(String(e.amount));
+  const [source, setSource] = useState<CashSource>(e.paidWith ?? "tiroir");
   const delta = stockDelta(e);
   const product = e.productId ? shop.products.find((p) => p.id === e.productId) : undefined;
   const qty = (n: number) => String(Math.round(n * 1000) / 1000).replace(".", ",");
@@ -40,7 +42,10 @@ function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; comm
     <article style={{ flexWrap: "wrap" }}>
       <span>
         {e.label}{KIND[e.kind ?? ""] ?? ""}
-        <small>{new Date(e.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
+        <small>
+          {new Date(e.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          {e.kind !== "perte" && (e.paidWith && e.paidWith !== "tiroir" ? ` · payé par ${CASH_SOURCE_LABELS[e.paidWith]} (pas du tiroir)` : " · sorti du tiroir")}
+        </small>
       </span>
       <b className="num">{money(e.amount)}</b>
       {canEdit && mode === "" && (
@@ -51,7 +56,7 @@ function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; comm
       )}
       {canEdit && mode === "supprimer" && (
         <div className="debt-actions" style={{ width: "100%", flexBasis: "100%", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-          <small className="note" style={{ flex: 1 }}>Supprimer cette dépense ? L'argent revient dans la caisse.{stockNote}</small>
+          <small className="note" style={{ flex: 1 }}>Supprimer cette dépense ?{fromDrawer(e) ? " L'argent revient dans la caisse." : ""}{stockNote}</small>
           <Button variant="destructive" className="h-10 rounded-full px-4" onClick={() => commit(removeExpense(shop, e.id))}>Oui, supprimer</Button>
           <Button variant="ghost" className="h-10 rounded-full px-3" onClick={() => setMode("")}>Non</Button>
         </div>
@@ -60,8 +65,9 @@ function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; comm
         <div style={{ display: "grid", gap: 8, width: "100%", flexBasis: "100%", marginTop: 8 }}>
           <label className="note">Nom<Input className="h-11" value={label} onChange={(x) => setLabel(x.target.value)} /></label>
           <label className="note">Montant (F)<Input className="h-11 num" inputMode="numeric" value={price} onChange={(x) => setPrice(x.target.value)} /></label>
+          {e.kind !== "perte" && <CashSourcePicker amount={num(price)} value={source} onChange={setSource} />}
           <div className="debt-actions" style={{ gap: 8 }}>
-            <Button className="h-11 rounded-full px-5" disabled={!(num(price) > 0)} onClick={() => { commit(editExpense(shop, e.id, { amount: num(price), label })); setMode(""); }}>
+            <Button className="h-11 rounded-full px-5" disabled={!(num(price) > 0)} onClick={() => { commit(editExpense(shop, e.id, { amount: num(price), label, paidWith: source })); setMode(""); }}>
               <Icon name="sauvegarde" size="sm" /> Enregistrer
             </Button>
             <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setMode("")}>Annuler</Button>

@@ -1,4 +1,4 @@
-import { addRepayment, type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
+import { addRepayment, CASH_SOURCE_LABELS, type Client, type Invoice, type InvoiceLine, type Product, type Sale, type Shop, money, todayStamp, uid } from "../model";
 import { nextTicket } from "../data/tickets.ts";
 import type { DraftAction } from "./client";
 
@@ -134,9 +134,9 @@ export function applyDraft(shop: Shop, action: DraftAction & { cost?: number }):
     if (!amount) return null;
     const label = action.label?.trim() || "Dépense";
     return {
-      shop: { ...shop, expenses: [{ id: uid("e"), at: todayStamp(), label, amount }, ...shop.expenses] },
+      shop: { ...shop, expenses: [{ id: uid("e"), at: todayStamp(), label, amount, ...(action.paidWith ? { paidWith: action.paidWith } : {}) }, ...shop.expenses] },
       amount,
-      summary: `Dépense · ${label} · ${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(amount)}`,
+      summary: `Dépense · ${label} · ${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(amount)}${paidNote(action.paidWith)}`,
     };
   }
 
@@ -246,6 +246,12 @@ export function applyDraft(shop: Shop, action: DraftAction & { cost?: number }):
  * L'achat ne baisse pas le bénéfice : le coût est compté quand le sucre est vendu.
  * Article inconnu : il est créé (le prix de vente se règle ensuite dans Stock).
  */
+/** « · payé par Wave (la caisse ne bouge pas) » sur le résumé d'une sortie d'argent. */
+function paidNote(paidWith: DraftAction["paidWith"]): string {
+  if (!paidWith) return "";
+  return paidWith === "tiroir" ? " · sorti du tiroir" : ` · payé par ${CASH_SOURCE_LABELS[paidWith]} (la caisse ne bouge pas)`;
+}
+
 function applyPurchase(shop: Shop, action: DraftAction, found: Product | undefined, quantity: number | null, unitPrice: number | null, total: number | null): Applied | null {
   const name = found?.name ?? action.productName?.trim() ?? action.label?.trim() ?? "";
   if (!name) return null;
@@ -273,9 +279,9 @@ function applyPurchase(shop: Shop, action: DraftAction, found: Product | undefin
   const products = found ? shop.products.map((p) => (p.id === found.id ? product : p)) : [...shop.products, product];
   const label = `Achat ${qtyLabel(qty)} ${unit} ${product.name}`;
   return {
-    shop: { ...shop, products, expenses: [{ id: uid("e"), at: todayStamp(), label, amount: paid, kind: "achat", productId: product.id, qty: roundQty(baseQty) }, ...shop.expenses] },
+    shop: { ...shop, products, expenses: [{ id: uid("e"), at: todayStamp(), label, amount: paid, kind: "achat", productId: product.id, qty: roundQty(baseQty), ...(action.paidWith ? { paidWith: action.paidWith } : {}) }, ...shop.expenses] },
     amount: paid,
-    summary: `Achat · ${qtyLabel(qty)} ${unit} ${product.name} · ${qty !== 1 ? `${qtyLabel(qty)} × ${money(Math.round(price))} = ` : ""}${money(paid)} · stock ${qtyLabel(product.stock)} ${product.unit}${found ? "" : " · nouvel article : mets son prix de vente dans Stock"}`,
+    summary: `Achat · ${qtyLabel(qty)} ${unit} ${product.name} · ${qty !== 1 ? `${qtyLabel(qty)} × ${money(Math.round(price))} = ` : ""}${money(paid)} · stock ${qtyLabel(product.stock)} ${product.unit}${found ? "" : " · nouvel article : mets son prix de vente dans Stock"}${paidNote(action.paidWith)}`,
   };
 }
 

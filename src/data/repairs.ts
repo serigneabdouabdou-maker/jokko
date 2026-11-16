@@ -8,7 +8,7 @@
  *   donc le bénéfice de la réparation = prix − prix d'achat des pièces ;
  * - le reste non payé au rendu peut aller en dette du client.
  */
-import { type Client, type Repair, type RepairPart, type Shop, todayStamp, uid } from "@/model";
+import { type CashSource, type Client, type Repair, type RepairPart, type Shop, todayStamp, uid } from "@/model";
 import { nameClash, pickByName } from "@/assistant/wolofNames";
 import { metierOf } from "@/data/metiers";
 
@@ -107,7 +107,8 @@ export function setRepairPrice(shop: Shop, id: string, price: number): Shop {
 }
 
 /** Pièce posée : prise dans le stock (productId), ou achetée exprès (label + cost) ; fromCash = payée avec l'argent de la caisse. */
-export type PartInput = { productId?: string; label?: string; qty?: number; cost?: number; fromCash?: boolean };
+/** paidWith = d'où vient l'argent (seul « tiroir » baisse la caisse) ; fromCash (ancien) = tiroir. */
+export type PartInput = { productId?: string; label?: string; qty?: number; cost?: number; fromCash?: boolean; paidWith?: CashSource };
 
 /**
  * Réparé : les pièces posées sortent du stock (prix d'achat du stock), ou sont notées avec leur prix
@@ -131,7 +132,8 @@ export function markRepaired(shop: Shop, id: string, inputs: PartInput[]): Shop 
     } else if (p.label?.trim()) {
       const cost = Math.max(0, Math.round(p.cost ?? 0));
       parts.push({ label: p.label.trim(), qty, cost });
-      if (cost > 0 && p.fromCash) bought.push({ id: uid("e"), at: todayStamp(), label: `Pièce pour ${repair.number} (${repair.device}) : ${p.label.trim()}`, amount: cost, kind: "achat" });
+      const paidWith: CashSource | undefined = p.paidWith ?? (p.fromCash ? "tiroir" : undefined);
+      if (cost > 0 && paidWith) bought.push({ id: uid("e"), at: todayStamp(), label: `Pièce pour ${repair.number} (${repair.device}) : ${p.label.trim()}`, amount: cost, kind: "achat", paidWith });
     }
   }
   return {

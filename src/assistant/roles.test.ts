@@ -47,7 +47,7 @@ describe("rôles patron / vendeur", () => {
 
   it("le patron, lui, peut acheter", () => {
     const { d, shop: s } = desk("patron");
-    expect(d.handle({ name: "enregistrer", args: { type: "purchase", productName: "huile", quantity: 5, prixUnitaireDit: "6 000", heard: "j'ai acheté 5 bidons d'huile à 6 000 chacun" } })).toMatchObject({ statut: "enregistre", montant_francs: 30000 });
+    expect(d.handle({ name: "enregistrer", args: { type: "purchase", productName: "huile", quantity: 5, prixUnitaireDit: "6 000", payeAvec: "tiroir", heard: "j'ai acheté 5 bidons d'huile à 6 000 chacun" } })).toMatchObject({ statut: "enregistre", montant_francs: 30000 });
     expect(s().products[0]).toMatchObject({ stock: 15, cost: 6000 });
   });
 });

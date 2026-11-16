@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type BatchCardData, batchTotals, describeAction } from "@/assistant/batch";
+import { type BatchCardData, batchTotals, describeAction, needsSource, outflowAmount } from "@/assistant/batch";
+import { BIG_CASH_OUT, CASH_SOURCE_LABELS, CASH_SOURCES, type CashSource } from "@/model";
 
 const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
 
@@ -8,9 +9,10 @@ const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u20
  * Carte du chat : plusieurs opérations comprises dans un long texte. Le patron coche ce qu'il faut enregistrer
  * (les opérations déjà enregistrées aujourd'hui sont décochées), puis « Tout enregistrer ».
  */
-export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCardData; onToggle: (i: number) => void; onSave: () => void; onCancel: () => void }) {
+export function BatchCard({ card, onToggle, onSource, onSave, onCancel }: { card: BatchCardData; onToggle: (i: number) => void; onSource?: (i: number, v: CashSource) => void; onSave: () => void; onCancel: () => void }) {
   const waiting = card.status === "attente";
   const kept = card.items.filter((i) => i.keep).length;
+  const unanswered = card.items.filter(needsSource).length;
   return (
     <div className={`order-card batch-card is-${card.status}`}>
       <p className="order-title">
@@ -29,6 +31,17 @@ export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCar
                 {item.choices ? <small className="is-late">Plusieurs pièces possibles ({item.choices.join(", ")}) : rien ne sort du stock</small> : null}
                 {item.service ? <small>Service : tout est main-d’œuvre (bénéfice {item.action.amount ? f(item.action.amount) : "?"})</small> : null}
                 <small>« {item.line.slice(0, 120)} »</small>
+                {item.action.paidWith && outflowAmount(item.action) > 0 && <small>{item.action.paidWith === "tiroir" ? "Sort du tiroir" : `Payé par ${CASH_SOURCE_LABELS[item.action.paidWith]} : la caisse ne bouge pas`}</small>}
+                {waiting && item.keep && outflowAmount(item.action) >= BIG_CASH_OUT && onSource && (
+                  <span className="batch-source" role="radiogroup" aria-label="D'où vient l'argent ?">
+                    <small className={item.action.paidWith ? "" : "is-late"}>{item.action.paidWith ? "D'où vient l'argent :" : "Grosse somme : d'où vient l'argent ?"}</small>
+                    {CASH_SOURCES.map((k) => (
+                      <button key={k} type="button" role="radio" aria-checked={item.action.paidWith === k} className={item.action.paidWith === k ? "on" : ""} onClick={(e) => { e.preventDefault(); onSource(i, k); }}>
+                        {k === "autre" ? "Autre" : CASH_SOURCE_LABELS[k]}
+                      </button>
+                    ))}
+                  </span>
+                )}
                 {item.duplicate && <small className="is-late">Déjà enregistré aujourd’hui ? ({item.duplicate}) — décoché</small>}
                 {!item.action.amount && !item.action.unitPrice && <small className="is-late">Pas de montant : décoché</small>}
               </span>
@@ -53,7 +66,7 @@ export function BatchCard({ card, onToggle, onSave, onCancel }: { card: BatchCar
       )}
       {waiting ? (
         <div className="order-actions">
-          <Button className="h-11 rounded-full px-5" disabled={!kept} onClick={onSave}>Tout enregistrer ({kept})</Button>
+          <Button className="h-11 rounded-full px-5" disabled={!kept || unanswered > 0} onClick={onSave}>{unanswered ? `Réponds d'abord : d'où vient l'argent (${unanswered})` : `Tout enregistrer (${kept})`}</Button>
           <Button variant="outline" className="h-11 rounded-full px-4" onClick={onCancel}>Annuler</Button>
         </div>
       ) : card.status === "enregistre" ? (
