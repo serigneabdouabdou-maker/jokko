@@ -91,3 +91,22 @@ describe("carnet de réparations", () => {
     expect(repairBreakdown(repairsOf(fixed)[0]).labor).toBe(5000);
   });
 });
+
+describe("rendu : jamais deux fois le même argent (16/11/2026, R-005)", () => {
+  it("réparation déjà payée en avance : le rendu n'encaisse rien de plus", () => {
+    const { shop, repair } = addRepair(atelier(), { clientName: "Oumy Tall", device: "Ki5k", problem: "écran cassé", price: 10000, advance: 10000 });
+    const after = deliverRepair(shop, repair.id, 10000, true)!;
+    const r = repairsOf(after).find((x) => x.id === repair.id)!;
+    expect(r.paid).toBe(10000);
+    expect(r.price).toBe(10000);
+    expect(after.sales.reduce((a, s) => a + s.amount, 0)).toBe(10000);
+  });
+
+  it("le prix ne monte que si le patron le demande", () => {
+    const { shop, repair } = addRepair(atelier(), { clientName: "Awa", device: "Itel", problem: "écran", price: 10000, advance: 5000 });
+    const capped = repairsOf(deliverRepair(shop, repair.id, 8000, true)!).find((x) => x.id === repair.id)!;
+    expect(capped.paid).toBe(10000);
+    const raised = repairsOf(deliverRepair(shop, repair.id, 8000, true, true)!).find((x) => x.id === repair.id)!;
+    expect([raised.paid, raised.price]).toEqual([13000, 13000]);
+  });
+});

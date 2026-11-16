@@ -151,10 +151,13 @@ export function payRepair(shop: Shop, id: string, amount: number): Shop | null {
  * Rendu : le client récupère l'appareil. Il paie paidNow ; le reste, s'il y en a, va en dette (restToDebt)
  * ou est abandonné (geste commercial). Le prix d'achat des pièces est porté ici, pour le bénéfice.
  */
-export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDebt: boolean): Shop | null {
+export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDebt: boolean, raisePrice = false): Shop | null {
   const repair = repairsOf(shop).find((r) => r.id === id);
   if (!repair || repair.status === "rendu" || repair.status === "annule") return null;
-  const pay = Math.max(0, Math.round(paidNow));
+  // Déjà tout payé (16/11/2026 : R-005 payée 10 000 en avance puis encore 10 000 au rendu) : on n'encaisse pas deux fois.
+  // Un montant au-dessus du reste n'est pris que si le prix est encore à fixer (prix 0) ou si raisePrice le demande.
+  const left = Math.max(0, repair.price - repair.paid);
+  const pay = Math.max(0, Math.round(repair.price > 0 && !raisePrice ? Math.min(paidNow, left) : paidNow));
   const rest = Math.max(0, repair.price - repair.paid - pay);
   const cost = partsCost(repair);
   const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop)), ...shop.sales] : shop.sales;
@@ -166,7 +169,7 @@ export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDeb
         : c,
     );
   }
-  const price = restToDebt ? repair.price : repair.paid + pay;
+  const price = repair.paid + pay > repair.price ? repair.paid + pay : restToDebt ? repair.price : repair.paid + pay;
   return { ...update({ ...shop, sales, clients }, id, (r) => ({ ...r, paid: r.paid + pay, price, status: "rendu", returnedAt: todayStamp() })) };
 }
 

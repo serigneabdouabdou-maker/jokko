@@ -206,17 +206,20 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
 function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
   const licences = licencesOf(shop);
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", cost: "", months: "12", fromCash: true });
+  const [form, setForm] = useState({ name: "", cost: "", months: "12", startAt: new Date().toISOString().slice(0, 10), fromCash: false });
   const [note, setNote] = useState("");
 
   function save(base?: { name: string; cost: number; months: number; startAt?: string }) {
-    const input = base ?? { name: form.name, cost: n(form.cost), months: n(form.months) || 12 };
-    const done = addLicence(shop, { ...input, fromCash: form.fromCash });
+    const input = base ?? { name: form.name, cost: n(form.cost), months: n(form.months) || 12, startAt: form.startAt || undefined };
+    // Le tiroir ne baisse que si la licence a été payée avec ses espèces aujourd'hui (16/11/2026 : 135 000 F de licences
+    // payées ailleurs avaient mis la caisse à − 106 000 F, la case était cochée d'avance).
+    const paidToday = form.fromCash && (!input.startAt || input.startAt === new Date().toISOString().slice(0, 10));
+    const done = addLicence(shop, { ...input, fromCash: base ? false : paidToday });
     if (!done) return;
     commit(done.shop);
     const perMonth = Math.round(done.licence.cost / done.licence.months);
     setNote(`✓ Licence ${done.licence.name} : ${money(done.licence.cost)} pour ${done.licence.months} mois. Dans tes bénéfices, elle compte ${money(perMonth)} par mois.`);
-    setForm({ name: "", cost: "", months: "12", fromCash: true });
+    setForm({ name: "", cost: "", months: "12", startAt: new Date().toISOString().slice(0, 10), fromCash: false });
     setAdding(false);
   }
 
@@ -238,9 +241,15 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
             <span>mois</span>
           </label>
           <label className="row">
-            <input type="checkbox" checked={form.fromCash} onChange={(e) => setForm({ ...form, fromCash: e.target.checked })} />
-            <span>Payée avec l'argent de la caisse aujourd'hui</span>
+            <span>Achetée le</span>
+            <Input className="h-10 num" type="date" aria-label="Date d'achat" value={form.startAt} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, startAt: e.target.value })} style={{ width: 170 }} />
           </label>
+          {form.startAt === new Date().toISOString().slice(0, 10) && (
+            <label className="row">
+              <input type="checkbox" checked={form.fromCash} onChange={(e) => setForm({ ...form, fromCash: e.target.checked })} />
+              <span>J'ai payé avec les espèces du tiroir aujourd'hui (la caisse baisse de ce montant)</span>
+            </label>
+          )}
           <Button className="h-10 rounded-full px-4" disabled={!form.name.trim() || !n(form.cost)} onClick={() => save()}>Enregistrer la licence</Button>
         </div>
       )}

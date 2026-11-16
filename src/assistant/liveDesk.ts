@@ -158,12 +158,18 @@ export class LiveDesk {
     if (action === "rendre") {
       const amount = text(args.montantDit) ? said(args.montantDit) : 0;
       if (amount === null) return NOT_UNDERSTOOD;
-      const after = deliverRepair(shop, found.id, amount, args.resteEnDette === true);
+      // Jamais deux fois le même argent : au-delà de ce qui reste, Jokko n'encaisse que le reste et le dit.
+      const left = found.price > 0 ? remaining(found) : amount;
+      const paid = Math.min(amount, left);
+      const after = deliverRepair(shop, found.id, paid, args.resteEnDette === true);
       if (!after) return { statut: "incomplet", besoin: "une réparation pas encore rendue" };
       const r = repairsOf(after).find((x) => x.id === found.id)!;
       const rest = Math.max(0, r.price - r.paid);
-      this.commit(shop, after, `Réparation ${r.number} rendue · payé ${fr(amount)}${rest ? ` · reste ${fr(rest)} en dette` : ""}`, heard, { callId, amount: amount || undefined });
-      return { statut: "enregistre", ticket: r.number, paye: W(amount), reste_en_dette: rest ? W(rest) : null, benefice: W(repairProfit(r)) };
+      this.commit(shop, after, `Réparation ${r.number} rendue · payé ${fr(paid)}${rest ? ` · reste ${fr(rest)} en dette` : ""}`, heard, { callId, amount: paid || undefined });
+      return {
+        statut: "enregistre", ticket: r.number, paye: W(paid), reste_en_dette: rest ? W(rest) : null, benefice: W(repairProfit(r)),
+        ...(amount > paid ? { deja_paye: W(found.paid), note: `Le client avait déjà payé ${fr(found.paid)} : seulement ${fr(paid)} encaissé. Dis-le au commerçant.` } : {}),
+      };
     }
     return { statut: "outil_inconnu" };
   }

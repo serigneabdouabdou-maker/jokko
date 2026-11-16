@@ -481,14 +481,28 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
           <Breakdown r={r} />
           {r.status !== "rendu" && (
             <>
-              <Input className="h-10" inputMode="numeric" placeholder={rest ? `Payé maintenant (reste ${money(rest)})` : "Payé maintenant (F)"} aria-label="Payé maintenant" value={pay} onChange={(e) => setPay(e.target.value)} />
+              {r.price > 0 && rest === 0 ? (
+                <p className="note jk-notice" data-tone="ok"><Icon name="ok" size="sm" /><span>Déjà tout payé ({money(r.paid)}) : rien à encaisser au rendu.</span></p>
+              ) : (
+                <Input className="h-10" inputMode="numeric" placeholder={rest ? `Payé maintenant (reste ${money(rest)})` : "Payé maintenant (F)"} aria-label="Payé maintenant" value={pay} onChange={(e) => setPay(e.target.value)} />
+              )}
+              {r.price > 0 && n(pay) > rest && rest > 0 && (
+                <p className="note" data-tone="error">Le client a déjà payé {money(r.paid)} : il ne reste que {money(rest)}. « Rendu » encaisse seulement {money(rest)}.</p>
+              )}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                <Button variant="outline" className="h-10 rounded-full px-3" disabled={!n(pay)} onClick={() => { const next = payRepair(shop, r.id, n(pay)); if (next) { commit(next); setPay(""); } }}>
-                  Acompte
-                </Button>
-                <Button className="h-10 rounded-full px-3" onClick={() => { const next = deliverRepair(shop, r.id, n(pay), true); if (next) commit(next); }}>
+                {!(r.price > 0 && rest === 0) && (
+                  <Button variant="outline" className="h-10 rounded-full px-3" disabled={!n(pay) || (r.price > 0 && n(pay) > rest)} onClick={() => { const next = payRepair(shop, r.id, n(pay)); if (next) { commit(next); setPay(""); } }}>
+                    Acompte
+                  </Button>
+                )}
+                <Button className="h-10 rounded-full px-3" onClick={() => { const next = deliverRepair(shop, r.id, r.price > 0 && rest === 0 ? 0 : n(pay), true); if (next) { commit(next); setPay(""); } }}>
                   <Icon name="ok" size="sm" /> Rendu au client{rest - n(pay) > 0 ? " (reste en dette)" : ""}
                 </Button>
+                {r.price > 0 && n(pay) > rest && (
+                  <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => { const next = deliverRepair(shop, r.id, n(pay), true, true); if (next) { commit(next); setPay(""); } }}>
+                    Le prix passe à {money(r.paid + n(pay))}
+                  </Button>
+                )}
                 {notify && ready && (
                   <Button variant="outline" className="h-10 rounded-full px-3" onClick={() => window.open(notify, "_blank", "noopener")}>
                     <Icon name="whatsapp" size="sm" /> Prévenir : c'est prêt
