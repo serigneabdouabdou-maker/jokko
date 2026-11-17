@@ -1,4 +1,4 @@
-import { type CashSource, type Expense, type Sale, type Shop, isToday } from "../model";
+import { type CashSource, type Expense, type Payment, type Sale, type Shop, isToday } from "../model";
 import { roundQty } from "../assistant/apply";
 
 /**
@@ -33,22 +33,61 @@ export function removeSale(shop: Shop, id: string): Shop {
   return { ...next, sales: next.sales.filter((x) => x.id !== id) };
 }
 
-export type SaleChange = { amount?: number; qty?: number; label?: string };
+export type SaleChange = {
+  amount?: number;
+  qty?: number;
+  label?: string;
+  /** Prix d'achat total de cette vente (en gros) ; null = pas connu. */
+  cost?: number | null;
+  /** Espèces / Wave / Orange Money (le crédit ne se change pas ici : il touche la dette). */
+  payment?: Payment;
+  /** Garder ce prix d'achat dans la fiche de l'article pour les prochaines ventes. */
+  keepProductCost?: boolean;
+};
+
+/** Paiement d'une réparation / commande / couture (« Réparation R-005 · … ») : son numéro et son carnet. */
+function jobOf(label: string): { book: "repairs" | "couture"; number: string } | null {
+  const r = /^(?:Réparation|Service · Commande) (R-\d+)/.exec(label);
+  if (r) return { book: "repairs", number: r[1] };
+  const c = /^Couture (C-\d+)/.exec(label);
+  return c ? { book: "couture", number: c[1] } : null;
+}
 
 /** Corrige le prix, la quantité ou le nom d'une vente. Le stock et la dette suivent l'écart. */
 export function editSale(shop: Shop, id: string, change: SaleChange): Shop {
   const s = shop.sales.find((x) => x.id === id);
   if (!s) return shop;
-  const amount = change.amount !== undefined && Number.isFinite(change.amount) && change.amount > 0 ? Math.round(change.amount) : s.amount;
+  const amount = change.amount !== undefined && Number.isFinite(change.amount) && (change.amount > 0 || (change.amount === 0 && s.amount === 0)) ? Math.round(change.amount) : s.amount;
   const qty = change.qty !== undefined && Number.isFinite(change.qty) && change.qty > 0 && s.qty !== undefined ? roundQty(change.qty) : s.qty;
   const label = change.label?.trim() || s.label;
   const before = stockQty(shop, s);
   const updated: Sale = { ...s, amount, qty, label };
   // Prix d'achat proportionnel à la nouvelle quantité (pour garder le bénéfice juste).
   if (s.cost !== undefined && s.qty && qty && qty !== s.qty) updated.cost = Math.round((s.cost / s.qty) * qty);
+  if (change.cost !== undefined) {
+    if (change.cost === null || !Number.isFinite(change.cost)) delete updated.cost;
+    else updated.cost = Math.max(0, Math.round(change.cost));
+  }
+  // Le moyen de paiement se corrige entre espèces, Wave et Orange Money (la caisse et le canal suivent).
+  const cashLike = (p?: Payment) => !p || p === "especes" || p === "wave" || p === "om";
+  if (change.payment && cashLike(change.payment) && cashLike(s.payment)) {
+    if (change.payment === "especes") delete updated.payment;
+    else updated.payment = change.payment;
+  }
   const after = stockQty(shop, updated);
   let next = moveStock(shop, s.productId, before - after);
   next = moveDebt(next, s, amount - s.amount);
+  // Paiement d'une réparation / couture : le « déjà payé » du carnet suit le nouveau montant.
+  const job = jobOf(s.label);
+  const delta = amount - s.amount;
+  if (job && delta) {
+    if (job.book === "repairs") next = { ...next, repairs: (next.repairs ?? []).map((r) => (r.number === job.number ? { ...r, paid: Math.max(0, r.paid + delta) } : r)) };
+    else next = { ...next, couture: (next.couture ?? []).map((o) => (o.number === job.number ? { ...o, paid: Math.max(0, o.paid + delta) } : o)) };
+  }
+  if (change.keepProductCost && s.productId && !s.retail && updated.cost !== undefined && (updated.qty ?? 1) > 0) {
+    const unit = Math.round(updated.cost / (updated.qty ?? 1));
+    next = { ...next, products: next.products.map((p) => (p.id === s.productId ? { ...p, cost: unit } : p)) };
+  }
   return { ...next, sales: next.sales.map((x) => (x.id === id ? updated : x)) };
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type Shop, newShop } from "@/model";
 import { addRepair, deliverRepair, markRepaired } from "./repairs";
 import { correctRepairParts, setArticleCost, setTotalCost } from "./corrections";
+import { editSale } from "./sales";
 import { buildReport, periodOf, profitDetails } from "./report";
 
 const now = () => new Date().toISOString();
@@ -52,5 +53,25 @@ describe("corriger un bénéfice depuis les Bénéfices", () => {
     const row = profitDetails(s, periodOf("jour")).find((r) => r.kind === "service")!;
     expect(row).toMatchObject({ count: 2, revenue: 6000 });
     expect(row.kind === "service" && row.items.map((i) => i.client)).toEqual([undefined, "Tapha diallo"]);
+  });
+
+  it("modifier une vente : payé, prix en gros, moyen ; la réparation suit", () => {
+    let s: Shop = { ...newShop("A", "reparation"), products: [{ id: "p1", name: "Chargeur", unit: "pièce", stock: 5, min: 0, price: 3000, cost: 0 }] };
+    // Maintenance payée 5 000 et pas 10 000, sans achat
+    s = { ...s, sales: [{ id: "m", at: now(), label: "Service · Maintenance ordinateur", amount: 10000, cost: 5000, payment: "especes" } as never, ...s.sales] };
+    s = editSale(s, "m", { amount: 5000, cost: null });
+    expect(s.sales.find((x) => x.id === "m")).toMatchObject({ amount: 5000 });
+    expect(s.sales.find((x) => x.id === "m")!.cost).toBeUndefined();
+    expect(buildReport(s, periodOf("jour")).grossProfit).toBe(5000);
+    // Réparation : avance 3 000 → corrigée à 2 500, le « déjà payé » suit ; prix de la pièce sur la ligne
+    const { shop, repair } = addRepair(s, { clientName: "X", device: "Bf6", problem: "batterie", price: 3000, advance: 3000 });
+    const pay = shop.sales.find((x) => x.label.includes(repair.number))!;
+    let t = editSale(shop, pay.id, { amount: 2500, cost: 1500, payment: "wave" });
+    expect(t.repairs!.find((r) => r.id === repair.id)!.paid).toBe(2500);
+    expect(t.sales.find((x) => x.id === pay.id)).toMatchObject({ amount: 2500, cost: 1500, payment: "wave" });
+    // Article : prix d'achat gardé dans la fiche
+    t = { ...t, sales: [{ id: "c", at: now(), label: "Chargeur", amount: 6000, qty: 2, productId: "p1", payment: "especes" } as never, ...t.sales] };
+    t = editSale(t, "c", { cost: 3000, keepProductCost: true });
+    expect(t.products[0].cost).toBe(1500);
   });
 });

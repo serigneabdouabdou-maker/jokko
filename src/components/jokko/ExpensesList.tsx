@@ -25,7 +25,7 @@ export function ExpensesList({ shop, commit, canEdit }: { shop: Shop; commit: (s
   );
 }
 
-function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
+export function ExpenseRow({ e, shop, commit, canEdit }: { e: Expense; shop: Shop; commit: (s: Shop) => void; canEdit: boolean }) {
   const [mode, setMode] = useState<"" | "modifier" | "supprimer">("");
   const [label, setLabel] = useState(e.label);
   const [price, setPrice] = useState(String(e.amount));

@@ -120,6 +120,7 @@ import { Plans, Upsell } from "@/components/jokko/Plans";
 import { can, effectivePlan } from "@/data/plans";
 import { graveScreens, noticeCounts, type Notice, type NoticeScreen, shopNotices } from "@/data/notices";
 import { Drill, DrillList, DrillOverview, DrillScope } from "@/components/jokko/Drill";
+import { CashJournal } from "@/components/jokko/CashJournal";
 import { servicesSummary } from "@/data/services";
 import { noteDevice } from "@/data/device";
 import { saveCashCount } from "@/data/team";
@@ -2199,6 +2200,9 @@ function Cash({ shop, commit, canEdit }: { shop: Shop; commit: (s: Shop) => void
   return (
     <section className="cash">
       <DrillList title="La caisse">
+      <Drill id="historique" title="Historique : tout ce qui est entré et sorti" icon="vente" summary={`${shop.sales.length} vente${shop.sales.length > 1 ? "s" : ""} depuis le début · chaque ligne se corrige`}>
+        <CashJournal shop={shop} commit={commit} canEdit={canEdit} />
+      </Drill>
       <Drill id="cloture" title="Compter et clôturer la caisse" icon="caisse" summary={`Attendu dans le tiroir : ${amount(expected)}`} badge={zr.missing.length} tone={zr.missing.length ? "grave" : undefined}>
       <article className="sheet cash-main">
         <h2>Clôture de caisse</h2>

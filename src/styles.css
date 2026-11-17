@@ -2462,3 +2462,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .fix-free { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .fix-free > :first-child { flex: 1 1 100%; min-width: 0; }
 .fix-free > .fix-cost { flex: 1; width: auto; }
+
+/* Historique de la caisse + bénéfice sous chaque vente (17/11/2026) */
+.sale-gain { display: block; font-size: 13px; font-weight: 600; }
+.sale-gain[data-tone="good"] { color: var(--j-green, #15803d); }
+.sale-gain[data-tone="bad"] { color: var(--j-red, #b91c1c); }
+.sale-gain[data-tone="warn"] { color: #b45309; }
+.cash-journal { display: grid; gap: 10px; }
+.cash-journal .seg { max-width: 100%; }
+.journal-sum { margin: 0; display: grid; gap: 0; border: 1px solid var(--j-line); border-radius: 14px; padding: 4px 12px; }
+.journal-sum div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--j-line); }
+.journal-sum div:last-child { border-bottom: 0; }
+.journal-sum dt { color: var(--j-ink-2); font-size: 14px; }
+.journal-sum dd { margin: 0; font-weight: 650; }
+.journal-gain dt, .journal-gain dd { color: var(--j-ink) !important; font-weight: 750; }
+.journal-warn { color: #b45309; }
+.journal-day { display: grid; gap: 6px; }
+.journal-day-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; padding: 8px 2px 2px; border-top: 1px solid var(--j-line); }
+.journal-day-head b { text-transform: capitalize; }
+.journal-day-head small { color: var(--j-ink-2); }
+.journal-out article b { color: var(--j-red, #b91c1c); }
