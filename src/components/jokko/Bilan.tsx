@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
-import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, recordInventory, reportText, stockValue } from "@/data/report";
+import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
@@ -47,6 +47,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
   }
   const value = useMemo(() => stockValue(shop), [shop]);
+  const details = useMemo(() => profitDetails(shop, report.period), [shop, report.period]);
   const due = inventoryDue(shop);
 
   function startCount() {
@@ -109,6 +110,10 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       )}
       </DrillOverview>
       <DrillList title="En détail">
+      <Drill id="articles" title="Le détail, ligne par ligne" icon="vente" summary={details.length ? `${details.length} ligne${details.length > 1 ? "s" : ""} · touche pour voir acheté, vendu, bénéfice` : "Aucune vente sur cette période"}>
+      <h3>Le détail, ligne par ligne</h3>
+      <ProfitDetailsList rows={details} />
+      </Drill>
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
         Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
@@ -210,30 +215,6 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       )}
       </Drill>
 
-      <Drill id="articles" title="Ce qui s'est vendu" icon="vente" summary={report.byProduct.length ? `${report.byProduct.length} article${report.byProduct.length > 1 ? "s" : ""} · ${report.byProduct[0].name} en tête` : "Aucune vente d'article"}>
-      <h3>Ce qui s'est vendu</h3>
-      {report.byProduct.length === 0 ? (
-        <p className="note">Aucune vente d'article sur cette période.</p>
-      ) : (
-        <div className="import-preview">
-          <table>
-            <thead><tr><th>Article</th><th>Vendu</th><th>Ventes</th><th>Bénéfice</th></tr></thead>
-            <tbody>
-              {report.byProduct.map((l) => (
-                <tr key={l.productId}>
-                  <td>{l.name}</td>
-                  <td className="num">
-                    {[l.bulkQty ? `${qty(l.bulkQty)} ${l.bulkUnit}` : "", l.retailQty ? `${qty(l.retailQty)} ${l.retailUnit ?? ""}` : ""].filter(Boolean).join(" + ")}
-                  </td>
-                  <td className="num">{money(l.revenue)}</td>
-                  <td className="num">{l.profit === null ? "—" : money(l.profit)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      </Drill>
 
       <Drill id="inventaire" title="Stock et inventaire" icon="stock" summary={`Stock : ${money(value.atCost)} au prix d'achat`} badge={due ? 1 : 0}>
       <h3>Stock et inventaire</h3>
@@ -285,5 +266,76 @@ export function ProfitStrip({ shop, onOpen }: { shop: Shop; onOpen: () => void }
       </span>
       <span className="profit-go">Mes bénéfices ›</span>
     </button>
+  );
+}
+
+const PAY: Record<string, string> = { especes: "espèces", wave: "Wave", om: "Orange Money", credit: "crédit" };
+const q = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+
+/** Chaque ligne du bénéfice : un toucher ouvre le calcul (acheté en gros, vendu, pièces, main-d'œuvre). */
+function ProfitDetailsList({ rows }: { rows: ProfitDetail[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+  if (!rows.length) return <p className="note">Aucune vente sur cette période.</p>;
+  return (
+    <ul className="profit-rows">
+      {rows.map((r) => {
+        const gain = r.kind === "travail" ? r.labor : r.profit;
+        const sub =
+          r.kind === "article" ? `${q(r.qty)} ${r.unit} · vendu en moyenne ${money(r.avgPrice)}`
+          : r.kind === "travail" ? `${r.ref} · encaissé ${money(r.revenue)}`
+          : r.kind === "service" ? `${r.count} fois · ${money(r.revenue)}`
+          : `${r.count} vente${r.count > 1 ? "s" : ""} · ${money(r.revenue)}`;
+        const isOpen = open === r.key;
+        return (
+          <li key={r.key} className={isOpen ? "is-open" : ""}>
+            <button type="button" className="profit-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.key)}>
+              <span className="profit-name">
+                <b>{r.kind === "travail" ? r.title : r.name}</b>
+                <small>{sub}</small>
+              </span>
+              <span className="profit-gain num" data-tone={gain === null ? undefined : gain < 0 ? "bad" : "good"}>
+                {gain === null ? "?" : `${gain < 0 ? "− " : "+ "}${money(Math.abs(gain))}`}
+              </span>
+            </button>
+            {isOpen && (
+              <dl className="profit-calc">
+                {r.kind === "article" && (
+                  <>
+                    <div><dt>Acheté en gros</dt><dd className="num">{r.unitCost === null ? "pas connu" : `${money(r.unitCost)} / ${r.unit || "unité"}`}</dd></div>
+                    <div><dt>Vendu (en moyenne)</dt><dd className="num">{money(r.avgPrice)} / {r.unit || "unité"}</dd></div>
+                    {r.unitCost !== null && <div><dt>Bénéfice par {r.unit || "unité"}</dt><dd className="num">{money(r.avgPrice - r.unitCost)}</dd></div>}
+                    <div><dt>Quantité vendue</dt><dd className="num">× {q(r.qty)}</dd></div>
+                    <div className="profit-total"><dt>Ventes {money(r.revenue)} − achat {r.cost === null ? "?" : money(r.cost)}</dt><dd className="num">{r.profit === null ? "?" : money(r.profit)}</dd></div>
+                    {r.cost === null && <p className="note">Prix d'achat pas connu pour certaines ventes : mets-le dans Stock pour avoir le vrai bénéfice.</p>}
+                  </>
+                )}
+                {r.kind === "travail" && (
+                  <>
+                    {r.payments.map((p, i) => <div key={i}><dt>Payé ({p.what}, {PAY[p.payment] ?? p.payment})</dt><dd className="num">{money(p.amount)}</dd></div>)}
+                    {r.parts.length ? r.parts.map((p, i) => <div key={i}><dt>{p.label} (prix d'achat)</dt><dd className="num">− {money(p.cost)}</dd></div>) : <div><dt>Pièce</dt><dd>aucune</dd></div>}
+                    <div className="profit-total"><dt>Service rendu (ta main-d'œuvre)</dt><dd className="num">{money(r.labor)}</dd></div>
+                    {r.partsLater && <p className="note">L'appareil n'est pas encore rendu : le prix des pièces sera compté au rendu.</p>}
+                  </>
+                )}
+                {r.kind === "service" && (
+                  <>
+                    <div><dt>Encaissé ({r.count} fois)</dt><dd className="num">{money(r.revenue)}</dd></div>
+                    <div><dt>Matière utilisée</dt><dd className="num">{r.cost ? `− ${money(r.cost)}` : "aucune"}</dd></div>
+                    <div className="profit-total"><dt>Service rendu (ta main-d'œuvre)</dt><dd className="num">{money(r.profit)}</dd></div>
+                  </>
+                )}
+                {r.kind === "comptoir" && (
+                  <>
+                    <div><dt>Encaissé</dt><dd className="num">{money(r.revenue)}</dd></div>
+                    <div className="profit-total"><dt>Bénéfice</dt><dd className="num">{r.profit === null ? "pas connu" : money(r.profit)}</dd></div>
+                    {r.profit === null && <p className="note">Vente sans article : Jokko ne connaît pas le prix d'achat. Dis l'article (« vendu un écran BF6 10 000 ») pour avoir le bénéfice.</p>}
+                  </>
+                )}
+              </dl>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

@@ -11,6 +11,7 @@
 import { type CashSource, type Client, type Repair, type RepairPart, type Shop, todayStamp, uid } from "@/model";
 import { nameClash, pickByName } from "@/assistant/wolofNames";
 import { metierOf } from "@/data/metiers";
+import { nextTicket } from "@/data/tickets";
 
 const DAY = 86_400_000;
 const DEFAULT_DUE_DAYS = 30;
@@ -64,8 +65,9 @@ const payWord = (shop: Pick<Shop, "activity">) => (metierOf(shop.activity).id ==
 /** Moyen de paiement d'un paiement de réparation (espèces = tiroir ; Wave / Orange Money = hors tiroir). */
 export type RepairPayment = "especes" | "wave" | "om";
 
-function paymentSale(r: Repair, amount: number, what: string, cost?: number, word = "Réparation", payment: RepairPayment = "especes") {
-  return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment };
+/** Paiement d'une réparation : une vente avec son numéro de ticket du jour (il entre dans le ticket Z, la preuve est gardée). */
+function paymentSale(shop: Pick<Shop, "sales">, r: Repair, amount: number, what: string, cost?: number, word = "Réparation", payment: RepairPayment = "especes") {
+  return { id: uid("s"), at: todayStamp(), label: `${word} ${r.number} · ${r.device} (${what})`, amount, clientId: r.clientId, ...(cost !== undefined ? { cost } : {}), payment, ...(amount > 0 ? { ticket: nextTicket(shop) } : {}) };
 }
 
 export type NewRepair = { clientName: string; phone?: string; device: string; problem: string; price?: number; advance?: number; advancePayment?: RepairPayment; warrantyDays?: number; imei?: string };
@@ -98,7 +100,7 @@ export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: R
     ...(input.warrantyDays ? { warrantyDays: input.warrantyDays } : {}),
     ...(cleanImei(input.imei) ? { imei: cleanImei(input.imei) } : {}),
   };
-  const sales = advance > 0 ? [paymentSale(repair, advance, "avance", undefined, payWord(shop), input.advancePayment), ...shop.sales] : shop.sales;
+  const sales = advance > 0 ? [paymentSale(shop, repair, advance, "avance", undefined, payWord(shop), input.advancePayment), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, repairs: [repair, ...repairsOf(shop)] }, repair };
 }
 
@@ -149,7 +151,7 @@ export function payRepair(shop: Shop, id: string, amount: number, payment: Repai
   const repair = repairsOf(shop).find((r) => r.id === id);
   const pay = Math.round(amount);
   if (!repair || pay <= 0) return null;
-  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(repair, pay, "acompte", undefined, payWord(shop), payment), ...shop.sales] };
+  return { ...update(shop, id, (r) => ({ ...r, paid: r.paid + pay })), sales: [paymentSale(shop, repair, pay, "acompte", undefined, payWord(shop), payment), ...shop.sales] };
 }
 
 /**
@@ -165,7 +167,7 @@ export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDeb
   const pay = Math.max(0, Math.round(repair.price > 0 && !raisePrice ? Math.min(paidNow, left) : paidNow));
   const rest = Math.max(0, repair.price - repair.paid - pay);
   const cost = partsCost(repair);
-  const sales = pay > 0 || cost > 0 ? [paymentSale(repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop), pay > 0 ? payment : "especes"), ...shop.sales] : shop.sales;
+  const sales = pay > 0 || cost > 0 ? [paymentSale(shop, repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop), pay > 0 ? payment : "especes"), ...shop.sales] : shop.sales;
   let clients = shop.clients;
   if (rest > 0 && restToDebt && repair.clientId) {
     clients = clients.map((c) =>
@@ -216,4 +218,20 @@ export function workshopMonth(shop: Shop, now = new Date()): { done: number; rev
   const revenue = done.reduce((a, r) => a + r.price, 0);
   const parts = done.reduce((a, r) => a + partsCost(r), 0);
   return { done: done.length, revenue, parts, labor: revenue - parts, open: open.length, owed: open.reduce((a, r) => a + remaining(r), 0) };
+}
+
+/** Garantie donnée au rendu (jours), écrite sur le ticket du client. 0 = pas de garantie. */
+export function setWarranty(shop: Shop, id: string, days: number): Shop {
+  const d = Math.max(0, Math.round(days));
+  return update(shop, id, (r) => {
+    const { warrantyDays: _old, ...rest } = r;
+    void _old;
+    return d ? { ...rest, warrantyDays: d } : rest;
+  });
+}
+
+/** Les paiements d'une réparation (avance, acomptes, rendu), du plus ancien au plus récent. */
+export function repairPayments(shop: Pick<Shop, "sales">, r: Pick<Repair, "number" | "clientId">) {
+  const tag = new RegExp(`\\b${r.number}\\s·`);
+  return shop.sales.filter((s) => !s.productId && tag.test(s.label) && (!r.clientId || !s.clientId || s.clientId === r.clientId)).sort((a, b) => a.at.localeCompare(b.at));
 }

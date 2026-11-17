@@ -134,3 +134,50 @@ describe("rendu payé par Wave (16/11/2026)", () => {
     expect(expectedCash(after)).toBe(4000);
   });
 });
+
+describe("ticket de réparation (17/11/2026)", () => {
+  it("bon de dépôt puis ticket final : pièces, paiements numérotés avec leur moyen, reste, garantie ; jamais le prix d'achat", async () => {
+    const { repairReceiptText } = await import("./tickets");
+    const { setWarranty } = await import("./repairs");
+    const base: Shop = { ...atelier(), name: "Boutique Mbene", products: [{ id: "p1", name: "Écran Tecno KI5K", unit: "pièce", stock: 0, min: 0, price: 0, cost: 3700 }] };
+    const { shop, repair } = addRepair(base, { clientName: "Oumy Tall", phone: "771234567", device: "Ki5k", problem: "Écran cassé", price: 10000, advance: 4000, advancePayment: "especes" });
+    const bon = repairReceiptText(shop, repairsOf(shop)[0]!, 58);
+    expect(bon).toContain("BON DE DEPOT");
+    expect(bon).toContain(repair.number);
+    expect(bon).toMatch(/Reste a payer\s+6 000 F/);
+    let s = markRepaired(shop, repair.id, [{ productId: "p1" }])!;
+    s = setWarranty(deliverRepair(s, repair.id, 6000, true, false, "wave")!, repair.id, 30);
+    const r = repairsOf(s).find((x) => x.id === repair.id)!;
+    const t = repairReceiptText(s, r, 58);
+    expect(t).toContain("TICKET DE REPARATION");
+    expect(t).toContain("Ecran Tecno KI5K");
+    expect(t).toMatch(/rendu\s+6 000 F/);
+    expect(t).toContain("Wave - ticket 0002");
+    expect(t).toMatch(/Garantie\s+30 jours/);
+    expect(t).not.toContain("3 700");
+    expect(s.sales.filter((x) => x.amount > 0).map((x) => x.ticket)).toEqual([2, 1]);
+    for (const l of t.split("\n")) expect(l.length).toBeLessThanOrEqual(32);
+  });
+});
+
+describe("détail du bénéfice (17/11/2026)", () => {
+  it("article : acheté en gros, vendu en moyenne, bénéfice ; réparation : pièce et main-d'œuvre", async () => {
+    const { profitDetails, periodOf, buildReport } = await import("./report");
+    const now = new Date().toISOString();
+    let s: Shop = { ...atelier(), sales: [
+      { id: "s1", at: now, label: "Écran BF6", amount: 10000, productId: "p-bf6", qty: 1, cost: 3700, payment: "especes" } as never,
+      { id: "s2", at: now, label: "Écran BF6", amount: 12000, productId: "p-bf6", qty: 1, cost: 3700, payment: "especes" } as never,
+      { id: "s3", at: now, label: "Service · Décodage", amount: 5000, payment: "especes" } as never,
+    ], products: [{ id: "p-bf6", name: "Écran Tecno BF6", unit: "pièce", stock: 0, min: 0, price: 10000, cost: 3700 }] };
+    const { shop, repair } = addRepair(s, { clientName: "Oumy", device: "Ki5k", problem: "écran", price: 10000, advance: 10000 });
+    s = deliverRepair(markRepaired(shop, repair.id, [{ label: "Écran KI5K", cost: 3700 }])!, repair.id, 0, true)!;
+    const rows = profitDetails(s, periodOf("jour"));
+    const art = rows.find((r) => r.kind === "article")!;
+    expect(art).toMatchObject({ qty: 2, avgPrice: 11000, unitCost: 3700, profit: 14600 });
+    const job = rows.find((r) => r.kind === "travail")!;
+    expect(job).toMatchObject({ ref: repair.number, revenue: 10000, partsCost: 3700, labor: 6300 });
+    expect(rows.find((r) => r.kind === "service")).toMatchObject({ profit: 5000 });
+    const total = rows.reduce((a, r) => a + ((r.kind === "travail" ? r.labor : r.profit) ?? 0), 0);
+    expect(total).toBe(buildReport(s, periodOf("jour")).grossProfit);
+  });
+});

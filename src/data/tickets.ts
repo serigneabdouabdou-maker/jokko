@@ -1,4 +1,4 @@
-import { fromDrawer, type Payment, PAYMENT_LABELS, type Sale, type Shop } from "../model.ts";
+import { fromDrawer, type Payment, PAYMENT_LABELS, type Repair, type Sale, type Shop } from "../model.ts";
 import { type VoidDay, voidsOfDay } from "./voids.ts";
 import { getPaper, type Paper, paperCols } from "./printer.ts";
 
@@ -161,4 +161,64 @@ export function receiptFor(shop: Pick<Shop, "name" | "address" | "phone" | "nine
   const lines = found.length ? found : [sale];
   const build = (paper: Paper) => receiptText(shop, lines, cash, paper);
   return { title: sale.ticket ? `Ticket ${ticketLabel(sale.ticket, day)}` : "Ticket", text: build(getPaper()), build };
+}
+
+const DAY_MS = 86_400_000;
+const dmy = (iso: string) => { const d = localDay(new Date(iso)); return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`; };
+const PAY_WORD: Record<string, string> = { especes: "Especes", wave: "Wave", om: "Orange Money", credit: "Credit" };
+
+/**
+ * Ticket de réparation (17/11/2026, demande de Fallou : « une preuve, ça permet de tout tracer ») :
+ * au dépôt = bon de dépôt ; au rendu = ticket final avec pièces posées, paiements (date, moyen), reste et garantie.
+ * Refait à tout moment à partir de la réparation et de ses paiements gardés sur le serveur. Jamais le prix d'achat des pièces.
+ */
+export function repairReceiptText(
+  shop: Pick<Shop, "name" | "address" | "phone" | "ninea" | "city" | "sales">,
+  r: Repair,
+  paper: Paper = getPaper(),
+): string {
+  const { W, center, row, line } = layout(paper);
+  const rendu = r.status === "rendu";
+  const out = [center(plain(shop.name).toUpperCase())];
+  if (shop.address || shop.city) out.push(center(plain([shop.address, shop.city].filter(Boolean).join(", "))));
+  if (shop.phone) out.push(center(`Tel ${plain(shop.phone)}`));
+  if (shop.ninea) out.push(center(`NINEA ${plain(shop.ninea)}`));
+  out.push(line, center(rendu ? "TICKET DE REPARATION" : r.status === "repare" ? "REPARATION PRETE" : "BON DE DEPOT"), center(`${r.number} du ${dmy(r.at)}`), line);
+  out.push(row("Client", plain(r.clientName)));
+  if (r.phone) out.push(row("Tel", plain(r.phone)));
+  out.push(row("Appareil", plain(r.device)));
+  if (r.imei) out.push(row("IMEI", r.imei));
+  if (r.problem) {
+    const p = `Panne : ${plain(r.problem)}`;
+    for (let i = 0; i < p.length; i += W) out.push(p.slice(i, i + W));
+  }
+  if (r.parts.length) {
+    out.push(line, "Pieces posees :");
+    for (const part of r.parts) out.push(`  ${part.qty > 1 ? `${part.qty} x ` : ""}${plain(part.label)}`.slice(0, W));
+  }
+  out.push(line, row("Prix", r.price ? f(r.price) : "a fixer"));
+  const pays = repairPaymentsOf(shop, r).filter((s) => s.amount > 0);
+  for (const s of pays) {
+    const what = plain(/\(([^)]+)\)/.exec(s.label)?.[1] ?? "paiement");
+    out.push(row(`${dmy(s.at).slice(0, 5)} ${what}`, f(s.amount)));
+    out.push(row(`  ${PAY_WORD[s.payment ?? "especes"] ?? ""}${s.ticket ? ` - ticket ${String(s.ticket).padStart(4, "0")}` : ""}`, ""));
+  }
+  out.push(row("Total paye", f(r.paid)));
+  const rest = Math.max(0, r.price - r.paid);
+  if (r.price) out.push(row(rest ? (rendu ? "Reste (en dette)" : "Reste a payer") : "Reste", f(rest)));
+  if (rendu && r.returnedAt) {
+    out.push(line, row("Rendu le", dmy(r.returnedAt)));
+    if (r.warrantyDays) out.push(row("Garantie", `${r.warrantyDays} jours`), row("  jusqu'au", dmy(new Date(Date.parse(r.returnedAt) + r.warrantyDays * DAY_MS).toISOString())));
+    else out.push(row("Garantie", "aucune"));
+  } else if (!rendu) {
+    out.push(line, "Gardez ce bon : il est demande", "pour recuperer l'appareil.".slice(0, W));
+  }
+  out.push(line, center("Merci et a bientot !"), center("Jokko - jokkoapp.com"));
+  return out.join("\n");
+}
+
+/** Paiements d'une réparation (même règle que repairs.ts, sans importer ce fichier). */
+function repairPaymentsOf(shop: Pick<Shop, "sales">, r: Pick<Repair, "number" | "clientId">): Sale[] {
+  const tag = new RegExp(`\\b${r.number}\\s·`);
+  return shop.sales.filter((s) => !s.productId && tag.test(s.label) && (!r.clientId || !s.clientId || s.clientId === r.clientId)).sort((a, b) => a.at.localeCompare(b.at));
 }

@@ -5,7 +5,9 @@ import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Dr
 import { CashSourcePicker, defaultCashSource } from "@/components/jokko/CashSourcePicker";
 import { Input } from "@/components/ui/input";
 import { type CashSource, type Product, type Repair, type Shop, money } from "@/model";
-import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
+import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, setWarranty, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
+import { repairReceiptText } from "@/data/tickets";
+import { Receipt } from "@/components/jokko/Receipt";
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
 import { productNamedIn, searchProducts } from "@/data/partSearch";
@@ -170,6 +172,9 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     }),
   );
   const [open, setOpen] = useState<string | null>(null);
+  // Ticket du client (bon de dépôt ou ticket de réparation) : refait à tout moment depuis la réparation gardée.
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const ticket = ticketId ? repairsOf(shop).find((x) => x.id === ticketId) : undefined;
   const [partQuery, setPartQuery] = useState("");
   const [picked, setPicked] = useState<Product | null>(null);
   // Dépôt pas à pas (16/11/2026, demande de Fallou : « ça passe, ça passe, tu cliques OK et ça calcule ») :
@@ -216,8 +221,10 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     if (!form.clientName.trim() || !form.device.trim()) return;
     // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
     const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : form.problem;
-    const { shop: next } = addRepair(shop, { ...form, problem, price, advance: n(form.advance), advancePayment: advanceWith });
+    const { shop: next, repair } = addRepair(shop, { ...form, problem, price, advance: n(form.advance), advancePayment: advanceWith });
     commit(next);
+    // Bon de dépôt tout de suite : la preuve pour le client (WhatsApp, imprimante).
+    setTicketId(repair.id);
     // Réseau Jokko : cet IMEI = cet appareil (8 premiers chiffres seulement), appris pour tous les ateliers.
     const tac = tacOf(form.imei);
     const key = mainModelKey(form.device);
@@ -455,16 +462,24 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       {!adding && <div className="list">
         {list.length === 0 && <p className="note">{filter === "cours" ? "Rien en cours." : "Aucune réparation rendue."}</p>}
         {list.map((r) => (
-          <RepairRow key={r.id} r={r} shop={shop} commit={commit} open={open === r.id} toggle={() => setOpen(open === r.id ? null : r.id)} />
+          <RepairRow key={r.id} r={r} shop={shop} commit={commit} open={open === r.id} toggle={() => setOpen(open === r.id ? null : r.id)} onTicket={setTicketId} />
         ))}
       </div>}
       </DrillOverview>
       {!phone && commandes}
+      {ticket && (
+        <Receipt
+          title={`${ticket.status === "rendu" ? "Ticket" : "Bon de dépôt"} ${ticket.number}`}
+          text={repairReceiptText(shop, ticket)}
+          build={(paper) => repairReceiptText(shop, ticket, paper)}
+          onClose={() => setTicketId(null)}
+        />
+      )}
     </section>
   );
 }
 
-function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void }) {
+function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void; onTicket: (id: string) => void }) {
   // Pièce choisie au dépôt (écrite dans la panne) : déjà mise dans les pièces posées (16/11/2026 : R-005 et R-006
   // marquées « Réparé » sans pièce → 19 000 F comptés en main-d'œuvre, les écrans oubliés dans le bénéfice).
   const planned = r.status === "depot" ? productNamedIn(shop.products, r.problem) : undefined;
@@ -490,6 +505,8 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
   const [give, setGive] = useState<"" | "rendu1" | "rendu2" | "acompte">("");
   const [payWith, setPayWith] = useState<RepairPayment>("especes");
   const [raise, setRaise] = useState(false);
+  const [warranty, setWarrantyDays] = useState<number>(r.warrantyDays ?? 0);
+
   const chosen = parts.map((id) => shop.products.find((p) => p.id === id)).filter((p): p is Product => Boolean(p));
   const boughtTotal = bought.reduce((a, b) => a + b.cost, 0);
   const labor = r.price - boughtTotal - chosen.reduce((a, p) => a + (p.cost ?? 0), 0);
@@ -637,7 +654,15 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                   <Icon name="whatsapp" size="sm" /> Prévenir : c'est prêt
                 </Button>
               )}
+              <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => onTicket(r.id)}>
+                <Icon name="imprimer" size="sm" /> Bon de dépôt
+              </Button>
             </div>
+          )}
+          {r.status === "rendu" && (
+            <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => onTicket(r.id)}>
+              <Icon name="imprimer" size="sm" /> Ticket de la réparation
+            </Button>
           )}
           {r.status !== "rendu" && give !== "" && (
             <div className="wizard wizard-inline" role="group" aria-label={give === "acompte" ? "Acompte" : "Rendu au client"}>
@@ -698,6 +723,14 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                       {debt > 0 && <div><dt>Reste en dette ({r.clientName})</dt><dd className="num" data-tone="bad">{money(debt)}</dd></div>}
                       {price > 0 && <div><dt>Main-d'œuvre gagnée</dt><dd className="num" data-tone={price - partsCost(r) < 0 ? "bad" : "good"}>{money(price - partsCost(r))}</dd></div>}
                     </dl>
+                    <fieldset className="licence-paid">
+                      <legend>Garantie donnée au client</legend>
+                      <div className="wizard-chips">
+                        {[0, 7, 15, 30, 90].map((d) => (
+                          <button key={d} type="button" className={warranty === d ? "on" : ""} onClick={() => setWarrantyDays(d)}>{d ? `${d} jours` : "Aucune"}</button>
+                        ))}
+                      </div>
+                    </fieldset>
                   </div>
                 );
               })()}
@@ -711,8 +744,14 @@ function RepairRow({ r, shop, commit, open, toggle }: { r: Repair; shop: Shop; c
                 )}
                 {give === "rendu2" && (
                   <Button className="h-12 rounded-full px-6" onClick={() => {
-                    const next = deliverRepair(shop, r.id, r.price > 0 && rest === 0 && !raise ? 0 : n(pay), true, raise, payWith);
-                    if (next) { commit(next); setGive(""); setPay(""); setRaise(false); }
+                    const delivered = deliverRepair(shop, r.id, r.price > 0 && rest === 0 && !raise ? 0 : n(pay), true, raise, payWith);
+                    if (delivered) {
+                      const next = setWarranty(delivered, r.id, warranty);
+                      commit(next);
+                      setGive(""); setPay(""); setRaise(false);
+                      // Le ticket s'ouvre tout de suite : WhatsApp au client, imprimante ou impression.
+                      onTicket(r.id);
+                    }
                   }}><Icon name="ok" size="sm" /> OK, rendu</Button>
                 )}
                 {give === "acompte" && (
