@@ -6,7 +6,7 @@ import { type Shop, money, uid } from "@/model";
 import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/corrections";
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
-import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
+import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
@@ -276,6 +276,27 @@ const PAY: Record<string, string> = { especes: "espèces", wave: "Wave", om: "Or
 const q = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
 /** Chaque ligne du bénéfice : un toucher ouvre le calcul (acheté en gros, vendu, pièces, main-d'œuvre). */
+/** Noms des clients d'une ligne groupée (« · Tapha diallo, Serigne diene ») : chaque vente se retrouve. */
+const who = (items: ProfitItem[]) => {
+  const names = [...new Set(items.map((i) => i.client).filter((n): n is string => Boolean(n)))];
+  return names.length ? ` · ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}` : "";
+};
+
+/** Chaque vente d'une ligne groupée : jour, heure, client, moyen, montant. */
+function Items({ items }: { items: ProfitItem[] }) {
+  if (items.length < 2 && !items[0]?.client) return null;
+  return (
+    <>
+      {[...items].sort((a, b) => a.at.localeCompare(b.at)).map((i, k) => (
+        <div key={k}>
+          <dt>{new Date(i.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {i.client ?? "client pas noté"}{i.payment !== "especes" ? ` · ${PAY[i.payment] ?? i.payment}` : ""}</dt>
+          <dd className="num">{money(i.amount)}</dd>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function ProfitDetailsList({ rows, shop, commit }: { rows: ProfitDetail[]; shop: Shop; commit: (s: Shop) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   if (!rows.length) return <p className="note">Aucune vente sur cette période.</p>;
@@ -286,8 +307,8 @@ function ProfitDetailsList({ rows, shop, commit }: { rows: ProfitDetail[]; shop:
         const sub =
           r.kind === "article" ? `${q(r.qty)} ${r.unit} · vendu en moyenne ${money(r.avgPrice)}`
           : r.kind === "travail" ? `encaissé ${money(r.revenue)} − pièces ${money(r.partsCost)}${r.parts.length ? "" : " (aucune pièce notée)"}`
-          : r.kind === "service" ? `${r.count} fois · ${money(r.revenue)}`
-          : `${r.count} vente${r.count > 1 ? "s" : ""} · ${money(r.revenue)}`;
+          : r.kind === "service" ? `${r.count} fois · ${money(r.revenue)}${who(r.items)}`
+          : `${r.count} vente${r.count > 1 ? "s" : ""} · ${money(r.revenue)}${who(r.items)}`;
         const isOpen = open === r.key;
         return (
           <li key={r.key} className={isOpen ? "is-open" : ""}>
@@ -322,6 +343,7 @@ function ProfitDetailsList({ rows, shop, commit }: { rows: ProfitDetail[]; shop:
                 )}
                 {r.kind === "service" && (
                   <>
+                    <Items items={r.items} />
                     <div><dt>Encaissé ({r.count} fois)</dt><dd className="num">{money(r.revenue)}</dd></div>
                     <div><dt>Matière utilisée</dt><dd className="num">{r.cost ? `− ${money(r.cost)}` : "aucune"}</dd></div>
                     <div className="profit-total"><dt>Service rendu (ta main-d'œuvre)</dt><dd className="num">{money(r.profit)}</dd></div>
@@ -329,6 +351,7 @@ function ProfitDetailsList({ rows, shop, commit }: { rows: ProfitDetail[]; shop:
                 )}
                 {r.kind === "comptoir" && (
                   <>
+                    <Items items={r.items} />
                     <div><dt>Encaissé</dt><dd className="num">{money(r.revenue)}</dd></div>
                     <div className="profit-total"><dt>Bénéfice</dt><dd className="num">{r.profit === null ? "pas connu" : money(r.profit)}</dd></div>
                     {r.profit === null && <p className="note">Vente sans article : Jokko ne connaît pas le prix d'achat. Dis l'article (« vendu un écran BF6 10 000 ») pour avoir le bénéfice.</p>}

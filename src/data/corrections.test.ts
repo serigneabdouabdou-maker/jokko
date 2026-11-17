@@ -43,4 +43,14 @@ describe("corriger un bénéfice depuis les Bénéfices", () => {
     const t = setTotalCost(s, ["a", "b"], 3001);
     expect(t.sales.reduce((a, x) => a + (x.cost ?? 0), 0)).toBe(3001);
   });
+
+  it("services groupés : chaque vente garde son client (Tapha diallo dans « Configuration »)", () => {
+    const s: Shop = { ...newShop("B", "reparation"), clients: [{ id: "c1", name: "Tapha diallo", phone: "", debt: 0 } as never], sales: [
+      { id: "a", at: now(), label: "Service · Configuration", amount: 1000, payment: "especes" } as never,
+      { id: "b", at: now(), label: "Service · Configuration", amount: 5000, payment: "especes", clientId: "c1" } as never,
+    ] };
+    const row = profitDetails(s, periodOf("jour")).find((r) => r.kind === "service")!;
+    expect(row).toMatchObject({ count: 2, revenue: 6000 });
+    expect(row.kind === "service" && row.items.map((i) => i.client)).toEqual([undefined, "Tapha diallo"]);
+  });
 });

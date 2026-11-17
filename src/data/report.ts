@@ -289,13 +289,21 @@ export function reportText(shopName: string, r: Report, money: (n: number) => st
  * vendu tant ; une réparation : l'écran coûte tant, le service rendu tant » — pour vérifier que le calcul est bon).
  * Mêmes chiffres que buildReport (ventes de la période, prix d'achat porté sur chaque vente).
  */
+/** Une vente dans une ligne groupée (services, comptoir) : qui a payé, combien, quand — pour la retrouver (17/11/2026). */
+export type ProfitItem = { at: string; amount: number; client?: string; payment: string };
+
 export type ProfitDetail =
   | { kind: "article"; key: string; saleIds: string[]; productId: string; name: string; qty: number; unit: string; revenue: number; cost: number | null; avgPrice: number; unitCost: number | null; profit: number | null }
   | { kind: "travail"; key: string; saleIds: string[]; repairId?: string; ref: string; title: string; revenue: number; parts: { label: string; cost: number }[]; partsCost: number; partsLater: boolean; labor: number; payments: { what: string; amount: number; payment: string }[] }
-  | { kind: "service"; key: string; saleIds: string[]; name: string; count: number; revenue: number; cost: number; profit: number }
-  | { kind: "comptoir"; key: string; saleIds: string[]; name: string; count: number; revenue: number; cost: number | null; profit: number | null };
+  | { kind: "service"; key: string; saleIds: string[]; items: ProfitItem[]; name: string; count: number; revenue: number; cost: number; profit: number }
+  | { kind: "comptoir"; key: string; saleIds: string[]; items: ProfitItem[]; name: string; count: number; revenue: number; cost: number | null; profit: number | null };
 
 const REF = /\b([RC]-\d+)\b/;
+
+const itemOf = (shop: Shop, s: Shop["sales"][number]): ProfitItem => {
+  const client = s.clientId ? shop.clients.find((c) => c.id === s.clientId)?.name : undefined;
+  return { at: s.at, amount: s.amount, payment: s.payment ?? "especes", ...(client ? { client } : {}) };
+};
 
 export function profitDetails(shop: Shop, period: Period): ProfitDetail[] {
   const sales = shop.sales.filter((s) => within(s.at, period));
@@ -332,8 +340,9 @@ export function profitDetails(shop: Shop, period: Period): ProfitDetail[] {
     } else if (isServicePayment(s)) {
       const name = s.label.replace(/^Service · /, "").replace(/\s*[(×].*$/, "").trim() || "Service";
       const key = `s:${name}`;
-      const row = (rows.get(key) as Extract<ProfitDetail, { kind: "service" }> | undefined) ?? { kind: "service" as const, key, saleIds: [], name, count: 0, revenue: 0, cost: 0, profit: 0 };
+      const row = (rows.get(key) as Extract<ProfitDetail, { kind: "service" }> | undefined) ?? { kind: "service" as const, key, saleIds: [], items: [], name, count: 0, revenue: 0, cost: 0, profit: 0 };
       row.saleIds.push(s.id);
+      row.items.push(itemOf(shop, s));
       row.count += 1;
       row.revenue += s.amount;
       row.cost += s.cost ?? 0;
@@ -341,8 +350,9 @@ export function profitDetails(shop: Shop, period: Period): ProfitDetail[] {
     } else {
       const name = s.label || "Vente";
       const key = `c:${name}`;
-      const row = (rows.get(key) as Extract<ProfitDetail, { kind: "comptoir" }> | undefined) ?? { kind: "comptoir" as const, key, saleIds: [], name, count: 0, revenue: 0, cost: 0, profit: 0 };
+      const row = (rows.get(key) as Extract<ProfitDetail, { kind: "comptoir" }> | undefined) ?? { kind: "comptoir" as const, key, saleIds: [], items: [], name, count: 0, revenue: 0, cost: 0, profit: 0 };
       row.saleIds.push(s.id);
+      row.items.push(itemOf(shop, s));
       row.count += 1;
       row.revenue += s.amount;
       row.cost = row.cost === null || s.cost === undefined ? null : row.cost + s.cost;
