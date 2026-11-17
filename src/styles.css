@@ -2443,3 +2443,22 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .profit-calc dd { margin: 0; font-weight: 650; text-align: right; white-space: nowrap; }
 .profit-calc .profit-total { border-bottom: 0; padding-top: 10px; }
 .profit-calc .profit-total dt, .profit-calc .profit-total dd { font-weight: 750; color: var(--j-ink); }
+
+/* Corriger une ligne des Bénéfices (17/11/2026) */
+.fix-row { padding: 0 14px 12px; display: grid; gap: 8px; justify-items: start; }
+.fix-form { justify-items: stretch; }
+.fix-label { font-size: 14px; color: var(--j-ink-2); }
+.fix-done { color: var(--j-green, #15803d); margin: 0; }
+.fix-preview { margin: 0; font-size: 14px; }
+.fix-preview b[data-tone="good"] { color: var(--j-green, #15803d); }
+.fix-preview b[data-tone="bad"] { color: var(--j-red, #b91c1c); }
+.fix-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.fix-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fix-parts li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fix-parts li > span { flex: 1; min-width: 0; font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
+.fix-cost { width: 96px; flex: none; }
+.fix-hits { display: flex; flex-wrap: wrap; gap: 6px; }
+.fix-hits button { white-space: normal; height: auto; min-height: 40px; text-align: left; }
+.fix-free { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.fix-free > :first-child { flex: 1 1 100%; min-width: 0; }
+.fix-free > .fix-cost { flex: 1; width: auto; }

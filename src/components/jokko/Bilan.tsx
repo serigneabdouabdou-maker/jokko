@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
+import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/corrections";
+import { searchProducts } from "@/data/partSearch";
+import type { RepairPart } from "@/model";
 import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
@@ -112,7 +115,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <DrillList title="En détail">
       <Drill id="articles" title="Le détail, ligne par ligne" icon="vente" summary={details.length ? `${details.length} ligne${details.length > 1 ? "s" : ""} · touche pour voir acheté, vendu, bénéfice` : "Aucune vente sur cette période"}>
       <h3>Le détail, ligne par ligne</h3>
-      <ProfitDetailsList rows={details} />
+      <ProfitDetailsList rows={details} shop={shop} commit={commit} />
       </Drill>
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
@@ -273,7 +276,7 @@ const PAY: Record<string, string> = { especes: "espèces", wave: "Wave", om: "Or
 const q = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
 /** Chaque ligne du bénéfice : un toucher ouvre le calcul (acheté en gros, vendu, pièces, main-d'œuvre). */
-function ProfitDetailsList({ rows }: { rows: ProfitDetail[] }) {
+function ProfitDetailsList({ rows, shop, commit }: { rows: ProfitDetail[]; shop: Shop; commit: (s: Shop) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   if (!rows.length) return <p className="note">Aucune vente sur cette période.</p>;
   return (
@@ -333,9 +336,122 @@ function ProfitDetailsList({ rows }: { rows: ProfitDetail[] }) {
                 )}
               </dl>
             )}
+            {isOpen && <FixRow key={`${r.key}:${r.saleIds.join(",")}`} row={r} shop={shop} commit={commit} />}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+const num = (v: string) => Math.round(Number(v.replace(/\s/g, "").replace(",", ".")));
+
+/**
+ * « Le calcul n'est pas bon ? Corriger » sous chaque ligne des Bénéfices (17/11/2026, demande de Fallou) :
+ * prix d'achat d'un article, coût d'une vente ou d'un service, pièces d'une réparation. Le bénéfice se recalcule tout de suite.
+ */
+function FixRow({ row, shop, commit }: { row: ProfitDetail; shop: Shop; commit: (s: Shop) => void }) {
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState("");
+  const repair = row.kind === "travail" && row.repairId ? (shop.repairs ?? []).find((x) => x.id === row.repairId) : undefined;
+  const product = row.kind === "article" ? shop.products.find((p) => p.id === row.productId) : undefined;
+  const [cost, setCost] = useState(() =>
+    row.kind === "article" ? String(row.unitCost ?? product?.cost ?? "") : row.kind === "service" ? String(row.cost || "") : row.kind === "comptoir" ? String(row.cost ?? "") : "",
+  );
+  const [keep, setKeep] = useState(true);
+  const [parts, setParts] = useState<RepairPart[]>(() => repair?.parts ?? []);
+  const [query, setQuery] = useState("");
+  const [freeName, setFreeName] = useState("");
+  const [freeCost, setFreeCost] = useState("");
+  if (row.kind === "travail" && !repair) return null;
+
+  if (!open) {
+    return (
+      <div className="fix-row">
+        {done && <p className="note fix-done">✓ {done}</p>}
+        <Button variant="outline" className="h-10 rounded-full px-4" onClick={() => { setDone(""); setOpen(true); }}>
+          Le calcul n'est pas bon ? Corriger
+        </Button>
+      </div>
+    );
+  }
+
+  const c = num(cost);
+  const costOk = cost.trim() !== "" && Number.isFinite(c) && c >= 0;
+  const close = (msg: string) => { setOpen(false); setDone(msg); };
+
+  if (row.kind === "article") {
+    const profit = costOk ? row.revenue - c * row.qty : null;
+    return (
+      <div className="fix-row fix-form">
+        <label className="fix-label" htmlFor={`fx-${row.key}`}>Prix d'achat d'1 {row.unit || "unité"} (en gros)</label>
+        <Input id={`fx-${row.key}`} className="h-11" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} />
+        <label className="check-row"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} /> Garder ce prix pour les prochaines ventes</label>
+        {profit !== null && <p className="fix-preview">Nouveau bénéfice : {money(row.revenue)} − {money(c)} × {qty(row.qty)} = <b data-tone={profit < 0 ? "bad" : "good"}>{money(profit)}</b></p>}
+        <div className="fix-actions">
+          <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button className="h-11 rounded-full px-5" disabled={!costOk} onClick={() => { commit(setArticleCost(shop, row.saleIds, c, row.productId, keep)); close("Prix d'achat corrigé."); }}>OK, corriger</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (row.kind === "service" || row.kind === "comptoir") {
+    const profit = costOk ? row.revenue - c : null;
+    return (
+      <div className="fix-row fix-form">
+        <label className="fix-label" htmlFor={`fx-${row.key}`}>{row.kind === "service" ? "Matière utilisée (ce que ça t'a coûté en tout)" : "Ce que ça t'a coûté en tout (prix d'achat)"}</label>
+        <Input id={`fx-${row.key}`} className="h-11" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} />
+        {profit !== null && <p className="fix-preview">Nouveau bénéfice : {money(row.revenue)} − {money(c)} = <b data-tone={profit < 0 ? "bad" : "good"}>{money(profit)}</b></p>}
+        <div className="fix-actions">
+          <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button className="h-11 rounded-full px-5" disabled={!costOk} onClick={() => { commit(setTotalCost(shop, row.saleIds, c)); close("Coût corrigé."); }}>OK, corriger</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Réparation : les pièces posées.
+  const r = repair!;
+  const partsTotal = parts.reduce((a, p) => a + p.cost, 0);
+  const hits = searchProducts(shop.products, query, 5);
+  const fc = num(freeCost);
+  const labor = r.price - partsTotal;
+  return (
+    <div className="fix-row fix-form">
+      <b className="fix-label">Pièces posées sur {r.device}</b>
+      {parts.length ? (
+        <ul className="fix-parts">
+          {parts.map((p, i) => (
+            <li key={i}>
+              <span>{p.label}</span>
+              <Input className="h-10 fix-cost" inputMode="numeric" aria-label={`Prix d'achat ${p.label}`} value={String(p.cost)} onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, cost: Math.max(0, num(e.target.value) || 0) } : x)))} />
+              <Button variant="outline" className="h-10 rounded-full px-3" aria-label={`Enlever ${p.label}`} onClick={() => setParts(parts.filter((_, j) => j !== i))}>✕</Button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="note">Aucune pièce : tout est compté en main-d'œuvre.</p>}
+      <Input className="h-11" placeholder="Cherche la pièce dans ton stock (ex. P smart 2021)" aria-label="Cherche la pièce" value={query} onChange={(e) => setQuery(e.target.value)} />
+      {hits.length > 0 && (
+        <div className="fix-hits">
+          {hits.map(({ product: p }) => (
+            <Button key={p.id} variant="outline" className="h-10 rounded-full px-3" onClick={() => { setParts([...parts, { productId: p.id, label: p.name, qty: 1, cost: p.cost ?? 0 }]); setQuery(""); }}>
+              + {p.name} ({money(p.cost ?? 0)})
+            </Button>
+          ))}
+        </div>
+      )}
+      <div className="fix-free">
+        <Input className="h-11" placeholder="Ou écris la pièce" aria-label="Nom de la pièce" value={freeName} onChange={(e) => setFreeName(e.target.value)} />
+        <Input className="h-11 fix-cost" inputMode="numeric" placeholder="Prix d'achat" aria-label="Prix d'achat de la pièce" value={freeCost} onChange={(e) => setFreeCost(e.target.value)} />
+        <Button variant="outline" className="h-11 rounded-full px-3" disabled={!freeName.trim() || !Number.isFinite(fc) || fc < 0 || freeCost.trim() === ""} onClick={() => { setParts([...parts, { label: freeName.trim(), qty: 1, cost: fc }]); setFreeName(""); setFreeCost(""); }}>Ajouter</Button>
+      </div>
+      <p className="fix-preview">Prix {money(r.price)} − pièces {money(partsTotal)} = main-d'œuvre <b data-tone={labor < 0 ? "bad" : "good"}>{money(labor)}</b></p>
+      {r.status !== "rendu" && <p className="note">L'appareil n'est pas encore rendu : le prix des pièces comptera au rendu.</p>}
+      <div className="fix-actions">
+        <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setOpen(false)}>Annuler</Button>
+        <Button className="h-11 rounded-full px-5" onClick={() => { const next = correctRepairParts(shop, r.id, parts); if (next) { commit(next); close("Pièces corrigées, stock remis juste."); } }}>OK, corriger</Button>
+      </div>
+    </div>
   );
 }
