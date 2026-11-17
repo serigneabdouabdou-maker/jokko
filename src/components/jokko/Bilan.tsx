@@ -282,7 +282,7 @@ function ProfitDetailsList({ rows }: { rows: ProfitDetail[] }) {
         const gain = r.kind === "travail" ? r.labor : r.profit;
         const sub =
           r.kind === "article" ? `${q(r.qty)} ${r.unit} · vendu en moyenne ${money(r.avgPrice)}`
-          : r.kind === "travail" ? `${r.ref} · encaissé ${money(r.revenue)}`
+          : r.kind === "travail" ? `encaissé ${money(r.revenue)} − pièces ${money(r.partsCost)}${r.parts.length ? "" : " (aucune pièce notée)"}`
           : r.kind === "service" ? `${r.count} fois · ${money(r.revenue)}`
           : `${r.count} vente${r.count > 1 ? "s" : ""} · ${money(r.revenue)}`;
         const isOpen = open === r.key;
@@ -290,7 +290,7 @@ function ProfitDetailsList({ rows }: { rows: ProfitDetail[] }) {
           <li key={r.key} className={isOpen ? "is-open" : ""}>
             <button type="button" className="profit-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.key)}>
               <span className="profit-name">
-                <b>{r.kind === "travail" ? r.title : r.name}</b>
+                <b>{r.kind === "travail" ? `${r.ref} · ${r.title}` : r.name}</b>
                 <small>{sub}</small>
               </span>
               <span className="profit-gain num" data-tone={gain === null ? undefined : gain < 0 ? "bad" : "good"}>
