@@ -68,6 +68,10 @@ export function ProductEditor({
     if (cost && (!Number.isFinite(c) || c < 0)) return setError("Le prix d'achat n'est pas un nombre.");
     const s = toNum(stock);
     if (!Number.isFinite(s) || s < 0) return setError("Le stock n'est pas un nombre.");
+    // « 2 » écrit dans l'unité au lieu du stock (vu chez un réparateur le 17/11/2026) : on le dit au lieu de garder « 2 » comme unité.
+    if (/^\s*\d+([.,]\d+)?\s*$/.test(unit)) {
+      return setError(`L'unité est un mot (pièce, carton, sac…), pas un nombre. Écris « pièce » dans Unité, et ${unit.trim()} dans « En stock ».`);
+    }
     if (retailOn && (!retailUnit.trim() || !(n > 0) || !Number.isFinite(rp) || rp < 0)) {
       return setError("Pour le détail : l'unité, combien dans une unité de gros, et le prix.");
     }

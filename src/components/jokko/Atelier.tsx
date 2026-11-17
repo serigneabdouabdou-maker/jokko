@@ -501,6 +501,9 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
     if (!parts.includes(p.id)) setParts([...parts, p.id]);
   }
   const [fix, setFix] = useState<0 | 1 | 2>(0);
+  // « Rendu au client » d'un appareil pas encore marqué réparé (R-007, 17/11/2026 : rendu sans pièce, bénéfice faux) :
+  // on passe d'abord par « Quelle pièce as-tu posée ? », puis le rendu s'ouvre tout seul.
+  const [thenGive, setThenGive] = useState(false);
   // Rendu / acompte pas à pas (16/11/2026) : combien, comment (espèces / Wave / Orange Money), puis récap.
   const [give, setGive] = useState<"" | "rendu1" | "rendu2" | "acompte">("");
   const [payWith, setPayWith] = useState<RepairPayment>("especes");
@@ -608,7 +611,7 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
               )}
 
               <div className="wizard-nav">
-                <Button variant="outline" className="h-12 rounded-full px-5" onClick={() => setFix(fix === 2 ? 1 : 0)}>
+                <Button variant="outline" className="h-12 rounded-full px-5" onClick={() => { if (fix === 1) setThenGive(false); setFix(fix === 2 ? 1 : 0); }}>
                   <Icon name="retour" size="sm" /> {fix === 2 ? "Retour" : "Annuler"}
                 </Button>
                 {fix === 1 ? (
@@ -623,10 +626,13 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
                       const paidWith = source || defaultCashSource(boughtTotal) || undefined;
                       const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
                       const next = markRepaired(shop, r.id, inputs);
-                      if (next) commit(next);
+                      if (!next) return;
+                      commit(next);
+                      setFix(0);
+                      if (thenGive) { setThenGive(false); setPay(rest ? String(rest) : ""); setPayWith("especes"); setGive("rendu1"); }
                     }}
                   >
-                    <Icon name="ok" size="sm" /> OK, réparé
+                    <Icon name="ok" size="sm" /> {thenGive ? "OK, réparé → rendu" : "OK, réparé"}
                   </Button>
                 )}
               </div>
@@ -641,7 +647,10 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
           {fix === 0 && give === "" && <Breakdown r={r} />}
           {r.status !== "rendu" && fix === 0 && give === "" && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <Button className="h-11 rounded-full px-4" onClick={() => { setPay(rest ? String(rest) : ""); setPayWith("especes"); setGive("rendu1"); }}>
+              <Button className="h-11 rounded-full px-4" onClick={() => {
+                if (r.status === "depot") { setThenGive(true); setFix(1); return; }
+                setPay(rest ? String(rest) : ""); setPayWith("especes"); setGive("rendu1");
+              }}>
                 <Icon name="ok" size="sm" /> Rendu au client…
               </Button>
               {rest > 0 && (
