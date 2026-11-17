@@ -180,4 +180,17 @@ describe("détail du bénéfice (17/11/2026)", () => {
     const total = rows.reduce((a, r) => a + ((r.kind === "travail" ? r.labor : r.profit) ?? 0), 0);
     expect(total).toBe(buildReport(s, periodOf("jour")).grossProfit);
   });
+
+  it("Moto G54 de Fallou : payé 15 000 en avance, écran 6 000 posé au rendu → main-d'œuvre 9 000", async () => {
+    const { profitDetails, periodOf } = await import("./report");
+    const now = new Date().toISOString();
+    const s: Shop = { ...atelier(), sales: [
+      { id: "a", at: now, label: "Réparation R-008 · Moto g54 (avance)", amount: 15000, payment: "especes" } as never,
+      { id: "b", at: now, label: "Réparation R-008 · Moto g54 (rendu)", amount: 0, cost: 6000, payment: "especes" } as never,
+      { id: "c", at: now, label: "Réparation R-007 · Huawei p smart 2021 (avance)", amount: 10000, payment: "especes" } as never,
+    ] };
+    const rows = profitDetails(s, periodOf("jour"));
+    expect(rows.find((r) => r.kind === "travail" && r.ref === "R-008")).toMatchObject({ revenue: 15000, partsCost: 6000, labor: 9000 });
+    expect(rows.find((r) => r.kind === "travail" && r.ref === "R-007")).toMatchObject({ revenue: 10000, partsCost: 0, labor: 10000 });
+  });
 });
