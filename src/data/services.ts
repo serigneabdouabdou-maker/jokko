@@ -106,7 +106,7 @@ export function addCommonServices(shop: Shop): Shop {
  */
 export function sellService(
   shop: Shop,
-  input: { name: string; amount?: number; qty?: number; size?: { w: number; h: number }; service?: ServiceItem; licenceId?: string; payment?: Payment; clientId?: string; at?: string },
+  input: { name: string; amount?: number; qty?: number; size?: { w: number; h: number }; service?: ServiceItem; licenceId?: string | null; payment?: Payment; clientId?: string; at?: string; hint?: string },
 ): { shop: Shop; sale: Sale } | null {
   const item = input.service;
   const unit: ServiceUnit = item?.unit ?? "fois";
@@ -140,14 +140,59 @@ export function sellService(
     ...(cost !== undefined ? { cost } : {}),
     ...(input.payment && input.payment !== "especes" ? { payment: input.payment } : {}),
     ...(input.clientId ? { clientId: input.clientId } : {}),
-    ...((input.licenceId ?? item?.licenceId) ? { licenceId: input.licenceId ?? item?.licenceId } : {}),
   };
+  // Outil utilisé (décodage, déblocage, FRP…) : choisi par le patron, sinon celui du service, sinon deviné (nommé dans la
+  // phrase, ou la seule licence en cours). null = « sans licence », dit exprès.
+  const lic = input.licenceId === null ? undefined : input.licenceId ?? item?.licenceId ?? guessLicence(shop, name, input.hint ?? "", sale.at);
+  if (lic) sale.licenceId = lic;
   return { shop: { ...shop, products, sales: [sale, ...shop.sales] }, sale };
 }
 
 /** Date (AAAA-MM-JJ) au fuseau du téléphone. */
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const startOf = (l: Licence) => new Date(`${l.startAt}T00:00:00`);
+
+/**
+ * Services faits avec un outil payant (18/11/2026, demande de Fallou : « une fois décodage, ça range directement dans
+ * la licence ») : décodage, déblocage, FRP, unlock, flash, iCloud / bypass.
+ */
+export const TOOL_SERVICE = /d[ée]cod|d[ée]bloc|\bfrp\b|unlock|flash|bypass|icloud/i;
+export const isToolService = (label: string) => TOOL_SERVICE.test(label) && !/^(R[ée]paration|Couture) [RC]-\d/.test(label);
+const flat = (t: string) => t.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/** Licences encore valables à cette date (une licence notée après coup compte aussi pour les jours d'avant). */
+export function activeLicences(shop: Pick<Shop, "licences">, at: string | Date = new Date()): Licence[] {
+  const t = new Date(at).getTime();
+  return (shop.licences ?? []).filter((l) => licenceEnd(l).getTime() > t);
+}
+
+/** Licence d'un service d'outil : celle nommée (« décodage chimera »), sinon la seule en cours, sinon rien (à choisir). */
+export function guessLicence(shop: Pick<Shop, "licences">, name: string, hint = "", at: string | Date = new Date()): string | undefined {
+  if (!isToolService(`${name} ${hint}`)) return undefined;
+  const list = activeLicences(shop, at);
+  if (!list.length) return undefined;
+  const text = flat(`${name} ${hint}`);
+  const named = list.filter((l) => flat(l.name).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && w !== "tool" && w !== "tools").some((w) => text.includes(w)));
+  if (named.length === 1) return named[0].id;
+  return list.length === 1 ? list[0].id : undefined;
+}
+
+/** Ventes d'outil pas encore rangées dans une licence (à ranger d'un toucher). */
+export const unsortedToolSales = (shop: Shop): Sale[] => shop.licences?.length ? shop.sales.filter((x) => !x.licenceId && !x.productId && isToolService(x.label)) : [];
+
+/** Range des ventes dans une licence (null = sans licence). */
+export function assignLicence(shop: Shop, saleIds: string[], licenceId: string | null): Shop {
+  const ids = new Set(saleIds);
+  return {
+    ...shop,
+    sales: shop.sales.map((x) => {
+      if (!ids.has(x.id)) return x;
+      if (licenceId) return { ...x, licenceId };
+      const { licenceId: _drop, ...rest } = x;
+      return rest;
+    }),
+  };
+}
 export const licenceEnd = (l: Licence) => {
   const s = startOf(l);
   return new Date(s.getFullYear(), s.getMonth() + l.months, s.getDate());
@@ -223,6 +268,10 @@ export type LicenceStats = {
   expired: boolean;
   /** Finit dans 30 jours ou moins. */
   soon: boolean;
+  /** Ce mois : rapporté par les services faits avec l'outil, et la part de la licence pour ce mois. */
+  monthEarned: number;
+  monthUses: number;
+  monthCharge: number;
 };
 
 export function licenceStats(shop: Shop, l: Licence, now = new Date()): LicenceStats {
@@ -231,6 +280,9 @@ export function licenceStats(shop: Shop, l: Licence, now = new Date()): LicenceS
   const sales = shop.sales.filter((x) => x.licenceId === l.id);
   const earned = sales.reduce((a, x) => a + x.amount, 0);
   const daysLeft = Math.ceil((end.getTime() - now.getTime()) / DAY);
+  const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+  const mTo = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const inMonth = sales.filter((x) => Date.parse(x.at) >= mFrom.getTime() && Date.parse(x.at) < mTo.getTime());
   return {
     licence: l,
     endsAt: end,
@@ -242,6 +294,9 @@ export function licenceStats(shop: Shop, l: Licence, now = new Date()): LicenceS
     paidBack: l.cost ? earned / l.cost : 0,
     expired: daysLeft <= 0,
     soon: daysLeft > 0 && daysLeft <= 30,
+    monthEarned: inMonth.reduce((a, x) => a + x.amount - (x.cost ?? 0), 0),
+    monthUses: inMonth.length,
+    monthCharge: licenceCharge({ licences: [l] }, mFrom, mTo),
   };
 }
 

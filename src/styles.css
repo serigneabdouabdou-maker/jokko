@@ -2482,3 +2482,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .journal-day-head b { text-transform: capitalize; }
 .journal-day-head small { color: var(--j-ink-2); }
 .journal-out article b { color: var(--j-red, #b91c1c); }
+
+/* Outil (licence) des décodages (18/11/2026) */
+.tool-pick { border: 0; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tool-pick legend { padding: 0; }
+.licence-month { display: block; font-weight: 600; }
+.licence-month[data-tone="good"] { color: var(--j-green, #15803d); }
+.licence-month[data-tone="warn"] { color: #b45309; }
+.licence-unsorted { display: grid; gap: 6px; padding: 10px 12px; border: 1px dashed color-mix(in oklab, var(--j-yellow) 60%, var(--j-line)); border-radius: 14px; margin-bottom: 8px; }
+.licence-unsorted-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--j-line); }
+.licence-unsorted-row small { display: block; color: var(--j-ink-2); }

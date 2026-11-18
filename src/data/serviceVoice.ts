@@ -183,7 +183,7 @@ export function serviceFromVoice(
   }
   const total = amount ?? Math.round(each * qty);
   if (!(total > 0)) return { kind: "need", besoin: `le prix de ${service.name} (il est à 0 dans tes services)` };
-  const done = sellService(shop, { name: service.name, service, amount: total, ...(size ? { size } : { qty }), clientId: input.clientId ?? undefined });
+  const done = sellService(shop, { name: service.name, service, amount: total, ...(size ? { size } : { qty }), clientId: input.clientId ?? undefined, hint: text });
   if (!done) return { kind: "none" };
   const words = UNIT_WORDS[unit];
   const calcul = amount !== undefined || unit === "fois"

@@ -43,6 +43,8 @@ export type SaleChange = {
   payment?: Payment;
   /** Garder ce prix d'achat dans la fiche de l'article pour les prochaines ventes. */
   keepProductCost?: boolean;
+  /** Outil (licence) utilisé pour ce service ; null = sans licence. */
+  licenceId?: string | null;
 };
 
 /** Paiement d'une réparation / commande / couture (« Réparation R-005 · … ») : son numéro et son carnet. */
@@ -67,6 +69,10 @@ export function editSale(shop: Shop, id: string, change: SaleChange): Shop {
   if (change.cost !== undefined) {
     if (change.cost === null || !Number.isFinite(change.cost)) delete updated.cost;
     else updated.cost = Math.max(0, Math.round(change.cost));
+  }
+  if (change.licenceId !== undefined) {
+    if (change.licenceId) updated.licenceId = change.licenceId;
+    else delete updated.licenceId;
   }
   // Le moyen de paiement se corrige entre espèces, Wave et Orange Money (la caisse et le canal suivent).
   const cashLike = (p?: Payment) => !p || p === "especes" || p === "wave" || p === "om";

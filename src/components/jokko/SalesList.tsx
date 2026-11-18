@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { type Payment, type Sale, type Shop, money } from "@/model";
 import { editSale, removeSale } from "@/data/sales";
 import { isServicePayment } from "@/data/report";
+import { isToolService } from "@/data/services";
 import { type ReceiptDoc, receiptFor } from "@/data/tickets";
 import { Receipt } from "./Receipt";
 
@@ -44,6 +45,9 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
   const [label, setLabel] = useState(s.label);
   const [pay, setPay] = useState<Payment>(s.payment ?? "especes");
   const [keep, setKeep] = useState(true);
+  const tools = isToolService(s.label) ? shop.licences ?? [] : [];
+  const [tool, setTool] = useState<string>(s.licenceId ?? "");
+  const toolName = s.licenceId ? (shop.licences ?? []).find((l) => l.id === s.licenceId)?.name : undefined;
   const client = s.clientId ? shop.clients.find((c) => c.id === s.clientId)?.name : undefined;
   const gain = saleGain(s);
   const [qty, setQty] = useState(s.qty !== undefined ? String(s.qty) : "");
@@ -64,7 +68,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
       <span>
         {s.qty && s.unit ? `${String(s.qty).replace(".", ",")} ${s.unit} · ` : ""}{s.label}
         <small>{when}{client ? ` · ${client}` : ""}{s.ticket ? ` · ticket ${s.ticket}` : ""}{s.payment && s.payment !== "especes" ? ` · ${s.payment === "credit" ? "crédit" : s.payment === "om" ? "Orange Money" : "Wave"}` : ""}</small>
-        {canEdit && <small className="sale-gain" data-tone={gain.tone}>{gain.text}</small>}
+        {canEdit && <small className="sale-gain" data-tone={gain.tone}>{gain.text}{toolName ? ` · licence ${toolName}` : tools.length ? " · outil pas noté" : ""}</small>}
       </span>
       <b className="num">{money(s.amount)}</b>
       {ticket && <Receipt title={ticket.title} text={ticket.text} build={ticket.build} onClose={() => setTicket(null)} />}
@@ -124,6 +128,14 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
               ))}
             </div>
           )}
+          {tools.length > 0 && (
+            <div className="seg" role="group" aria-label="Avec quel outil ?">
+              {tools.map((l) => (
+                <button key={l.id} type="button" aria-pressed={tool === l.id} className={tool === l.id ? "on" : ""} onClick={() => setTool(l.id)}>{l.name}</button>
+              ))}
+              <button type="button" aria-pressed={tool === ""} className={tool === "" ? "on" : ""} onClick={() => setTool("")}>Sans outil</button>
+            </div>
+          )}
           {(() => {
             const a = s.amount === 0 ? 0 : num(price);
             const c = cost.trim() === "" ? null : num(cost);
@@ -144,6 +156,7 @@ function SaleRow({ s, shop, commit, canEdit, open, toggle }: { s: Sale; shop: Sh
                   cost: cost.trim() === "" ? null : Math.round(num(cost)),
                   payment: pay,
                   keepProductCost: keep,
+                  ...(tools.length ? { licenceId: tool || null } : {}),
                 }));
                 toggle();
               }}

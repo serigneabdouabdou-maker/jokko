@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { LICENCE_PAID_LABELS, type LicencePaidWith, type Payment, PAYMENT_LABELS, type ServiceItem, type ServiceUnit, type Shop, money } from "@/model";
 import { metierOf } from "@/data/metiers";
 import { clientFor } from "@/data/repairs";
-import { addCommonServices, addLicence, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth, UNIT_WORDS } from "@/data/services";
+import { activeLicences, addCommonServices, addLicence, assignLicence, isToolService, licenceStats, licencesOf, removeLicence, removeService, saveService, sellService, servicesOf, servicesMonth, UNIT_WORDS, unsortedToolSales } from "@/data/services";
 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
 /** Nombre à virgule (« 1,5 » m) : la virgule ou le point. */
@@ -39,8 +39,15 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
   const quantity = counted === "m2" ? Math.round(dec(size.w) * dec(size.h) * 100) / 100 : counted === "fois" ? 1 : dec(qty);
   const total = picked ? Math.round(picked.price * quantity) : 0;
 
+  // Outil utilisé (Chimera, Unlock Tool…) pour un décodage / déblocage : demandé à chaque fois quand il y en a plusieurs.
+  const [tool, setTool] = useState<string>("");
+  const tools = activeLicences(shop);
+  const askTool = Boolean(picked && isToolService(picked.name) && tools.length > 0);
+
   function pick(s: ServiceItem) {
     setPicked(s);
+    const live = activeLicences(shop);
+    setTool(s.licenceId && live.some((l) => l.id === s.licenceId) ? s.licenceId : isToolService(s.name) && live.length === 1 ? live[0].id : "");
     setAmount(unitOf(s) === "fois" ? String(s.price) : "");
     setQty("1");
     setSize({ w: "", h: "" });
@@ -62,11 +69,13 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
       ...(counted === "m2" ? { size: { w: dec(size.w), h: dec(size.h) } } : counted !== "fois" ? { qty: dec(qty) } : {}),
       payment,
       ...(known ? { clientId: known.client.id } : {}),
+      ...(askTool ? { licenceId: tool === "aucune" ? null : tool } : {}),
     });
     if (!done) return;
     commit(done.shop);
     const gain = done.sale.cost !== undefined ? ` Matière : ${money(done.sale.cost)}, gagné : ${money(done.sale.amount - done.sale.cost)}.` : " Tout est main-d'œuvre.";
-    setNote(`✓ ${done.sale.label.replace(/^Service · /, "")} encaissé : ${money(done.sale.amount)} (${PAYMENT_LABELS[payment]}).${gain}`);
+    const withTool = done.sale.licenceId ? ` Rangé dans la licence ${licences.find((l) => l.id === done.sale.licenceId)?.name ?? ""}.` : "";
+    setNote(`✓ ${done.sale.label.replace(/^Service · /, "")} encaissé : ${money(done.sale.amount)} (${PAYMENT_LABELS[payment]}).${gain}${withTool}`);
     setPicked(null);
   }
 
@@ -140,14 +149,25 @@ export function Services({ shop, commit, canEdit }: { shop: Shop; commit: (s: Sh
             <Input className="h-10" placeholder="Client (facultatif)" aria-label="Nom du client" value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })} />
             <Input className="h-10" inputMode="tel" placeholder="Téléphone (77 …)" aria-label="Téléphone du client" value={who.phone} onChange={(e) => setWho({ ...who, phone: e.target.value })} />
           </div>
+          {askTool && (
+            <fieldset className="tool-pick">
+              <legend><small>Avec quel outil ?</small></legend>
+              <div className="seg" role="radiogroup" aria-label="Avec quel outil ?">
+                {tools.map((l) => (
+                  <button key={l.id} type="button" role="radio" aria-checked={tool === l.id} className={tool === l.id ? "on" : ""} onClick={() => setTool(l.id)}>{l.name}</button>
+                ))}
+                <button type="button" role="radio" aria-checked={tool === "aucune"} className={tool === "aucune" ? "on" : ""} onClick={() => setTool("aucune")}>Sans outil</button>
+              </div>
+            </fieldset>
+          )}
           <div className="seg" role="radiogroup" aria-label="Paiement">
             {PAY.map((p) => (
               <button key={p} type="button" role="radio" aria-checked={payment === p} className={payment === p ? "on" : ""} onClick={() => setPayment(p)}>{PAYMENT_LABELS[p]}</button>
             ))}
           </div>
           <div className="row">
-            <Button className="h-11 rounded-full px-5" disabled={!(n(amount) || total)} onClick={cash}>
-              <Icon name="ok" size="sm" /> Encaisser {n(amount) ? money(n(amount)) : total ? money(total) : ""}
+            <Button className="h-11 rounded-full px-5" disabled={!(n(amount) || total) || (askTool && !tool)} onClick={cash}>
+              <Icon name="ok" size="sm" /> {askTool && !tool ? "Choisis l'outil" : `Encaisser ${n(amount) ? money(n(amount)) : total ? money(total) : ""}`}
             </Button>
             <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setPicked(null)}>Annuler</Button>
           </div>
@@ -281,6 +301,7 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
         </div>
       )}
       {note && <p className="note jk-notice" role="status">{note}</p>}
+      <Unsorted shop={shop} commit={commit} />
       {licences.length === 0 ? (
         <p className="note">Aucune licence notée.</p>
       ) : (
@@ -297,6 +318,12 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
                     {st.uses} service{st.uses > 1 ? "s" : ""} · rapporté {money(st.earned)}
                     {st.paidBack >= 1 ? " · déjà remboursée" : ` · remboursée à ${Math.round(st.paidBack * 100)} %`}
                   </small>
+                  {st.monthCharge > 0 && (
+                    <small className="licence-month" data-tone={st.monthEarned >= st.monthCharge ? "good" : "warn"}>
+                      Ce mois : {st.monthUses} service{st.monthUses > 1 ? "s" : ""}, {money(st.monthEarned)} rapportés pour {money(st.monthCharge)} de licence
+                      {st.monthEarned >= st.monthCharge ? ` · ✓ tu t'en sors (+ ${money(st.monthEarned - st.monthCharge)})` : ` · il manque ${money(st.monthCharge - st.monthEarned)}`}
+                    </small>
+                  )}
                   <small>
                     {l.paidWith ? `Payée : ${LICENCE_PAID_LABELS[l.paidWith]}${l.paidNote ? ` (${l.paidNote})` : ""}${l.paidWith === "tiroir" ? " · sortie de la caisse" : " · la caisse n'a pas bougé"}` : "Mode de paiement pas noté"}
                   </small>
@@ -313,6 +340,35 @@ function Licences({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Décodages, déblocages… pas encore rangés dans une licence : un toucher pour les ranger (tous, ou un par un). */
+function Unsorted({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+  const list = unsortedToolSales(shop);
+  const tools = licencesOf(shop);
+  const [one, setOne] = useState(false);
+  if (!list.length || !tools.length) return null;
+  const total = list.reduce((a, x) => a + x.amount, 0);
+  return (
+    <div className="licence-unsorted">
+      <b>{list.length} service{list.length > 1 ? "s" : ""} d'outil pas rangé{list.length > 1 ? "s" : ""} ({money(total)})</b>
+      <small className="note">Décodage, déblocage, FRP… faits sans dire l'outil. Range-les pour voir ce que chaque licence te rapporte.</small>
+      <div className="debt-actions" style={{ flexWrap: "wrap", gap: 8 }}>
+        {tools.map((l) => (
+          <Button key={l.id} className="h-10 rounded-full px-4" onClick={() => commit(assignLicence(shop, list.map((x) => x.id), l.id))}>Tout dans {l.name}</Button>
+        ))}
+        <button type="button" className="link" onClick={() => setOne(!one)}>{one ? "Fermer" : "Un par un"}</button>
+      </div>
+      {one && list.map((x) => (
+        <div key={x.id} className="licence-unsorted-row">
+          <span>{x.label.replace(/^Service · /, "")} · {money(x.amount)}<small>{new Date(x.at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</small></span>
+          <span className="seg">
+            {tools.map((l) => <button key={l.id} type="button" onClick={() => commit(assignLicence(shop, [x.id], l.id))}>{l.name}</button>)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
