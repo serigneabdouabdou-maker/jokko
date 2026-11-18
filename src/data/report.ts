@@ -115,7 +115,9 @@ export function buildReport(shop: Shop, period: Period): Report {
   const purchases = inPeriod.filter((e) => e.kind === "achat").reduce((a, e) => a + e.amount, 0);
   const losses = inPeriod.filter((e) => e.kind === "perte").reduce((a, e) => a + e.amount, 0);
   const grossProfit = revenue - unknownRevenue - cost;
-  const licences = licenceCharge(shop, period.from, period.to);
+  // La part des licences se compte au mois (et à l'année), jamais sur une journée : un jour sans vente n'affiche plus
+  // « Ce que tu as perdu 375 F » (constat chez Fallou le 18/11/2026). Même règle que « Jour par jour ».
+  const licences = period.kind === "jour" ? 0 : licenceCharge(shop, period.from, period.to);
 
   const byProduct = [...lines.values()]
     .map(({ unknown, ...line }) => ({ ...line, profit: unknown ? null : line.profit }))
@@ -264,7 +266,9 @@ export function expenseBreakdown(shop: Shop, period: Period): Array<{ label: str
     g.count += 1;
     groups.set(label, g);
   }
-  const licences = licenceCharge(shop, period.from, period.to);
+  // La part des licences se compte au mois (et à l'année), jamais sur une journée : un jour sans vente n'affiche plus
+  // « Ce que tu as perdu 375 F » (constat chez Fallou le 18/11/2026). Même règle que « Jour par jour ».
+  const licences = period.kind === "jour" ? 0 : licenceCharge(shop, period.from, period.to);
   if (licences > 0) groups.set("Licences", { label: "Part des licences (outils, comptée mois par mois)", amount: licences, count: (shop.licences ?? []).length });
   return [...groups.values()].sort((a, b) => b.amount - a.amount);
 }

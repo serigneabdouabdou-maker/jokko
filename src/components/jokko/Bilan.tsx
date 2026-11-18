@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
 import { type Shop, money, uid } from "@/model";
+import { licenceCharge } from "@/data/services";
 import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/corrections";
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
@@ -90,6 +91,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
         </div>
       </div>
       <p className="note">{report.period.label} · {report.salesCount} vente(s)</p>
+      {kind === "jour" && (shop.licences ?? []).length > 0 && (
+        <p className="note">La part de tes licences n'est pas comptée sur une journée : elle est dans « Ce mois » ({money(licenceCharge(shop, periodOf("mois").from, periodOf("mois").to))} ce mois-ci).</p>
+      )}
 
       {phone ? (
         <div className="kpi-hero" data-tone={report.netProfit < 0 ? "bad" : "good"}>
