@@ -2492,3 +2492,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .licence-unsorted { display: grid; gap: 6px; padding: 10px 12px; border: 1px dashed color-mix(in oklab, var(--j-yellow) 60%, var(--j-line)); border-radius: 14px; margin-bottom: 8px; }
 .licence-unsorted-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--j-line); }
 .licence-unsorted-row small { display: block; color: var(--j-ink-2); }
+
+/* Chaque jour depuis le début (18/11/2026) */
+.day-history { display: grid; gap: 10px; }
+.day-month { display: grid; gap: 6px; }
+.day-name { text-transform: capitalize; }
+.day-open { padding: 0 12px 12px; display: grid; gap: 8px; }
+.day-open-title { font-size: 15px; margin-top: 4px; }
+.day-open .profit-rows li { background: var(--j-wash); }

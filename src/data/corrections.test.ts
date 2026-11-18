@@ -3,7 +3,7 @@ import { type Shop, newShop } from "@/model";
 import { addRepair, deliverRepair, markRepaired } from "./repairs";
 import { correctRepairParts, setArticleCost, setTotalCost } from "./corrections";
 import { editSale } from "./sales";
-import { buildReport, periodOf, profitDetails } from "./report";
+import { buildReport, dayHistory, periodOf, profitDetails } from "./report";
 
 const now = () => new Date().toISOString();
 
@@ -73,5 +73,17 @@ describe("corriger un bénéfice depuis les Bénéfices", () => {
     t = { ...t, sales: [{ id: "c", at: now(), label: "Chargeur", amount: 6000, qty: 2, productId: "p1", payment: "especes" } as never, ...t.sales] };
     t = editSale(t, "c", { cost: 3000, keepProductCost: true });
     expect(t.products[0].cost).toBe(1500);
+  });
+
+  it("chaque jour depuis le début : un jour par date, le plus récent d'abord, gagné juste", () => {
+    const s: Shop = { ...newShop("B", "reparation"), sales: [
+      { id: "a", at: "2026-11-03T12:00:00", label: "Écran", amount: 10000, cost: 4000 } as never,
+      { id: "b", at: "2026-11-03T15:00:00", label: "Service · Décodage", amount: 5000 } as never,
+      { id: "c", at: "2026-11-17T10:00:00", label: "Chargeur", amount: 3000, cost: 1500 } as never,
+    ], expenses: [{ id: "e", at: "2026-11-17T11:00:00", label: "Transport", amount: 500 } as never] };
+    const days = dayHistory(s);
+    expect(days.map((d) => d.day)).toEqual(["2026-11-17", "2026-11-03"]);
+    expect(days[1]).toMatchObject({ revenue: 15000, grossProfit: 11000, netProfit: 11000, salesCount: 2 });
+    expect(days[0]).toMatchObject({ revenue: 3000, spent: 500, netProfit: 1000 });
   });
 });

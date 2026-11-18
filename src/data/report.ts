@@ -237,6 +237,35 @@ export function dailyReport(shop: Shop, period: Period, now = new Date()): DayRo
   return rows.reverse();
 }
 
+/**
+ * Chaque jour depuis le début (18/11/2026, demande de Fallou : « chaque date, revenir en arrière, voir ce que j'ai
+ * vendu et gagné ») : tous les jours avec une vente ou une dépense, le plus récent d'abord. Même règle que
+ * « Jour par jour » (la part des licences se compte au mois, pas au jour).
+ */
+export function dayHistory(shop: Shop): DayRow[] {
+  const key = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const keys = new Set<string>();
+  for (const x of shop.sales) keys.add(key(x.at));
+  for (const e of shop.expenses) keys.add(key(e.at));
+  return [...keys].sort().reverse().map((k) => {
+    const d = new Date(`${k}T00:00:00`);
+    const to = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    const r = buildReport(shop, { kind: "jour", from: d, to, label });
+    const spent = r.expenses + r.losses;
+    return { day: k, label, revenue: r.revenue, grossProfit: r.grossProfit, spent, netProfit: r.grossProfit - spent, salesCount: r.salesCount };
+  });
+}
+
+/** La période d'un jour (AAAA-MM-JJ), pour ouvrir son détail. */
+export function dayPeriod(day: string): Period {
+  const d = new Date(`${day}T00:00:00`);
+  return { kind: "jour", from: d, to: new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1), label: d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) };
+}
+
 const CATEGORIES: Array<[RegExp, string]> = [
   [/woyofal|electricit|courant|senelec/, "Électricité"],
   [/\beau\b|sen'?eau/, "Eau"],

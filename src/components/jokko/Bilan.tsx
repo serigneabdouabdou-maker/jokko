@@ -7,7 +7,8 @@ import { licenceCharge } from "@/data/services";
 import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/corrections";
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
-import { buildReport, dailyReport, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
+import { SalesList } from "./SalesList";
+import { buildReport, dailyReport, dayHistory, dayPeriod, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
@@ -120,6 +121,9 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <Drill id="articles" title="Le détail, ligne par ligne" icon="vente" summary={details.length ? `${details.length} ligne${details.length > 1 ? "s" : ""} · touche pour voir acheté, vendu, bénéfice` : "Aucune vente sur cette période"}>
       <h3>Le détail, ligne par ligne</h3>
       <ProfitDetailsList rows={details} shop={shop} commit={commit} />
+      </Drill>
+      <Drill id="chaque-jour" title="Chaque jour, depuis le début" icon="journal" summary={dayHistorySummary(shop)}>
+      <DayHistory shop={shop} commit={commit} />
       </Drill>
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
@@ -479,6 +483,104 @@ function FixRow({ row, shop, commit }: { row: ProfitDetail; shop: Shop; commit: 
         <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setOpen(false)}>Annuler</Button>
         <Button className="h-11 rounded-full px-5" onClick={() => { const next = correctRepairParts(shop, r.id, parts); if (next) { commit(next); close("Pièces corrigées, stock remis juste."); } }}>OK, corriger</Button>
       </div>
+    </div>
+  );
+}
+
+const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+function dayHistorySummary(shop: Shop): string {
+  const days = dayHistory(shop);
+  if (!days.length) return "Pas encore de vente";
+  const first = new Date(`${days[days.length - 1].day}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  return `${days.length} jour${days.length > 1 ? "s" : ""} depuis le ${first} · touche une date pour voir tout`;
+}
+
+/**
+ * Chaque jour depuis le début (18/11/2026, demande de Fallou) : regroupé par mois, chaque date montre ventes et gagné ;
+ * un toucher ouvre la journée : le calcul, chaque article / réparation / service vendu (avec « Corriger ») et toutes les ventes.
+ */
+function DayHistory({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+  const days = useMemo(() => dayHistory(shop), [shop]);
+  const [shown, setShown] = useState(31);
+  const [open, setOpen] = useState<string | null>(null);
+  const [allSales, setAllSales] = useState(false);
+  if (!days.length) return <p className="note">Pas encore de vente.</p>;
+  const total = days.reduce((a, d) => ({ revenue: a.revenue + d.revenue, gross: a.gross + d.grossProfit, spent: a.spent + d.spent, net: a.net + d.netProfit }), { revenue: 0, gross: 0, spent: 0, net: 0 });
+  const first = new Date(`${days[days.length - 1].day}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const visible = days.slice(0, shown);
+  const months = new Map<string, typeof visible>();
+  for (const d of visible) months.set(d.day.slice(0, 7), [...(months.get(d.day.slice(0, 7)) ?? []), d]);
+  return (
+    <div className="day-history">
+      <h3>Chaque jour, depuis le début</h3>
+      <dl className="journal-sum">
+        <div><dt>Depuis le {first}</dt><dd className="num">{days.length} jour{days.length > 1 ? "s" : ""}</dd></div>
+        <div><dt>Ventes</dt><dd className="num">{money(total.revenue)}</dd></div>
+        <div><dt>Bénéfice sur les ventes</dt><dd className="num">{money(total.gross)}</dd></div>
+        {total.spent > 0 && <div><dt>Dépenses et pertes</dt><dd className="num">− {money(total.spent)}</dd></div>}
+        <div className="journal-gain"><dt>Gagné (avant la part des licences)</dt><dd className="num">{money(total.net)}</dd></div>
+      </dl>
+      {[...months.entries()].map(([m, list]) => {
+        const mm = list.reduce((a, d) => a + d.netProfit, 0);
+        return (
+          <section key={m} className="day-month">
+            <div className="journal-day-head"><b>{MONTHS_FR[Number(m.slice(5)) - 1]} {m.slice(0, 4)}</b><small>gagné {money(mm)}{list.length === days.filter((d) => d.day.startsWith(m)).length ? "" : " (jours affichés)"}</small></div>
+            <ul className="profit-rows">
+              {list.map((d) => {
+                const isOpen = open === d.day;
+                return (
+                  <li key={d.day} className={isOpen ? "is-open" : ""}>
+                    <button type="button" className="profit-row" aria-expanded={isOpen} onClick={() => { setOpen(isOpen ? null : d.day); setAllSales(false); }}>
+                      <span className="profit-name">
+                        <b className="day-name">{d.label}</b>
+                        <small>{d.salesCount} vente{d.salesCount > 1 ? "s" : ""} · {money(d.revenue)}{d.spent ? ` · dépenses ${money(d.spent)}` : ""}</small>
+                      </span>
+                      <span className="profit-gain num" data-tone={d.netProfit < 0 ? "bad" : "good"}>{d.netProfit < 0 ? "− " : "+ "}{money(Math.abs(d.netProfit))}</span>
+                    </button>
+                    {isOpen && <DayOpen shop={shop} commit={commit} day={d.day} allSales={allSales} setAllSales={setAllSales} />}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+      {days.length > shown && <Button variant="outline" className="h-11 rounded-full" onClick={() => setShown(shown + 31)}>Voir les jours d'avant ({days.length - shown})</Button>}
+    </div>
+  );
+}
+
+function DayOpen({ shop, commit, day, allSales, setAllSales }: { shop: Shop; commit: (s: Shop) => void; day: string; allSales: boolean; setAllSales: (v: boolean) => void }) {
+  const period = dayPeriod(day);
+  const r = buildReport(shop, period);
+  const rows = profitDetails(shop, period);
+  const bought = shop.expenses.filter((e) => e.kind === "achat" && Date.parse(e.at) >= period.from.getTime() && Date.parse(e.at) < period.to.getTime());
+  const sales = shop.sales.filter((x) => Date.parse(x.at) >= period.from.getTime() && Date.parse(x.at) < period.to.getTime()).sort((a, b) => b.at.localeCompare(a.at));
+  return (
+    <div className="day-open">
+      <dl className="profit-calc">
+        <div><dt>Ventes ({r.salesCount})</dt><dd className="num">{money(r.revenue)}</dd></div>
+        <div><dt>Prix d'achat de ce qui est vendu</dt><dd className="num">− {money(r.revenue - r.grossProfit)}</dd></div>
+        <div><dt>Bénéfice sur les ventes</dt><dd className="num">{money(r.grossProfit)}</dd></div>
+        {r.expenses + r.losses > 0 && <div><dt>Dépenses et pertes</dt><dd className="num">− {money(r.expenses + r.losses)}</dd></div>}
+        <div className="profit-total"><dt>Gagné ce jour</dt><dd className="num">{money(r.grossProfit - r.expenses - r.losses)}</dd></div>
+      </dl>
+      <b className="day-open-title">Ce que tu as vendu</b>
+      <ProfitDetailsList rows={rows} shop={shop} commit={commit} />
+      {sales.length > 0 && (
+        <button type="button" className="link" onClick={() => setAllSales(!allSales)}>{allSales ? "Cacher les ventes une par une" : `Voir les ${sales.length} vente${sales.length > 1 ? "s" : ""} une par une (modifier)`}</button>
+      )}
+      {allSales && <SalesList shop={shop} commit={commit} canEdit sales={sales} />}
+      {bought.length > 0 && (
+        <>
+          <b className="day-open-title">Ce que tu as acheté ou ajouté au stock</b>
+          <dl className="profit-calc">
+            {bought.map((e) => <div key={e.id}><dt>{e.label}</dt><dd className="num">{money(e.amount)}</dd></div>)}
+          </dl>
+          <small className="note">Ces achats ne baissent pas le gagné du jour : leur prix compte quand l'article est vendu.</small>
+        </>
+      )}
     </div>
   );
 }
