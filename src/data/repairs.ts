@@ -12,6 +12,7 @@ import { type CashSource, type Client, type Repair, type RepairPart, type Shop, 
 import { nameClash, pickByName } from "@/assistant/wolofNames";
 import { metierOf } from "@/data/metiers";
 import { nextTicket } from "@/data/tickets";
+import { productNamedIn } from "@/data/partSearch";
 
 const DAY = 86_400_000;
 const DEFAULT_DUE_DAYS = 30;
@@ -78,6 +79,28 @@ export const cleanImei = (s?: string): string | undefined => {
   return /^\d{8,17}$/.test(d) ? d : undefined;
 };
 
+/** Paiements déjà enregistrés d'une réparation (« Réparation R-005 · … (avance) »…). */
+const jobSaleOf = (r: Repair) => (s: Shop["sales"][number]) => !s.productId && new RegExp(`^(?:Réparation|Service · Commande) ${r.number} ·`).test(s.label);
+
+/**
+ * Pièce prévue au dépôt (choisie à l'étape « pièce à poser », écrite dans la panne) : son prix d'achat.
+ * 19/11/2026, constat chez Fallou : R-011 / R-012 payées 9 000 au dépôt, écran prévu, mais bénéfice affiché 9 000
+ * (le prix de l'écran n'était compté qu'au rendu). Désormais il est compté dès le paiement.
+ */
+export function plannedPartCost(shop: Pick<Shop, "products">, r: Pick<Repair, "problem">): { label: string; cost: number } | undefined {
+  const p = productNamedIn(shop.products, r.problem);
+  return p && (p.cost ?? 0) > 0 ? { label: p.name, cost: p.cost ?? 0 } : undefined;
+}
+
+/** Le prix des pièces est porté par UN seul paiement de la réparation (le dernier) ; les autres n'en portent plus. */
+function carryOn(sales: Shop["sales"], r: Repair, cost: number): Shop["sales"] {
+  const mine = sales.filter(jobSaleOf(r)).sort((a, b) => a.at.localeCompare(b.at));
+  const last = mine[mine.length - 1];
+  if (!last) return sales;
+  const ids = new Set(mine.map((x) => x.id));
+  return sales.map((x) => (x.id === last.id ? { ...x, cost } : ids.has(x.id) && x.cost ? { ...x, cost: 0 } : x));
+}
+
 /** Dépôt d'un appareil, avec avance éventuelle (elle entre dans la caisse). */
 export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: Repair } {
   const phone = (input.phone ?? "").replace(/\D/g, "");
@@ -100,7 +123,8 @@ export function addRepair(shop: Shop, input: NewRepair): { shop: Shop; repair: R
     ...(input.warrantyDays ? { warrantyDays: input.warrantyDays } : {}),
     ...(cleanImei(input.imei) ? { imei: cleanImei(input.imei) } : {}),
   };
-  const sales = advance > 0 ? [paymentSale(shop, repair, advance, "avance", undefined, payWord(shop), input.advancePayment), ...shop.sales] : shop.sales;
+  const planned = plannedPartCost(shop, repair);
+  const sales = advance > 0 ? [paymentSale(shop, repair, advance, "avance", planned?.cost, payWord(shop), input.advancePayment), ...shop.sales] : shop.sales;
   return { shop: { ...shop, clients, sales, repairs: [repair, ...repairsOf(shop)] }, repair };
 }
 
@@ -141,8 +165,12 @@ export function markRepaired(shop: Shop, id: string, inputs: PartInput[]): Shop 
       if (cost > 0 && paidWith) bought.push({ id: uid("e"), at: todayStamp(), label: `Pièce pour ${repair.number} (${repair.device}) : ${p.label.trim()}`, amount: cost, kind: "achat", paidWith });
     }
   }
+  const posed = [...repair.parts, ...parts];
+  const total = posed.reduce((a, p) => a + p.cost, 0);
+  // Déjà payé (avance) : le prix réel des pièces remplace celui prévu au dépôt, tout de suite.
+  const sales = carryOn(shop.sales, repair, total);
   return {
-    ...update({ ...shop, products, expenses: bought.length ? [...bought, ...shop.expenses] : shop.expenses }, id, (r) => ({ ...r, parts: [...r.parts, ...parts], status: "repare", repairedAt: todayStamp() })),
+    ...update({ ...shop, sales, products, expenses: bought.length ? [...bought, ...shop.expenses] : shop.expenses }, id, (r) => ({ ...r, parts: posed, status: "repare", repairedAt: todayStamp() })),
   };
 }
 
@@ -167,7 +195,12 @@ export function deliverRepair(shop: Shop, id: string, paidNow: number, restToDeb
   const pay = Math.max(0, Math.round(repair.price > 0 && !raisePrice ? Math.min(paidNow, left) : paidNow));
   const rest = Math.max(0, repair.price - repair.paid - pay);
   const cost = partsCost(repair);
-  const sales = pay > 0 || cost > 0 ? [paymentSale(shop, repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop), pay > 0 ? payment : "especes"), ...shop.sales] : shop.sales;
+  // Le prix des pièces passe sur le paiement du rendu (les paiements d'avant n'en portent plus) ; rien à payer et
+  // déjà porté par l'avance : on le laisse sur l'avance.
+  const carried = shop.sales.filter(jobSaleOf(repair)).reduce((a, x) => a + (x.cost ?? 0), 0);
+  const sales = pay > 0 || (cost > 0 && carried !== cost)
+    ? [paymentSale(shop, repair, pay, metierOf(shop.activity).id === "multiservice" ? "livré" : "rendu", cost, payWord(shop), pay > 0 ? payment : "especes"), ...carryOn(shop.sales, repair, 0)]
+    : carried !== cost ? carryOn(shop.sales, repair, cost) : shop.sales;
   let clients = shop.clients;
   if (rest > 0 && restToDebt && repair.clientId) {
     clients = clients.map((c) =>

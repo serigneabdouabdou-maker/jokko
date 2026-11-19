@@ -332,6 +332,7 @@ export type ProfitDetail =
   | { kind: "comptoir"; key: string; saleIds: string[]; items: ProfitItem[]; name: string; count: number; revenue: number; cost: number | null; profit: number | null };
 
 const REF = /\b([RC]-\d+)\b/;
+const flatName = (t: string) => t.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
 const itemOf = (shop: Shop, s: Shop["sales"][number]): ProfitItem => {
   const client = s.clientId ? shop.clients.find((c) => c.id === s.clientId)?.name : undefined;
@@ -367,7 +368,13 @@ export function profitDetails(shop: Shop, period: Period): ProfitDetail[] {
       row.payments.push({ what: /\(([^)]+)\)\s*$/.exec(s.label)?.[1] ?? "paiement", amount: s.amount, payment: s.payment ?? "especes" });
       if (repair) {
         row.parts = repair.parts.map((p) => ({ label: p.qty > 1 ? `${p.qty} × ${p.label}` : p.label, cost: p.cost }));
-        row.partsLater = repair.status !== "rendu" && repair.parts.length > 0;
+        // Pièce prévue au dépôt, déjà comptée sur l'avance (19/11/2026) : on la montre comme telle.
+        if (!repair.parts.length && row.partsCost > 0) {
+          const planned = shop.products.filter((p) => p.name.length >= 4 && flatName(repair.problem).includes(flatName(p.name))).sort((a, b) => b.name.length - a.name.length)[0];
+          row.parts = [{ label: `${planned?.name ?? "Pièce"} (prévue au dépôt)`, cost: row.partsCost }];
+        }
+        const posed = repair.parts.reduce((a, p) => a + p.cost, 0);
+        row.partsLater = repair.status !== "rendu" && posed > row.partsCost;
       }
       rows.set(key, row);
     } else if (isServicePayment(s)) {

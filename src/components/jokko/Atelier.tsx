@@ -5,7 +5,7 @@ import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Dr
 import { CashSourcePicker, defaultCashSource } from "@/components/jokko/CashSourcePicker";
 import { Input } from "@/components/ui/input";
 import { type CashSource, type Product, type Repair, type Shop, money } from "@/model";
-import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, setWarranty, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
+import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, plannedPartCost, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, setWarranty, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { repairReceiptText } from "@/data/tickets";
 import { Receipt } from "@/components/jokko/Receipt";
 import { whatsappLink } from "@/data/debts";
@@ -57,13 +57,14 @@ const STATUS: Record<Repair["status"], string> = { depot: "Au dépôt", repare: 
 const n = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
 
 /** « Le client paie 15 000 F = pièce 5 000 F + main-d'œuvre 10 000 F » : le calcul du réparateur, écrit en clair. */
-function Breakdown({ r }: { r: Repair }) {
-  const b = repairBreakdown(r);
+function Breakdown({ r, planned }: { r: Repair; planned?: { label: string; cost: number } }) {
+  const real = repairBreakdown(r);
+  const b = planned ? { price: real.price, parts: planned.cost, labor: real.price - planned.cost } : real;
   if (!b.price) return null;
   return (
     <p className={`repair-calc${b.labor < 0 ? " is-loss" : ""}`}>
       Le client paie <b>{money(b.price)}</b> = pièces {money(b.parts)} + main-d'œuvre <b>{money(b.labor)}</b>
-      {b.labor < 0 ? " : la pièce coûte plus que le prix, tu perds de l'argent." : r.parts.length ? " (ton gain)" : " (pièces pas encore notées)"}
+      {b.labor < 0 ? " : la pièce coûte plus que le prix, tu perds de l'argent." : r.parts.length ? " (ton gain)" : planned ? ` (${planned.label} prévu au dépôt, déjà compté)` : " (pièces pas encore notées)"}
     </p>
   );
 }
@@ -644,7 +645,7 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
               Pièces : {r.parts.map((p) => `${p.label} (${money(p.cost)})`).join(", ")} · total {money(partsCost(r))}
             </small>
           )}
-          {fix === 0 && give === "" && <Breakdown r={r} />}
+          {fix === 0 && give === "" && <Breakdown r={r} planned={r.parts.length ? undefined : plannedPartCost(shop, r)} />}
           {r.status !== "rendu" && fix === 0 && give === "" && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               <Button className="h-11 rounded-full px-4" onClick={() => {

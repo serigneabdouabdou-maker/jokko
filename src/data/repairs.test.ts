@@ -193,4 +193,24 @@ describe("détail du bénéfice (17/11/2026)", () => {
     expect(rows.find((r) => r.kind === "travail" && r.ref === "R-008")).toMatchObject({ revenue: 15000, partsCost: 6000, labor: 9000 });
     expect(rows.find((r) => r.kind === "travail" && r.ref === "R-007")).toMatchObject({ revenue: 10000, partsCost: 0, labor: 10000 });
   });
+
+  it("pièce prévue au dépôt et tout payé d'avance : le prix de l'écran compte tout de suite, puis suit la vraie pièce (R-011, 19/11)", async () => {
+    const { profitDetails, periodOf, buildReport } = await import("./report");
+    let s: Shop = { ...atelier(), products: [
+      { id: "kg5k", name: "Écran Tecno KG5K", unit: "pièce", stock: 1, min: 0, price: 0, cost: 3500 },
+      { id: "kg5k-b", name: "Écran Tecno KG5K bis", unit: "pièce", stock: 1, min: 0, price: 0, cost: 4000 },
+    ] };
+    const { shop, repair } = addRepair(s, { clientName: "Awa", device: "Kg5k", problem: "Écran cassé · Écran Tecno KG5K", price: 9000, advance: 9000 });
+    s = shop;
+    expect(buildReport(s, periodOf("jour")).grossProfit).toBe(5500);
+    const row = profitDetails(s, periodOf("jour")).find((r) => r.kind === "travail")!;
+    expect(row).toMatchObject({ partsCost: 3500, labor: 5500 });
+    expect(row.kind === "travail" && row.parts[0].label).toContain("prévue au dépôt");
+    // Réparé avec une autre pièce (4 000) : le bénéfice suit tout de suite
+    s = markRepaired(s, repair.id, [{ productId: "kg5k-b" }])!;
+    expect(buildReport(s, periodOf("jour")).grossProfit).toBe(5000);
+    // Rendu (déjà tout payé) : pas de double comptage
+    s = deliverRepair(s, repair.id, 0, false)!;
+    expect(buildReport(s, periodOf("jour")).grossProfit).toBe(5000);
+  });
 });
