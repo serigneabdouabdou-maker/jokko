@@ -12,7 +12,7 @@ import { type CashSource, type Client, type Repair, type RepairPart, type Shop, 
 import { nameClash, pickByName } from "@/assistant/wolofNames";
 import { metierOf } from "@/data/metiers";
 import { nextTicket } from "@/data/tickets";
-import { productNamedIn } from "@/data/partSearch";
+import { productsNamedIn } from "@/data/partSearch";
 
 const DAY = 86_400_000;
 const DEFAULT_DUE_DAYS = 30;
@@ -88,8 +88,8 @@ const jobSaleOf = (r: Repair) => (s: Shop["sales"][number]) => !s.productId && n
  * (le prix de l'écran n'était compté qu'au rendu). Désormais il est compté dès le paiement.
  */
 export function plannedPartCost(shop: Pick<Shop, "products">, r: Pick<Repair, "problem">): { label: string; cost: number } | undefined {
-  const p = productNamedIn(shop.products, r.problem);
-  return p && (p.cost ?? 0) > 0 ? { label: p.name, cost: p.cost ?? 0 } : undefined;
+  const ps = productsNamedIn(shop.products, r.problem).filter((p) => (p.cost ?? 0) > 0);
+  return ps.length ? { label: ps.map((p) => p.name).join(" + "), cost: ps.reduce((a, p) => a + (p.cost ?? 0), 0) } : undefined;
 }
 
 /** Le prix des pièces est porté par UN seul paiement de la réparation (le dernier) ; les autres n'en portent plus. */

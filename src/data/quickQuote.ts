@@ -11,6 +11,7 @@ import { modelKeys } from "./modelKeys.ts";
 import { searchProducts } from "./partSearch.ts";
 import { kindOf, type PartKind } from "./pricing.ts";
 import { type Ladder, type LadderContext, ladderContext, priceLadder } from "./priceGuard.ts";
+import { type CompatHit, compatFor, modelKey } from "./supplierCompat.ts";
 
 export type QuoteLine = {
   kind: PartKind;
@@ -21,20 +22,26 @@ export type QuoteLine = {
   source: "stock" | "fournisseur";
   /** Écran universel trouvé par un téléphone compatible. */
   via?: string;
+  /** Va sur le modèle cherché d'après le fournisseur (« Liste BF6 »), dit n fois. */
+  supplierSays?: { model: string; n: number };
   productId?: string;
 };
 
 const ORDER: PartKind[] = ["Écran", "Batterie", "Connecteur", "Dos", "Plaquette", "Bouton", "Nappe", "Autre"];
 const squash = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
 
-export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: LadderContext = ladderContext(shop, now)): { lines: QuoteLine[]; services: ServiceItem[] } {
+export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: LadderContext = ladderContext(shop, now)): { lines: QuoteLine[]; services: ServiceItem[]; compat: CompatHit[] } {
   const q = query.trim();
-  if (squash(q).length < 2) return { lines: [], services: [] };
+  if (squash(q).length < 2) return { lines: [], services: [], compat: [] };
   const lines: QuoteLine[] = [];
   const seen = new Set<string>();
   const add = (l: QuoteLine) => {
     const key = `${l.kind}:${squash(l.name)}`;
-    if (seen.has(key)) return;
+    if (seen.has(key)) {
+      // Déjà trouvée : on ajoute seulement la preuve du fournisseur.
+      if (l.supplierSays) { const old = lines.find((x) => `${x.kind}:${squash(x.name)}` === key); if (old && !old.supplierSays) old.supplierSays = l.supplierSays; }
+      return;
+    }
     seen.add(key);
     lines.push(l);
   };
@@ -45,6 +52,18 @@ export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: Lad
     const ladder = priceLadder(shop, p, now, ctx);
     if (!ladder) continue;
     add({ kind: kindOf(p.name), name: p.name, ladder: p.price > ladder.normal ? { ...ladder, normal: p.price } : ladder, stock: p.stock, source: "stock", productId: p.id, ...(h.via ? { via: h.via } : {}) });
+  }
+  // 1 bis. Écrans qui vont sur ce modèle d'après le fournisseur (« Liste BF6 » → BF7, KI5K, A60…).
+  const compat = compatFor((shop.suppliers ?? []).flatMap((s) => s.compat ?? []), q);
+  if (compat.length) {
+    const byKey = new Map(compat.map((c) => [c.key, c]));
+    for (const p of shop.products) {
+      if (kindOf(p.name) !== "Écran") continue;
+      const hit = [...modelKeys(p.name), ...(p.aliases ?? []).map(modelKey)].map((k) => byKey.get(k)).find(Boolean);
+      if (!hit) continue;
+      const ladder = priceLadder(shop, p, now, ctx);
+      if (ladder) add({ kind: "Écran", name: p.name, ladder: p.price > ladder.normal ? { ...ladder, normal: p.price } : ladder, stock: p.stock, source: "stock", productId: p.id, supplierSays: { model: hit.model, n: hit.n } });
+    }
   }
   // 2. Pièces vues seulement dans les factures du fournisseur (dernier prix), même modèle.
   const keys = new Set(modelKeys(q));
@@ -67,8 +86,8 @@ export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: Lad
   const services = (shop.services ?? []).filter((s) => words.some((w) => s.name.toLowerCase().includes(w)));
   // 4 pièces au plus par type (écrans, batteries…), 14 en tout : la liste tient sur l'écran du téléphone.
   const perKind = new Map<string, number>();
-  const kept = lines.filter((l) => { const n = (perKind.get(l.kind) ?? 0) + 1; perKind.set(l.kind, n); return n <= 4; }).slice(0, 14);
-  return { lines: kept, services };
+  const kept = lines.filter((l) => { const n = (perKind.get(l.kind) ?? 0) + 1; perKind.set(l.kind, n); return n <= (l.kind === "Écran" ? 6 : 4); }).slice(0, 16);
+  return { lines: kept, services, compat };
 }
 
 /** Le message à envoyer au client (WhatsApp), une ligne par pièce, le prix normal seulement. */

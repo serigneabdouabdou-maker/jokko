@@ -268,6 +268,9 @@ export type SupplierTier = { label: string; qty: number; total: number; min?: nu
 /** Une pièce achetée chez le fournisseur : quantités, historique des prix (date, prix à l'unité), tendance. */
 export type SupplierItem = { key: string; name: string; kind: string; qty: number; total: number; first: string; last: string; prices?: Array<[string, number]>; recent?: number; older?: number };
 
+/** Écrans qui vont ensemble, dits par le fournisseur (« Liste BF6 » → « Bf6 / Bf7 / Ki5k… »), avec combien de fois. */
+export type SupplierCompat = { models: string[]; n: number; last: string };
+
 export type Supplier = {
   id: string;
   name: string;
@@ -287,6 +290,8 @@ export type Supplier = {
   lastKeys?: string[];
   /** Dernière lecture de la discussion. */
   readAt?: string;
+  /** Écrans qui vont ensemble, d'après le fournisseur. */
+  compat?: SupplierCompat[];
   /** Erreurs trouvées dans les factures (ligne comptée trop cher, total faux…), les plus graves d'abord. */
   anomalies?: Array<{ date: string; text: string; serious: boolean }>;
 };

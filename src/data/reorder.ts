@@ -6,7 +6,7 @@
  * Le message de commande est prêt pour WhatsApp ; « Reçu » ajoute au stock.
  */
 import { type CashSource, type Expense, isLow, type OrderLine, type Product, type Shop, uid } from "../model.ts";
-import { productNamedIn, squash } from "./partSearch.ts";
+import { productsNamedIn, squash } from "./partSearch.ts";
 
 const DAY = 86_400_000;
 const PREPARED = /^(plat|portion|part|verre|baguette)s?$/i;
@@ -52,8 +52,7 @@ export function orderPlan(shop: Shop, now = new Date()): { order: Advice[]; advi
   const waiting = new Map<string, string[]>();
   for (const r of shop.repairs ?? []) {
     if (r.status !== "depot") continue;
-    const p = productNamedIn(shop.products, r.problem);
-    if (p && p.stock <= 0) waiting.set(p.id, [...(waiting.get(p.id) ?? []), r.number]);
+    for (const p of productsNamedIn(shop.products, r.problem)) if (p.stock <= 0) waiting.set(p.id, [...(waiting.get(p.id) ?? []), r.number]);
   }
   for (const [id, numbers] of waiting) add(byId.get(id)!, numbers.length, `pour ${numbers.join(", ")} au dépôt`);
   // 2) Stock sous le seuil, ou pièces qui partent et ne tiendront pas une semaine.

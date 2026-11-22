@@ -13,7 +13,7 @@
 import { type Shop, type SupplierItem, money } from "../model.ts";
 import { partForSale } from "./partSearch.ts";
 import { kindOf } from "./pricing.ts";
-import { isToolService } from "./services.ts";
+import { isToolService, unsortedToolSales } from "./services.ts";
 import { purchaseControl } from "./workshopStats.ts";
 import { hasNoPartReason, ladderContext, priceLadder, supplierPriceUpdates } from "./priceGuard.ts";
 
@@ -157,6 +157,21 @@ export function workshopWatch(shop: Shop, now = new Date()): Signal[] {
   const m0 = monthStart(now);
   const blind = shop.sales.filter((s) => s.productId && s.cost === undefined && Date.parse(s.at) >= m0);
   if (blind.length) out.push({ id: "sans-achat", level: "attention", group: "argent", title: `${blind.length} vente${blind.length > 1 ? "s" : ""} sans prix d'achat ce mois`, text: "Le bénéfice de ces ventes n'est pas connu. Caisse → Historique → Modifier, ou mets le prix d'achat dans la fiche de l'article." });
+
+  // 7 bis. Contrôles de cohérence de chaque jour (22/11/2026, demande de Fallou : « tester, calculer, regarder si c'est cohérent »).
+  const lossJobs = (shop.repairs ?? []).filter((r) => r.status !== "annule" && r.parts.length && r.price > 0 && r.parts.reduce((a, p) => a + p.cost * (p.qty || 1), 0) > r.price);
+  if (lossJobs.length) out.push({ id: "repar-perte", level: "attention", group: "argent", title: `${lossJobs.length} réparation${lossJobs.length > 1 ? "s" : ""} où les pièces coûtent plus que le prix`, text: lossJobs.slice(0, 4).map((r) => `${r.number} (${r.device}) : prix ${money(r.price)}, pièces ${money(r.parts.reduce((a, p) => a + p.cost * (p.qty || 1), 0))}`).join(" · ") });
+  const owed = (shop.repairs ?? []).filter((r) => r.status === "rendu" && r.price - r.paid > 0);
+  if (owed.length) out.push({ id: "rendu-doit", level: "attention", group: "argent", title: `${owed.length} appareil${owed.length > 1 ? "s" : ""} rendu${owed.length > 1 ? "s" : ""} pas entièrement payé${owed.length > 1 ? "s" : ""}`, text: owed.slice(0, 4).map((r) => `${r.number} ${r.clientName} : reste ${money(r.price - r.paid)}`).join(" · ") });
+  const seenSale = new Map<string, number>();
+  for (const x of shop.sales.filter((x) => Date.parse(x.at) >= now.getTime() - 7 * DAY)) {
+    const k = `${x.at.slice(0, 10)}|${x.label}|${x.amount}`;
+    seenSale.set(k, (seenSale.get(k) ?? 0) + 1);
+  }
+  const twice = [...seenSale.entries()].filter(([, n]) => n > 1);
+  if (twice.length) out.push({ id: "double-vente", level: "info", group: "controle", title: `${twice.length} vente${twice.length > 1 ? "s" : ""} notée${twice.length > 1 ? "s" : ""} deux fois le même jour ?`, text: twice.slice(0, 4).map(([k, n]) => { const [d, label, amount] = k.split("|"); return `${label} ${money(Number(amount))} × ${n} le ${frDate(d!)}`; }).join(" · ") + ". Si c'est une erreur : Caisse → Historique → Supprimer." });
+  const unsorted = unsortedToolSales(shop);
+  if (unsorted.length) out.push({ id: "outil-pas-range", level: "info", group: "services", title: `${unsorted.length} décodage${unsorted.length > 1 ? "s" : ""} pas rangé${unsorted.length > 1 ? "s" : ""} dans une licence`, text: "Atelier → Services → Mes licences → « Tout dans … » : pour savoir si chaque licence se rembourse." });
 
   // 8. Services sans matériel : le meilleur du mois.
   const sk = skillServices(shop, now);

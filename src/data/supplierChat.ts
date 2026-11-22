@@ -12,12 +12,13 @@
 import { unzipSync, strFromU8 } from "fflate";
 import type { Product, Shop, Supplier, SupplierItem, SupplierMonth, SupplierTier } from "../model.ts";
 import { partForSale } from "./partSearch.ts";
+import { compatGroups, mergeCompat } from "./supplierCompat.ts";
 import { kindOf, type PartKind } from "./pricing.ts";
 
 export type ChatLine = { qty: number; name: string; unit: number; sub: number };
 export type ChatInvoice = { date: string; total: number; who: string; lines: ChatLine[] };
 export type ChatAnomaly = { kind: "doublon" | "calcul" | "total" | "faute"; date: string; text: string; serious: boolean };
-export type ChatImport = { invoices: ChatInvoice[]; anomalies: ChatAnomaly[]; from: string; to: string; messages: number };
+export type ChatImport = { invoices: ChatInvoice[]; anomalies: ChatAnomaly[]; from: string; to: string; messages: number; compat: Array<{ date: string; models: string[] }> };
 
 const DAY = 86_400_000;
 const fmt = (n: number) => n.toLocaleString("fr-FR").replace(/[   ]/g, " "); // espace insécable : un nombre ne se coupe jamais
@@ -175,7 +176,12 @@ export function readSupplierChat(text: string): ChatImport {
     }
   });
   anomalies.sort((a, b) => Number(b.serious) - Number(a.serious) || b.date.localeCompare(a.date));
-  return { invoices, anomalies, from: invoices[0]?.date ?? "", to: invoices[invoices.length - 1]?.date ?? "", messages: msgs.length };
+  // Le fournisseur = celui qui envoie les factures ; ses listes de modèles = écrans qui vont ensemble.
+  const senders = new Map<string, number>();
+  for (const i of invoices) senders.set(i.who, (senders.get(i.who) ?? 0) + 1);
+  const supplier = [...senders.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  const compat = supplier ? compatGroups(msgs, supplier) : [];
+  return { invoices, anomalies, from: invoices[0]?.date ?? "", to: invoices[invoices.length - 1]?.date ?? "", messages: msgs.length, compat };
 }
 
 // ---------- Pièces : nom propre, type, gamme ----------
@@ -326,6 +332,7 @@ export function mergeSupplierChat(sup: Supplier, imp: ChatImport): MergeResult {
     historyTo: to,
     lastKeys: [...new Set([...(to === sup.historyTo ? [...lastKeys] : []), ...lastDay])],
     readAt: new Date().toISOString(),
+    compat: mergeCompat(sup.compat ?? [], full ? imp.compat : imp.compat.filter((g) => !sup.historyTo || g.date > sup.historyTo), full),
     anomalies: keepAnomalies(full ? [] : sup.anomalies ?? [], imp.anomalies.filter((a) => a.kind !== "doublon" && (full || !sup.historyTo || a.date > sup.historyTo))),
   };
   // Factures nouvelles (pour le stock) : seulement celles d'après la lecture précédente, jamais tout l'historique.

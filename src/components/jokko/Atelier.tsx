@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { CashSourcePicker, defaultCashSource } from "@/components/jokko/CashSourcePicker";
 import { Input } from "@/components/ui/input";
-import { type CashSource, type Product, type Repair, type Shop, money } from "@/model";
+import { type CashSource, type Product, type Repair, type ServiceItem, type Shop, money } from "@/model";
 import { addRepair, deliverRepair, markRepaired, type PartInput, partsCost, payRepair, plannedPartCost, remaining, repairBreakdown, type RepairPayment, repairsOf, setRepairPrice, setWarranty, underWarranty, waitingDays, workshopMonth } from "@/data/repairs";
 import { repairReceiptText } from "@/data/tickets";
 import { Receipt } from "@/components/jokko/Receipt";
 import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
-import { productNamedIn, searchProducts } from "@/data/partSearch";
+import { productsNamedIn, searchProducts } from "@/data/partSearch";
+import { sellService } from "@/data/services";
 import { Commandes, PartLookup } from "./Commandes";
 import { QuickQuote } from "./QuickQuote";
 import { laborStats, suggestedPrice } from "@/data/pricing";
@@ -180,6 +181,11 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const ticket = ticketId ? repairsOf(shop).find((x) => x.id === ticketId) : undefined;
   const [partQuery, setPartQuery] = useState("");
   const [picked, setPicked] = useState<Product | null>(null);
+  // Plusieurs pièces pour le même client (écran + connecteur + batterie) et services en plus (décodage…), 22/11/2026.
+  const [more, setMore] = useState<Product[]>([]);
+  const [addingPart, setAddingPart] = useState(false);
+  const [jobServices, setJobServices] = useState<ServiceItem[]>([]);
+  const [servicesNow, setServicesNow] = useState(true);
   // Dépôt pas à pas (16/11/2026, demande de Fallou : « ça passe, ça passe, tu cliques OK et ça calcule ») :
   // une question par écran ; la pièce est obligatoire (une pièce ou « Pas de pièce ») pour que le bénéfice soit juste.
   const [step, setStep] = useState(0);
@@ -205,7 +211,21 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   const knownFile = known ? clientFile(shop, known) : undefined;
 
   function pickPart(p: Product) {
+    if (picked && addingPart) {
+      if (p.id !== picked.id && !more.some((x) => x.id === p.id)) {
+        const next = [...more, p];
+        setMore(next);
+        const cost = [picked, ...next].reduce((a, x) => a + (x.cost ?? 0), 0);
+        const lads = [picked, ...next].map((x) => priceLadder(shop, x));
+        const normal = lads.every(Boolean) ? lads.reduce((a, l) => a + l!.normal, 0) : 0;
+        setForm((f) => ({ ...f, piece: String(cost), price: "", labor: normal ? String(normal - cost) : f.labor }));
+      }
+      setAddingPart(false);
+      setPartQuery("");
+      return;
+    }
     setPicked(p);
+    setMore([]);
     setNoPart(false);
     setNoPartWhy("");
     setLowOk(false);
@@ -222,7 +242,26 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   }
   const partNeeded = needsPart(form.problem);
   // Barrière des prix : 3 prix pour la pièce choisie ; sous le minimum, il faut le confirmer.
-  const ladder = picked ? priceLadder(shop, { name: picked.name, cost: piece || picked.cost }) : null;
+  const allParts = picked ? [picked, ...more] : [];
+  // Prix conseillés : une pièce = ses 3 prix ; plusieurs pièces = la somme (les charges ne comptent qu'une fois).
+  const ladder = (() => {
+    if (!picked) return null;
+    if (!more.length) return priceLadder(shop, { name: picked.name, cost: piece || picked.cost });
+    const ls = allParts.map((p) => priceLadder(shop, p)).filter((l): l is NonNullable<typeof l> => Boolean(l));
+    if (ls.length !== allParts.length) return null;
+    const sum = (k: "normal" | "nego" | "floor" | "cost" | "risk") => ls.reduce((a, l) => a + l[k], 0);
+    const overhead = ls[0]!.overhead;
+    return { ...ls[0]!, cost: sum("cost"), normal: sum("normal"), nego: sum("nego"), floor: Math.max(sum("cost") + 500, sum("floor") - overhead * (ls.length - 1)), risk: sum("risk"), overhead };
+  })();
+  const servicesTotal = jobServices.reduce((a, x) => a + x.price, 0);
+  const servicesBlock = jobServices.length > 0 ? (
+    <div className="ws-verdict" data-tone="good">
+      <b>Services en plus : {money(servicesTotal)}</b>
+      <p>{jobServices.map((x) => `${x.name} ${money(x.price)}`).join(" · ")}. Total pour le client : <b>{money(price + servicesTotal)}</b></p>
+      <label className="chat-stock-row"><input type="checkbox" checked={servicesNow} onChange={(e) => setServicesNow(e.target.checked)} /> <span>Encaissés maintenant (faits pendant que le client attend) : rangés dans leurs services et licences, à part de la réparation</span></label>
+      {!servicesNow && <small className="note">Ils seront ajoutés au prix de la réparation (payés au rendu).</small>}
+    </div>
+  ) : null;
   const priceState = ladder && price > 0 ? checkPrice(ladder, price) : null;
   const priceStepOk = picked ? price > 0 && (priceState === "ok" || priceState === "negocie" || lowOk) : true;
   const stepOk = [form.clientName.trim().length > 0, form.device.trim().length > 0, form.problem.trim().length > 0, Boolean(picked) || (noPart && (!partNeeded || Boolean(noPartWhy))), priceStepOk, true, true][step];
@@ -237,8 +276,19 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
     // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
-    const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : noPartWhy ? [form.problem.trim(), noPartWhy].filter(Boolean).join(" · ") : form.problem;
-    const { shop: next, repair } = addRepair(shop, { ...form, problem, price, advance: n(form.advance), advancePayment: advanceWith });
+    // Services pas encaissés maintenant : ajoutés au prix de la réparation (écrits dans la panne).
+    const later = servicesNow ? [] : jobServices;
+    const base = picked ? [form.problem.trim(), ...allParts.map((p) => p.name)] : noPartWhy ? [form.problem.trim(), noPartWhy] : [form.problem.trim()];
+    const problem = [...base, ...later.map((x) => `+ ${x.name}`)].filter(Boolean).join(" · ");
+    const total = price + later.reduce((a, x) => a + x.price, 0);
+    let { shop: next, repair } = addRepair(shop, { ...form, problem, price: total, advance: n(form.advance), advancePayment: advanceWith });
+    // Services faits pendant que le client attend (décodage, FRP…) : encaissés à part, rangés dans leur licence.
+    if (servicesNow) {
+      for (const sv of jobServices) {
+        const done = sellService(next, { name: sv.name, service: sv, payment: advanceWith, hint: `${form.device} ${sv.name}` });
+        if (done) next = done.shop;
+      }
+    }
     commit(next);
     // Bon de dépôt tout de suite : la preuve pour le client (WhatsApp, imprimante).
     setTicketId(repair.id);
@@ -249,6 +299,9 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
     autoDevice.current = "";
     setForm({ clientName: "", phone: "", imei: "", device: "", problem: "", price: "", advance: "", piece: "", labor: "" });
     setPicked(null);
+    setMore([]);
+    setJobServices([]);
+    setServicesNow(true);
     setPartQuery("");
     closeWizard();
   }
@@ -270,11 +323,17 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         {waiting.length ? `Reste à encaisser sur les appareils au dépôt : ${money(owed)}.` : "Aucun appareil au dépôt."} Tu peux aussi le dire à Jokko : « Awa dépose un iPhone 11, écran cassé, 25 000, avance 5 000 ».
       </p>
       {!adding && shop.products.length > 0 && (
-        <QuickQuote shop={shop} onDeposit={(device, productId) => {
-          const p = productId ? shop.products.find((x) => x.id === productId) : undefined;
-          setForm({ clientName: "", phone: "", imei: "", device, problem: p ? (kindOf(p.name) === "Écran" ? "Écran cassé" : kindOf(p.name) === "Batterie" ? "Batterie" : "") : "", price: "", advance: "", piece: "", labor: "" });
-          setPicked(null);
-          if (p) pickPart(p);
+        <QuickQuote shop={shop} onDeposit={(device, productIds, serviceIds) => {
+          const ps = productIds.map((id) => shop.products.find((x) => x.id === id)).filter((p): p is Product => Boolean(p));
+          const words = [...new Set(ps.map((p) => ({ Écran: "Écran cassé", Batterie: "Batterie", Connecteur: "Ne charge pas", Bouton: "Boutons", Dos: "Dos cassé", Plaquette: "Plaquette", Nappe: "Nappe", Autre: "" })[kindOf(p.name)]).filter(Boolean))];
+          const cost = ps.reduce((a, p) => a + (p.cost ?? 0), 0);
+          const lads = ps.map((p) => priceLadder(shop, p));
+          const normal = lads.every(Boolean) ? lads.reduce((a, l) => a + l!.normal, 0) : 0;
+          setForm({ clientName: "", phone: "", imei: "", device, problem: words.join(", "), price: normal ? String(normal) : "", advance: "", piece: cost ? String(cost) : "", labor: normal ? String(normal - cost) : "" });
+          setPicked(ps[0] ?? null);
+          setMore(ps.slice(1));
+          setJobServices((shop.services ?? []).filter((x) => serviceIds.includes(x.id)));
+          setServicesNow(true);
           setStep(0);
           setAdding(true);
         }} />
@@ -376,12 +435,33 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
 
           {step === 3 && (
             <div className="wizard-body">
-              {picked ? (
-                <p className="wizard-picked" role="status">
-                  <Icon name="ok" size="sm" />
-                  <span><b>{picked.name}</b>{picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)}` : " · prix d'achat à taper à l'étape suivante"}</span>
-                  <button type="button" className="link" onClick={() => setPicked(null)}>Changer</button>
-                </p>
+              {picked && !addingPart ? (
+                <>
+                  {allParts.map((p, k) => (
+                    <p key={p.id} className="wizard-picked" role="status">
+                      <Icon name="ok" size="sm" />
+                      <span><b>{p.name}</b>{p.cost !== undefined ? ` · prix d'achat ${money(p.cost)}` : " · prix d'achat à taper à l'étape suivante"}</span>
+                      <button type="button" className="link" onClick={() => {
+                        if (k === 0) { setPicked(more[0] ?? null); setMore(more.slice(1)); } else setMore(more.filter((x) => x.id !== p.id));
+                        setForm((f) => ({ ...f, piece: "", price: "", labor: "" }));
+                      }}>✕</button>
+                    </p>
+                  ))}
+                  <Button variant="outline" className="h-11 rounded-full" onClick={() => setAddingPart(true)}>
+                    <Icon name="ajouter" size="sm" /> Une autre pièce pour ce client (connecteur, batterie…)
+                  </Button>
+                  {(shop.services ?? []).length > 0 && (
+                    <div className="job-services">
+                      <small className="note">Services en plus pour ce client :</small>
+                      <div className="wizard-chips">
+                        {(shop.services ?? []).map((sv) => {
+                          const on = jobServices.some((x) => x.id === sv.id);
+                          return <button key={sv.id} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={() => setJobServices(on ? jobServices.filter((x) => x.id !== sv.id) : [...jobServices, sv])}>{sv.name} · {money(sv.price)}</button>;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : noPart && (!partNeeded || noPartWhy) ? (
                 <p className="wizard-picked" role="status">
                   <Icon name="ok" size="sm" />
@@ -390,11 +470,12 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                 </p>
               ) : (
                 <>
-                  {form.device.trim() && <FitParts shop={shop} device={form.device} problem={form.problem} chosen={[]} onPick={pickPart} />}
+                  {addingPart && <p className="note">Choisis l'autre pièce pour ce client. <button type="button" className="link" onClick={() => setAddingPart(false)}>Annuler</button></p>}
+                  {form.device.trim() && <FitParts shop={shop} device={form.device} problem={form.problem} chosen={allParts.map((p) => p.id)} onPick={pickPart} />}
                   {shop.products.length > 0 && (
                     <PartPicker products={shop.products} query={partQuery} setQuery={setPartQuery} label="Cherche la pièce (BF6, iPhone 11, batterie KF6…)" onPick={pickPart} />
                   )}
-                  {partNeeded ? (
+                  {addingPart ? null : partNeeded ? (
                     <div className="no-part-guard">
                       <small className="note">« {form.problem} » demande une pièce : choisis-la pour que ton bénéfice soit juste. Sinon, dis pourquoi :</small>
                       {NO_PART_REASONS.map((why) => (
@@ -433,7 +514,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
               </div>
               {ladder && (
                 <div className="price-ladder" role="group" aria-label="Prix conseillés">
-                  <small className="note">Prix conseillés pour {picked?.name} (prix d'achat {money(ladder.cost)}) :</small>
+                  <small className="note">Prix conseillés pour {allParts.map((p) => p.name).join(" + ")} (prix d'achat {money(ladder.cost)}) :</small>
                   <div className="price-ladder-row">
                     {([["normal", "Prix normal", ladder.normal], ["nego", "Négocié", ladder.nego], ["floor", "Minimum", ladder.floor]] as const).map(([k, label, v]) => (
                       <button key={k} type="button" data-k={k} className={price === v ? "on" : ""} onClick={() => { setForm({ ...form, price: String(v), labor: String(v - piece) }); setLowOk(false); }}>
@@ -451,6 +532,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                   <label className="chat-stock-row"><input type="checkbox" checked={lowOk} onChange={(e) => setLowOk(e.target.checked)} /> <span>Je confirme ce prix quand même (ami, garantie, geste)</span></label>
                 </div>
               ) : null}
+              {servicesBlock}
               {picked && !price && <small className="note">Avec une pièce, mets le prix pour le client : le bénéfice doit être calculé dès le dépôt.</small>}
               {price > 0 && (
                 <p className="repair-calc">
@@ -491,7 +573,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                 <div><dt>Client</dt><dd>{form.clientName}{form.phone ? ` · ${form.phone}` : ""}</dd></div>
                 <div><dt>Appareil</dt><dd>{form.device}{form.imei ? ` · IMEI ${form.imei}` : ""}</dd></div>
                 <div><dt>Panne</dt><dd>{form.problem || "—"}</dd></div>
-                <div><dt>Pièce</dt><dd>{picked ? `${picked.name} · ${money(piece)}` : noPartWhy || "Pas de pièce"}</dd></div>
+                <div><dt>{allParts.length > 1 ? "Pièces" : "Pièce"}</dt><dd>{picked ? `${allParts.map((p) => p.name).join(" + ")} · ${money(piece)}` : noPartWhy || "Pas de pièce"}</dd></div>
+                {jobServices.length > 0 && <div><dt>Services</dt><dd>{jobServices.map((x) => `${x.name} ${money(x.price)}`).join(" + ")}{servicesNow ? " · encaissés maintenant" : " · au rendu"}</dd></div>}
                 <div><dt>Prix pour le client</dt><dd className="num">{price ? money(price) : "pas encore fixé"}</dd></div>
                 {price > 0 && <div><dt>Ta main-d'œuvre</dt><dd className="num" data-tone={price - piece < 0 ? "bad" : "good"}>{money(price - piece)}</dd></div>}
                 <div><dt>Avance</dt><dd className="num">{money(n(form.advance))}{n(form.advance) ? ` · ${PAY_LABEL[advanceWith]}` : ""}{price ? ` · reste ${money(Math.max(0, price - n(form.advance)))}` : ""}</dd></div>
@@ -542,8 +625,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
 function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; shop: Shop; commit: (s: Shop) => void; open: boolean; toggle: () => void; onTicket: (id: string) => void }) {
   // Pièce choisie au dépôt (écrite dans la panne) : déjà mise dans les pièces posées (16/11/2026 : R-005 et R-006
   // marquées « Réparé » sans pièce → 19 000 F comptés en main-d'œuvre, les écrans oubliés dans le bénéfice).
-  const planned = r.status === "depot" ? productNamedIn(shop.products, r.problem) : undefined;
-  const [parts, setParts] = useState<string[]>(() => (planned ? [planned.id] : []));
+  const planned = r.status === "depot" ? productsNamedIn(shop.products, r.problem) : [];
+  const [parts, setParts] = useState<string[]>(() => planned.map((p) => p.id));
   const [bare, setBare] = useState(false);
   const [bareWhy, setBareWhy] = useState("");
   const partNeeded = needsPart(r.problem) && !hasNoPartReason(r.problem);
@@ -624,7 +707,7 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
                     <div className="wizard-chips">
                       {chosen.map((p) => (
                         <button key={p.id} type="button" className="on" onClick={() => setParts(parts.filter((x) => x !== p.id))}>
-                          ✓ {p.name}{p.cost !== undefined ? ` (${money(p.cost)})` : ""}{planned?.id === p.id ? " · prévue au dépôt" : ""} ✕
+                          ✓ {p.name}{p.cost !== undefined ? ` (${money(p.cost)})` : ""}{planned.some((x) => x.id === p.id) ? " · prévue au dépôt" : ""} ✕
                         </button>
                       ))}
                     </div>

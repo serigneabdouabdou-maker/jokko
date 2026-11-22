@@ -78,6 +78,19 @@ export function productNamedIn(products: Product[], text: string): Product | und
 }
 
 /**
+ * Toutes les pièces prévues au dépôt (22/11/2026, demande de Fallou : « un même client change le connecteur,
+ * l'écran et la batterie ») : la panne s'écrit « Écran cassé, Ne charge pas · Écran Tecno BF6 · Connecteur … ».
+ * Chaque morceau après « · » qui est le nom exact d'une pièce compte ; sinon l'ancienne règle (une pièce nommée).
+ */
+export function productsNamedIn(products: Product[], text: string): Product[] {
+  const parts = text.split(" · ").slice(1).map((x) => squash(x)).filter(Boolean);
+  const exact = parts.map((x) => products.find((p) => squash(p.name) === x)).filter((p): p is Product => Boolean(p));
+  if (exact.length) return [...new Map(exact.map((p) => [p.id, p])).values()];
+  const one = productNamedIn(products, text);
+  return one ? [one] : [];
+}
+
+/**
  * La pièce du stock vendue sur une ligne écrite (« LCD Spark 7 : vente 10 000 F ») — 14/11/2026, demande de Fallou :
  * même type de pièce (écran = LCD, plaquette, batterie…) ET même modèle. Le nom de l'article d'abord ;
  * un téléphone compatible (« va aussi sur ») seulement si aucun article ne porte ce modèle dans son nom.

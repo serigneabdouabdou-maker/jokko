@@ -12,7 +12,7 @@
  */
 import type { Shop } from "../model.ts";
 import { kindOf, laborStats, type PartKind } from "./pricing.ts";
-import { productNamedIn } from "./partSearch.ts";
+import { productsNamedIn } from "./partSearch.ts";
 import { isServicePayment } from "./report.ts";
 
 export type Range = "semaine" | "mois" | "annee" | "tout";
@@ -64,8 +64,8 @@ export function activityEvents(shop: Shop) {
   for (const r of shop.repairs ?? []) {
     if (r.status === "annule") continue;
     const posedCost = r.parts.reduce((a, p) => a + p.cost, 0);
-    const planned = !r.parts.length && r.paid > 0 ? productNamedIn(shop.products, r.problem) : undefined;
-    const plannedCost = planned?.cost ?? 0;
+    const plannedAll = !r.parts.length && r.paid > 0 ? productsNamedIn(shop.products, r.problem) : [];
+    const plannedCost = plannedAll.reduce((a, p) => a + (p.cost ?? 0), 0);
     const partsCost = r.parts.length ? posedCost : plannedCost;
     repairs.push({ at: Date.parse(r.at), price: r.price, parts: partsCost, done: r.status === "rendu" });
     const when = Date.parse(r.repairedAt ?? r.returnedAt ?? r.at);
@@ -74,7 +74,7 @@ export function activityEvents(shop: Shop) {
     for (const p of r.parts) {
       parts.push({ at: when, kind: kindOf(p.label), name: p.label, qty: p.qty || 1, cost: p.cost, gain: p === main ? r.price - posedCost : null, direct: false });
     }
-    if (planned) parts.push({ at: Date.parse(r.at), kind: kindOf(planned.name), name: planned.name, qty: 1, cost: plannedCost, gain: r.price - plannedCost, planned: true, direct: false });
+    plannedAll.forEach((planned, k) => parts.push({ at: Date.parse(r.at), kind: kindOf(planned.name), name: planned.name, qty: 1, cost: planned.cost ?? 0, gain: k === 0 ? r.price - plannedCost : null, planned: true, direct: false }));
   }
 
   for (const s of shop.sales) {

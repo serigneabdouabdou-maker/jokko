@@ -2580,3 +2580,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .quote-main small { color: var(--j-ink-2); font-size: 12px; }
 .quote-price { font-size: 19px; white-space: nowrap; }
 .quote-send { display: grid; gap: 8px; }
+.quote-list li { cursor: pointer; }
+.quote-list li.is-picked { border-color: var(--j-ink); box-shadow: 0 0 0 2px color-mix(in oklab, var(--j-ink) 20%, transparent); }
+.quote-main input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.quote-main span { flex: 1; }
+.quote-compat { background: color-mix(in oklab, #2563eb 8%, var(--j-card)); border-radius: 10px; padding: 8px 10px; }
+.job-services { display: grid; gap: 6px; }
