@@ -8,6 +8,8 @@ import { loadShops, type LoadClient } from "@/data/sync";
 import { buildInsights, insightsForAdvisor } from "@/data/insights";
 import { expiringSoon } from "@/data/metiers";
 import { type Advice, askAdvisor } from "@/assistant/client";
+import { activityForAdvisor } from "@/data/workshopStats";
+import { metierOf } from "@/data/metiers";
 
 const amount = (n: number) => money(n).replace(/ /g, " ");
 const LEVELS = { urgent: "Urgent", important: "Important", info: "Bon à savoir" } as const;
@@ -35,10 +37,13 @@ export function Advisor({ shop: local }: { shop: Shop }) {
   const insights = useMemo(() => buildInsights(shop), [shop]);
   const soon = insights.products.filter((p) => p.daysLeft !== null && p.daysLeft <= 14).sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
 
-  async function ask(withQuestion: boolean) {
+  const repairer = metierOf(shop.activity).id === "reparation";
+  async function ask(withQuestion: boolean, asked = question) {
     setBusy(true);
     setNote("");
-    const result = await askAdvisor(insightsForAdvisor(insights, shop.name, shop.activity, expiringSoon(shop.products, 60).map((p) => ({ nom: p.name, quantite: p.lotQty, jours_restants: p.daysLeft, ...(p.lotRef ? { lot: p.lotRef } : {}) }))), withQuestion ? question : null);
+    // Réparateur : l'IA lit aussi le détail de l'atelier (écrans, plaquettes, services…) et l'objectif Chine (22/11/2026).
+    const base = insightsForAdvisor(insights, shop.name, shop.activity, expiringSoon(shop.products, 60).map((p) => ({ nom: p.name, quantite: p.lotQty, jours_restants: p.daysLeft, ...(p.lotRef ? { lot: p.lotRef } : {}) })));
+    const result = await askAdvisor(repairer ? { ...base, ...activityForAdvisor(shop) } : base, withQuestion ? asked : null);
     setBusy(false);
     if (result.ok) setAdvice(result.data);
     else setNote(result.message);
@@ -100,6 +105,13 @@ export function Advisor({ shop: local }: { shop: Shop }) {
         <h3>Conseils de l'IA</h3>
         <p className="note">L'IA lit ce diagnostic et propose les actions les plus utiles cette semaine. Elle ne voit pas les numéros de téléphone de tes clients.</p>
         <Button className="h-12 rounded-full px-6 font-semibold" disabled={busy} onClick={() => void ask(false)}>{busy ? "Le conseiller réfléchit…" : advice ? "Redemander des conseils" : "Demander conseil"}</Button>
+        {repairer && (
+          <div className="advisor-chips">
+            {["Quel service je dois pousser cette semaine ?", "Quelles pièces acheter en plus grande quantité ?", "Est-ce que je peux aller acheter moi-même en Chine ?"].map((q) => (
+              <button key={q} type="button" className="chip" disabled={busy} onClick={() => { setQuestion(q); void ask(true, q); }}>{q}</button>
+            ))}
+          </div>
+        )}
         <form className="advisor-ask" onSubmit={(e) => { e.preventDefault(); if (question.trim() && !busy) void ask(true); }}>
           <Input className="h-11" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ta question : quel article arrêter ? comment gagner plus ?" />
           <Button type="submit" variant="outline" className="h-11 rounded-full px-5" disabled={busy || !question.trim()}>Demander</Button>

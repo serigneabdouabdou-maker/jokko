@@ -1,0 +1,175 @@
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { type Shop, money } from "@/model";
+import { activityReport, CHINA_DEFAULTS, type ChinaInput, chinaPlan, RANGE_LABELS, type Range } from "@/data/workshopStats";
+
+const RANGES: Range[] = ["semaine", "mois", "annee", "tout"];
+const trend = (now: number, before: number) => (before ? (now > before ? `▲ ${now - before}` : now < before ? `▼ ${before - now}` : "=") : now ? "nouveau" : "");
+
+/**
+ * Mon activité (22/11/2026, demande de Fallou) : combien d'écrans, de plaquettes, de connecteurs… et de services,
+ * par semaine, mois, année ; ce qui monte, le mieux payé, quoi pousser. Calculé, sans IA.
+ */
+export function ActivityPanel({ shop }: { shop: Shop }) {
+  const [range, setRange] = useState<Range>("semaine");
+  const [openKind, setOpenKind] = useState<string | null>(null);
+  const r = useMemo(() => activityReport(shop, range), [shop, range]);
+  const prevWord = range === "semaine" ? "semaine d'avant" : range === "mois" ? "mois d'avant" : range === "annee" ? "an dernier" : "";
+  return (
+    <div className="workshop">
+      <h3>Mon activité</h3>
+      <div className="seg" role="group" aria-label="Période">
+        {RANGES.map((k) => <button key={k} type="button" className={range === k ? "on" : ""} aria-pressed={range === k} onClick={() => setRange(k)}>{RANGE_LABELS[k]}</button>)}
+      </div>
+      <div className="ws-kpis">
+        <article><b className="num">{r.partsCount}</b><span>pièces posées ou vendues</span>{range !== "tout" && <small>{trend(r.partsCount, r.partsPrev)} {r.partsPrev ? `(${r.partsPrev} ${prevWord})` : ""}</small>}</article>
+        <article><b className="num">{r.servicesCount}</b><span>services</span><small>{money(r.servicesRevenue)}</small></article>
+        <article><b className="num">{r.repairs.count}</b><span>réparations reçues</span><small>main-d'œuvre {money(r.repairs.labor)}</small></article>
+      </div>
+
+      {r.notes.length > 0 && (
+        <ul className="ws-notes">
+          {r.notes.map((n, i) => <li key={i}>{n}</li>)}
+        </ul>
+      )}
+
+      <b className="ws-title">Pièces</b>
+      {r.parts.length === 0 ? <p className="note">Aucune pièce sur cette période.</p> : (
+        <ul className="profit-rows">
+          {r.parts.map((k) => {
+            const isOpen = openKind === k.kind;
+            return (
+              <li key={k.kind} className={isOpen ? "is-open" : ""}>
+                <button type="button" className="profit-row" aria-expanded={isOpen} onClick={() => setOpenKind(isOpen ? null : k.kind)}>
+                  <span className="profit-name">
+                    <b>{k.label}</b>
+                    <small>achat {money(k.cost)}{k.gainKnown ? ` · main-d'œuvre ${money(k.gain)}` : ""}{range !== "tout" && k.prev ? ` · ${k.prev} ${prevWord}` : ""}</small>
+                  </span>
+                  <span className="profit-gain num">{k.count}<small className="ws-trend">{range !== "tout" ? trend(k.count, k.prev) : ""}</small></span>
+                </button>
+                {isOpen && (
+                  <dl className="profit-calc">
+                    {k.models.map((m) => <div key={m.name}><dt>{m.name}</dt><dd className="num">× {m.count}</dd></div>)}
+                  </dl>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <b className="ws-title">Services</b>
+      {r.services.filter((s) => s.count).length === 0 ? <p className="note">Aucun service sur cette période.</p> : (
+        <dl className="profit-calc ws-table">
+          {r.services.filter((s) => s.count).map((s) => (
+            <div key={s.name}>
+              <dt>{s.name} <small>× {s.count}{range !== "tout" && s.prev ? ` (${s.prev} ${prevWord})` : ""} · moyenne {money(s.avg)}</small></dt>
+              <dd className="num">{money(s.revenue)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {r.items.length > 0 && (
+        <>
+          <b className="ws-title">Accessoires et autres articles</b>
+          <dl className="profit-calc ws-table">
+            {r.items.map((i) => <div key={i.name}><dt>{i.name} <small>× {i.qty}</small></dt><dd className="num">{money(i.revenue)}</dd></div>)}
+          </dl>
+        </>
+      )}
+      <p className="note">Pièces = posées sur tes réparations (ou prévues au dépôt quand l'appareil est déjà payé) + vendues seules. Le Conseiller (offre Avancé) lit ces chiffres pour te dire quoi accélérer.</p>
+    </div>
+  );
+}
+
+const KEY = (shop: Shop) => `jokko.chine.${shop.id}`;
+function loadInput(shop: Shop): ChinaInput {
+  try {
+    const raw = localStorage.getItem(KEY(shop));
+    return raw ? { ...CHINA_DEFAULTS, ...JSON.parse(raw) } : CHINA_DEFAULTS;
+  } catch {
+    return CHINA_DEFAULTS;
+  }
+}
+
+const VERDICT = {
+  "pas-encore": { title: "Pas encore", tone: "warn", text: "Tes achats de pièces ne suffisent pas encore pour payer le voyage. Continue chez ton fournisseur et laisse Jokko compter." },
+  bientot: { title: "Tu t'en approches", tone: "warn", text: "Le voyage commence à avoir du sens. Mets de côté chaque mois et vérifie les vrais prix en Chine avant de partir." },
+  oui: { title: "Oui, c'est jouable", tone: "good", text: "Avec tes chiffres, un voyage rapporte plus qu'il ne coûte et tu peux réunir le budget en moins de 6 mois. Vérifie d'abord les vrais prix chez 2 ou 3 vendeurs en Chine." },
+} as const;
+
+/**
+ * Objectif Chine (22/11/2026, demande de Fallou : « est-ce qu'un jour je peux partir en Chine acheter moi-même ? »).
+ * Pièces utilisées par mois au prix du fournisseur, budget du voyage (billet, visa, séjour, fret, douane : hypothèses
+ * modifiables), économie par voyage, seuil de rentabilité, mois pour réunir le budget avec le bénéfice réel.
+ */
+export function ChinaPanel({ shop }: { shop: Shop }) {
+  const [input, setInput] = useState<ChinaInput>(() => loadInput(shop));
+  const plan = useMemo(() => chinaPlan(shop, input), [shop, input]);
+  const set = (k: keyof ChinaInput, v: string) => {
+    const n = Math.max(0, Math.round(Number(v.replace(/[^\d]/g, "")) || 0));
+    const next = { ...input, [k]: n };
+    setInput(next);
+    try { localStorage.setItem(KEY(shop), JSON.stringify(next)); } catch { /* stockage indisponible */ }
+  };
+  const v = VERDICT[plan.verdict];
+  const field = (k: keyof ChinaInput, label: string, suffix = "F") => (
+    <label className="ws-field">
+      <small>{label}</small>
+      <span><Input className="h-10 num" inputMode="numeric" value={String(input[k])} onChange={(e) => set(k, e.target.value)} /><em>{suffix}</em></span>
+    </label>
+  );
+  return (
+    <div className="workshop">
+      <h3>Objectif Chine : acheter moi-même</h3>
+      <div className="ws-verdict" data-tone={v.tone}>
+        <b>{v.title}</b>
+        <p>{v.text}</p>
+      </div>
+      {plan.confidence === "faible" && <p className="note journal-warn">Jokko n'a que {plan.days} jours de chiffres : c'est une première idée. Après 2 à 3 mois d'enregistrement, ce calcul sera fiable.</p>}
+
+      <dl className="journal-sum">
+        <div><dt>Pièces utilisées par mois (prix du fournisseur)</dt><dd className="num">{money(plan.partsPerMonth)}</dd></div>
+        <div><dt>Ton bénéfice par mois</dt><dd className="num">{money(plan.profitPerMonth)}</dd></div>
+        <div><dt>Commande en Chine ({input.months} mois de pièces, − {input.discountPct} %)</dt><dd className="num">{money(plan.order)}</dd></div>
+        <div><dt>Fret et douane ({input.freightPct} %)</dt><dd className="num">{money(plan.freight)}</dd></div>
+        <div><dt>Billet, visa, séjour</dt><dd className="num">{money(plan.tripFixed)}</dd></div>
+        <div className="journal-gain"><dt>Budget total du voyage</dt><dd className="num">{money(plan.budget)}</dd></div>
+        <div><dt>Ce que le voyage te fait gagner (ou perdre)</dt><dd className="num" data-tone={plan.savingPerTrip >= 0 ? "good" : "bad"}>{plan.savingPerTrip >= 0 ? "+ " : "− "}{money(Math.abs(plan.savingPerTrip))}</dd></div>
+        {plan.breakEvenPerMonth > 0 && <div><dt>Il faut acheter au moins, par mois</dt><dd className="num">{money(plan.breakEvenPerMonth)}</dd></div>}
+        <div><dt>En mettant {input.savePct} % du bénéfice de côté</dt><dd className="num">{plan.monthsToSave === null ? "bénéfice trop bas" : `${plan.monthsToSave} mois`}</dd></div>
+      </dl>
+      {plan.breakEvenPerMonth > 0 && (
+        <div className="ws-gauge" aria-label="Où tu en es">
+          <span style={{ width: `${Math.min(100, Math.round((plan.partsPerMonth / plan.breakEvenPerMonth) * 100))}%` }} />
+          <small>Aujourd'hui : {Math.round((plan.partsPerMonth / plan.breakEvenPerMonth) * 100)} % du seuil où le voyage devient rentable</small>
+        </div>
+      )}
+
+      {plan.topModels.length > 0 && (
+        <>
+          <b className="ws-title">Ce que tu achèterais en premier (par mois)</b>
+          <dl className="profit-calc ws-table">
+            {plan.topModels.map((m) => <div key={m.name}><dt>{m.name} <small>≈ {String(m.qty).replace(".", ",")} / mois</small></dt><dd className="num">{money(m.cost)}</dd></div>)}
+          </dl>
+        </>
+      )}
+
+      <details className="ws-hyp">
+        <summary>Changer les hypothèses (prix, billet, visa…)</summary>
+        <div className="ws-fields">
+          {field("discountPct", "Moins cher en Chine", "%")}
+          {field("months", "Mois de pièces par voyage", "mois")}
+          {field("ticket", "Billet aller-retour")}
+          {field("visa", "Visa et assurance")}
+          {field("stay", "Séjour (hôtel, repas, transport)")}
+          {field("freightPct", "Fret et douane", "%")}
+          {field("savePct", "Bénéfice mis de côté", "%")}
+        </div>
+        <p className="note">Ces montants sont des hypothèses de départ, pas des prix vérifiés : mets les tiens (agence de voyage, transitaire, vendeurs chinois). Le calcul change tout de suite.</p>
+      </details>
+      <p className="note">Jokko ne voit pas encore tes anciens achats chez ton fournisseur, seulement ce que tu poses et vends depuis que tu utilises Jokko. Note chaque commande reçue (Atelier → À commander → Commande reçue) pour que ce calcul suive tes vrais achats.</p>
+    </div>
+  );
+}

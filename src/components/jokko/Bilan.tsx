@@ -8,6 +8,9 @@ import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/correct
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
 import { SalesList } from "./SalesList";
+import { ActivityPanel, ChinaPanel } from "./Workshop";
+import { activityReport } from "@/data/workshopStats";
+import { metierOf } from "@/data/metiers";
 import { buildReport, dailyReport, dayHistory, dayPeriod, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
@@ -125,6 +128,14 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <Drill id="chaque-jour" title="Chaque jour, depuis le début" icon="journal" summary={dayHistorySummary(shop)}>
       <DayHistory shop={shop} commit={commit} />
       </Drill>
+      <Drill id="activite" title="Mon activité : pièces, services, réparations" icon="rapport" summary={activitySummary(shop)}>
+      <ActivityPanel shop={shop} />
+      </Drill>
+      {metierOf(shop.activity).id === "reparation" && (
+        <Drill id="chine" title="Objectif Chine : acheter moi-même" icon="stock" summary="Combien il faut vendre, combien mettre de côté, quand partir">
+        <ChinaPanel shop={shop} />
+        </Drill>
+      )}
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
         Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
@@ -583,4 +594,11 @@ function DayOpen({ shop, commit, day, allSales, setAllSales }: { shop: Shop; com
       )}
     </div>
   );
+}
+
+function activitySummary(shop: Shop): string {
+  const w = activityReport(shop, "semaine");
+  const screens = w.parts.find((k) => k.kind === "Écran")?.count ?? 0;
+  if (!w.partsCount && !w.servicesCount) return "Écrans, plaquettes, services : semaine, mois, année";
+  return `Cette semaine : ${screens} écran${screens > 1 ? "s" : ""}, ${w.partsCount} pièce${w.partsCount > 1 ? "s" : ""}, ${w.servicesCount} service${w.servicesCount > 1 ? "s" : ""}`;
 }
