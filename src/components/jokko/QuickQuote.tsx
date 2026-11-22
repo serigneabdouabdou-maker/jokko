@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
 import { ladderContext } from "@/data/priceGuard";
 import { quickQuote, quoteMessage } from "@/data/quickQuote";
+import { unlinkModel } from "@/data/supplierCompat";
 
 /**
  * Prix pour un client (22/11/2026) : tape le modèle → chaque pièce avec le prix à annoncer, le négocié, le minimum,
  * disponible ou à commander ; les écrans qui vont dessus d'après le fournisseur. Plusieurs choses pour le même client
  * (écran + connecteur + batterie + décodage) : coche-les, le total se calcule, et « Faire le dépôt » remplit tout.
  */
-export function QuickQuote({ shop, onDeposit }: { shop: Shop; onDeposit?: (device: string, productIds: string[], serviceIds: string[]) => void }) {
+export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposit?: (device: string, productIds: string[], serviceIds: string[]) => void; onChange?: (next: Shop) => void }) {
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [svc, setSvc] = useState<string[]>([]);
@@ -42,7 +43,18 @@ export function QuickQuote({ shop, onDeposit }: { shop: Shop; onDeposit?: (devic
         <p className="note">Aucune pièce connue pour « {q} ». Demande la liste à ton fournisseur, ou cherche dans « Un client demande une pièce ? ».</p>
       )}
       {res.compat.length > 0 && (
-        <p className="note quote-compat">Selon ton fournisseur, l'écran de {q.trim().toUpperCase()} va aussi sur : {res.compat.slice(0, 10).map((c) => `${c.model.toUpperCase()}${c.n > 1 ? ` (${c.n} fois)` : ""}`).join(" · ")}</p>
+        <div className="note quote-compat">
+          <span>D'après les listes de ton fournisseur, l'écran de {q.trim().toUpperCase()} va aussi sur :</span>
+          <div className="compat-chips">
+            {res.compat.slice(0, 12).map((c) => (
+              <span key={c.key} className="compat-chip">
+                {c.model.toUpperCase()}{c.n > 1 ? ` (${c.n} fois)` : ""}
+                {onChange && <button type="button" aria-label={`${c.model} ne va pas sur ${q.trim()}`} onClick={() => onChange(unlinkModel(shop, q.trim(), c.model))}>✕</button>}
+              </span>
+            ))}
+          </div>
+          {onChange && <small>Un modèle ne va pas ? Touche ✕ : il ne sera plus jamais proposé avec {q.trim().toUpperCase()}.</small>}
+        </div>
       )}
       {res.lines.length > 0 && (
         <>
@@ -65,6 +77,11 @@ export function QuickQuote({ shop, onDeposit }: { shop: Shop; onDeposit?: (devic
                     </span>
                     <b className="num quote-price">{money(l.ladder.normal)}</b>
                   </div>
+                  {onChange && (l.via || l.supplierSays) && (
+                    <button type="button" className="quote-unlink" onClick={(e) => { e.stopPropagation(); onChange(unlinkModel(shop, q.trim(), l.supplierSays?.model ?? l.via!)); }}>
+                      ✕ Ne va pas sur {q.trim().toUpperCase()}
+                    </button>
+                  )}
                   <small className="ladder-line">Négocié {money(l.ladder.nego)} · <b>jamais sous {money(l.ladder.floor)}</b> · pièce {money(l.ladder.cost)}</small>
                 </li>
               );

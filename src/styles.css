@@ -2586,3 +2586,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .quote-main span { flex: 1; }
 .quote-compat { background: color-mix(in oklab, #2563eb 8%, var(--j-card)); border-radius: 10px; padding: 8px 10px; }
 .job-services { display: grid; gap: 6px; }
+.quote-compat { display: grid; gap: 6px; }
+.compat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.compat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--j-card); border: 1px solid color-mix(in oklab, #2563eb 30%, transparent); font-weight: 600; color: var(--j-ink); }
+.compat-chip button { width: 26px; height: 26px; border-radius: 999px; border: 0; background: color-mix(in oklab, #dc2626 12%, transparent); color: #b91c1c; font-weight: 700; }
+.quote-unlink { justify-self: start; border: 0; background: none; color: #b91c1c; font-size: 13px; font-weight: 600; padding: 2px 0; }

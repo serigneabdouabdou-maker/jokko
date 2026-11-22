@@ -11,7 +11,7 @@ import { modelKeys } from "./modelKeys.ts";
 import { searchProducts } from "./partSearch.ts";
 import { kindOf, type PartKind } from "./pricing.ts";
 import { type Ladder, type LadderContext, ladderContext, priceLadder } from "./priceGuard.ts";
-import { type CompatHit, compatFor, modelKey } from "./supplierCompat.ts";
+import { type CompatHit, compatFor, modelKey, notCompat } from "./supplierCompat.ts";
 
 export type QuoteLine = {
   kind: PartKind;
@@ -33,6 +33,7 @@ const squash = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/
 export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: LadderContext = ladderContext(shop, now)): { lines: QuoteLine[]; services: ServiceItem[]; compat: CompatHit[] } {
   const q = query.trim();
   if (squash(q).length < 2) return { lines: [], services: [], compat: [] };
+  const no = (shop.suppliers ?? []).flatMap((s) => s.compatNo ?? []);
   const lines: QuoteLine[] = [];
   const seen = new Set<string>();
   const add = (l: QuoteLine) => {
@@ -48,13 +49,14 @@ export function quickQuote(shop: Shop, query: string, now = new Date(), ctx: Lad
   // 1. Pièces de la boutique (nom, ou téléphone compatible d'un écran universel).
   for (const h of searchProducts(shop.products, q, 40)) {
     const p: Product = h.product;
+    if (h.via && notCompat(no, q, h.via)) continue; // le patron a dit « ne va pas »
     if (kindOf(p.name) === "Autre" && !p.price) continue;
     const ladder = priceLadder(shop, p, now, ctx);
     if (!ladder) continue;
     add({ kind: kindOf(p.name), name: p.name, ladder: p.price > ladder.normal ? { ...ladder, normal: p.price } : ladder, stock: p.stock, source: "stock", productId: p.id, ...(h.via ? { via: h.via } : {}) });
   }
   // 1 bis. Écrans qui vont sur ce modèle d'après le fournisseur (« Liste BF6 » → BF7, KI5K, A60…).
-  const compat = compatFor((shop.suppliers ?? []).flatMap((s) => s.compat ?? []), q);
+  const compat = compatFor((shop.suppliers ?? []).flatMap((s) => s.compat ?? []), q, no);
   if (compat.length) {
     const byKey = new Map(compat.map((c) => [c.key, c]));
     for (const p of shop.products) {

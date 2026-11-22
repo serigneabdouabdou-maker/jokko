@@ -12,13 +12,13 @@
 import { unzipSync, strFromU8 } from "fflate";
 import type { Product, Shop, Supplier, SupplierItem, SupplierMonth, SupplierTier } from "../model.ts";
 import { partForSale } from "./partSearch.ts";
-import { compatGroups, mergeCompat } from "./supplierCompat.ts";
+import { type CompatAnswer, compatGroups, mergeCompat } from "./supplierCompat.ts";
 import { kindOf, type PartKind } from "./pricing.ts";
 
 export type ChatLine = { qty: number; name: string; unit: number; sub: number };
 export type ChatInvoice = { date: string; total: number; who: string; lines: ChatLine[] };
 export type ChatAnomaly = { kind: "doublon" | "calcul" | "total" | "faute"; date: string; text: string; serious: boolean };
-export type ChatImport = { invoices: ChatInvoice[]; anomalies: ChatAnomaly[]; from: string; to: string; messages: number; compat: Array<{ date: string; models: string[] }> };
+export type ChatImport = { invoices: ChatInvoice[]; anomalies: ChatAnomaly[]; from: string; to: string; messages: number; compat: CompatAnswer[] };
 
 const DAY = 86_400_000;
 const fmt = (n: number) => n.toLocaleString("fr-FR").replace(/[   ]/g, " "); // espace insécable : un nombre ne se coupe jamais

@@ -185,6 +185,7 @@ export function ChatImportBox({ shop, commit }: { shop: Shop; commit: (s: Shop) 
             <div><dt>Factures lues</dt><dd className="num">{imp.invoices.length}</dd></div>
             <div><dt>Du … au …</dt><dd>{frDate(imp.from)} → {frDate(imp.to)}</dd></div>
             <div><dt>Total de ces factures</dt><dd className="num">{money(imp.invoices.reduce((a, i) => a + i.total, 0))}</dd></div>
+            <div><dt>Listes d'écrans (réponses à « List »)</dt><dd className="num">{imp.compat.length}</dd></div>
             <div><dt>Nouvelles depuis la dernière lecture</dt><dd className="num">{current?.historyTo ? merged.added.length : "première lecture"}</dd></div>
           </dl>
           {doubles > 0 && <p className="note">{doubles} facture{doubles > 1 ? "s" : ""} renvoyée{doubles > 1 ? "s" : ""} en entier ou corrigée{doubles > 1 ? "s" : ""} : chaque pièce n'est comptée qu'une fois.</p>}

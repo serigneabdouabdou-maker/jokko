@@ -23,6 +23,23 @@ const tokensOf = (s: string): string[] =>
     .split(/[^a-z0-9+]+/)
     .filter((t) => t.length >= 2 || /^\d$/.test(t));
 
+const SUFFIX = /^(pro|max|plus|lite|mini|promax|ultra|neo|prime)/;
+/**
+ * « a05 » est dans « écran samsung a05s » ? Non (22/11/2026, constat de Fallou : l'A05 n'a rien à voir avec le BF6,
+ * mais « A05 » trouvait l'alias « A05S »). Un modèle (mot avec un chiffre) doit finir là, ou être suivi d'un mot
+ * comme pro / max / plus (« iPhone 11 » trouve « iPhone 11 Pro Max ») ; jamais d'une lettre ou d'un chiffre en plus.
+ */
+export function holds(text: string, w: string): boolean {
+  if (!/\d/.test(w)) return text.includes(w);
+  for (let i = text.indexOf(w); i >= 0; i = text.indexOf(w, i + 1)) {
+    const before = text[i - 1];
+    if (before && /\d/.test(before)) continue;
+    const rest = text.slice(i + w.length);
+    if (!rest || SUFFIX.test(rest)) return true;
+  }
+  return false;
+}
+
 export type ProductHit = {
   product: Product;
   /** Trouvé par un téléphone compatible (« va aussi sur BF6 ») plutôt que par son nom. */
@@ -46,19 +63,19 @@ export function searchProducts(products: Product[], query: string, limit = 8): P
     const aliases = (product.aliases ?? []).map((a) => ({ raw: a, key: squash(a) })).filter((a) => a.key);
     let score = 0;
     let via: string | undefined;
-    if (name.includes(whole) || words.every((w) => name.includes(w))) {
+    if (holds(name, whole) || words.every((w) => holds(name, w))) {
       score = 30 + words.filter((w) => nameWords.has(w)).length * 3;
     } else {
       // Un mot peut venir du nom (« écran »), l'autre d'un téléphone compatible (« bf6 »).
       const exact = aliases.find((a) => a.key === whole);
-      const byAlias = exact ?? aliases.find((a) => a.key.includes(whole) || words.some((w) => w.length >= 2 && /\d/.test(w) && a.key === w));
-      const all = words.every((w) => name.includes(w) || aliases.some((a) => a.key.includes(w)));
+      const byAlias = exact ?? aliases.find((a) => holds(a.key, whole) || words.some((w) => w.length >= 2 && /\d/.test(w) && a.key === w));
+      const all = words.every((w) => holds(name, w) || aliases.some((a) => holds(a.key, w)));
       if (byAlias && (all || exact || words.length === 1)) {
         score = exact || aliases.some((a) => words.includes(a.key)) ? 24 : 18;
         via = byAlias.raw;
       } else if (all && aliases.length) {
         score = 12;
-        via = aliases.find((a) => words.some((w) => a.key.includes(w)))?.raw;
+        via = aliases.find((a) => words.some((w) => holds(a.key, w)))?.raw;
       }
     }
     if (!score) continue;

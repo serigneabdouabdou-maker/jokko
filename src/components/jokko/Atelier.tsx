@@ -323,7 +323,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         {waiting.length ? `Reste à encaisser sur les appareils au dépôt : ${money(owed)}.` : "Aucun appareil au dépôt."} Tu peux aussi le dire à Jokko : « Awa dépose un iPhone 11, écran cassé, 25 000, avance 5 000 ».
       </p>
       {!adding && shop.products.length > 0 && (
-        <QuickQuote shop={shop} onDeposit={(device, productIds, serviceIds) => {
+        <QuickQuote shop={shop} onChange={commit} onDeposit={(device, productIds, serviceIds) => {
           const ps = productIds.map((id) => shop.products.find((x) => x.id === id)).filter((p): p is Product => Boolean(p));
           const words = [...new Set(ps.map((p) => ({ Écran: "Écran cassé", Batterie: "Batterie", Connecteur: "Ne charge pas", Bouton: "Boutons", Dos: "Dos cassé", Plaquette: "Plaquette", Nappe: "Nappe", Autre: "" })[kindOf(p.name)]).filter(Boolean))];
           const cost = ps.reduce((a, p) => a + (p.cost ?? 0), 0);
