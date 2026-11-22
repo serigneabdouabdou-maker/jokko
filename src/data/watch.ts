@@ -15,6 +15,7 @@ import { partForSale } from "./partSearch.ts";
 import { kindOf } from "./pricing.ts";
 import { isToolService } from "./services.ts";
 import { purchaseControl } from "./workshopStats.ts";
+import { hasNoPartReason, ladderContext, priceLadder, supplierPriceUpdates } from "./priceGuard.ts";
 
 export type SignalLevel = "grave" | "attention" | "info" | "bon";
 export type SignalGroup = "prix" | "tendance" | "stock" | "controle" | "argent" | "services";
@@ -113,7 +114,7 @@ export function workshopWatch(shop: Shop, now = new Date()): Signal[] {
   }
 
   // 3. Réparations rendues sans pièce alors que la panne en demande une : bénéfice faux.
-  const noPart = (shop.repairs ?? []).filter((r) => r.status === "rendu" && !r.parts.length && PART_WORDS.test(r.problem) && r.price > 3000);
+  const noPart = (shop.repairs ?? []).filter((r) => r.status === "rendu" && !r.parts.length && PART_WORDS.test(r.problem) && !hasNoPartReason(r.problem) && r.price > 3000);
   if (noPart.length) out.push({ id: "sans-piece", level: "attention", group: "argent", title: `${noPart.length} réparation${noPart.length > 1 ? "s" : ""} rendue${noPart.length > 1 ? "s" : ""} sans pièce notée`, text: `${noPart.slice(0, 5).map((r) => `${r.number} (${r.device}, ${r.problem.split("·")[0]!.trim()})`).join(", ")} : le prix de la pièce manque, le bénéfice affiché est trop haut. Bénéfices → Le détail → Corriger.` });
 
   // 4. Écrans posés avec trop peu de gain (30 derniers jours).
@@ -144,6 +145,13 @@ export function workshopWatch(shop: Shop, now = new Date()): Signal[] {
     if (!hit || hit.stock <= 0) empty.push(`${i.name} (≈ ${Math.round(((i.recent ?? 0) / 6) * 10) / 10}/mois)`);
   }
   if (empty.length) out.push({ id: "stars-vides", level: "attention", group: "stock", title: `${empty.length} pièce${empty.length > 1 ? "s" : ""} qui partent beaucoup sont à 0 dans Jokko`, text: `${empty.slice(0, 6).join(", ")}${empty.length > 6 ? "…" : ""}. Compte ton stock (Stock → Compter mon stock) pour que Jokko sache ce que tu as vraiment.` });
+
+  // 6 bis. Prix d'achat qui ne suivent plus le fournisseur ; prix de vente sous le minimum.
+  const upd = supplierPriceUpdates(shop);
+  if (upd.length) out.push({ id: "prix-achat", level: "info", group: "prix", title: `${upd.length} prix d'achat à mettre à jour`, text: `${upd.slice(0, 4).map((u) => `${u.name} : ${u.from !== undefined ? money(u.from) : "?"} → ${money(u.to)}`).join(" · ")}. Bouton « Mettre à jour les prix d'achat » plus bas.` });
+  const ctx = ladderContext(shop, now);
+  const under = shop.products.filter((p) => p.price > 0 && kindOf(p.name) !== "Autre").map((p) => ({ p, l: priceLadder(shop, p, now, ctx) })).filter((x) => x.l && x.p.price < x.l.floor);
+  if (under.length) out.push({ id: "sous-minimum", level: "attention", group: "argent", title: `${under.length} pièce${under.length > 1 ? "s" : ""} avec un prix de vente sous le minimum`, text: `${under.slice(0, 4).map((x) => `${x.p.name} : ${money(x.p.price)} (minimum ${money(x.l!.floor)})`).join(" · ")}. À ce prix, tes charges et le risque de casse ne sont pas couverts.` });
 
   // 7. Ventes d'article sans prix d'achat ce mois.
   const m0 = monthStart(now);

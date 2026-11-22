@@ -8,6 +8,7 @@ import { recordInventory } from "@/data/report";
 import { usageMap } from "@/data/reorder";
 import { partForSale } from "@/data/partSearch";
 import { type Signal, skillServices, workshopWatch } from "@/data/watch";
+import { applyPriceUpdates, supplierPriceUpdates } from "@/data/priceGuard";
 
 const LEVEL_ICON: Record<Signal["level"], string> = { grave: "🔴", attention: "🟠", info: "🔵", bon: "🟢" };
 const frDate = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
@@ -51,8 +52,28 @@ export function WatchPanel({ shop, commit }: { shop: Shop; commit: (s: Shop) => 
       )}
       <p className="note">Configuration, logiciel, décodage, pilote… : aucune pièce à acheter, tout ce que le client paie est gagné. Mets-les sur ton statut WhatsApp.</p>
 
+      <PriceUpdates shop={shop} commit={commit} />
       <StarsMinimum shop={shop} commit={commit} />
       <CountBlock shop={shop} commit={commit} />
+    </div>
+  );
+}
+
+/** Les prix d'achat suivent le fournisseur : baisse → baisse, hausse → hausse (les 3 prix de vente suivent tout seuls). */
+function PriceUpdates({ shop, commit }: { shop: Shop; commit: (s: Shop) => void }) {
+  const [done, setDone] = useState("");
+  const upd = useMemo(() => supplierPriceUpdates(shop), [shop]);
+  if (!upd.length && !done) return null;
+  return (
+    <div className="stars-min">
+      <b className="ws-title">Prix d'achat à mettre à jour ({upd.length})</b>
+      {upd.length > 0 && (
+        <>
+          <ul className="watch-list">{upd.slice(0, 12).map((u) => <li key={u.productId} data-level={u.from !== undefined && u.to > u.from ? "attention" : "bon"}><p>{u.name} : {u.from !== undefined ? money(u.from) : "?"} → <b>{money(u.to)}</b> (facture du {frDate(u.at)})</p></li>)}</ul>
+          <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => { commit(applyPriceUpdates(shop, upd)); setDone(`${upd.length} prix d'achat mis à jour : les prix conseillés ont suivi.`); }}>Mettre à jour les prix d'achat</Button>
+        </>
+      )}
+      {done && <p className="note" role="status">{done}</p>}
     </div>
   );
 }
@@ -126,6 +147,9 @@ export function ChatImportBox({ shop, commit }: { shop: Shop; commit: (s: Shop) 
     let next: Shop = { ...shop, suppliers };
     const chosen = lines.filter((l) => picked[l.key] ?? !!l.productId);
     if (chosen.length) next = addStockLines(next, chosen, { updateCost }, () => uid("p"));
+    // Les derniers prix du fournisseur vont dans le stock (baisse → baisse, hausse → hausse).
+    const prices = updateCost ? supplierPriceUpdates(next) : [];
+    if (prices.length) next = applyPriceUpdates(next, prices);
     commit(next);
     setDone(`Mis à jour : ${merged.supplier.purchases?.length ?? 0} mois de factures${merged.added.length ? `, ${merged.added.length} nouvelle${merged.added.length > 1 ? "s" : ""} facture${merged.added.length > 1 ? "s" : ""}` : ""}${chosen.length ? `, ${chosen.reduce((a, l) => a + l.qty, 0)} pièces ajoutées au stock` : ""}.`);
     setImp(null);
@@ -176,6 +200,7 @@ export function ChatImportBox({ shop, commit }: { shop: Shop; commit: (s: Shop) 
               <ul className="watch-list">{others.map((a) => <li key={a.text}><p>{a.text}</p></li>)}</ul>
             </details>
           )}
+          <label className="chat-stock-row"><input type="checkbox" checked={updateCost} onChange={(e) => setUpdateCost(e.target.checked)} /> <span>Mettre les derniers prix de {merged.supplier.name} dans mon stock (prix d'achat)</span></label>
           {lines.length > 0 && (
             <div className="chat-stock">
               <b className="ws-title">Ajouter au stock les pièces des nouvelles factures ?</b>
@@ -185,7 +210,6 @@ export function ChatImportBox({ shop, commit }: { shop: Shop; commit: (s: Shop) 
                   <span>{l.qty} × {l.productName ?? l.label} <small>{money(l.unit)}{l.productId ? (l.oldCost !== undefined && l.oldCost !== l.unit ? ` · avant ${money(l.oldCost)}` : "") : l.choices ? " · plusieurs pièces possibles : nouvelle fiche" : " · nouvelle pièce"}</small></span>
                 </label>
               ))}
-              <label className="chat-stock-row"><input type="checkbox" checked={updateCost} onChange={(e) => setUpdateCost(e.target.checked)} /> <span>Mettre à jour les prix d'achat avec ces factures</span></label>
             </div>
           )}
           <div className="import-actions">

@@ -74,6 +74,7 @@ import { type Segment, SEGMENTS } from "@/data/clientFiles";
 import { linkSamePart, searchProducts } from "@/data/partSearch";
 import { addToOrder, orderPlan } from "@/data/reorder";
 import { applySuggestedPrices, kindOf, laborStats, suggestedPrice } from "@/data/pricing";
+import { ladderContext, priceLadder } from "@/data/priceGuard";
 import { Commandes } from "@/components/jokko/Commandes";
 import { Debts } from "@/components/jokko/Debts";
 import { Invoices } from "@/components/jokko/Invoices";
@@ -1863,6 +1864,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
                         card={m.batch}
                         onToggle={(i) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, keep: !it.keep } : it)) }))}
                         onSource={(i, v) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, action: { ...it.action, paidWith: v } } : it)) }))}
+                        onCost={(i, cost) => updateBatch(m.id, (b) => ({ ...b, items: b.items.map((it, j) => (j === i ? { ...it, cost } : it)) }))}
                         onSave={() => saveBatch(m.id, m.batch!)}
                         onCancel={() => updateBatch(m.id, (b) => ({ ...b, status: "annule" }))}
                       />
@@ -2008,6 +2010,8 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
   const shown = searchable && query.trim().length >= 2 ? searchProducts(shop.products, query, 100).map((h) => h.product) : shop.products;
   // Prix conseillé (prix d'achat + ta main-d'œuvre habituelle, apprise de tes ventes) pour les articles sans prix de vente.
   const stats = useMemo(() => laborStats(shop), [shop]);
+  // Barrière des prix (réparateurs, 22/11/2026) : 3 prix par pièce, calculés une fois pour tout le stock.
+  const ladderCtx = useMemo(() => (canEdit && metierOf(shop.activity).id === "reparation" ? ladderContext(shop) : null), [shop, canEdit]);
   const unpriced = shop.products.filter((p) => !p.price && p.cost);
   const [priceNote, setPriceNote] = useState("");
   const codeOwner = (code: string) =>
@@ -2099,6 +2103,12 @@ function Stock({ shop, commit, canEdit, lang }: { shop: Shop; commit: (s: Shop) 
                   {canEdit ? (p.cost !== undefined ? `achat ${amount(p.cost)} · ` : "prix d'achat ? · ") : ""}{p.price ? `vente ${amount(p.price)}` : (() => { const sp = suggestedPrice(p, stats); return sp ? `vente conseillée ${amount(sp.price)}` : "vente : prix à fixer"; })()}
                   {p.retail ? ` · détail ${amount(p.retail.price)}/${p.retail.unit}` : ""}
                 </small>
+                {ladderCtx && kindOf(p.name) !== "Autre" && (() => {
+                  const l = priceLadder(shop, p, undefined, ladderCtx);
+                  if (!l) return null;
+                  const under = p.price > 0 && p.price < l.floor;
+                  return <small className={`ladder-line${under ? " is-under" : ""}`}>{under ? `⚠ ton prix est sous le minimum (${amount(l.floor)}) · ` : ""}Prix {amount(l.normal)} · négocié {amount(l.nego)} · jamais sous {amount(l.floor)}</small>;
+                })()}
               </div>
               <span className="meter" aria-hidden="true"><i style={{ width: `${fill}%` }} /></span>
               <b className="stock-qty num">

@@ -19,6 +19,7 @@ import { expandKeys, modelOfTac, sameNames } from "@/data/phoneBook";
 import { compatLookup, compatTacLearn, compatTacLookup } from "@/data/supabase";
 import { evidenceText, type StockMatch, stockFor } from "@/data/compat";
 import { kindOf } from "@/data/pricing";
+import { checkPrice, hasNoPartReason, NO_PART_REASONS, needsPart, priceLadder } from "@/data/priceGuard";
 import { modelKeys } from "@/data/modelKeys";
 
 type ImeiInfo = { state: "cherche" } | { state: "trouve"; label: string; from: "base" | "atelier" } | { state: "inconnu" } | { state: "faux" };
@@ -182,6 +183,9 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   // une question par écran ; la pièce est obligatoire (une pièce ou « Pas de pièce ») pour que le bénéfice soit juste.
   const [step, setStep] = useState(0);
   const [noPart, setNoPart] = useState(false);
+  // Panne qui demande une pièce (écran, batterie…) : « sans pièce » seulement avec une raison (22/11/2026).
+  const [noPartWhy, setNoPartWhy] = useState("");
+  const [lowOk, setLowOk] = useState(false);
   const [advanceWith, setAdvanceWith] = useState<RepairPayment>("especes");
   const [filter, setFilter] = useState<"cours" | "rendu">("cours");
   const list = repairsOf(shop).filter((r) => (filter === "cours" ? r.status === "depot" || r.status === "repare" : r.status === "rendu"));
@@ -202,26 +206,37 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
   function pickPart(p: Product) {
     setPicked(p);
     setNoPart(false);
+    setNoPartWhy("");
+    setLowOk(false);
     setPartQuery("");
     // Main-d'œuvre : celle du prix de vente de la pièce, sinon celle que tu prends d'habitude (prix conseillé).
-    const sp = p.price > 0 && p.cost !== undefined ? { labor: p.price - p.cost } : suggestedPrice(p, laborStats(shop));
+    // Sinon le « prix normal » de la barrière des prix (ton gain habituel sur ce genre de pièce).
+    const lad = priceLadder(shop, p);
+    const sp = p.price > 0 && p.cost !== undefined ? { labor: p.price - p.cost } : lad ? { labor: lad.normal - lad.cost } : suggestedPrice(p, laborStats(shop));
     setForm((f) => ({
       ...f,
       ...(p.cost !== undefined ? { piece: String(p.cost) } : {}),
       ...(!f.labor && !f.price && sp && sp.labor > 0 ? { labor: String(sp.labor) } : {}),
     }));
   }
-  const stepOk = [form.clientName.trim().length > 0, form.device.trim().length > 0, form.problem.trim().length > 0, Boolean(picked) || noPart, true, true, true][step];
+  const partNeeded = needsPart(form.problem);
+  // Barrière des prix : 3 prix pour la pièce choisie ; sous le minimum, il faut le confirmer.
+  const ladder = picked ? priceLadder(shop, { name: picked.name, cost: piece || picked.cost }) : null;
+  const priceState = ladder && price > 0 ? checkPrice(ladder, price) : null;
+  const priceStepOk = picked ? price > 0 && (priceState === "ok" || priceState === "negocie" || lowOk) : true;
+  const stepOk = [form.clientName.trim().length > 0, form.device.trim().length > 0, form.problem.trim().length > 0, Boolean(picked) || (noPart && (!partNeeded || Boolean(noPartWhy))), priceStepOk, true, true][step];
   function closeWizard() {
     setAdding(false);
     setStep(0);
     setNoPart(false);
+    setNoPartWhy("");
+    setLowOk(false);
   }
 
   function save() {
     if (!form.clientName.trim() || !form.device.trim()) return;
     // La pièce choisie est écrite dans la panne : on la retrouve au moment de « Réparé ».
-    const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : form.problem;
+    const problem = picked ? [form.problem.trim(), picked.name].filter(Boolean).join(" · ") : noPartWhy ? [form.problem.trim(), noPartWhy].filter(Boolean).join(" · ") : form.problem;
     const { shop: next, repair } = addRepair(shop, { ...form, problem, price, advance: n(form.advance), advancePayment: advanceWith });
     commit(next);
     // Bon de dépôt tout de suite : la preuve pour le client (WhatsApp, imprimante).
@@ -356,11 +371,11 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                   <span><b>{picked.name}</b>{picked.cost !== undefined ? ` · prix d'achat ${money(picked.cost)}` : " · prix d'achat à taper à l'étape suivante"}</span>
                   <button type="button" className="link" onClick={() => setPicked(null)}>Changer</button>
                 </p>
-              ) : noPart ? (
+              ) : noPart && (!partNeeded || noPartWhy) ? (
                 <p className="wizard-picked" role="status">
                   <Icon name="ok" size="sm" />
-                  <span><b>Pas de pièce</b> · tout le prix est ta main-d'œuvre</span>
-                  <button type="button" className="link" onClick={() => setNoPart(false)}>Changer</button>
+                  <span><b>{noPartWhy ? noPartWhy.charAt(0).toUpperCase() + noPartWhy.slice(1) : "Pas de pièce"}</b> · tout le prix est ta main-d'œuvre</span>
+                  <button type="button" className="link" onClick={() => { setNoPart(false); setNoPartWhy(""); }}>Changer</button>
                 </p>
               ) : (
                 <>
@@ -368,9 +383,20 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                   {shop.products.length > 0 && (
                     <PartPicker products={shop.products} query={partQuery} setQuery={setPartQuery} label="Cherche la pièce (BF6, iPhone 11, batterie KF6…)" onPick={pickPart} />
                   )}
-                  <Button variant="outline" className="h-11 rounded-full" onClick={() => { setNoPart(true); setForm({ ...form, piece: "" }); }}>
-                    Pas de pièce (décodage, logiciel, nettoyage…)
-                  </Button>
+                  {partNeeded ? (
+                    <div className="no-part-guard">
+                      <small className="note">« {form.problem} » demande une pièce : choisis-la pour que ton bénéfice soit juste. Sinon, dis pourquoi :</small>
+                      {NO_PART_REASONS.map((why) => (
+                        <Button key={why} variant="outline" className="h-11 rounded-full" onClick={() => { setNoPart(true); setNoPartWhy(why); setForm({ ...form, piece: "" }); }}>
+                          {why.charAt(0).toUpperCase() + why.slice(1)}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="h-11 rounded-full" onClick={() => { setNoPart(true); setForm({ ...form, piece: "" }); }}>
+                      Pas de pièce (décodage, logiciel, nettoyage…)
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -394,6 +420,27 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                   <Input className="h-11" inputMode="numeric" placeholder={piece || labor ? String(piece + labor) : "vide si pas fixé"} aria-label="Prix pour le client" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
                 </label>
               </div>
+              {ladder && (
+                <div className="price-ladder" role="group" aria-label="Prix conseillés">
+                  <small className="note">Prix conseillés pour {picked?.name} (prix d'achat {money(ladder.cost)}) :</small>
+                  <div className="price-ladder-row">
+                    {([["normal", "Prix normal", ladder.normal], ["nego", "Négocié", ladder.nego], ["floor", "Minimum", ladder.floor]] as const).map(([k, label, v]) => (
+                      <button key={k} type="button" data-k={k} className={price === v ? "on" : ""} onClick={() => { setForm({ ...form, price: String(v), labor: String(v - piece) }); setLowOk(false); }}>
+                        <small>{label}</small><b className="num">{money(v)}</b><small>gain {money(v - ladder.cost)}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <small className="note">Minimum = pièce {money(ladder.cost)} + charges {money(ladder.overhead)} + risque casse/garantie {money(ladder.risk)} + petit gain. Jamais en dessous.</small>
+                </div>
+              )}
+              {priceState === "perte" || priceState === "sous_minimum" ? (
+                <div className="ws-verdict" data-tone="bad">
+                  <b>{priceState === "perte" ? `Tu perds de l'argent : ${money(price)} < prix de la pièce ${money(ladder!.cost)}` : `Sous ton minimum (${money(ladder!.floor)})`}</b>
+                  <p>{priceState === "perte" ? "Le client paie moins que la pièce." : "À ce prix, tes charges (loyer, électricité, transport) et le risque de casse ne sont pas couverts."}</p>
+                  <label className="chat-stock-row"><input type="checkbox" checked={lowOk} onChange={(e) => setLowOk(e.target.checked)} /> <span>Je confirme ce prix quand même (ami, garantie, geste)</span></label>
+                </div>
+              ) : null}
+              {picked && !price && <small className="note">Avec une pièce, mets le prix pour le client : le bénéfice doit être calculé dès le dépôt.</small>}
               {price > 0 && (
                 <p className="repair-calc">
                   Prix pour le client <b>{money(price)}</b>
@@ -433,7 +480,7 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
                 <div><dt>Client</dt><dd>{form.clientName}{form.phone ? ` · ${form.phone}` : ""}</dd></div>
                 <div><dt>Appareil</dt><dd>{form.device}{form.imei ? ` · IMEI ${form.imei}` : ""}</dd></div>
                 <div><dt>Panne</dt><dd>{form.problem || "—"}</dd></div>
-                <div><dt>Pièce</dt><dd>{picked ? `${picked.name} · ${money(piece)}` : "Pas de pièce"}</dd></div>
+                <div><dt>Pièce</dt><dd>{picked ? `${picked.name} · ${money(piece)}` : noPartWhy || "Pas de pièce"}</dd></div>
                 <div><dt>Prix pour le client</dt><dd className="num">{price ? money(price) : "pas encore fixé"}</dd></div>
                 {price > 0 && <div><dt>Ta main-d'œuvre</dt><dd className="num" data-tone={price - piece < 0 ? "bad" : "good"}>{money(price - piece)}</dd></div>}
                 <div><dt>Avance</dt><dd className="num">{money(n(form.advance))}{n(form.advance) ? ` · ${PAY_LABEL[advanceWith]}` : ""}{price ? ` · reste ${money(Math.max(0, price - n(form.advance)))}` : ""}</dd></div>
@@ -456,7 +503,8 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
               </Button>
             )}
           </div>
-          {!stepOk && step === 3 && <small className="note">Choisis la pièce à poser, ou « Pas de pièce » : la pièce comptera dans ton bénéfice.</small>}
+          {!stepOk && step === 3 && <small className="note">{partNeeded ? "Choisis la pièce à poser (ou dis pourquoi il n'y en a pas) : la pièce comptera dans ton bénéfice." : "Choisis la pièce à poser, ou « Pas de pièce » : la pièce comptera dans ton bénéfice."}</small>}
+          {!stepOk && step === 4 && <small className="note">{!price ? "Mets le prix pour le client." : "Prix sous le minimum : confirme-le ou choisis un prix conseillé."}</small>}
         </div>
       )}
 
@@ -486,6 +534,8 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
   const planned = r.status === "depot" ? productNamedIn(shop.products, r.problem) : undefined;
   const [parts, setParts] = useState<string[]>(() => (planned ? [planned.id] : []));
   const [bare, setBare] = useState(false);
+  const [bareWhy, setBareWhy] = useState("");
+  const partNeeded = needsPart(r.problem) && !hasNoPartReason(r.problem);
   const [bought, setBought] = useState<Array<{ label: string; cost: number }>>([]);
   const [buyName, setBuyName] = useState("");
   const [buyCost, setBuyCost] = useState("");
@@ -587,11 +637,20 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
                       </Button>
                     </div>
                   </details>
-                  {!chosen.length && !bought.length && (
+                  {!chosen.length && !bought.length && (partNeeded ? (
+                    <div className="no-part-guard">
+                      <small className="note">« {r.problem} » demande une pièce. Sans pièce, dis pourquoi :</small>
+                      {NO_PART_REASONS.map((why) => (
+                        <Button key={why} variant={bare && bareWhy === why ? "default" : "outline"} className="h-11 rounded-full" onClick={() => { const on = !(bare && bareWhy === why); setBare(on); setBareWhy(on ? why : ""); }}>
+                          {bare && bareWhy === why ? "✓ " : ""}{why.charAt(0).toUpperCase() + why.slice(1)}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
                     <Button variant={bare ? "default" : "outline"} className="h-11 rounded-full" onClick={() => setBare(!bare)}>
                       {bare ? "✓ " : ""}Aucune pièce (décodage, logiciel, nettoyage…)
                     </Button>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -616,7 +675,7 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
                   <Icon name="retour" size="sm" /> {fix === 2 ? "Retour" : "Annuler"}
                 </Button>
                 {fix === 1 ? (
-                  <Button className="h-12 rounded-full px-6" disabled={!chosen.length && !bought.length && !bare} onClick={() => setFix(2)}>
+                  <Button className="h-12 rounded-full px-6" disabled={!chosen.length && !bought.length && !(bare && (!partNeeded || bareWhy))} onClick={() => setFix(2)}>
                     Suivant <Icon name="suivant" size="sm" />
                   </Button>
                 ) : (
@@ -626,8 +685,10 @@ function RepairRow({ r, shop, commit, open, toggle, onTicket }: { r: Repair; sho
                     onClick={() => {
                       const paidWith = source || defaultCashSource(boughtTotal) || undefined;
                       const inputs: PartInput[] = [...parts.map((id) => ({ productId: id })), ...bought.map((b) => ({ label: b.label, cost: b.cost, paidWith }))];
-                      const next = markRepaired(shop, r.id, inputs);
-                      if (!next) return;
+                      const done = markRepaired(shop, r.id, inputs);
+                      if (!done) return;
+                      // Sans pièce sur une panne de pièce : la raison est écrite dans la panne (preuve, et la surveillance ne la signale plus).
+                      const next = bare && bareWhy ? { ...done, repairs: (done.repairs ?? []).map((x) => (x.id === r.id ? { ...x, problem: [x.problem, bareWhy].filter(Boolean).join(" · ") } : x)) } : done;
                       commit(next);
                       setFix(0);
                       if (thenGive) { setThenGive(false); setPay(rest ? String(rest) : ""); setPayWith("especes"); setGive("rendu1"); }

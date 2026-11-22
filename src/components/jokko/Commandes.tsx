@@ -1,3 +1,4 @@
+import { priceLadder } from "@/data/priceGuard";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
@@ -148,8 +149,9 @@ export function PartLookup({ shop, commit }: { shop: Shop; commit: (s: Shop) => 
                         {h.product.stock > 0 ? `${h.product.stock} en stock` : "pas en stock"}
                         {h.via ? ` · écran qui va aussi sur ${h.via}` : ""}
                         {h.product.cost !== undefined ? ` · achat ${money(h.product.cost)}` : ""}
-                        {h.product.price ? ` · prix client ${money(h.product.price)}` : (() => { const sp = stats && suggestedPrice(h.product, stats); return sp ? ` · prix conseillé ${money(sp.price)}` : ""; })()}
+                        {h.product.price ? ` · ton prix ${money(h.product.price)}` : (() => { const sp = stats && suggestedPrice(h.product, stats); return sp && !priceLadder(shop, h.product) ? ` · prix conseillé ${money(sp.price)}` : ""; })()}
                       </small>
+                      {(() => { const l = priceLadder(shop, h.product); return l ? <small className="ladder-line">Prix : <b>{money(l.normal)}</b> · négocié {money(l.nego)} · <b>jamais sous {money(l.floor)}</b></small> : null; })()}
                       {h.proof && <small>{h.proof}</small>}
                     </div>
                     {h.product.stock <= 0 && (

@@ -190,3 +190,12 @@ export function outflowAmount(action: DraftAction): number {
 
 /** Grosse sortie d'argent cochée dont on ne sait pas encore si elle sort du tiroir : la carte demande avant d'enregistrer. */
 export const needsSource = (item: Pick<BatchItem, "keep" | "action">) => item.keep && !item.action.paidWith && outflowAmount(item.action) >= BIG_CASH_OUT;
+
+/**
+ * Barrière des prix (22/11/2026, demande de Fallou : « jamais une seule somme sur la réparation d'un écran ») :
+ * une vente de pièce (écran, batterie… ou une ligne qui parle de pièce) cochée sans prix d'achat connu
+ * (ni écrit, ni pièce du stock avec son prix) bloque « Tout enregistrer » jusqu'à ce que le prix de la pièce soit tapé.
+ */
+const PART_LINE = /[ée]cran|lcd|tactile|batterie|connecteur|vitre|\bdos\b|cover|nappe|cam[ée]ra|plaquette/i;
+export const needsPartCost = (item: Pick<BatchItem, "keep" | "action" | "cost" | "service" | "part" | "line">) =>
+  item.keep && item.action.type === "sale" && !item.service && item.cost === undefined && item.part?.cost === undefined && PART_LINE.test(`${item.line} ${item.action.label ?? ""} ${item.action.productName ?? ""}`);

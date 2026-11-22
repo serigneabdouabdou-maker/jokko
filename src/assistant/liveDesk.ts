@@ -16,6 +16,7 @@ import { serviceFromVoice } from "../data/serviceVoice";
 import { productNamedIn, searchProducts } from "../data/partSearch";
 import { modelKeys } from "../data/modelKeys";
 import { metierOf } from "../data/metiers";
+import { missingPartCost, partCostSaid } from "../data/priceGuard";
 
 /** « il a payé par Wave » / « par OM » dans la phrase : paiement de réparation hors tiroir ; sinon espèces. */
 function viaOf(heard: string): "especes" | "wave" | "om" {
@@ -303,6 +304,16 @@ export class LiveDesk {
       const sv = serviceFromVoice(before, { said: action.productName, text: `${heard} ${action.label ?? ""}`, productId: action.productId, quantity: action.quantity, unit: action.unit, amount: action.amount, unitPrice: action.unitPrice, clientId: action.clientId });
       if (sv.kind === "need") return { ok: false, besoin: sv.besoin };
       if (sv.kind === "sale") return { ok: true, entry: this.commit(before, sv.shop, sv.summary, heard, { key, amount: sv.amount }) };
+    }
+    // Barrière des prix (réparateurs, 22/11/2026) : une réparation de pièce dite avec une seule somme ne passe pas
+    // sans le prix de la pièce (dit dans la phrase « pièce 3 700 », ou pièce du stock avec son prix d'achat).
+    if (action.type === "sale" && metierOf(before.activity).id === "reparation") {
+      const words = `${heard} ${action.label ?? ""} ${action.productName ?? ""}`;
+      const product = action.productId ? before.products.find((p) => p.id === action.productId) : undefined;
+      const said = action.cost === undefined ? partCostSaid(heard) : undefined;
+      if (said !== undefined) action = { ...action, cost: said };
+      const need = missingPartCost(words, product, action.cost);
+      if (need) return { ok: false, besoin: need };
     }
     // Sortie d'argent : d'où vient-il ? (dit dans la phrase : « par Wave », « avec le tiroir »…)
     const outflow = action.type === "expense" || action.type === "purchase";

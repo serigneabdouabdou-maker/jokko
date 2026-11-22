@@ -374,7 +374,7 @@ const fmtF = (n: number) => n.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g,
 const q25 = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor((s.length - 1) / 4)]!; };
 
 /** Gains réels sur les écrans de la boutique (réparations avec pièce, écrans vendus seuls), avec le prix de la pièce. */
-function screenGains(shop: Shop) {
+export function screenGains(shop: Shop) {
   return activityEvents(shop).parts.filter((p) => p.kind === "Écran" && p.gain !== null && p.cost > 0 && !p.planned).map((p) => ({ name: p.name, cost: p.cost / (p.direct ? Math.max(1, p.qty) : 1), gain: (p.gain ?? 0) / (p.direct ? Math.max(1, p.qty) : 1) }));
 }
 

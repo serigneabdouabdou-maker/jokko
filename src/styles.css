@@ -2556,3 +2556,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .stars-min { margin-top: 12px; display: grid; gap: 6px; }
 .stock-count { display: grid; gap: 8px; }
 .stock-count .seg { overflow-x: auto; flex-wrap: nowrap; }
+/* Barrière des prix (22/11/2026) */
+.price-ladder { display: grid; gap: 6px; margin: 8px 0; }
+.price-ladder-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.price-ladder-row button { border: 1px solid var(--j-line); border-radius: 12px; padding: 8px 4px; background: var(--j-card); display: grid; gap: 2px; text-align: center; }
+.price-ladder-row button b { font-size: 16px; }
+.price-ladder-row button small { font-size: 11px; color: var(--j-ink-2); }
+.price-ladder-row button.on { border-color: var(--j-ink); box-shadow: 0 0 0 2px color-mix(in oklab, var(--j-ink) 25%, transparent); }
+.price-ladder-row button[data-k="floor"] { border-color: color-mix(in oklab, #dc2626 35%, var(--j-line)); }
+.no-part-guard { display: grid; gap: 8px; }
+.ladder-line { display: block; font-size: 12px; color: var(--j-ink-2); }
+.ladder-line.is-under { color: var(--j-danger); font-weight: 600; }
+.batch-cost { width: 120px; height: 34px; border: 1px solid var(--j-line); border-radius: 10px; padding: 0 8px; font-size: 16px; }

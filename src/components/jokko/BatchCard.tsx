@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type BatchCardData, batchTotals, describeAction, needsSource, outflowAmount } from "@/assistant/batch";
+import { type BatchCardData, batchTotals, describeAction, needsPartCost, needsSource, outflowAmount } from "@/assistant/batch";
+import { useState } from "react";
 import { BIG_CASH_OUT, CASH_SOURCE_LABELS, CASH_SOURCES, type CashSource } from "@/model";
 
 const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F`;
@@ -9,10 +10,12 @@ const f = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u20
  * Carte du chat : plusieurs opérations comprises dans un long texte. Le patron coche ce qu'il faut enregistrer
  * (les opérations déjà enregistrées aujourd'hui sont décochées), puis « Tout enregistrer ».
  */
-export function BatchCard({ card, onToggle, onSource, onSave, onCancel }: { card: BatchCardData; onToggle: (i: number) => void; onSource?: (i: number, v: CashSource) => void; onSave: () => void; onCancel: () => void }) {
+export function BatchCard({ card, onToggle, onSource, onCost, onSave, onCancel }: { card: BatchCardData; onToggle: (i: number) => void; onSource?: (i: number, v: CashSource) => void; onCost?: (i: number, cost: number) => void; onSave: () => void; onCancel: () => void }) {
   const waiting = card.status === "attente";
   const kept = card.items.filter((i) => i.keep).length;
   const unanswered = card.items.filter(needsSource).length;
+  const noCost = onCost ? card.items.filter(needsPartCost).length : 0;
+  const [typed, setTyped] = useState<Record<number, string>>({});
   return (
     <div className={`order-card batch-card is-${card.status}`}>
       <p className="order-title">
@@ -42,6 +45,13 @@ export function BatchCard({ card, onToggle, onSource, onSave, onCancel }: { card
                     ))}
                   </span>
                 )}
+                {waiting && onCost && needsPartCost(item) && (
+                  <span className="batch-source">
+                    <small className="is-late">Pièce sans prix d'achat : combien t'a coûté la pièce ? (sinon le bénéfice sera faux)</small>
+                    <input className="batch-cost" inputMode="numeric" placeholder="Prix d'achat (F)" value={typed[i] ?? ""} onClick={(e) => e.preventDefault()} onChange={(e) => setTyped({ ...typed, [i]: e.target.value })} />
+                    <button type="button" className="on" disabled={!Number((typed[i] ?? "").replace(/\D/g, ""))} onClick={(e) => { e.preventDefault(); onCost(i, Number((typed[i] ?? "").replace(/\D/g, ""))); }}>OK</button>
+                  </span>
+                )}
                 {item.duplicate && <small className="is-late">Déjà enregistré aujourd’hui ? ({item.duplicate}) — décoché</small>}
                 {!item.action.amount && !item.action.unitPrice && <small className="is-late">Pas de montant : décoché</small>}
               </span>
@@ -66,7 +76,7 @@ export function BatchCard({ card, onToggle, onSource, onSave, onCancel }: { card
       )}
       {waiting ? (
         <div className="order-actions">
-          <Button className="h-11 rounded-full px-5" disabled={!kept || unanswered > 0} onClick={onSave}>{unanswered ? `Réponds d'abord : d'où vient l'argent (${unanswered})` : `Tout enregistrer (${kept})`}</Button>
+          <Button className="h-11 rounded-full px-5" disabled={!kept || unanswered > 0 || noCost > 0} onClick={onSave}>{unanswered ? `Réponds d'abord : d'où vient l'argent (${unanswered})` : noCost ? `Mets d'abord le prix des pièces (${noCost})` : `Tout enregistrer (${kept})`}</Button>
           <Button variant="outline" className="h-11 rounded-full px-4" onClick={onCancel}>Annuler</Button>
         </div>
       ) : card.status === "enregistre" ? (
