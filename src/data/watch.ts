@@ -110,7 +110,16 @@ export function workshopWatch(shop: Shop, now = new Date()): Signal[] {
   const c = purchaseControl(shop);
   if (c) {
     const missing = c.gap - c.stockValue;
-    if (missing > 0) out.push({ id: "controle", level: missing > c.bought * 0.3 ? "grave" : "attention", group: "controle", title: `${money(missing)} de pièces à retrouver`, text: `Depuis ton 1er jour dans Jokko : acheté ${money(c.bought)}, sorti (posé ou vendu) ${money(c.used)}, en stock ${money(c.stockValue)}. Compte ton stock et note chaque réparation.` });
+    // Stock jamais compté (presque toutes les pièces à 0) : ce n'est pas une perte, Jokko ne les voit pas encore.
+    const parts = shop.products.filter((p) => kindOf(p.name) !== "Autre");
+    const notCounted = parts.length >= 20 && parts.filter((p) => p.stock > 0).length < parts.length * 0.1;
+    if (missing > 0) out.push({
+      id: "controle",
+      level: notCounted ? "attention" : missing > c.bought * 0.3 ? "grave" : "attention",
+      group: "controle",
+      title: notCounted ? `${money(missing)} de pièces que Jokko ne voit pas encore` : `${money(missing)} de pièces à retrouver`,
+      text: `Depuis ton 1er jour dans Jokko : acheté ${money(c.bought)}, sorti (posé ou vendu) ${money(c.used)}, en stock dans Jokko ${money(c.stockValue)}. ${notCounted ? "Ce n'est pas forcément perdu : ton stock n'est pas encore compté dans Jokko. Compte tes pièces (Stock → Compter mon stock) : ce chiffre baissera tout seul. Ce qui restera = pièces posées sans être notées, cassées, données ou perdues." : "Compte ton stock et note chaque réparation avec sa pièce : ce qui reste après = pièces cassées, données ou perdues."}`,
+    });
   }
 
   // 3. Réparations rendues sans pièce alors que la panne en demande une : bénéfice faux.
