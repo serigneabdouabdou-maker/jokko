@@ -1,4 +1,4 @@
-import type { CartVoid, Client, Licence, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
+import type { CartVoid, Client, Licence, LostReason, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
 
@@ -28,6 +28,7 @@ export function shopRow(s: Shop): Row {
     licences: s.licences ?? [],
     to_order: s.toOrder ?? [],
     suppliers: s.suppliers ?? [],
+    quotes: (s.quotes ?? []).slice(-300),
   };
 }
 
@@ -414,6 +415,20 @@ export function rowsToShop(rows: ShopRows): Shop {
             qty: Math.max(0, num(x.qty)),
             why: (x.why === "recherche" || x.why === "conseil" ? x.why : "main") as "main" | "recherche" | "conseil",
           })),
+        }
+      : {}),
+    ...(Array.isArray(s.quotes) && s.quotes.length
+      ? {
+          quotes: (s.quotes as Row[]).map((x) => ({
+            id: str(x.id), at: str(x.at), model: str(x.model).slice(0, 40),
+            items: (Array.isArray(x.items) ? (x.items as unknown[]) : []).filter((v): v is string => typeof v === "string").slice(0, 8),
+            offered: num(x.offered),
+            ...(optNum(x.floor) !== undefined ? { floor: num(x.floor) } : {}),
+            outcome: (x.outcome === "pris" ? "pris" : "perdu") as "pris" | "perdu",
+            ...(["cher", "plus_tard", "pas_stock", "compare", "autre"].includes(str(x.reason)) ? { reason: str(x.reason) as LostReason } : {}),
+            ...(optNum(x.wanted) !== undefined ? { wanted: num(x.wanted) } : {}),
+            ...(str(x.client) ? { client: str(x.client).slice(0, 40) } : {}),
+          })).filter((q) => q.id).slice(-300),
         }
       : {}),
     ...(Array.isArray(s.suppliers) && s.suppliers.length

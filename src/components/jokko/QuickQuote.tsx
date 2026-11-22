@@ -5,6 +5,10 @@ import { type Shop, money } from "@/model";
 import { ladderContext } from "@/data/priceGuard";
 import { quickQuote, quoteMessage } from "@/data/quickQuote";
 import { linkModel, unlinkModel } from "@/data/supplierCompat";
+import { LOST_REASONS, quoteLine, quoteStats, recordQuote } from "@/data/quotes";
+import type { LostReason } from "@/model";
+
+const newId = (p: string) => `${p}-${crypto.randomUUID()}`;
 
 /**
  * Prix pour un client (22/11/2026) : tape le modèle → chaque pièce avec le prix à annoncer, le négocié, le minimum,
@@ -17,6 +21,11 @@ export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposi
   const [svc, setSvc] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [extra, setExtra] = useState("");
+  const [lostOpen, setLostOpen] = useState(false);
+  const [reason, setReason] = useState<LostReason | null>(null);
+  const [wanted, setWanted] = useState("");
+  const [saved, setSaved] = useState("");
+  const stats = useMemo(() => quoteStats(shop), [shop]);
   const ctx = useMemo(() => ladderContext(shop), [shop]);
   const res = useMemo(() => quickQuote(shop, q, new Date(), ctx), [shop, q, ctx]);
   const keyOf = (l: { kind: string; name: string }) => `${l.kind}:${l.name}`;
@@ -33,6 +42,13 @@ export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposi
   const wa = msg ? `https://wa.me/${digits.length === 9 ? `221${digits}` : digits}?text=${encodeURIComponent(msg)}` : "";
   const allServices = shop.services ?? [];
   const matching = new Set(res.services.map((s) => s.id));
+  const items = [...chosen.map((l) => l.name), ...services.map((s) => s.name)];
+  const note = (outcome: "pris" | "perdu") => {
+    if (!onChange) return;
+    const w = Number(wanted.replace(/\D/g, ""));
+    onChange(recordQuote(shop, { model: q.trim(), items, offered: total, floor, outcome, ...(outcome === "perdu" ? { reason: reason ?? "autre", ...(w > 0 ? { wanted: w } : {}) } : {}), ...(phone.trim() ? { client: phone.trim() } : {}) }, newId));
+  };
+  const wantedN = Number(wanted.replace(/\D/g, ""));
   const toggle = (k: string) => setPicked(picked.includes(k) ? picked.filter((x) => x !== k) : [...picked, k]);
   return (
     <div className="quick-quote">
@@ -113,13 +129,38 @@ export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposi
           <p>{[...chosen.map((l) => `${l.name} ${money(l.ladder.normal)}`), ...services.map((s) => `${s.name} ${money(s.price)}`)].join(" + ")}</p>
           <p>Négocié : {money(nego)} · <b>jamais sous {money(floor)}</b>{services.length ? " (services au prix du catalogue)" : ""}</p>
           {onDeposit && (
-            <Button className="h-11 rounded-full px-5" disabled={chosen.some((l) => !l.productId)} onClick={() => onDeposit(q.trim(), chosen.map((l) => l.productId!).filter(Boolean), services.map((s) => s.id))}>
+            <Button className="h-11 rounded-full px-5" disabled={chosen.some((l) => !l.productId)} onClick={() => { note("pris"); onDeposit(q.trim(), chosen.map((l) => l.productId!).filter(Boolean), services.map((s) => s.id)); }}>
               Faire le dépôt ({chosen.length + services.length})
             </Button>
+          )}
+          {onChange && !lostOpen && (
+            <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => { setLostOpen(true); setSaved(""); }}>Le client n'a pas pris</Button>
+          )}
+          {onChange && lostOpen && (
+            <div className="quote-lost">
+              <b>Pourquoi il n'a pas pris ?</b>
+              <div className="wizard-chips">
+                {(Object.keys(LOST_REASONS) as LostReason[]).map((r) => (
+                  <button key={r} type="button" className={reason === r ? "on" : ""} aria-pressed={reason === r} onClick={() => setReason(r)}>{LOST_REASONS[r]}</button>
+                ))}
+              </div>
+              <Input className="h-11" inputMode="numeric" placeholder="Il voulait payer combien ? (facultatif)" aria-label="Prix voulu par le client" value={wanted} onChange={(e) => setWanted(e.target.value)} />
+              {wantedN > 0 && (
+                <small className={wantedN >= floor ? "note" : "note is-bad"}>
+                  {wantedN >= floor ? `${money(wantedN)} est au-dessus de ton minimum (${money(floor)}) : tu pouvais le garder.` : `${money(wantedN)} est sous ton minimum (${money(floor)}) : bien de le laisser partir.`}
+                </small>
+              )}
+              <div className="row-actions">
+                <Button className="h-11 rounded-full px-5" disabled={!reason} onClick={() => { note("perdu"); setLostOpen(false); setReason(null); setWanted(""); setPicked([]); setSvc([]); setSaved("Client perdu noté. Jokko compte ces chiffres pour le Conseiller."); }}>Noter le client perdu</Button>
+                <Button variant="outline" className="h-11 rounded-full px-5" onClick={() => setLostOpen(false)}>Annuler</Button>
+              </div>
+            </div>
           )}
           {chosen.some((l) => !l.productId) && <small className="note">Une pièce n'est pas encore dans ton stock : crée-la dans Pièces avant le dépôt, ou enlève-la.</small>}
         </div>
       )}
+      {saved && <p className="note" data-tone="good">{saved}</p>}
+      {stats.given > 0 && <small className="note quote-stats">{quoteLine(stats)}{stats.savable ? ` ${stats.savable} pouvai${stats.savable > 1 ? "ent" : "t"} être gardé${stats.savable > 1 ? "s" : ""} sans descendre sous ton minimum.` : ""}</small>}
       {msg && (
         <div className="quote-send">
           <Input className="h-11" inputMode="tel" placeholder="Numéro du client (facultatif)" aria-label="Numéro du client" value={phone} onChange={(e) => setPhone(e.target.value)} />

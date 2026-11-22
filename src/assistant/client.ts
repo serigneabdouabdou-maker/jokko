@@ -340,6 +340,8 @@ export type Advice = {
   resume: string;
   actions: Array<{ titre: string; pourquoi: string; comment: string; impact: string }>;
   reponse: string | null;
+  /** Textes prêts (statut WhatsApp, réponse au client qui trouve cher…). */
+  messages?: Array<{ pour: string; texte: string }>;
 };
 
 /** Conseiller IA : il lit le diagnostic calculé par l'appli (jamais les numéros des clients). */

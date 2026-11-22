@@ -259,6 +259,27 @@ export type Shop = {
   toOrder?: OrderLine[];
   /** Fournisseurs (nom + numéro WhatsApp) : la commande prête leur est envoyée en un toucher. Le premier = principal. */
   suppliers?: Supplier[];
+  /** Prix donnés aux clients (« Prix pour un client ») : pris ou perdus, 300 au plus (src/data/quotes.ts). */
+  quotes?: QuoteRecord[];
+};
+
+export type LostReason = "cher" | "plus_tard" | "pas_stock" | "compare" | "autre";
+/** Un prix donné à un client : pris (dépôt fait) ou perdu (raison, prix qu'il voulait). */
+export type QuoteRecord = {
+  id: string;
+  at: string;
+  /** Modèle tapé (« BF6 »). */
+  model: string;
+  /** Pièces et services proposés. */
+  items: string[];
+  /** Prix annoncé (normal) et prix minimum de la barrière, au moment du prix. */
+  offered: number;
+  floor?: number;
+  outcome: "pris" | "perdu";
+  reason?: LostReason;
+  /** Le prix que le client voulait payer. */
+  wanted?: number;
+  client?: string;
 };
 
 /** Achats d'un mois chez le fournisseur (lus dans ses factures « Total … » sur WhatsApp, 22/11/2026). */

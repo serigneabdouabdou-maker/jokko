@@ -2530,6 +2530,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ws-field em { font-style: normal; font-size: 13px; color: var(--j-ink-2); }
 .advisor-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .advisor-chips .chip { border: 1px solid var(--j-line); background: var(--j-card); border-radius: 999px; padding: 8px 12px; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.advisor-situation { display: grid; gap: 4px; margin: 10px 0 4px; font-size: 14px; font-weight: 600; }
+.advisor-situation textarea { width: 100%; border-radius: 12px; border: 1px solid var(--j-line); padding: 10px 12px; font: inherit; font-size: 16px; font-weight: 400; background: var(--j-card); color: var(--j-ink); }
+.advice-messages { display: grid; gap: 10px; margin-top: 12px; }
+.advice-messages article { border: 1px solid var(--j-line); border-radius: 12px; padding: 10px 12px; background: var(--j-card); }
+.advice-messages p { white-space: pre-wrap; margin: 6px 0 8px; }
 .journal-sum dd { white-space: nowrap; }
 .journal-sum dt { min-width: 0; }
 .supplier-history { display: grid; gap: 8px; }
@@ -2593,6 +2598,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .quote-unlink { justify-self: start; border: 0; background: none; color: #b91c1c; font-size: 13px; font-weight: 600; padding: 2px 0; }
 .compat-add { display: flex; gap: 8px; align-items: center; }
 .compat-add input { flex: 1; min-width: 0; }
+.quote-lost .wizard-chips button { padding: 8px 12px; font-size: 14px; }
+.quote-lost { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; }
+.quote-lost .note.is-bad { color: #b91c1c; }
+.quote-stats { display: block; margin-top: 8px; }
 .paste-area { width: 100%; min-height: 130px; border-radius: 12px; border: 1px solid var(--j-line, #e5e2da); padding: 10px 12px; font-size: 16px; font-family: ui-monospace, monospace; background: var(--j-card); color: var(--j-ink); }
 .paste-result { display: grid; gap: 10px; }
 .paste-errors { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: color-mix(in oklab, #dc2626 7%, var(--j-card)); }

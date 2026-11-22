@@ -193,7 +193,12 @@ export const adviceSchema = z.strictObject({
       }),
     )
     .max(5),
-  reponse: z.string().trim().max(1200).nullable(),
+  reponse: z.string().trim().max(1800).nullable(),
+  /** Textes prêts à envoyer ou à dire (statut WhatsApp, réponse au client qui trouve cher…), 22/11/2026. */
+  messages: z
+    .array(z.strictObject({ pour: z.string().trim().min(1).max(80), texte: z.string().trim().min(1).max(600) }))
+    .max(3)
+    .optional(),
 });
 
 export type AdviceRequest = z.infer<typeof adviceRequestSchema>;
