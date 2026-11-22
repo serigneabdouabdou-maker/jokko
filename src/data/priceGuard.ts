@@ -105,9 +105,11 @@ export function priceLadder(shop: Shop, p: Pick<Product, "name" | "cost">, now =
   const small = cost < 3000;
   const overhead = Math.round((ctx?.overhead ?? overheadPerJob(shop, now).amount) * (small ? 0.4 : 1));
   const risk = Math.round(cost * 0.1); // casse à la pose, reprise sous garantie (≈ 10 % des pièces)
-  const floor = Math.max(up500(cost + 500), near500(cost + overhead + risk + Math.max(small ? 1000 : 1500, Math.round(cost * 0.25))));
-  const nego = Math.max(floor, up500(cost + labor * 0.7));
-  const normal = Math.max(nego, up500(cost + labor));
+  const minGain = cost < 1000 ? 500 : small ? 1000 : Math.max(1500, Math.round(cost * 0.25));
+  const floor = Math.max(up500(cost + 500), near500(cost + overhead + risk + minGain));
+  // Le prix normal laisse toujours de quoi négocier au-dessus du minimum.
+  const normal = Math.max(up500(cost + labor), floor + (small ? 500 : 1500));
+  const nego = Math.max(floor, Math.min(normal - 500, up500(cost + labor * 0.7)));
   return { cost, normal, nego, floor, labor, overhead, risk, examples };
 }
 

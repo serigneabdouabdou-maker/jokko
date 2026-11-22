@@ -12,6 +12,7 @@ import { whatsappLink } from "@/data/debts";
 import { clientFile, knownClient } from "@/data/clientFiles";
 import { productNamedIn, searchProducts } from "@/data/partSearch";
 import { Commandes, PartLookup } from "./Commandes";
+import { QuickQuote } from "./QuickQuote";
 import { laborStats, suggestedPrice } from "@/data/pricing";
 import { orderPlan } from "@/data/reorder";
 import { imeiLooksWrong, mainModelKey, tacOf } from "@/data/modelKeys";
@@ -268,6 +269,16 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
       <p className="note">
         {waiting.length ? `Reste à encaisser sur les appareils au dépôt : ${money(owed)}.` : "Aucun appareil au dépôt."} Tu peux aussi le dire à Jokko : « Awa dépose un iPhone 11, écran cassé, 25 000, avance 5 000 ».
       </p>
+      {!adding && shop.products.length > 0 && (
+        <QuickQuote shop={shop} onDeposit={(device, productId) => {
+          const p = productId ? shop.products.find((x) => x.id === productId) : undefined;
+          setForm({ clientName: "", phone: "", imei: "", device, problem: p ? (kindOf(p.name) === "Écran" ? "Écran cassé" : kindOf(p.name) === "Batterie" ? "Batterie" : "") : "", price: "", advance: "", piece: "", labor: "" });
+          setPicked(null);
+          if (p) pickPart(p);
+          setStep(0);
+          setAdding(true);
+        }} />
+      )}
       </DrillOverview>
       <DrillList>
       <Drill id="mois" title="L'atelier ce mois-ci" icon="rapport" summary={`${month.done} rendue${month.done > 1 ? "s" : ""} · main-d'œuvre ${money(month.labor)}`}>

@@ -2568,3 +2568,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ladder-line { display: block; font-size: 12px; color: var(--j-ink-2); }
 .ladder-line.is-under { color: var(--j-danger); font-weight: 600; }
 .batch-cost { width: 120px; height: 34px; border: 1px solid var(--j-line); border-radius: 10px; padding: 0 8px; font-size: 16px; }
+/* Prix rapide pour un client (22/11/2026) */
+.quick-quote { display: grid; gap: 8px; margin: 10px 0; padding: 12px; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-card); }
+.quick-quote-head { display: grid; gap: 6px; }
+.quick-quote-head b { font-size: 16px; }
+.quote-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.quote-list li { border: 1px solid var(--j-line); border-radius: 12px; padding: 10px; display: grid; gap: 4px; }
+.quote-list li.in-stock { border-color: color-mix(in oklab, #16a34a 40%, var(--j-line)); }
+.quote-main { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.quote-main span { display: grid; gap: 2px; min-width: 0; }
+.quote-main small { color: var(--j-ink-2); font-size: 12px; }
+.quote-price { font-size: 19px; white-space: nowrap; }
+.quote-send { display: grid; gap: 8px; }
