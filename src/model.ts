@@ -279,6 +279,8 @@ export type QuoteRecord = {
   reason?: LostReason;
   /** Le prix que le client voulait payer. */
   wanted?: number;
+  /** Prix négocié : ce que le client a finalement payé (offered = prix annoncé au départ). */
+  paid?: number;
   client?: string;
 };
 

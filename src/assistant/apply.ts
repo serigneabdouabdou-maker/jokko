@@ -113,10 +113,19 @@ export function applyDraft(shop: Shop, action: DraftAction & { cost?: number }):
     const cost = action.cost !== undefined && Number.isFinite(action.cost) && action.cost >= 0 ? Math.round(action.cost) : product?.cost !== undefined && baseQty ? Math.round(baseQty * product.cost) : undefined;
     const unit = product ? (retail ? retail.unit : product.unit) : undefined;
     const label = product?.name ?? (action.label?.trim() || action.productName?.trim() || "Vente");
-    const sale: Sale = { id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: known?.id, ticket: nextTicket(shop) };
+    // Vente à crédit (22/11/2026, « un client prend et ne paie pas ») : le client est retrouvé ou créé, sa dette augmente.
+    const credit = action.payment === "credit";
+    if (credit && !known && !heardClient) return null;
+    const withC = credit ? withClient(shop, known, heardClient) : null;
+    const buyer = withC?.client ?? known;
+    const sale: Sale = { id: uid("s"), at: todayStamp(), label, amount: total, qty, productId: product?.id, clientId: buyer?.id, ticket: nextTicket(shop) };
     if (cost !== undefined) sale.cost = cost;
     if (retail) sale.retail = true;
     if (unit) sale.unit = unit;
+    if (action.payment) sale.payment = action.payment;
+    const clients = withC
+      ? withC.clients.map((c) => (c.id === withC.client.id ? { ...c, debt: c.debt + total, dueAt: c.debt > 0 && c.dueAt ? c.dueAt : new Date(Date.now() + DEFAULT_DUE_DAYS * DAY).toISOString() } : c))
+      : shop.clients;
     return {
       shop: {
         ...shop,
@@ -124,9 +133,10 @@ export function applyDraft(shop: Shop, action: DraftAction & { cost?: number }):
           ? shop.products.map((p) => (p.id === product.id ? { ...p, stock: Math.max(0, roundQty(p.stock - baseQty)) } : p))
           : shop.products,
         sales: [sale, ...shop.sales],
+        clients,
       },
       amount: total,
-      summary: `Vente · ${qty && product ? `${qtyLabel(qty)} ${unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(total)}${cost !== undefined ? ` · bénéfice ${money(total - cost)}` : ""}${known ? ` · ${known.name}` : ""}`,
+      summary: `Vente${credit ? " à crédit" : ""} · ${qty && product ? `${qtyLabel(qty)} ${unit} ${product.name} · ` : label !== "Vente" ? `${label} · ` : ""}${each && each.qty !== 1 ? `${qtyLabel(each.qty)} × ${money(each.price)} = ` : ""}${money(total)}${cost !== undefined ? ` · bénéfice ${money(total - cost)}` : ""}${buyer ? ` · ${buyer.name}` : ""}${credit && withC ? ` · doit en tout ${money(withC.client.debt + total)}` : action.payment === "wave" ? " · Wave" : action.payment === "om" ? " · Orange Money" : ""}`,
     };
   }
 

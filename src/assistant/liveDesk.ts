@@ -797,6 +797,7 @@ export function resolveAction(args: Record<string, unknown>, shop: Shop): Resolv
       unitPrice: number(args.prixUnitaire),
       debtMode: args.modeDette === "total" || args.debtMode === "total" ? "total" : args.modeDette === "ajout" || args.debtMode === "ajout" ? "ajout" : null,
       paidWith: (["tiroir", "wave", "om", "autre"] as const).find((k) => k === args.payeAvec) ?? null,
+      payment: (["wave", "om", "credit"] as const).find((k) => k === args.paiement) ?? null,
     },
     ambigu,
   };

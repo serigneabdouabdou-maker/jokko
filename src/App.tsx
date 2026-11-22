@@ -59,6 +59,9 @@ import {
 } from "@/assistant/client";
 import { type LiveHandle, type LivePhase, LiveStartError, prewarmLive, startLive } from "@/assistant/live";
 import { LiveDesk, normalizeAction, pickByName } from "@/assistant/liveDesk";
+import { answerPending, type Pending, planLocal, replyFor } from "@/assistant/localVoice";
+import { freeEarPreferred, freeSpeechAvailable, listenOnce, setFreeEarPreferred } from "@/assistant/stockReader";
+import { recordQuote } from "@/data/quotes";
 import { AmountLedger, guardReply, moneyAmountsSaid } from "@/assistant/wolofNumbers";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
@@ -86,7 +89,7 @@ import { ReceiveLots } from "@/components/jokko/ReceiveLots";
 import { MetierPicker } from "@/components/jokko/MetierPicker";
 import { FirstSteps } from "@/components/jokko/FirstSteps";
 import { chosenMetier, forgetMetier, METIER_LOOK, MetierCards, MetierSetup, rememberMetier } from "@/components/jokko/MetierCards";
-import { buildReport, inventoryDue, periodOf } from "@/data/report";
+import { buildReport, inventoryDue, periodOf, recordInventory } from "@/data/report";
 import { overdueDebts } from "@/data/debts";
 import { acceptTerms, compatLearn, countLiveExchange, noteAssistant, resetCode, sendOtp, setAssistantShop, signIn, signUp, smsAvailable, SUPPORT_PHONE, QUOTA_EVENT, type QuotaDetail, supabase } from "@/data/supabase";
 import { fingerprint, learnedBetween, shopFamilies } from "@/data/compat";
@@ -892,6 +895,10 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const [sync, setSync] = useState<SyncState>("ok");
   useEffect(() => onSyncState(setSync), []);
   const rec = useRef<MediaRecorder | null>(null);
+  /** Question de Jokko en attente d'une réponse courte (mode gratuit). */
+  const pendingLocal = useRef<Pending | null>(null);
+  /** Écoute gratuite du téléphone en cours : toucher le micro l'arrête. */
+  const freeEar = useRef<(() => void) | null>(null);
   const timers = useRef<number[]>([]);
   const status = useRef<Promise<Exclude<AssistantStatus, "checking">> | null>(null);
   const profileRef = useRef(profile);
@@ -1391,6 +1398,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       handle.tell(input);
       return;
     }
+    // Le code de Jokko d'abord (22/11/2026) : ce qu'il comprend sûrement est fait tout de suite, gratuitement, sans IA.
+    if (!looksLikeBatch(input) && tryLocal(input)) return;
     // Plusieurs opérations collées d'un coup (texte long, plusieurs lignes avec un montant) : liste à vérifier.
     if (assistant !== "off" && looksLikeBatch(input) && (await tryBatch(input))) return;
     if (can(shop, "chat") && (await tryOrder(input))) return;
@@ -1412,6 +1421,67 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
     const summary = describeChange(shop, result.shop);
     if (result.shop !== shop) desk.commit(shop, result.shop, summary ?? "Boutique mise à jour", input);
     else settle(result.say, undefined);
+  }
+
+  /** Écrit la boutique tout de suite (même chemin que les écritures de Jokko), sans ligne « Annuler ». */
+  function writeNow(next: Shop) {
+    const updated = replaceShop(profileRef.current, next);
+    profileRef.current = updated;
+    setProfile(updated);
+  }
+
+  /**
+   * Compréhension par le code seul (src/assistant/localVoice.ts) : vente, crédit, dette, dépense, achat, service,
+   * réparation, comptage, client perdu, prix négocié, questions courantes. true = fait (aucun appel à l'IA).
+   */
+  function tryLocal(input: string): boolean {
+    const shopNow = currentShop(profileRef.current);
+    const isPatron = roleIn(profileRef.current) !== "vendeur";
+    // Réponse courte à la question d'avant (« Wave », « ajoute »).
+    const waiting = pendingLocal.current;
+    pendingLocal.current = null;
+    if (waiting) {
+      const again = answerPending(input, waiting);
+      if (again) {
+        const res = desk.handle({ ...again, id: uid("c") });
+        const r = replyFor(res, { kind: "call", call: again, what: "" });
+        if (r.pending) pendingLocal.current = { call: again, sorte: r.pending, at: Date.now() };
+        if (!r.ok || r.extra) say(r.ok ? r.extra! : r.text);
+        if (!r.ok) settle(r.text, undefined);
+        return true;
+      }
+    }
+    const plan = planLocal(input, shopNow, isPatron);
+    if (!plan) return false;
+    setReply(null);
+    if (plan.kind === "answer" || plan.kind === "ask") {
+      say(plan.text);
+      settle(plan.text, undefined);
+      return true;
+    }
+    if (plan.kind === "lost") {
+      desk.commit(shopNow, recordQuote(shopNow, plan.quote, uid), `Client perdu · ${plan.quote.model}`, input);
+      say(plan.text);
+      return true;
+    }
+    if (plan.kind === "count") {
+      const r = recordInventory(shopNow, plan.counts, () => uid("e"));
+      desk.commit(shopNow, r.shop, `Comptage · ${plan.lines.join(" · ")}`, input);
+      say(`Stock compté : ${plan.lines.join(", ")}.${r.losses ? ` Pertes notées : ${money(r.losses)}.` : ""}${plan.unknown.length ? ` Pas trouvé : ${plan.unknown.join(", ")}.` : ""}`);
+      return true;
+    }
+    const res = desk.handle({ ...plan.call, id: uid("c") });
+    const r = replyFor(res, plan);
+    if (r.pending) pendingLocal.current = { call: plan.call, sorte: r.pending, at: Date.now() };
+    if (r.ok && plan.quote) writeNow(recordQuote(currentShop(profileRef.current), plan.quote, uid));
+    if (r.ok) {
+      if (plan.call.name === "reparation") say(r.text);
+      else if (r.extra) say(r.extra);
+    } else {
+      say(r.text);
+      settle(r.text, undefined);
+    }
+    return true;
   }
 
   /** Met à jour la carte d'un message du fil. */
@@ -1558,9 +1628,37 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       rec.current = null;
       return;
     }
+    if (freeEar.current) {
+      freeEar.current();
+      freeEar.current = null;
+      return;
+    }
     if (live || connecting.current) return;
     lastTap.current = Date.now();
     clearTimers();
+    // Écoute gratuite en français (22/11/2026) : le téléphone écrit la phrase, le code de Jokko la comprend.
+    // Ce que le code ne comprend pas part à l'IA en texte (moins cher que le vocal et le direct).
+    if (freeEarPreferred(profileRef.current.lang) && freeSpeechAvailable()) {
+      setReply(null);
+      setVoice("ecoute");
+      setText("");
+      freeEar.current = listenOnce(
+        (heard) => setText(heard),
+        (heard) => {
+          freeEar.current = null;
+          setVoice("repos");
+          void send(heard);
+        },
+        (why) => {
+          freeEar.current = null;
+          setText("");
+          if (why === "rien") fail("Je n’ai rien entendu. Touche le micro et parle près du téléphone.");
+          else if (why === "refuse") fail("Le micro n’est pas autorisé. Autorise-le dans le navigateur, ou écris la phrase.");
+          else void record();
+        },
+      );
+      return;
+    }
     await greetFirst();
     if (liveRef.current || (direct && liveRefused.current !== todayKey() && (await isReady()))) {
       quotaNote.current = null;
@@ -2453,7 +2551,7 @@ function Settings({ profile, setProfile, onDemo }: { profile: Profile; setProfil
         <Checkbox id="speak" checked={profile.speak} onCheckedChange={(checked) => setProfile({ ...profile, speak: checked === true })} />
         <Label htmlFor="speak">Lire les réponses à voix haute</Label>
       </div>
-      <ClearVoiceSetting />
+      <ClearVoiceSetting lang={profile.lang} />
       </Drill>
       <Drill id="donnees" title="Mes données et conditions" icon="journal" summary="Exporter tes ventes, conditions, confidentialité">
       <p className="note">Pour t’écouter et te répondre, Jokko a besoin d’internet. Tes comptes sont gardés en sécurité.</p>
@@ -2529,13 +2627,20 @@ function ModulesSetting({ shop, onChange }: { shop: Shop; onChange: (modules: st
   );
 }
 
-function ClearVoiceSetting() {
+function ClearVoiceSetting({ lang }: { lang: string }) {
   const [on, setOn] = useState(clearVoicePreferred);
   const [noise, setNoise] = useState(noisePreferred);
   const [greet, setGreet] = useState(greetPreferred);
   const [speed, setSpeed] = useState<SpeechSpeed>(speedPreferred);
+  const [ear, setEar] = useState(() => freeEarPreferred(lang));
   return (
     <>
+      {freeSpeechAvailable() && (
+        <div className="row">
+          <Checkbox id="ecoute-gratuite" checked={ear} onCheckedChange={(checked) => { setEar(checked === true); setFreeEarPreferred(checked === true); }} />
+          <Label htmlFor="ecoute-gratuite">Écoute gratuite en français : le téléphone écrit ma phrase, Jokko l’enregistre sans IA (ventes, dettes, dépenses, réparations, comptage…). Décoche pour parler wolof avec l’IA.</Label>
+        </div>
+      )}
       <div className="row">
         <Checkbox id="filtre-fort" checked={noise === "fort"} onCheckedChange={(checked) => { const level = checked === true ? "fort" : "normal"; setNoise(level); setNoisePreferred(level); }} />
         <Label htmlFor="filtre-fort">Boutique très bruyante : filtre anti-bruit fort (parle près du téléphone)</Label>

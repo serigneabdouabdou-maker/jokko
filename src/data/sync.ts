@@ -427,6 +427,7 @@ export function rowsToShop(rows: ShopRows): Shop {
             outcome: (x.outcome === "pris" ? "pris" : "perdu") as "pris" | "perdu",
             ...(["cher", "plus_tard", "pas_stock", "compare", "autre"].includes(str(x.reason)) ? { reason: str(x.reason) as LostReason } : {}),
             ...(optNum(x.wanted) !== undefined ? { wanted: num(x.wanted) } : {}),
+            ...(optNum(x.paid) !== undefined ? { paid: num(x.paid) } : {}),
             ...(str(x.client) ? { client: str(x.client).slice(0, 40) } : {}),
           })).filter((q) => q.id).slice(-300),
         }

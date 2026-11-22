@@ -134,3 +134,78 @@ export function startFreeDictation(onText: (text: string) => void, onFail: () =>
     rec.stop();
   };
 }
+
+/**
+ * Écoute gratuite d'UNE phrase en français (22/11/2026) : le texte s'affiche pendant qu'on parle (onInterim),
+ * et la phrase part toute seule quand le commerçant se tait (onText). Rien n'est envoyé à l'IA ici :
+ * la phrase passe d'abord par le code de Jokko (src/assistant/localVoice.ts).
+ * Renvoie « stop » : toucher le micro une 2e fois envoie ce qui a été entendu.
+ */
+export function listenOnce(onInterim: (text: string) => void, onText: (text: string) => void, onFail: (reason: "refuse" | "rien" | "panne") => void): () => void {
+  const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
+  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  if (!Ctor) {
+    onFail("panne");
+    return () => undefined;
+  }
+  const rec = new Ctor();
+  rec.lang = "fr-FR";
+  rec.continuous = false;
+  rec.interimResults = true;
+  let finalText = "";
+  let interim = "";
+  let error: "refuse" | "rien" | "panne" | null = null;
+  rec.onresult = (e) => {
+    let f = "";
+    let i = "";
+    for (let k = 0; k < e.results.length; k++) {
+      const r = e.results[k];
+      if (r.isFinal) f += `${r[0].transcript} `;
+      else i += `${r[0].transcript} `;
+    }
+    finalText = f.trim();
+    interim = i.trim();
+    onInterim(`${finalText} ${interim}`.trim());
+  };
+  rec.onerror = (e) => {
+    error = e.error === "not-allowed" || e.error === "service-not-allowed" ? "refuse" : e.error === "no-speech" || e.error === "aborted" ? "rien" : "panne";
+  };
+  rec.onend = () => {
+    const text = (finalText || interim).trim();
+    if (text) onText(text);
+    else onFail(error ?? "rien");
+  };
+  try {
+    rec.start();
+  } catch {
+    onFail("panne");
+  }
+  return () => {
+    try {
+      rec.stop();
+    } catch {
+      // déjà fini
+    }
+  };
+}
+
+const EAR_KEY = "jokko.ecoute-gratuite";
+/** Écoute gratuite choisie sur cet appareil ; par défaut oui en français quand le téléphone sait la faire. */
+export function freeEarPreferred(lang: string): boolean {
+  if (!freeSpeechAvailable()) return false;
+  try {
+    const v = localStorage.getItem(EAR_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch {
+    // appareil sans stockage
+  }
+  return lang === "fr";
+}
+export function setFreeEarPreferred(on: boolean) {
+  try {
+    localStorage.setItem(EAR_KEY, on ? "1" : "0");
+  } catch {
+    // appareil sans stockage
+  }
+}

@@ -28,6 +28,8 @@ export type DraftAction = {
   debtMode?: "ajout" | "total" | null;
   /** Dépense ou achat : d'où vient l'argent (tiroir, Wave, Orange Money, autre). Vide = tiroir, sauf grosse somme (Jokko demande). */
   paidWith?: CashSource | null;
+  /** Vente : payée par Wave / Orange Money, ou à crédit (le client paiera plus tard : sa dette augmente). Vide = espèces. */
+  payment?: "wave" | "om" | "credit" | null;
 };
 
 export type Interpretation = {
