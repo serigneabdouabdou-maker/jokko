@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type Shop, newShop } from "@/model";
-import { activityReport, CHINA_DEFAULTS, chinaPlan } from "./workshopStats";
+import { activityReport, CHINA_DEFAULTS, chinaPlan, purchaseControl, supplierProfitEstimate } from "./workshopStats";
 
 const now = new Date("2026-11-22T12:00:00");
 const shop = (): Shop => ({
@@ -55,5 +55,33 @@ describe("mon activité (atelier)", () => {
     expect(p).toMatchObject({ base: "fournisseur", supplierPerMonth: 560_000, onlineBreakEvenPct: 23, tripBreakEvenPct: 30 });
     expect(p.onlineSaving).toBeGreaterThan(0);
     expect(p.confidence).toBe("bonne");
+  });
+});
+
+describe("fournisseur : bénéfice probable et contrôle", () => {
+  const withSupplier = (): Shop => ({
+    ...shop(),
+    suppliers: [{ id: "f", name: "Bathie", phone: "", purchases: [{ month: "2026-10", total: 20000, invoices: 1 }, { month: "2026-11", total: 30000, invoices: 2 }], kinds: [{ label: "Écrans", qty: 10, total: 40000 }, { label: "Autres pièces", qty: 10, total: 10000 }] }],
+  } as Shop);
+
+  it("bénéfice probable = 90 % des écrans posés × main-d'œuvre apprise, autres pièces au double", () => {
+    const e = supplierProfitEstimate(withSupplier())!;
+    expect(e.months).toBe(2);
+    expect(e.lines.find((l) => l.label === "Écrans")).toMatchObject({ qty: 9, perPiece: 4300, profit: 38700 });
+    expect(e.lines.find((l) => l.label === "Autres pièces")!.profit).toBe(9000);
+    expect(e.profit).toBe(47700);
+    expect(e.low).toBeLessThan(e.profit);
+    expect(e.high).toBeGreaterThan(e.profit);
+  });
+
+  it("contrôle : acheté depuis le 1er jour dans Jokko − pièces sorties − stock = à retrouver", () => {
+    const c = purchaseControl(withSupplier())!;
+    expect(c.months).toEqual([{ month: "2026-11", bought: 30000, used: 11700, gap: 18300 }]);
+    expect(c.stockValue).toBe(0);
+  });
+
+  it("rien sans historique du fournisseur", () => {
+    expect(supplierProfitEstimate(shop())).toBeNull();
+    expect(purchaseControl(shop())).toBeNull();
   });
 });

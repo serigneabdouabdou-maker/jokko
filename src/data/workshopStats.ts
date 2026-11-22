@@ -11,7 +11,7 @@
  * Aucun chiffre ne vient de l'IA.
  */
 import type { Shop } from "../model.ts";
-import { kindOf, type PartKind } from "./pricing.ts";
+import { kindOf, laborStats, type PartKind } from "./pricing.ts";
 import { productNamedIn } from "./partSearch.ts";
 import { isServicePayment } from "./report.ts";
 
@@ -346,4 +346,81 @@ export function activityForAdvisor(shop: Shop, now = new Date()) {
       modeles_les_plus_utilises: china.topModels.slice(0, 6),
     },
   };
+}
+
+// ---------- Ce que les pièces du fournisseur ont probablement rapporté ----------
+
+export type SupplierEstimate = {
+  months: number;
+  bought: number;
+  /** Main-d'œuvre probable sur les pièces achetées (ce qui reste quand la pièce est payée). */
+  profit: number;
+  low: number;
+  high: number;
+  perMonth: number;
+  lines: Array<{ label: string; qty: number; perPiece: number | null; profit: number; how: string }>;
+};
+
+const PIECE_KIND: Record<string, PartKind> = { Écrans: "Écran", Batteries: "Batterie", Plaquettes: "Plaquette" };
+
+/**
+ * Estimation (22/11/2026, demande de Fallou : « calcule les bénéfices probables depuis qu'on travaille avec lui ») :
+ * écrans, batteries, plaquettes = pièces achetées × 90 % posées (le reste en stock, cassé ou rendu) × ta main-d'œuvre
+ * habituelle (apprise de tes réparations dans Jokko) ; autres pièces = vendues au double de leur prix (prudent).
+ * Fourchette : 85 % posées et main-d'œuvre −15 %, jusqu'à 95 % et +5 %.
+ */
+export function supplierProfitEstimate(shop: Shop): SupplierEstimate | null {
+  const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length && x.kinds?.length);
+  if (!sup?.purchases || !sup.kinds) return null;
+  const bought = sup.purchases.reduce((a, m) => a + m.total, 0);
+  const itemsTotal = sup.kinds.reduce((a, k) => a + k.total, 0) || 1;
+  const scale = bought / itemsTotal; // les lignes lues couvrent ≈ 95 % des factures
+  const stats = laborStats(shop);
+  const lines = sup.kinds.map((k) => {
+    const kind = PIECE_KIND[k.label];
+    if (kind) {
+      const perPiece = stats[kind].labor;
+      const qty = Math.round(k.qty * scale * 0.9);
+      return { label: k.label, qty, perPiece, profit: qty * perPiece, how: `${qty} posées × ${perPiece.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F${stats[kind].learned ? "" : " (main-d'œuvre de départ)"}` };
+    }
+    const profit = Math.round(k.total * scale * 0.9);
+    return { label: k.label, qty: Math.round(k.qty * scale * 0.9), perPiece: null, profit, how: "revendues au double du prix d'achat" };
+  });
+  const profit = lines.reduce((a, l) => a + l.profit, 0);
+  const sorted = [...sup.purchases].sort((a, b) => a.month.localeCompare(b.month));
+  const [y0, m0] = sorted[0].month.split("-").map(Number);
+  const [y1, m1] = sorted[sorted.length - 1].month.split("-").map(Number);
+  const months = (y1 - y0) * 12 + (m1 - m0) + 1;
+  return { months, bought, profit, low: Math.round(profit * (0.85 / 0.9) * 0.85), high: Math.round(profit * (0.95 / 0.9) * 1.05), perMonth: Math.round(profit / months), lines };
+}
+
+// ---------- Contrôle : pièces achetées chez le fournisseur ↔ pièces sorties dans Jokko ----------
+
+export type PurchaseCheck = { month: string; bought: number; used: number; gap: number };
+
+/**
+ * Contrôle strict (22/11/2026, demande de Fallou) : chaque mois depuis que Jokko est utilisé,
+ * ce qui a été acheté chez le fournisseur (factures) face aux pièces sorties dans Jokko
+ * (posées, prévues au dépôt, vendues seules) au prix d'achat. L'écart = pièces encore en stock,
+ * cassées, rendues… ou posées sans être notées. Stock actuel au prix d'achat pour comparer.
+ */
+export function purchaseControl(shop: Shop): { months: PurchaseCheck[]; bought: number; used: number; gap: number; stockValue: number } | null {
+  const sup = (shop.suppliers ?? []).filter((x) => x.purchases?.length);
+  if (!sup.length) return null;
+  const ev = activityEvents(shop);
+  const firstUse = ev.parts.length ? Math.min(...ev.parts.map((p) => p.at)) : null;
+  if (firstUse === null) return null;
+  const startMonth = new Date(firstUse).toISOString().slice(0, 7);
+  const used = new Map<string, number>();
+  for (const p of ev.parts) {
+    const m = new Date(p.at).toISOString().slice(0, 7);
+    used.set(m, (used.get(m) ?? 0) + p.cost * (p.direct ? 1 : p.qty));
+  }
+  const bought = new Map<string, number>();
+  for (const x of sup.flatMap((s) => s.purchases ?? [])) if (x.month >= startMonth) bought.set(x.month, (bought.get(x.month) ?? 0) + x.total);
+  const keys = [...new Set([...bought.keys(), ...used.keys()])].filter((m) => m >= startMonth).sort();
+  const months = keys.map((month) => { const b = bought.get(month) ?? 0; const u = Math.round(used.get(month) ?? 0); return { month, bought: b, used: u, gap: b - u }; });
+  const sum = (f: (x: PurchaseCheck) => number) => months.reduce((a, x) => a + f(x), 0);
+  const stockValue = Math.round(shop.products.filter((p) => kindOf(p.name) !== "Autre").reduce((a, p) => a + Math.max(0, p.stock) * (p.cost ?? 0), 0));
+  return { months, bought: sum((x) => x.bought), used: sum((x) => x.used), gap: sum((x) => x.gap), stockValue };
 }

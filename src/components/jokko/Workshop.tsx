@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
-import { activityReport, CHINA_DEFAULTS, type ChinaInput, chinaPlan, RANGE_LABELS, type Range } from "@/data/workshopStats";
+import { activityReport, CHINA_DEFAULTS, type ChinaInput, chinaPlan, RANGE_LABELS, type Range, purchaseControl, supplierProfitEstimate } from "@/data/workshopStats";
 
 const RANGES: Range[] = ["semaine", "mois", "annee", "tout"];
 const trend = (now: number, before: number) => (before ? (now > before ? `▲ ${now - before}` : now < before ? `▼ ${before - now}` : "=") : now ? "nouveau" : "");
@@ -232,7 +232,52 @@ function SupplierHistory({ shop }: { shop: Shop }) {
           </dl>
         </details>
       )}
+      <SupplierEstimateBlock shop={shop} />
+      <PurchaseControlBlock shop={shop} />
       <small className="note">Lu dans vos factures WhatsApp (« Total … »). Les commandes envoyées seulement en photo ne sont pas comptées : c'est un minimum.</small>
+    </div>
+  );
+}
+
+/** Ce que les pièces achetées chez le fournisseur ont probablement rapporté (estimation avec fourchette). */
+function SupplierEstimateBlock({ shop }: { shop: Shop }) {
+  const e = supplierProfitEstimate(shop);
+  if (!e) return null;
+  return (
+    <div className="ws-verdict" data-tone="good">
+      <b>Ce que ces pièces t'ont probablement rapporté : ≈ {money(e.profit)}</b>
+      <p>Entre {money(e.low)} et {money(e.high)}, soit ≈ {money(e.perMonth)} par mois sur {e.months} mois, pour {money(e.bought)} de pièces achetées. C'est ta main-d'œuvre sur les pièces (services à part).</p>
+      <dl className="profit-calc ws-table">
+        {e.lines.filter((l) => l.profit > 0).map((l) => <div key={l.label}><dt>{l.label} <small>{l.how}</small></dt><dd className="num">{money(l.profit)}</dd></div>)}
+      </dl>
+      <p className="note">Estimation : 90 % des pièces posées (le reste en stock, cassé ou rendu) et ta main-d'œuvre habituelle notée dans Jokko. Pour une erreur sous 10 %, compte ton stock d'écrans une fois : Jokko saura combien sont vraiment partis.</p>
+    </div>
+  );
+}
+
+const MONTH_NAMES = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+/** Contrôle strict : ce qui est acheté chez le fournisseur doit ressortir dans Jokko (posé, vendu) ou rester en stock. */
+function PurchaseControlBlock({ shop }: { shop: Shop }) {
+  const c = purchaseControl(shop);
+  if (!c || !c.months.length) return null;
+  const missing = c.gap - c.stockValue;
+  const tone = missing > c.bought * 0.15 ? "bad" : missing > 0 ? "warn" : "good";
+  return (
+    <div className="ws-verdict" data-tone={tone}>
+      <b>Contrôle : acheté ↔ sorti dans Jokko</b>
+      <dl className="profit-calc ws-table">
+        {c.months.map((m) => {
+          const [y, mo] = m.month.split("-").map(Number);
+          return <div key={m.month}><dt>{MONTH_NAMES[mo - 1]} {y} <small>acheté {money(m.bought)} · sorti {money(m.used)}</small></dt><dd className="num">{m.gap > 0 ? "+" : ""}{money(m.gap)}</dd></div>;
+        })}
+        <div><dt>Pièces en stock dans Jokko (prix d'achat)</dt><dd className="num">{money(c.stockValue)}</dd></div>
+        <div><dt><b>À retrouver</b> <small>acheté − sorti − en stock</small></dt><dd className="num"><b>{money(Math.max(0, missing))}</b></dd></div>
+      </dl>
+      <p>{missing > 0
+        ? `${money(missing)} de pièces achetées ne sont ni posées, ni vendues, ni en stock dans Jokko. Soit elles sont dans ton tiroir (compte-les et mets-les dans Stock), soit des réparations ont été faites sans être notées.`
+        : "Tout ce que tu as acheté est sorti dans Jokko ou est en stock. Bien."}</p>
+      <small className="note">Compté depuis ton premier jour dans Jokko. Les mois d'avant ne sont pas contrôlables.</small>
     </div>
   );
 }
