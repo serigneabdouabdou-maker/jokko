@@ -65,4 +65,23 @@ describe("facture collée", () => {
     expect(again.lines.every((l) => l.newQty === 0)).toBe(true);
     expect(again.newAmount).toBe(0);
   });
+
+  it("barrière : la même facture recollée (même le lendemain) est reconnue, jamais payée deux fois", () => {
+    const s = shop();
+    const r = readPastedInvoice(BILL, s, s.suppliers![0], NOW)!;
+    expect(r.already).toBeUndefined();
+    let n = 0;
+    const out = applyPastedInvoice(s, "f", r, new Set(r.lines.map((l) => l.key)), { updateCost: true, paid: "wave", now: NOW }, (p) => `${p}${++n}`);
+    expect(out.paidNow).toBe(true);
+    expect(out.shop.expenses.filter((e) => e.kind === "achat")).toHaveLength(1);
+    // Renvoyée le lendemain avec l'en-tête WhatsApp : même lignes, même total → reconnue.
+    const next = new Date("2026-11-23T09:00:00Z");
+    const again = readPastedInvoice(`[09:00, 23/11/2026] Bathie: ${BILL}`, out.shop, out.shop.suppliers![0], next)!;
+    expect(again.already).toEqual({ at: NOW.toISOString(), paid: "wave" });
+    const twice = applyPastedInvoice(out.shop, "f", again, new Set(again.lines.map((l) => l.key)), { updateCost: true, paid: "tiroir", now: next }, (p) => `${p}${++n}`);
+    expect(twice.paidNow).toBe(false);
+    expect(twice.added).toBe(0);
+    expect(twice.shop.expenses.filter((e) => e.kind === "achat")).toHaveLength(1);
+    expect(twice.shop.products.find((p) => p.id === "bf6")!.stock).toBe(5);
+  });
 });

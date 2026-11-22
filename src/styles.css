@@ -2610,3 +2610,5 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .paste-change.is-nouvelle { color: #2563eb; }
 .paste-change.is-pareil { color: var(--j-muted, #6b6b6b); }
 .paste-pay { display: grid; gap: 8px; }
+.paste-already { padding: 10px 12px; border-radius: 12px; background: color-mix(in oklab, #f59e0b 16%, var(--j-card)); border: 1px solid color-mix(in oklab, #f59e0b 45%, transparent); }
+.paste-already p { margin: 4px 0 0; }

@@ -11,7 +11,7 @@
  * 4. prépare le message des erreurs à envoyer au fournisseur.
  * Rien n'est envoyé ailleurs : tout se fait dans le téléphone, sans IA.
  */
-import type { Shop, Supplier } from "../model.ts";
+import type { CashSource, Shop, Supplier } from "../model.ts";
 import { partForSale } from "./partSearch.ts";
 import { kindOf } from "./pricing.ts";
 import {
@@ -42,7 +42,15 @@ export type PasteLine = {
   choices?: number;
 };
 
+/** Empreinte d'une facture : ses lignes et son total, sans la date (renvoyée le lendemain = même facture). */
+export function invoiceSig(inv: ChatInvoice): string {
+  return `${inv.total}#${inv.lines.map((l) => `${l.qty}|${partOf(l.name).key}|${l.unit}`).sort().join(";")}`;
+}
+
 export type PasteResult = {
+  /** Déjà enregistrée : quand, et payée avec quoi. */
+  already?: { at: string; paid?: CashSource };
+  sig: string;
   date: string;
   total: number;
   /** Le total était écrit dans le message (sinon calculé par Jokko). */
@@ -113,14 +121,16 @@ export function readPastedInvoice(text: string, shop: Shop, sup?: Supplier, now 
   const sum = lines.reduce((a, l) => a + l.sub, 0);
   const priceEffect = lines.reduce((a, l) => a + (l.before && l.change !== "pareil" ? (l.unit - l.before.unit) * l.qty : 0), 0);
   const newAmount = lines.reduce((a, l) => a + l.newQty * l.unit, 0);
-  return { date: inv.date, total: inv.total, written, sum, lines, anomalies, priceEffect, newAmount, invoice: inv };
+  const sig = invoiceSig(inv);
+  const seen = sup?.pasted?.filter((x) => x.sig === sig).pop();
+  return { ...(seen ? { already: { at: seen.at, ...(seen.paid ? { paid: seen.paid } : {}) } } : {}), sig, date: inv.date, total: inv.total, written, sum, lines, anomalies, priceEffect, newAmount, invoice: inv };
 }
 
 /**
  * Enregistre : les pièces nouvelles cochées entrent au stock (prix d'achat mis à jour si voulu), elles sont notées
  * « reçues » pour ne jamais être remises, et les achats nouveaux entrent dans l'historique du fournisseur.
  */
-export function applyPastedInvoice(shop: Shop, supId: string | undefined, res: PasteResult, keys: Set<string>, opts: { updateCost: boolean }, makeId: (p: string) => string): { shop: Shop; added: number; amount: number } {
+export function applyPastedInvoice(shop: Shop, supId: string | undefined, res: PasteResult, keys: Set<string>, opts: { updateCost: boolean; paid?: CashSource; now?: Date }, makeId: (p: string) => string): { shop: Shop; added: number; amount: number; paidNow: boolean } {
   const chosen = res.lines.filter((l) => l.newQty > 0 && keys.has(l.key));
   const stock: StockLine[] = chosen.map((l) => ({ key: l.key, label: l.label, qty: l.newQty, unit: l.unit, ...(l.productId ? { productId: l.productId } : {}) }));
   let next = stock.length ? addStockLines(shop, stock, opts, () => makeId("p")) : shop;
@@ -145,8 +155,15 @@ export function applyPastedInvoice(shop: Shop, supId: string | undefined, res: P
     lastKeys: [...new Set([...(historyTo === sup.historyTo ? sup.lastKeys ?? [] : []), `${res.date}|${res.total}`])],
     anomalies: keepAnomalies(sup.anomalies ?? [], res.anomalies),
   };
+  // Empreinte gardée : la même facture recollée est reconnue ; jamais payée deux fois.
+  const stamp = (opts.now ?? new Date()).toISOString();
+  const before = (sup.pasted ?? []).filter((x) => x.sig === res.sig).pop();
+  const paidNow = Boolean(opts.paid && !before?.paid);
+  const paid = before?.paid ?? (paidNow ? opts.paid : undefined);
+  suppliers[at] = { ...suppliers[at]!, pasted: [...(sup.pasted ?? []).filter((x) => x.sig !== res.sig), { sig: res.sig, at: before?.at ?? stamp, date: res.date, total: res.total, ...(paid ? { paid } : {}) }].slice(-60) };
   next = { ...next, suppliers };
-  return { shop: next, added: chosen.reduce((a, l) => a + l.newQty, 0), amount };
+  if (paidNow) next = { ...next, expenses: [...next.expenses, { id: makeId("e"), at: stamp, label: `Facture ${sup.name} du ${res.date.slice(8, 10)}/${res.date.slice(5, 7)}`, amount: res.total, kind: "achat", paidWith: opts.paid! }] };
+  return { shop: next, added: chosen.reduce((a, l) => a + l.newQty, 0), amount, paidNow };
 }
 
 /** Le message à envoyer au fournisseur : seulement les erreurs de calcul (poli, chiffres exacts). */

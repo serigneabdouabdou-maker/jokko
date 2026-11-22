@@ -446,6 +446,7 @@ export function rowsToShop(rows: ShopRows): Shop {
               ...(anomalies.length ? { anomalies } : {}),
               ...(compat.length ? { compat } : {}),
               ...(Array.isArray(x.received) && x.received.length ? { received: (x.received as unknown[]).filter((r): r is [string, string, number, number] => Array.isArray(r) && typeof r[0] === "string" && typeof r[1] === "string" && typeof r[2] === "number" && typeof r[3] === "number").slice(-400) } : {}),
+              ...(rows(x.pasted).length ? { pasted: rows(x.pasted).map((r) => ({ sig: str(r.sig), at: str(r.at), date: str(r.date), total: num(r.total), ...(["tiroir", "wave", "om", "autre"].includes(str(r.paid)) ? { paid: str(r.paid) as "tiroir" | "wave" | "om" | "autre" } : {}) })).filter((r) => r.sig).slice(-60) } : {}),
               ...(Array.isArray(x.compatNo) && x.compatNo.length ? { compatNo: (x.compatNo as unknown[]).filter((v): v is string => typeof v === "string").slice(-300) } : {}),
               ...(optStr(x.readAt) ? { readAt: str(x.readAt) } : {}),
               ...(optStr(x.historyFrom) ? { historyFrom: str(x.historyFrom) } : {}),

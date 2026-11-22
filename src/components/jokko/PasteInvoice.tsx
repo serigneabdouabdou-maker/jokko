@@ -5,6 +5,7 @@ import { applyPastedInvoice, errorsMessage, type PasteResult, pasteSummary, read
 import { CashSourcePicker } from "./CashSourcePicker";
 
 const frDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+const PAID: Record<string, string> = { tiroir: "espèces du tiroir", wave: "Wave", om: "Orange Money", autre: "autre moyen" };
 const CHANGE: Record<string, string> = { hausse: "▲", baisse: "▼", pareil: "=", nouvelle: "★" };
 
 /**
@@ -37,13 +38,9 @@ export function PasteInvoiceBox({ shop, commit }: { shop: Shop; commit: (s: Shop
 
   function save() {
     if (!res) return;
-    const out = applyPastedInvoice(shop, sup?.id, res, keys, { updateCost }, uid);
-    let next = out.shop;
-    if (pay && pay !== "plus-tard") {
-      next = { ...next, expenses: [...next.expenses, { id: uid("e"), at: new Date().toISOString(), label: `Facture ${sup?.name ?? "fournisseur"} du ${frDate(res.date)}`, amount: res.total, kind: "achat", paidWith: pay }] };
-    }
-    commit(next);
-    setDone(`Enregistré : ${out.added} pièce${out.added > 1 ? "s" : ""} entrée${out.added > 1 ? "s" : ""} au stock (${money(out.amount)})${pay && pay !== "plus-tard" ? `, facture de ${money(res.total)} payée` : ""}.`);
+    const out = applyPastedInvoice(shop, sup?.id, res, keys, { updateCost, ...(pay && pay !== "plus-tard" ? { paid: pay } : {}) }, uid);
+    commit(out.shop);
+    setDone(`Enregistré : ${out.added} pièce${out.added > 1 ? "s" : ""} entrée${out.added > 1 ? "s" : ""} au stock (${money(out.amount)})${out.paidNow ? `, facture de ${money(res.total)} payée` : ""}.`);
     setRes(null); setText("");
   }
 
@@ -62,6 +59,12 @@ export function PasteInvoiceBox({ shop, commit }: { shop: Shop; commit: (s: Shop
       {done && <p className="note" role="status">{done}</p>}
       {res && (
         <div className="paste-result">
+          {res.already && (
+            <div className="paste-already" role="alert">
+              <b>⚠ Cette facture est déjà enregistrée</b>
+              <p>Le {frDate(res.already.at.slice(0, 10))} à {res.already.at.slice(11, 16)}{res.already.paid ? `, payée (${PAID[res.already.paid]})` : ", pas encore payée"}. {toAdd.length ? "Seules les pièces pas encore entrées au stock sont cochées." : "Toutes ses pièces sont déjà dans ton stock : rien ne sera ajouté deux fois."}</p>
+            </div>
+          )}
           <div className="ws-verdict" data-tone={res.anomalies.some((a) => a.serious) ? "bad" : res.written && res.sum === res.total ? "good" : "mid"}>
             <b>Facture du {frDate(res.date)} : {money(res.total)}{res.written ? "" : " (total calculé par Jokko)"}</b>
             <p>{res.written ? (res.sum === res.total ? `✓ Les lignes font bien ${money(res.sum)}.` : `Les lignes font ${money(res.sum)} : écart de ${money(Math.abs(res.total - res.sum))}.`) : "Pas de total écrit dans le message."}</p>
@@ -100,16 +103,21 @@ export function PasteInvoiceBox({ shop, commit }: { shop: Shop; commit: (s: Shop
             })}
           </ul>
           <label className="check-row"><input type="checkbox" checked={updateCost} onChange={(e) => setUpdateCost(e.target.checked)} /> Mettre ces prix d'achat dans mon stock</label>
-          <div className="paste-pay">
+          {res.already?.paid ? null : <div className="paste-pay">
             <div className="seg" role="radiogroup" aria-label="Payée ?">
               <button type="button" className={pay === "plus-tard" ? "on" : ""} aria-checked={pay === "plus-tard"} role="radio" onClick={() => setPay("plus-tard")}>Je paie plus tard</button>
               <button type="button" className={pay !== "plus-tard" ? "on" : ""} aria-checked={pay !== "plus-tard"} role="radio" onClick={() => setPay("")}>Je l'ai payée</button>
             </div>
             {pay !== "plus-tard" && <CashSourcePicker amount={res.total} value={pay} onChange={setPay} title="Tu l'as payée comment ?" />}
-          </div>
-          <Button className="h-12 rounded-full px-6 font-semibold" disabled={pay === ""} onClick={save}>
-            Enregistrer{toAdd.length ? ` : ${toAdd.reduce((a, l) => a + l.newQty, 0)} pièces au stock` : ""}
-          </Button>
+          </div>}
+          {(() => {
+            const nothing = !toAdd.length && (Boolean(res.already?.paid) || pay === "plus-tard");
+            return (
+              <Button className="h-12 rounded-full px-6 font-semibold" disabled={pay === "" || nothing} onClick={save}>
+                {nothing ? (res.already ? "Déjà enregistrée : rien à ajouter" : "Rien à ajouter") : toAdd.length ? `Enregistrer : ${toAdd.reduce((a, l) => a + l.newQty, 0)} pièces au stock` : "Enregistrer le paiement"}
+              </Button>
+            );
+          })()}
         </div>
       )}
     </div>

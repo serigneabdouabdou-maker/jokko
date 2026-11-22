@@ -297,6 +297,8 @@ export type Supplier = {
   compatNo?: string[];
   /** Pièces déjà entrées au stock depuis ses factures : [date, pièce, quantité, prix] (90 jours) — une facture collée ne les remet jamais deux fois. */
   received?: Array<[string, string, number, number]>;
+  /** Factures collées et enregistrées : empreinte (lignes + total, sans la date), quand, payée avec quoi. */
+  pasted?: Array<{ sig: string; at: string; date: string; total: number; paid?: CashSource }>;
   /** Erreurs trouvées dans les factures (ligne comptée trop cher, total faux…), les plus graves d'abord. */
   anomalies?: Array<{ date: string; text: string; serious: boolean }>;
 };
