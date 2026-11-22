@@ -797,16 +797,30 @@ const DEMO_HIDDEN: Screen[] = ["offre", "distance", "boutiques", "equipe", "jour
 type DemoControls = { realShopId: string; restart: () => void; switchTo: (metier: string) => void; quit: () => void };
 
 /** Avis de l'écran ouvert (dette en retard, appareil prêt, ticket effacé…), en haut, sans rien toucher. */
-function ScreenNotices({ list }: { list: Notice[] }) {
+function ScreenNotices({ list, onOpen }: { list: Notice[]; onOpen?: (drill: string) => void }) {
   if (!list.length) return null;
+  // En haut de l'écran, les avis d'une même page (ex. Surveillance) tiennent sur une ligne qui l'ouvre.
+  const rows: Array<{ n: Notice; more: number }> = [];
+  for (const n of list) {
+    const same = n.drill ? rows.find((r) => r.n.drill === n.drill) : undefined;
+    if (same) same.more += 1;
+    else rows.push({ n, more: 0 });
+  }
   return (
     <div className="screen-notices" role="status">
-      {list.map((n) => (
-        <p key={n.id} className="screen-notice" data-tone={n.tone}>
-          <Icon name={n.tone === "grave" ? "alerte" : "cloche"} size="sm" />
-          <span>{n.text}</span>
-        </p>
-      ))}
+      {rows.map(({ n, more }) => {
+        const body = (
+          <>
+            <Icon name={n.tone === "grave" ? "alerte" : "cloche"} size="sm" />
+            <span>{n.text}{more ? ` (+ ${more} autre${more > 1 ? "s" : ""})` : ""}</span>
+          </>
+        );
+        return n.drill && onOpen ? (
+          <button key={n.id} type="button" className="screen-notice is-link" data-tone={n.tone} onClick={() => onOpen(n.drill!)}>{body}</button>
+        ) : (
+          <p key={n.id} className="screen-notice" data-tone={n.tone}>{body}</p>
+        );
+      })}
     </div>
   );
 }
@@ -829,6 +843,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [drillTarget, setDrillTarget] = useState<{ id: string; n: number } | null>(null);
   const [screen, setScreen] = useState<Screen>(() => {
     const wanted = new URLSearchParams(window.location.search).get("ecran");
     if (NAV.some(([id]) => id === wanted)) return wanted as Screen;
@@ -1630,7 +1645,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const navItems = NAV.filter(([id]) => (patron || !PATRON_SCREENS.includes(id)) && !(demo && DEMO_HIDDEN.includes(id)) && (id !== "boutiques" || profile.shops.length > 1) && allowed(id)).map(
     ([id, label]) => [id, screenLabel(shop.activity, id, label)] as const,
   );
-  const go = (id: Screen) => {
+  const go = (id: Screen, drill?: string) => {
+    setDrillTarget(drill ? { id: drill, n: Date.now() } : null);
     setScreen(id);
     setMenuOpen(false);
     setBellOpen(false);
@@ -1702,7 +1718,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
               <ul className="bell-list">
                 {notices.map((n) => (
                   <li key={n.id}>
-                    <button type="button" data-tone={n.tone} onClick={() => go(n.screen as Screen)}>
+                    <button type="button" data-tone={n.tone} onClick={() => go(n.screen as Screen, n.drill)}>
                       <span className="mnav-ico"><Icon name={NAV_ICONS[n.screen as Screen]} size="md" /></span>
                       <span className="bell-txt"><small>{navItems.find(([id]) => id === n.screen)?.[1]}</small><b>{n.text}</b></span>
                       <Icon name="suivant" size="sm" />
@@ -1786,8 +1802,8 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
 
 
         <div className="screen" key={screen}>
-          <DrillScope key={screen}>
-          <ScreenNotices list={notices.filter((n) => n.screen === screen)} />
+          <DrillScope key={drillTarget ? `${screen}:${drillTarget.n}` : screen} initial={drillTarget?.id}>
+          <ScreenNotices list={notices.filter((n) => n.screen === screen)} onOpen={(d) => go(screen, d)} />
           {screen === "caisse" && <DrillOverview><section className="stats" aria-label="Chiffres du jour">
           <article className="stat stat-cash">
             <span className="stat-label"><Icon name="caisse" size="sm" />Caisse attendue</span>

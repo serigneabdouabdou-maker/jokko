@@ -2612,3 +2612,5 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .paste-pay { display: grid; gap: 8px; }
 .paste-already { padding: 10px 12px; border-radius: 12px; background: color-mix(in oklab, #f59e0b 16%, var(--j-card)); border: 1px solid color-mix(in oklab, #f59e0b 45%, transparent); }
 .paste-already p { margin: 4px 0 0; }
+.screen-notice.is-link { width: 100%; text-align: left; border: 0; cursor: pointer; font: inherit; }
+.drill-anchor { position: absolute; width: 0; height: 0; scroll-margin-top: 80px; }

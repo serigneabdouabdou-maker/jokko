@@ -2,6 +2,7 @@ import { type Shop, money } from "../model.ts";
 import type { Alert } from "./alerts.ts";
 import type { JournalRow } from "./journal.ts";
 import { buildReport, periodOf } from "./report.ts";
+import { workshopWatch } from "./watch.ts";
 
 /** Résumés du jour pour le patron (écran À distance, WhatsApp, notification du soir). Sans dépendance au navigateur. */
 
@@ -48,5 +49,20 @@ export function shortSummary(shop: Shop, graveAlerts: number, now = new Date()):
   if (services) parts.push(`${services} service${services > 1 ? "s" : ""}.`);
   parts.push(`Ce mois : ${amount(month.netProfit)}.`);
   if (graveAlerts) parts.push(`${graveAlerts} alerte${graveAlerts > 1 ? "s" : ""} grave${graveAlerts > 1 ? "s" : ""} à voir.`);
+  const watch = watchForPush(shop, now);
+  if (watch.length) parts.push(`À régler : ${watch[0]}${watch.length > 1 ? ` (+ ${watch.length - 1} autre${watch.length > 2 ? "s" : ""} dans Bénéfices → Surveillance)` : ""}.`);
   return { title: `Ta journée · ${shop.name}`, body: parts.join(" ") };
+}
+
+/**
+ * Problèmes de la Surveillance de l'atelier à mettre dans la notification du soir (22/11/2026, demande de Fallou).
+ * Seulement ceux qui ne dépendent pas de tout l'historique des ventes (la notification ne charge que le mois) :
+ * facture fausse, réparation à perte, rendu pas payé, rendu sans pièce, vente notée deux fois.
+ */
+export function watchForPush(shop: Shop, now = new Date()): string[] {
+  if (!(shop.repairs ?? []).length && !(shop.suppliers ?? []).length) return [];
+  const keep = /^(factures-|repar-perte|rendu-doit|sans-piece|double-vente)/;
+  return workshopWatch(shop, now)
+    .filter((x) => keep.test(x.id) && (x.level === "grave" || x.level === "attention" || x.id === "double-vente"))
+    .map((x) => x.title);
 }

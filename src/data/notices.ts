@@ -16,7 +16,8 @@ import { metierOf } from "./metiers.ts";
 import { workshopWatch } from "./watch.ts";
 
 export type NoticeScreen = "parler" | "atelier" | "couture" | "stock" | "caisse" | "bilan" | "conseiller" | "dettes" | "clients" | "ventes";
-export type Notice = { id: string; screen: NoticeScreen; tone: "grave" | "attention"; text: string; n: number };
+/** `drill` : la page à ouvrir directement dans l'écran (ex. « surveillance » dans Bénéfices). */
+export type Notice = { id: string; screen: NoticeScreen; tone: "grave" | "attention"; text: string; n: number; drill?: string };
 
 const DAY = 86_400_000;
 const plural = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
@@ -24,8 +25,8 @@ const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).pad
 
 export function shopNotices(shop: Shop, opts: { patron: boolean; screens: (id: NoticeScreen) => boolean; advisor?: boolean }, now = new Date()): Notice[] {
   const out: Notice[] = [];
-  const add = (screen: NoticeScreen, id: string, tone: Notice["tone"], text: string, n = 1) => {
-    if (opts.screens(screen)) out.push({ id: `${screen}:${id}`, screen, tone, text, n });
+  const add = (screen: NoticeScreen, id: string, tone: Notice["tone"], text: string, n = 1, drill?: string) => {
+    if (opts.screens(screen)) out.push({ id: `${screen}:${id}`, screen, tone, text, n, ...(drill ? { drill } : {}) });
   };
 
   // Dettes en retard
@@ -53,7 +54,7 @@ export function shopNotices(shop: Shop, opts: { patron: boolean; screens: (id: N
   if (old.length) add("atelier", "vieux", "grave", `${old.length} ${plural(old.length, "appareil")} au dépôt depuis plus de 7 jours`, old.length);
   if (opts.patron && opts.screens("atelier") && repairs.length) {
     const plan = orderPlan(shop, now);
-    if (plan.ready.length) add("atelier", "commande", "attention", `Commande prête : ${plan.ready.length} ${plural(plan.ready.length, "pièce")} à commander (${money(plan.total)})`);
+    if (plan.ready.length) add("atelier", "commande", "attention", `Commande prête : ${plan.ready.length} ${plural(plan.ready.length, "pièce")} à commander (${money(plan.total)})`, 1, "commande");
   }
 
   // Couture : habits prêts pas récupérés, commandes en retard
@@ -81,7 +82,10 @@ export function shopNotices(shop: Shop, opts: { patron: boolean; screens: (id: N
   // Bénéfices (patron, réparateur) : surveillance de l'atelier (pièces à retrouver, factures fausses, réparations sans pièce…)
   if (opts.patron && metierOf(shop.activity).id === "reparation") {
     const look = workshopWatch(shop, now).filter((x) => x.level === "grave" || x.level === "attention");
-    if (look.length) add("bilan", "surveillance", look.some((x) => x.level === "grave") ? "grave" : "attention", `Surveillance de l'atelier : ${look.length} ${plural(look.length, "chose")} à regarder (${look[0]!.title})`);
+    // Chaque problème sur sa propre ligne (22/11/2026, demande de Fallou), le plus grave d'abord ; un toucher ouvre la Surveillance.
+    const sorted = [...look].sort((a, b) => Number(b.level === "grave") - Number(a.level === "grave"));
+    for (const x of sorted.slice(0, 8)) add("bilan", `surveillance-${x.id}`, x.level === "grave" ? "grave" : "attention", x.title, 1, "surveillance");
+    if (sorted.length > 8) add("bilan", "surveillance-plus", "attention", `${sorted.length - 8} autre${sorted.length - 8 > 1 ? "s" : ""} chose${sorted.length - 8 > 1 ? "s" : ""} dans la Surveillance de l'atelier`, 1, "surveillance");
   }
 
   // Conseiller (patron, offre qui l'ouvre) : conseils urgents

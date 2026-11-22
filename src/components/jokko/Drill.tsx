@@ -30,9 +30,21 @@ export function usePhone(): boolean {
 type Scope = { open: string | null; enter: (id: string) => void; leave: () => void; phone: boolean };
 const DrillContext = createContext<Scope | null>(null);
 
-export function DrillScope({ children }: { children: ReactNode }) {
+export function DrillScope({ children, initial }: { children: ReactNode; initial?: string }) {
   const phone = usePhone();
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(initial ?? null);
+
+  // Ouvert depuis la cloche : la page voulue est déjà ouverte, « Retour » revient au sommaire.
+  useEffect(() => {
+    if (!initial) return;
+    try {
+      window.history.pushState({ jokkoDrill: initial }, "");
+    } catch {
+      /* rien */
+    }
+    // Ordinateur : pas de pages, on descend jusqu'à la partie.
+    window.setTimeout(() => document.getElementById(`drill-${initial}`)?.scrollIntoView({ block: "start" }), 50);
+  }, [initial]);
 
   useEffect(() => {
     const back = () => setOpen(null);
@@ -77,7 +89,7 @@ export function Drill({
   children: ReactNode;
 }) {
   const scope = useContext(DrillContext);
-  if (!scope || !scope.phone) return <>{children}</>;
+  if (!scope || !scope.phone) return <><span id={`drill-${id}`} className="drill-anchor" aria-hidden="true" />{children}</>;
   if (scope.open === id) {
     return (
       <div className="drill-page">

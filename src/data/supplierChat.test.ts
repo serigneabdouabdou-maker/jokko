@@ -19,9 +19,13 @@ const CHAT = [
   "3 dos complet a30s 2000=6000",
   "2 LCD 11pro max 10,000=20,000",
   "Total 🟰 58,000fr",
+  "10/07/2026, 11:00 - Bathie: 4 LCD a12 4500=18,000", // prix habituel de l'A12
+  "4 LCD ki5k 3800=15,200", // prix habituel du KI5K
+  "Total 🟰 33,200fr",
   "29/07/2026, 16:53 - Bathie: 4 LCD Redmi 14c 7000=28.000",
-  "6 LCD A12 4500=39.000", // 6 × 4 500 = 27 000 : 12 000 F de trop
-  "Total 🟰 67.000fr",
+  "6 LCD A12 4500=39.000", // 6 × 4 500 = 27 000 : 12 000 F de trop (4 500 = son prix habituel)
+  "2 LCD ki5k 2800=7600", // 2 800 mal tapé : 7 600 ÷ 2 = 3 800 = son prix habituel → rien de trop
+  "Total 🟰 74.600fr",
   "05/08/2026, 09:00 - Bathie: 3 lcd a12 49000=14.700", // prix à l'unité mal tapé (4 900)
   "Total 🟰 16,0000", // faute : 16 000
   "05/08/2026, 09:30 - Fallou: Ok merci",
@@ -31,7 +35,7 @@ describe("discussion WhatsApp du fournisseur", () => {
   it("lit les factures, compte une fois les factures renvoyées ou cumulées", () => {
     const r = readSupplierChat(CHAT);
     for (const a of r.anomalies) a.text = a.text.replace(/\u00a0/g, " ");
-    expect(r.invoices.map((i) => [i.date, i.total])).toEqual([["2024-07-12", 19400], ["2026-02-01", 58000], ["2026-07-29", 67000], ["2026-08-05", 16000]]);
+    expect(r.invoices.map((i) => [i.date, i.total])).toEqual([["2024-07-12", 19400], ["2026-02-01", 58000], ["2026-07-10", 33200], ["2026-07-29", 74600], ["2026-08-05", 16000]]);
     expect(r.anomalies.some((a) => a.kind === "doublon" && a.text.includes("38 000 F du 30/01/2026"))).toBe(true);
   });
 
@@ -44,11 +48,14 @@ describe("discussion WhatsApp du fournisseur", () => {
     const a12 = r.invoices.find((i) => i.date === "2026-08-05")!.lines[0]!;
     expect(a12).toMatchObject({ qty: 3, unit: 4900, sub: 14700 });
     expect(r.anomalies.some((a) => a.kind === "faute" && a.text.includes("16 000"))).toBe(true);
+    // KI5K : le prix à l'unité était mal tapé (2 800 au lieu de 3 800), jamais « 2 000 F de trop ».
+    expect(r.anomalies.some((a) => a.kind === "faute" && a.text.includes("2 800 F au lieu de 3 800 F"))).toBe(true);
+    expect(r.invoices.find((i) => i.date === "2026-07-29")!.lines[2]).toMatchObject({ qty: 2, unit: 3800, sub: 7600 });
   });
 
   it("lit aussi le .zip exporté et le format iPhone", () => {
     const zip = zipSync({ "Discussion WhatsApp avec Bathie.txt": strToU8(CHAT), "contact.vcf": strToU8("BEGIN:VCARD") });
-    expect(readSupplierChat(chatText(zip)).invoices).toHaveLength(4);
+    expect(readSupplierChat(chatText(zip)).invoices).toHaveLength(5);
     const ios = "[12/07/2024 10:00:12] Bathie: 4 LCD bf6 4000=16,000\nTotal 16.000";
     expect(readSupplierChat(ios).invoices[0]).toMatchObject({ date: "2024-07-12", total: 16000 });
   });
@@ -66,23 +73,23 @@ describe("discussion WhatsApp du fournisseur", () => {
     const a = mergeSupplierChat({ id: "f", name: "Bathie", phone: "" }, first);
     expect(a.full).toBe(true);
     expect(a.added).toEqual([]);
-    expect(a.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(77400);
+    expect(a.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(110600);
     const b = mergeSupplierChat(a.supplier, readSupplierChat(CHAT));
     expect(b.full).toBe(true); // la discussion part du début : tout est recalculé, sans compter deux fois
     expect(b.added.map((i) => i.date)).toEqual(["2026-07-29", "2026-08-05"]);
-    expect(b.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(77400 + 67000 + 16000);
+    expect(b.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(110600 + 74600 + 16000);
     // Relire la même discussion n'ajoute rien.
     const c = mergeSupplierChat(b.supplier, readSupplierChat(CHAT));
     expect(c.added).toEqual([]);
-    expect(c.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(160400);
+    expect(c.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(201200);
     const a12 = c.supplier.items!.find((i) => i.key === "Écran:a12")!;
-    expect(a12).toMatchObject({ qty: 9, prices: [["2026-07-29", 4500], ["2026-08-05", 4900]] });
+    expect(a12).toMatchObject({ qty: 13, prices: [["2026-07-10", 4500], ["2026-08-05", 4900]] });
     expect(c.supplier.tiers!.find((t) => t.iphone)).toMatchObject({ qty: 2, total: 20000 });
     // Discussion partielle (seulement la fin) : on ajoute à l'historique gardé, sans tout effacer.
     const tail = "29/07/2026" + CHAT.split("29/07/2026")[1]!;
     const d = mergeSupplierChat(a.supplier, readSupplierChat(tail));
     expect(d.full).toBe(false);
-    expect(d.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(160400);
+    expect(d.supplier.purchases!.reduce((s, m) => s + m.total, 0)).toBe(201200);
     expect(d.supplier.historyFrom).toBe("2024-07-12");
   });
 });

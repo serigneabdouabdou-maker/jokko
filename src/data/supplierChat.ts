@@ -89,6 +89,8 @@ function unitTypo(pu: number, w: number): boolean {
 export function readSupplierChat(text: string): ChatImport {
   const msgs = messages(text);
   const drafts: Draft[] = [];
+  const pending: Array<{ draft: number; line: number; own: ChatAnomaly[]; date: string; name: string; qty: number; pu: number; written: number }> = [];
+  const refs: Array<{ key: string; date: string; unit: number }> = [];
   const anomalies: ChatAnomaly[] = [];
   const seen = new Set<string>();
   for (const m of msgs) {
@@ -120,10 +122,11 @@ export function readSupplierChat(text: string): ChatImport {
           const w = written / qty;
           if (unitTypo(pu, w)) unit = w; // prix à l'unité mal tapé, le sous-total est juste
           else {
-            own.push({ kind: "calcul", date: m.date, text: `${frDate(m.date)} : « ${q[2]} » ${qty} × ${fmt(pu)} = ${fmt(qty * pu)} F, mais la facture compte ${fmt(written)} F (${written > qty * pu ? `${fmt(written - qty * pu)} F de trop` : `${fmt(qty * pu - written)} F de moins`}).`, serious: written > qty * pu });
+            // Qui a raison, le prix à l'unité ou le sous-total ? Décidé après, avec les prix habituels de la pièce.
+            pending.push({ draft: drafts.length, line: lines.length, own, date: m.date, name: q[2]!.trim(), qty, pu, written });
             sub = written;
           }
-        }
+        } else if (pu) refs.push({ key: partOf(q[2]!.trim()).key, date: m.date, unit: pu });
         lines.push({ qty, name: q[2]!.trim(), unit, sub });
         sig.push(`${qty}|${q[2]!.trim().toLowerCase()}|${pu}`);
         continue;
@@ -142,6 +145,30 @@ export function readSupplierChat(text: string): ChatImport {
       own.push({ kind: "total", date: m.date, text: `Facture du ${frDate(m.date)} : total ${fmt(t.value)} F, mais les lignes font ${fmt(sum)} F (${fmt(Math.abs(t.value - sum))} F ${more ? "de trop sur le total" : "de moins : remise ou avance déduite ?"}).`, serious: more });
     }
     drafts.push({ date: m.date, total: t.value, who: m.who, lines, sig, own });
+  }
+  // Ligne où quantité × prix ≠ sous-total (22/11/2026, constat de Fallou : « 2 LCD ki5k 2800=7600 » signalé 2 000 F de
+  // trop, alors que le KI5K coûtait 3 800 : c'est le prix à l'unité qui était mal tapé). On regarde le prix habituel
+  // de la même pièce chez ce fournisseur (lignes justes, 120 jours autour) :
+  // sous-total ÷ quantité = prix habituel → faute de frappe, rien de trop ; prix à l'unité = prix habituel → vraie erreur ;
+  // sinon → « à vérifier » (jamais compté comme argent en trop).
+  for (const x of pending) {
+    const key = partOf(x.name).key;
+    const t = Date.parse(x.date);
+    const near = refs.filter((r) => r.key === key && Math.abs(Date.parse(r.date) - t) <= 120 * DAY).sort((a, b) => Math.abs(Date.parse(a.date) - t) - Math.abs(Date.parse(b.date) - t))[0];
+    const w = x.written / x.qty;
+    const close = (a: number, b: number) => Math.abs(a - b) <= Math.max(100, b * 0.07);
+    const d = drafts[x.draft];
+    const line = d?.lines[x.line];
+    const head = `${frDate(x.date)} : « ${x.name} » ${x.qty} × ${fmt(x.pu)} = ${fmt(x.qty * x.pu)} F, mais la facture compte ${fmt(x.written)} F`;
+    const diff = x.written > x.qty * x.pu ? `${fmt(x.written - x.qty * x.pu)} F de trop` : `${fmt(x.qty * x.pu - x.written)} F de moins`;
+    if (near && close(w, near.unit) && !close(x.pu, near.unit)) {
+      if (line) line.unit = Math.round(w);
+      x.own.push({ kind: "faute", date: x.date, text: `${frDate(x.date)} : « ${x.name} » prix à l'unité écrit ${fmt(x.pu)} F au lieu de ${fmt(Math.round(w))} F (son prix habituel) : le sous-total ${fmt(x.written)} F est juste, rien de trop.`, serious: false });
+    } else if (near && close(x.pu, near.unit)) {
+      x.own.push({ kind: "calcul", date: x.date, text: `${head} (${diff} ; son prix habituel est ${fmt(near.unit)} F).`, serious: x.written > x.qty * x.pu });
+    } else {
+      x.own.push({ kind: "calcul", date: x.date, text: `${head} : à vérifier (le prix à l'unité ou le sous-total est mal écrit ?).`, serious: false });
+    }
   }
   drafts.sort((a, b) => a.date.localeCompare(b.date));
   // Factures renvoyées en entier (avec des pièces en plus) ou corrigées : seule la dernière version compte.
