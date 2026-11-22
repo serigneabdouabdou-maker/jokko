@@ -130,8 +130,6 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
       </div>
       {plan.confidence === "faible" && <p className="note journal-warn">Jokko n'a que {plan.days} jours de chiffres : c'est une première idée. Après 2 à 3 mois d'enregistrement, ce calcul sera fiable.</p>}
 
-      <SupplierHistory shop={shop} />
-
       <dl className="journal-sum">
         {plan.base === "fournisseur"
           ? <div><dt>Tes achats par mois chez {plan.supplierName ?? "ton fournisseur"} (12 derniers mois)</dt><dd className="num">{money(plan.supplierPerMonth)}</dd></div>
@@ -190,7 +188,7 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
 const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 
 /** Achats chez le fournisseur, lus dans ses factures WhatsApp : total, par année, mois par mois, par type de pièce. */
-function SupplierHistory({ shop }: { shop: Shop }) {
+export function SupplierHistory({ shop }: { shop: Shop }) {
   const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length);
   if (!sup?.purchases) return null;
   const list = [...sup.purchases].sort((a, b) => a.month.localeCompare(b.month));
@@ -232,26 +230,55 @@ function SupplierHistory({ shop }: { shop: Shop }) {
           </dl>
         </details>
       )}
-      <SupplierEstimateBlock shop={shop} />
-      <PurchaseControlBlock shop={shop} />
       <small className="note">Lu dans vos factures WhatsApp (« Total … »). Les commandes envoyées seulement en photo ne sont pas comptées : c'est un minimum.</small>
     </div>
   );
 }
 
-/** Ce que les pièces achetées chez le fournisseur ont probablement rapporté (estimation avec fourchette). */
+/** Page « Mon argent chez <fournisseur> » : investi, revenu, gagné ; contrôle ; historique des factures. */
+export function SupplierPanel({ shop }: { shop: Shop }) {
+  const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length);
+  if (!sup) return null;
+  return (
+    <div className="workshop">
+      <h3>Mon argent chez {sup.name}</h3>
+      <SupplierEstimateBlock shop={shop} />
+      <PurchaseControlBlock shop={shop} />
+      <SupplierHistory shop={shop} />
+    </div>
+  );
+}
+
+/** Investi, revenu dans la caisse avec les réparations, gagné en plus (minimum assuré et plus probable). */
 function SupplierEstimateBlock({ shop }: { shop: Shop }) {
   const e = supplierProfitEstimate(shop);
   if (!e) return null;
   return (
-    <div className="ws-verdict" data-tone="good">
-      <b>Ce que ces pièces t'ont probablement rapporté : ≈ {money(e.profit)}</b>
-      <p>Entre {money(e.low)} et {money(e.high)}, soit ≈ {money(e.perMonth)} par mois sur {e.months} mois, pour {money(e.bought)} de pièces achetées. C'est ta main-d'œuvre sur les pièces (services à part).</p>
-      <dl className="profit-calc ws-table">
-        {e.lines.filter((l) => l.profit > 0).map((l) => <div key={l.label}><dt>{l.label} <small>{l.how}</small></dt><dd className="num">{money(l.profit)}</dd></div>)}
-      </dl>
-      <p className="note">Estimation : 90 % des pièces posées (le reste en stock, cassé ou rendu) et ta main-d'œuvre habituelle notée dans Jokko. Pour une erreur sous 10 %, compte ton stock d'écrans une fois : Jokko saura combien sont vraiment partis.</p>
-    </div>
+    <>
+      <div className="ws-verdict" data-tone="good">
+        <b>Ton argent est revenu, avec un gain en plus</b>
+        <dl className="profit-calc ws-table">
+          <div><dt>Investi en pièces ({e.months} mois)</dt><dd className="num">{money(e.bought)}</dd></div>
+          <div><dt>Revenu avec les réparations <small>prix des pièces posées, payé par les clients</small></dt><dd className="num">≈ {money(e.recovered)}</dd></div>
+          <div><dt>Pas encore revenu <small>en stock, cassé à la pose, repris sous garantie</small></dt><dd className="num">≈ {money(e.waiting)}</dd></div>
+          <div><dt><b>Gagné en plus : minimum assuré</b> <small>≈ {money(e.sureMonth)} par mois</small></dt><dd className="num"><b>{money(e.sure)}</b></dd></div>
+          <div><dt>Gagné en plus : le plus probable <small>≈ {money(e.perMonth)} par mois</small></dt><dd className="num">{money(e.profit)}</dd></div>
+        </dl>
+        <p>Chaque réparation te rend le prix de la pièce <b>et</b> ta main-d'œuvre. Ce gain est avant le loyer, l'électricité et le transport.</p>
+      </div>
+      <details className="ws-hyp">
+        <summary>Le calcul, pièce par pièce</summary>
+        <dl className="profit-calc ws-table">
+          {e.lines.filter((l) => l.likely > 0).map((l) => (
+            <div key={l.label}>
+              <dt>{l.label} <small>{l.qty} achetées · {l.how}{l.perPiece ? ` · ${money(l.perPiece[0])} à ${money(l.perPiece[1])} par pièce` : ""}</small></dt>
+              <dd className="num">{money(l.sure)} → {money(l.likely)}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="note">Minimum assuré : le bas de tes gains réels dans Jokko et 85 % des pièces posées. Le plus probable : tes gains moyens et 90 % posées. Les écrans vendus 12 000 F avant la baisse des prix et les téléphones tombés dans l'eau ne sont pas comptés en plus : ton vrai gain est très probablement au-dessus du minimum.</p>
+      </details>
+    </>
   );
 }
 

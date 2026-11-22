@@ -423,6 +423,7 @@ export function rowsToShop(rows: ShopRows): Shop {
             const purchases = rows(x.purchases).map((m) => ({ month: str(m.month), total: num(m.total), invoices: num(m.invoices) })).filter((m) => /^\d{4}-\d{2}$/.test(m.month));
             const kinds = rows(x.kinds).map((k) => ({ label: str(k.label), qty: num(k.qty), total: num(k.total) }));
             const top = rows(x.top).map((k) => ({ name: str(k.name), qty: num(k.qty), total: num(k.total) }));
+            const tiers = rows(x.tiers).map((k) => ({ label: str(k.label), qty: num(k.qty), total: num(k.total), ...(optNum(k.min) !== undefined ? { min: num(k.min) } : {}), ...(optNum(k.max) !== undefined ? { max: num(k.max) } : {}), ...(k.iphone === true ? { iphone: true } : {}) }));
             return {
               id: str(x.id),
               name: str(x.name),
@@ -430,6 +431,7 @@ export function rowsToShop(rows: ShopRows): Shop {
               ...(purchases.length ? { purchases } : {}),
               ...(kinds.length ? { kinds } : {}),
               ...(top.length ? { top } : {}),
+              ...(tiers.length ? { tiers } : {}),
               ...(optStr(x.historyFrom) ? { historyFrom: str(x.historyFrom) } : {}),
               ...(optStr(x.historyTo) ? { historyTo: str(x.historyTo) } : {}),
             };

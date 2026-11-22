@@ -348,26 +348,42 @@ export function activityForAdvisor(shop: Shop, now = new Date()) {
   };
 }
 
-// ---------- Ce que les pièces du fournisseur ont probablement rapporté ----------
+// ---------- Ce que les pièces du fournisseur ont rapporté : minimum assuré et plus probable ----------
+
+export type EstimateLine = { label: string; qty: number; sure: number; likely: number; perPiece: [number, number] | null; how: string };
 
 export type SupplierEstimate = {
   months: number;
   bought: number;
-  /** Main-d'œuvre probable sur les pièces achetées (ce qui reste quand la pièce est payée). */
+  /** Plus probable : tes gains moyens, 90 % des pièces posées. */
   profit: number;
-  low: number;
-  high: number;
+  /** Minimum à peu près assuré : le bas de tes gains, 85 % des pièces posées. */
+  sure: number;
   perMonth: number;
-  lines: Array<{ label: string; qty: number; perPiece: number | null; profit: number; how: string }>;
+  sureMonth: number;
+  /** Prix des pièces posées, payé par les clients en plus du gain : l'argent investi qui est revenu. */
+  recovered: number;
+  /** Pièces pas encore revenues en argent : en stock, cassées, rendues sous garantie. */
+  waiting: number;
+  lines: EstimateLine[];
 };
 
-const PIECE_KIND: Record<string, PartKind> = { Écrans: "Écran", Batteries: "Batterie", Plaquettes: "Plaquette" };
+const POSED = { sure: 0.85, likely: 0.9 };
+const SMALL: Record<string, PartKind> = { Batteries: "Batterie", Plaquettes: "Plaquette", "Dos / vitres": "Dos", Connecteurs: "Connecteur", Boutons: "Bouton", Nappes: "Nappe" };
+const fmtF = (n: number) => n.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ");
+const q25 = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor((s.length - 1) / 4)]!; };
+
+/** Gains réels sur les écrans de la boutique (réparations avec pièce, écrans vendus seuls), avec le prix de la pièce. */
+function screenGains(shop: Shop) {
+  return activityEvents(shop).parts.filter((p) => p.kind === "Écran" && p.gain !== null && p.cost > 0 && !p.planned).map((p) => ({ name: p.name, cost: p.cost / (p.direct ? Math.max(1, p.qty) : 1), gain: (p.gain ?? 0) / (p.direct ? Math.max(1, p.qty) : 1) }));
+}
 
 /**
- * Estimation (22/11/2026, demande de Fallou : « calcule les bénéfices probables depuis qu'on travaille avec lui ») :
- * écrans, batteries, plaquettes = pièces achetées × 90 % posées (le reste en stock, cassé ou rendu) × ta main-d'œuvre
- * habituelle (apprise de tes réparations dans Jokko) ; autres pièces = vendues au double de leur prix (prudent).
- * Fourchette : 85 % posées et main-d'œuvre −15 %, jusqu'à 95 % et +5 %.
+ * 22/11/2026, demande de Fallou (« un calcul à peu près assuré de ce que j'ai gagné ») : les écrans achetés chez le
+ * fournisseur, rangés par gamme de prix d'achat (`Supplier.tiers` : moins de 5 000 F, 5 000–8 000 F, 8 000 F et plus,
+ * iPhone), reçoivent le gain réel de la boutique dans la même gamme (réparations notées dans Jokko) :
+ * plus probable = moyenne, minimum assuré = quart le plus bas (≥ 3 exemples) sinon 75 % de la moyenne.
+ * Petites pièces : main-d'œuvre habituelle (`laborStats`), minimum = 60 %. Autres pièces : gain = prix d'achat (minimum la moitié).
  */
 export function supplierProfitEstimate(shop: Shop): SupplierEstimate | null {
   const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length && x.kinds?.length);
@@ -376,22 +392,37 @@ export function supplierProfitEstimate(shop: Shop): SupplierEstimate | null {
   const itemsTotal = sup.kinds.reduce((a, k) => a + k.total, 0) || 1;
   const scale = bought / itemsTotal; // les lignes lues couvrent ≈ 95 % des factures
   const stats = laborStats(shop);
-  const lines = sup.kinds.map((k) => {
-    const kind = PIECE_KIND[k.label];
-    if (kind) {
-      const perPiece = stats[kind].labor;
-      const qty = Math.round(k.qty * scale * 0.9);
-      return { label: k.label, qty, perPiece, profit: qty * perPiece, how: `${qty} posées × ${perPiece.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F${stats[kind].learned ? "" : " (main-d'œuvre de départ)"}` };
-    }
-    const profit = Math.round(k.total * scale * 0.9);
-    return { label: k.label, qty: Math.round(k.qty * scale * 0.9), perPiece: null, profit, how: "revendues au double du prix d'achat" };
-  });
-  const profit = lines.reduce((a, l) => a + l.profit, 0);
+  const gains = screenGains(shop);
+  const lines: EstimateLine[] = [];
+  const piece = (label: string, qtyRaw: number, sureGain: number, likelyGain: number, how: string) => {
+    const q = qtyRaw * scale;
+    lines.push({ label, qty: Math.round(q), sure: Math.round(q * POSED.sure * sureGain), likely: Math.round(q * POSED.likely * likelyGain), perPiece: [Math.round(sureGain), Math.round(likelyGain)], how });
+  };
+  const screenTiers = sup.tiers?.length ? sup.tiers : [{ label: "Écrans", qty: sup.kinds.find((k) => k.label === "Écrans")?.qty ?? 0, total: 0 }];
+  for (const t of screenTiers) {
+    if (!t.qty) continue;
+    const inTier = gains.filter((g) => (t.iphone ? /iphone/i.test(g.name) : !/iphone/i.test(g.name) && g.cost >= (t.min ?? 0) && g.cost < (t.max ?? Infinity))).map((g) => g.gain);
+    const fallback = t.iphone ? 12000 : stats.Écran.labor;
+    const likely = inTier.length ? inTier.reduce((a, x) => a + x, 0) / inTier.length : fallback;
+    const sure = inTier.length >= 3 ? q25(inTier) : likely * 0.75;
+    piece(t.label, t.qty, sure, likely, inTier.length ? `${inTier.length} réparation${inTier.length > 1 ? "s" : ""} dans Jokko : ${fmtF(Math.round(likely))} F en moyenne` : "pas encore de réparation notée : gain de départ");
+  }
+  for (const k of sup.kinds) {
+    if (k.label === "Écrans") continue;
+    const kind = SMALL[k.label];
+    if (kind) { const g = stats[kind]; piece(k.label, k.qty, g.labor * 0.6, g.labor, g.learned ? `ta main-d'œuvre habituelle : ${fmtF(g.labor)} F` : `main-d'œuvre de départ : ${fmtF(g.labor)} F`); continue; }
+    const cost = k.total * scale;
+    lines.push({ label: k.label, qty: Math.round(k.qty * scale), sure: Math.round(cost * POSED.sure * 0.5), likely: Math.round(cost * POSED.likely), perPiece: null, how: "revendues au double du prix d'achat (minimum : la moitié)" });
+  }
+  lines.sort((a, b) => b.likely - a.likely);
+  const profit = lines.reduce((a, l) => a + l.likely, 0);
+  const sure = lines.reduce((a, l) => a + l.sure, 0);
   const sorted = [...sup.purchases].sort((a, b) => a.month.localeCompare(b.month));
   const [y0, m0] = sorted[0].month.split("-").map(Number);
   const [y1, m1] = sorted[sorted.length - 1].month.split("-").map(Number);
   const months = (y1 - y0) * 12 + (m1 - m0) + 1;
-  return { months, bought, profit, low: Math.round(profit * (0.85 / 0.9) * 0.85), high: Math.round(profit * (0.95 / 0.9) * 1.05), perMonth: Math.round(profit / months), lines };
+  const recovered = Math.round(bought * POSED.likely);
+  return { months, bought, profit, sure, perMonth: Math.round(profit / months), sureMonth: Math.round(sure / months), recovered, waiting: bought - recovered, lines };
 }
 
 // ---------- Contrôle : pièces achetées chez le fournisseur ↔ pièces sorties dans Jokko ----------

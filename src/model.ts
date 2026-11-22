@@ -263,6 +263,8 @@ export type Shop = {
 
 /** Achats d'un mois chez le fournisseur (lus dans ses factures « Total … » sur WhatsApp, 22/11/2026). */
 export type SupplierMonth = { month: string; total: number; invoices: number };
+export type SupplierTier = { label: string; qty: number; total: number; min?: number; max?: number; iphone?: boolean };
+
 export type Supplier = {
   id: string;
   name: string;
@@ -272,6 +274,8 @@ export type Supplier = {
   /** Par type de pièce et articles les plus achetés (quantité, montant). */
   kinds?: Array<{ label: string; qty: number; total: number }>;
   top?: Array<{ name: string; qty: number; total: number }>;
+  /** Écrans achetés par gamme de prix (d'achat) : on ne gagne pas pareil sur un écran à 4 000 F et sur un iPhone. */
+  tiers?: SupplierTier[];
   historyFrom?: string;
   historyTo?: string;
 };

@@ -8,8 +8,8 @@ import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/correct
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
 import { SalesList } from "./SalesList";
-import { ActivityPanel, ChinaPanel } from "./Workshop";
-import { activityReport } from "@/data/workshopStats";
+import { ActivityPanel, ChinaPanel, SupplierPanel } from "./Workshop";
+import { activityReport, supplierProfitEstimate } from "@/data/workshopStats";
 import { metierOf } from "@/data/metiers";
 import { buildReport, dailyReport, dayHistory, dayPeriod, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
 
@@ -56,6 +56,11 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   }
   const value = useMemo(() => stockValue(shop), [shop]);
   const details = useMemo(() => profitDetails(shop, report.period), [shop, report.period]);
+  const supplierEst = useMemo(() => {
+    const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length);
+    const e = sup ? supplierProfitEstimate(shop) : null;
+    return sup && e ? { name: sup.name, e } : null;
+  }, [shop]);
   const due = inventoryDue(shop);
 
   function startCount() {
@@ -131,6 +136,11 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <Drill id="activite" title="Mon activité : pièces, services, réparations" icon="rapport" summary={activitySummary(shop)}>
       <ActivityPanel shop={shop} />
       </Drill>
+      {supplierEst && (
+        <Drill id="fournisseur" title={`Mon argent chez ${supplierEst.name} : investi, revenu, gagné`} icon="stock" summary={`Investi ${money(supplierEst.e.bought)} · gagné au moins ${money(supplierEst.e.sure)}`}>
+        <SupplierPanel shop={shop} />
+        </Drill>
+      )}
       {metierOf(shop.activity).id === "reparation" && (
         <Drill id="chine" title="Objectif Chine : acheter moi-même" icon="stock" summary="Combien il faut vendre, combien mettre de côté, quand partir">
         <ChinaPanel shop={shop} />

@@ -64,14 +64,17 @@ describe("fournisseur : bénéfice probable et contrôle", () => {
     suppliers: [{ id: "f", name: "Bathie", phone: "", purchases: [{ month: "2026-10", total: 20000, invoices: 1 }, { month: "2026-11", total: 30000, invoices: 2 }], kinds: [{ label: "Écrans", qty: 10, total: 40000 }, { label: "Autres pièces", qty: 10, total: 10000 }] }],
   } as Shop);
 
-  it("bénéfice probable = 90 % des écrans posés × main-d'œuvre apprise, autres pièces au double", () => {
-    const e = supplierProfitEstimate(withSupplier())!;
+  it("minimum assuré et plus probable : écrans par gamme avec tes gains réels, iPhone à part, argent revenu", () => {
+    const sh = withSupplier();
+    sh.suppliers![0]!.tiers = [{ label: "Écrans à moins de 5 000 F", qty: 8, total: 32000, max: 5000 }, { label: "Écrans d'iPhone", qty: 2, total: 8000, iphone: true }];
+    const e = supplierProfitEstimate(sh)!;
     expect(e.months).toBe(2);
-    expect(e.lines.find((l) => l.label === "Écrans")).toMatchObject({ qty: 9, perPiece: 4300, profit: 38700 });
-    expect(e.lines.find((l) => l.label === "Autres pièces")!.profit).toBe(9000);
-    expect(e.profit).toBe(47700);
-    expect(e.low).toBeLessThan(e.profit);
-    expect(e.high).toBeGreaterThan(e.profit);
+    // 2 écrans BF6 posés dans Jokko : 8 000 − 3 700 = 4 300 F chacun (moins de 3 exemples → minimum = 75 %).
+    expect(e.lines.find((l) => l.label.startsWith("Écrans à moins"))).toMatchObject({ qty: 8, likely: 30960, sure: 21930, perPiece: [3225, 4300] });
+    // Pas encore d'iPhone dans Jokko : gain de départ 12 000 F (minimum 9 000 F).
+    expect(e.lines.find((l) => l.label === "Écrans d'iPhone")).toMatchObject({ likely: 21600, sure: 15300 });
+    expect(e.lines.find((l) => l.label === "Autres pièces")).toMatchObject({ likely: 9000, sure: 4250 });
+    expect(e).toMatchObject({ profit: 61560, sure: 41480, recovered: 45000, waiting: 5000 });
   });
 
   it("contrôle : acheté depuis le 1er jour dans Jokko − pièces sorties − stock = à retrouver", () => {
