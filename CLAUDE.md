@@ -219,6 +219,7 @@ Tu es **chef de projet et développeur principal**. Tu ne te contentes pas d'ex�
 ## À rappeler à Fallou (demandé le 09/11/2026)
 
 - Tailleurs : « Ajouter mes modèles » (photos de ses créations dans sa galerie, essayables par ses clients).
+- **Atelier (choisi par Fallou le 22/11/2026, à faire après la discussion marketing)** : (1) compter le stock à la voix (« BF6 quatre, KI5K deux » → comptage rempli, sans IA) ; (6) liste du matin (5 choses à faire aujourd'hui en ouvrant Jokko). Plus tard : compte Bathie (ce que je lui dois), « ton téléphone est prêt » en un toucher, pièce réservée au dépôt, photo de facture.
 - Mercerie : bouton « Mercerie de départ » (fils de 10 couleurs, boutons, fermetures, élastique, galons, prix de départ modifiables) — demandé de rappeler le 13/11/2026.
 
 ## Routine hebdomadaire
