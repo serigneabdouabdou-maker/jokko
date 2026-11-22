@@ -220,13 +220,25 @@ export type ChinaInput = {
   freightPct: number;
   /** Part du bénéfice mise de côté chaque mois pour le voyage (%). */
   savePct: number;
+  /** Commande en ligne depuis la Chine, sans voyager : avion + douane + agent (% de la marchandise). */
+  airPct: number;
 };
 
 /** Hypothèses de départ (modifiables) : billet Dakar–Guangzhou, visa, 10 jours sur place, fret + douane. */
-export const CHINA_DEFAULTS: ChinaInput = { discountPct: 30, months: 3, ticket: 650_000, visa: 100_000, stay: 350_000, freightPct: 20, savePct: 50 };
+export const CHINA_DEFAULTS: ChinaInput = { discountPct: 30, months: 3, ticket: 650_000, visa: 100_000, stay: 350_000, freightPct: 20, savePct: 50, airPct: 30 };
 
 export type ChinaPlan = {
   days: number;
+  /** Achats réels chez le fournisseur (factures), par mois sur les 12 derniers mois connus ; 0 si pas d'historique. */
+  supplierPerMonth: number;
+  supplierName?: string;
+  /** Base du calcul : achats réels chez le fournisseur, ou pièces utilisées dans Jokko. */
+  base: "fournisseur" | "jokko";
+  /** Commande en ligne sans voyager : économie par commande et remise minimale pour gagner. */
+  onlineSaving: number;
+  onlineBreakEvenPct: number;
+  /** Remise minimale en Chine pour que le voyage gagne quelque chose. */
+  tripBreakEvenPct: number | null;
   /** Pièces utilisées par mois, au prix du fournisseur. */
   partsPerMonth: number;
   /** Bénéfice moyen par mois (ventes − prix d'achat − dépenses). */
@@ -272,21 +284,37 @@ export function chinaPlan(shop: Shop, input: ChinaInput, now = new Date()): Chin
   const spent = shop.expenses.filter((e) => Date.parse(e.at) >= first && e.kind !== "achat").reduce((a, e) => a + e.amount, 0);
   const profitPerMonth = Math.round((sales.reduce((a, s) => a + s.amount - (s.cost ?? 0), 0) - spent) * scale);
 
+  // Achats réels chez le fournisseur (historique des factures) : moyenne des 12 derniers mois connus.
+  const suppliers = (shop.suppliers ?? []).filter((x) => x.purchases?.length);
+  const months = suppliers.flatMap((x) => x.purchases ?? []);
+  const byMonth = new Map<string, number>();
+  for (const x of months) byMonth.set(x.month, (byMonth.get(x.month) ?? 0) + x.total);
+  const last12 = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 12);
+  const supplierPerMonth = last12.length ? Math.round(last12.reduce((a, [, v]) => a + v, 0) / last12.length) : 0;
+  const base: ChinaPlan["base"] = supplierPerMonth > partsPerMonth ? "fournisseur" : "jokko";
+  const buy = base === "fournisseur" ? supplierPerMonth : partsPerMonth;
+
   const d = Math.min(0.9, Math.max(0, input.discountPct / 100));
   const f = Math.max(0, input.freightPct / 100);
+  const air = Math.max(0, input.airPct / 100);
   const m = Math.max(1, input.months);
-  const order = Math.round(partsPerMonth * m * (1 - d));
+  const order = Math.round(buy * m * (1 - d));
   const freight = Math.round(order * f);
   const tripFixed = Math.round(input.ticket + input.visa + input.stay);
   const budget = order + freight + tripFixed;
-  const savingPerTrip = Math.round(partsPerMonth * m - order - freight - tripFixed);
+  const savingPerTrip = Math.round(buy * m - order - freight - tripFixed);
+  const onlineSaving = Math.round(buy * m - order * (1 + air));
+  const onlineBreakEvenPct = Math.round((1 - 1 / (1 + air)) * 100);
+  // Remise r telle que buy·m = buy·m·(1−r)·(1+f) + T.
+  const value = buy * m;
+  const tripBreakEvenPct = value > tripFixed ? Math.round((1 - (value - tripFixed) / (value * (1 + f))) * 100) : null;
   const margin = m * (d - (1 - d) * f);
   const breakEvenPerMonth = margin > 0 ? Math.round(tripFixed / margin) : Infinity;
   const putAside = profitPerMonth * Math.max(0, input.savePct) / 100;
   const monthsToSave = putAside > 0 ? Math.ceil(budget / putAside) : null;
-  const verdict: ChinaPlan["verdict"] = savingPerTrip > 0 && monthsToSave !== null && monthsToSave <= 6 ? "oui" : savingPerTrip > 0 || (Number.isFinite(breakEvenPerMonth) && partsPerMonth >= breakEvenPerMonth * 0.6) ? "bientot" : "pas-encore";
-  const confidence: ChinaPlan["confidence"] = days >= 120 ? "bonne" : days >= 45 ? "moyenne" : "faible";
-  return { days, partsPerMonth, profitPerMonth, perMonthByKind, topModels, order, freight, tripFixed, budget, savingPerTrip, breakEvenPerMonth: Number.isFinite(breakEvenPerMonth) ? breakEvenPerMonth : 0, monthsToSave, verdict, confidence };
+  const verdict: ChinaPlan["verdict"] = savingPerTrip > 0 && monthsToSave !== null && monthsToSave <= 6 ? "oui" : savingPerTrip > 0 || (Number.isFinite(breakEvenPerMonth) && buy >= breakEvenPerMonth * 0.6) ? "bientot" : "pas-encore";
+  const confidence: ChinaPlan["confidence"] = base === "fournisseur" && last12.length >= 6 ? "bonne" : days >= 120 ? "bonne" : days >= 45 ? "moyenne" : "faible";
+  return { days, supplierPerMonth, ...(suppliers[0] ? { supplierName: suppliers[0].name } : {}), base, onlineSaving, onlineBreakEvenPct, tripBreakEvenPct, partsPerMonth, profitPerMonth, perMonthByKind, topModels, order, freight, tripFixed, budget, savingPerTrip, breakEvenPerMonth: Number.isFinite(breakEvenPerMonth) ? breakEvenPerMonth : 0, monthsToSave, verdict, confidence };
 }
 
 /** Ce que le Conseiller (IA) reçoit : seulement des chiffres calculés ici. */
@@ -303,6 +331,11 @@ export function activityForAdvisor(shop: Shop, now = new Date()) {
       hypotheses: { moins_cher_en_chine_pct: CHINA_DEFAULTS.discountPct, mois_de_stock_par_voyage: CHINA_DEFAULTS.months, billet: CHINA_DEFAULTS.ticket, visa: CHINA_DEFAULTS.visa, sejour: CHINA_DEFAULTS.stay, fret_douane_pct: CHINA_DEFAULTS.freightPct },
       jours_de_donnees: china.days,
       pieces_par_mois_prix_fournisseur: china.partsPerMonth,
+      achats_reels_par_mois_chez_le_fournisseur: china.supplierPerMonth,
+      base_du_calcul: china.base,
+      commande_en_ligne_economie: china.onlineSaving,
+      commande_en_ligne_remise_minimale_pct: china.onlineBreakEvenPct,
+      voyage_remise_minimale_pct: china.tripBreakEvenPct,
       benefice_par_mois: china.profitPerMonth,
       budget_voyage_et_stock: china.budget,
       economie_par_voyage: china.savingPerTrip,

@@ -114,6 +114,7 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
     try { localStorage.setItem(KEY(shop), JSON.stringify(next)); } catch { /* stockage indisponible */ }
   };
   const v = VERDICT[plan.verdict];
+  const buyPerMonth = plan.base === "fournisseur" ? plan.supplierPerMonth : plan.partsPerMonth;
   const field = (k: keyof ChinaInput, label: string, suffix = "F") => (
     <label className="ws-field">
       <small>{label}</small>
@@ -129,8 +130,12 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
       </div>
       {plan.confidence === "faible" && <p className="note journal-warn">Jokko n'a que {plan.days} jours de chiffres : c'est une première idée. Après 2 à 3 mois d'enregistrement, ce calcul sera fiable.</p>}
 
+      <SupplierHistory shop={shop} />
+
       <dl className="journal-sum">
-        <div><dt>Pièces utilisées par mois (prix du fournisseur)</dt><dd className="num">{money(plan.partsPerMonth)}</dd></div>
+        {plan.base === "fournisseur"
+          ? <div><dt>Tes achats par mois chez {plan.supplierName ?? "ton fournisseur"} (12 derniers mois)</dt><dd className="num">{money(plan.supplierPerMonth)}</dd></div>
+          : <div><dt>Pièces utilisées par mois (prix du fournisseur)</dt><dd className="num">{money(plan.partsPerMonth)}</dd></div>}
         <div><dt>Ton bénéfice par mois</dt><dd className="num">{money(plan.profitPerMonth)}</dd></div>
         <div><dt>Commande en Chine ({input.months} mois de pièces, − {input.discountPct} %)</dt><dd className="num">{money(plan.order)}</dd></div>
         <div><dt>Fret et douane ({input.freightPct} %)</dt><dd className="num">{money(plan.freight)}</dd></div>
@@ -139,11 +144,18 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
         <div><dt>Ce que le voyage te fait gagner (ou perdre)</dt><dd className="num" data-tone={plan.savingPerTrip >= 0 ? "good" : "bad"}>{plan.savingPerTrip >= 0 ? "+ " : "− "}{money(Math.abs(plan.savingPerTrip))}</dd></div>
         {plan.breakEvenPerMonth > 0 && <div><dt>Il faut acheter au moins, par mois</dt><dd className="num">{money(plan.breakEvenPerMonth)}</dd></div>}
         <div><dt>En mettant {input.savePct} % du bénéfice de côté</dt><dd className="num">{plan.monthsToSave === null ? "bénéfice trop bas" : `${plan.monthsToSave} mois`}</dd></div>
+        {plan.tripBreakEvenPct !== null && <div><dt>Le voyage gagne si la Chine est moins chère d'au moins</dt><dd className="num">{plan.tripBreakEvenPct} %</dd></div>}
+      </dl>
+      <b className="ws-title">Sans voyager : commander en ligne depuis la Chine</b>
+      <dl className="journal-sum">
+        <div><dt>Avion, douane et agent ({input.airPct} %)</dt><dd className="num">{money(Math.round(plan.order * input.airPct / 100))}</dd></div>
+        <div><dt>Ce que la commande te fait gagner (ou perdre)</dt><dd className="num" data-tone={plan.onlineSaving >= 0 ? "good" : "bad"}>{plan.onlineSaving >= 0 ? "+ " : "− "}{money(Math.abs(plan.onlineSaving))}</dd></div>
+        <div><dt>Ça gagne si la Chine est moins chère d'au moins</dt><dd className="num">{plan.onlineBreakEvenPct} %</dd></div>
       </dl>
       {plan.breakEvenPerMonth > 0 && (
         <div className="ws-gauge" aria-label="Où tu en es">
-          <span style={{ width: `${Math.min(100, Math.round((plan.partsPerMonth / plan.breakEvenPerMonth) * 100))}%` }} />
-          <small>Aujourd'hui : {Math.round((plan.partsPerMonth / plan.breakEvenPerMonth) * 100)} % du seuil où le voyage devient rentable</small>
+          <span style={{ width: `${Math.min(100, Math.round((buyPerMonth / plan.breakEvenPerMonth) * 100))}%` }} />
+          <small>Aujourd'hui : {Math.round((buyPerMonth / plan.breakEvenPerMonth) * 100)} % du seuil où le voyage devient rentable</small>
         </div>
       )}
 
@@ -164,12 +176,63 @@ export function ChinaPanel({ shop }: { shop: Shop }) {
           {field("ticket", "Billet aller-retour")}
           {field("visa", "Visa et assurance")}
           {field("stay", "Séjour (hôtel, repas, transport)")}
-          {field("freightPct", "Fret et douane", "%")}
+          {field("freightPct", "Fret et douane (voyage)", "%")}
+          {field("airPct", "Avion + douane + agent (en ligne)", "%")}
           {field("savePct", "Bénéfice mis de côté", "%")}
         </div>
         <p className="note">Ces montants sont des hypothèses de départ, pas des prix vérifiés : mets les tiens (agence de voyage, transitaire, vendeurs chinois). Le calcul change tout de suite.</p>
       </details>
-      <p className="note">Jokko ne voit pas encore tes anciens achats chez ton fournisseur, seulement ce que tu poses et vends depuis que tu utilises Jokko. Note chaque commande reçue (Atelier → À commander → Commande reçue) pour que ce calcul suive tes vrais achats.</p>
+      {plan.base !== "fournisseur" && <p className="note">Jokko ne voit pas encore tes anciens achats chez ton fournisseur, seulement ce que tu poses et vends depuis que tu utilises Jokko. Note chaque commande reçue (Atelier → À commander → Commande reçue) pour que ce calcul suive tes vrais achats.</p>}
+    </div>
+  );
+}
+
+const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+/** Achats chez le fournisseur, lus dans ses factures WhatsApp : total, par année, mois par mois, par type de pièce. */
+function SupplierHistory({ shop }: { shop: Shop }) {
+  const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length);
+  if (!sup?.purchases) return null;
+  const list = [...sup.purchases].sort((a, b) => a.month.localeCompare(b.month));
+  const total = list.reduce((a, m) => a + m.total, 0);
+  const invoices = list.reduce((a, m) => a + m.invoices, 0);
+  const years = new Map<string, number>();
+  for (const m of list) years.set(m.month.slice(0, 4), (years.get(m.month.slice(0, 4)) ?? 0) + m.total);
+  const max = Math.max(...list.map((m) => m.total), 1);
+  const label = (m: string) => `${MONTHS_SHORT[Number(m.slice(5)) - 1]} ${m.slice(2, 4)}`;
+  return (
+    <div className="supplier-history">
+      <b className="ws-title">Tes achats chez {sup.name}</b>
+      <dl className="journal-sum">
+        <div><dt>{invoices} factures, de {label(list[0].month)} à {label(list[list.length - 1].month)}</dt><dd className="num">{money(total)}</dd></div>
+        {[...years.entries()].map(([y, v]) => {
+          const n = list.filter((m) => m.month.startsWith(y)).length;
+          return <div key={y}><dt>{y} ({n} mois)</dt><dd className="num">{money(v)}</dd></div>;
+        })}
+        <div><dt>En moyenne par mois</dt><dd className="num">{money(Math.round(total / list.length))}</dd></div>
+      </dl>
+      <div className="sh-bars" role="img" aria-label="Achats mois par mois">
+        {list.map((m) => (
+          <span key={m.month} title={`${label(m.month)} : ${money(m.total)}`}>
+            <i style={{ height: `${Math.max(4, Math.round((m.total / max) * 100))}%` }} />
+            <small>{MONTHS_SHORT[Number(m.month.slice(5)) - 1].slice(0, 1).toUpperCase()}</small>
+          </span>
+        ))}
+      </div>
+      {sup.kinds && sup.kinds.length > 0 && (
+        <dl className="profit-calc ws-table">
+          {sup.kinds.map((k) => <div key={k.label}><dt>{k.label} <small>{k.qty} pièces</small></dt><dd className="num">{money(k.total)}</dd></div>)}
+        </dl>
+      )}
+      {sup.top && sup.top.length > 0 && (
+        <details className="ws-hyp">
+          <summary>Ce que tu achètes le plus chez {sup.name}</summary>
+          <dl className="profit-calc ws-table">
+            {sup.top.map((t) => <div key={t.name}><dt>{t.name.toUpperCase()} <small>{t.qty} pièces · {money(Math.round(t.total / Math.max(1, t.qty)))} en moyenne</small></dt><dd className="num">{money(t.total)}</dd></div>)}
+          </dl>
+        </details>
+      )}
+      <small className="note">Lu dans vos factures WhatsApp (« Total … »). Les commandes envoyées seulement en photo ne sont pas comptées : c'est un minimum.</small>
     </div>
   );
 }

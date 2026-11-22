@@ -417,7 +417,24 @@ export function rowsToShop(rows: ShopRows): Shop {
         }
       : {}),
     ...(Array.isArray(s.suppliers) && s.suppliers.length
-      ? { suppliers: (s.suppliers as Row[]).map((x) => ({ id: str(x.id), name: str(x.name), phone: str(x.phone) })) }
+      ? {
+          suppliers: (s.suppliers as Row[]).map((x) => {
+            const rows = (v: unknown) => (Array.isArray(v) ? (v as Row[]) : []);
+            const purchases = rows(x.purchases).map((m) => ({ month: str(m.month), total: num(m.total), invoices: num(m.invoices) })).filter((m) => /^\d{4}-\d{2}$/.test(m.month));
+            const kinds = rows(x.kinds).map((k) => ({ label: str(k.label), qty: num(k.qty), total: num(k.total) }));
+            const top = rows(x.top).map((k) => ({ name: str(k.name), qty: num(k.qty), total: num(k.total) }));
+            return {
+              id: str(x.id),
+              name: str(x.name),
+              phone: str(x.phone),
+              ...(purchases.length ? { purchases } : {}),
+              ...(kinds.length ? { kinds } : {}),
+              ...(top.length ? { top } : {}),
+              ...(optStr(x.historyFrom) ? { historyFrom: str(x.historyFrom) } : {}),
+              ...(optStr(x.historyTo) ? { historyTo: str(x.historyTo) } : {}),
+            };
+          }),
+        }
       : {}),
     ...(optNum(s.lat) !== undefined && optNum(s.lng) !== undefined ? { location: { lat: num(s.lat), lng: num(s.lng), at: optStr(s.located_at) ? iso(s.located_at) : "" } } : {}),
     ...(s.plan === "medium" || s.plan === "avance" || s.plan === "gratuit"

@@ -48,4 +48,12 @@ describe("mon activité (atelier)", () => {
     expect(p.confidence).toBe("faible");
     expect(p.topModels[0].name).toContain("Écran Tecno");
   });
+
+  it("objectif Chine avec l'historique du fournisseur : la base devient ses vrais achats, et la commande en ligne est calculée", () => {
+    const s = { ...shop(), suppliers: [{ id: "f", name: "Bathie", phone: "", purchases: Array.from({ length: 12 }, (_, k) => ({ month: `2025-${String(k + 1).padStart(2, "0")}`, total: 560_000, invoices: 5 })) }] };
+    const p = chinaPlan(s, { ...CHINA_DEFAULTS, months: 12 }, now);
+    expect(p).toMatchObject({ base: "fournisseur", supplierPerMonth: 560_000, onlineBreakEvenPct: 23, tripBreakEvenPct: 30 });
+    expect(p.onlineSaving).toBeGreaterThan(0);
+    expect(p.confidence).toBe("bonne");
+  });
 });

@@ -261,7 +261,20 @@ export type Shop = {
   suppliers?: Supplier[];
 };
 
-export type Supplier = { id: string; name: string; phone: string };
+/** Achats d'un mois chez le fournisseur (lus dans ses factures « Total … » sur WhatsApp, 22/11/2026). */
+export type SupplierMonth = { month: string; total: number; invoices: number };
+export type Supplier = {
+  id: string;
+  name: string;
+  phone: string;
+  /** Historique des achats, mois par mois. */
+  purchases?: SupplierMonth[];
+  /** Par type de pièce et articles les plus achetés (quantité, montant). */
+  kinds?: Array<{ label: string; qty: number; total: number }>;
+  top?: Array<{ name: string; qty: number; total: number }>;
+  historyFrom?: string;
+  historyTo?: string;
+};
 
 /** Une ligne de la commande à préparer pour le fournisseur. */
 export type OrderLine = {
