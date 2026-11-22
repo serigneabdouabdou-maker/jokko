@@ -274,12 +274,15 @@ function withTrend(items: SupplierItem[], invoices: ChatInvoice[], to: string, k
   return items.map((i) => ({ ...i, recent: recent.get(i.key) ?? (invoices.length ? 0 : was.get(i.key)?.recent ?? 0), older: older.get(i.key) ?? (invoices.length ? 0 : was.get(i.key)?.older ?? 0) }));
 }
 
-/** Pièces gardées : achetées au moins 3 fois ou pendant l'année, 110 au plus, celles qui partent en ce moment d'abord (fiche ≈ 30 Ko). */
+/** Pièces gardées : achetées au moins 3 fois ou pendant l'année, 110 au plus, celles achetées dans l'année d'abord (ce qui monte et ce qui baisse) (fiche ≈ 30 Ko). */
+// Les gros écrans (≥ 20 achetés) restent toujours, même quand ils baissent : c'est là qu'on voit la tendance.
+const weight = (i: SupplierItem) => (i.recent ?? 0) + (i.older ?? 0) + (i.kind === "Écran" && i.qty >= 20 ? 1000 : 0);
+
 function trimItems(items: SupplierItem[], to: string): SupplierItem[] {
   const year = Date.parse(to) - 365 * DAY;
   return items
     .filter((i) => i.qty >= 3 || Date.parse(i.last) >= year)
-    .sort((a, b) => (b.recent ?? 0) - (a.recent ?? 0) || b.qty - a.qty)
+    .sort((a, b) => weight(b) - weight(a) || b.qty - a.qty)
     .slice(0, 110)
     .map((i) => ({ ...i, prices: (i.prices ?? []).slice(-5) }));
 }
