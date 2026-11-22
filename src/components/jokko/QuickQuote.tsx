@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
 import { ladderContext } from "@/data/priceGuard";
 import { quickQuote, quoteMessage } from "@/data/quickQuote";
-import { unlinkModel } from "@/data/supplierCompat";
+import { linkModel, unlinkModel } from "@/data/supplierCompat";
 
 /**
  * Prix pour un client (22/11/2026) : tape le modèle → chaque pièce avec le prix à annoncer, le négocié, le minimum,
@@ -16,6 +16,7 @@ export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposi
   const [picked, setPicked] = useState<string[]>([]);
   const [svc, setSvc] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
+  const [extra, setExtra] = useState("");
   const ctx = useMemo(() => ladderContext(shop), [shop]);
   const res = useMemo(() => quickQuote(shop, q, new Date(), ctx), [shop, q, ctx]);
   const keyOf = (l: { kind: string; name: string }) => `${l.kind}:${l.name}`;
@@ -48,13 +49,19 @@ export function QuickQuote({ shop, onDeposit, onChange }: { shop: Shop; onDeposi
           <div className="compat-chips">
             {res.compat.slice(0, 12).map((c) => (
               <span key={c.key} className="compat-chip">
-                {c.model.toUpperCase()}{c.n > 1 ? ` (${c.n} fois)` : ""}
+                {c.model.toUpperCase()}{c.mine ? " (ajouté par toi)" : c.n > 1 ? ` (${c.n} fois)` : ""}
                 {onChange && <button type="button" aria-label={`${c.model} ne va pas sur ${q.trim()}`} onClick={() => onChange(unlinkModel(shop, q.trim(), c.model))}>✕</button>}
               </span>
             ))}
           </div>
           {onChange && <small>Un modèle ne va pas ? Touche ✕ : il ne sera plus jamais proposé avec {q.trim().toUpperCase()}.</small>}
         </div>
+      )}
+      {onChange && q.trim().length >= 2 && /\d/.test(q) && (
+        <form className="compat-add" onSubmit={(e) => { e.preventDefault(); if (!/\d/.test(extra)) return; onChange(linkModel(shop, q.trim(), extra)); setExtra(""); }}>
+          <Input className="h-11" placeholder={`Un autre modèle va avec ${q.trim().toUpperCase()} ? Ex. Spark 8C`} aria-label="Modèle qui va avec" value={extra} onChange={(e) => setExtra(e.target.value)} />
+          <Button type="submit" variant="outline" className="h-11 rounded-full px-4" disabled={!/\d/.test(extra)}>+ Ajouter</Button>
+        </form>
       )}
       {res.lines.length > 0 && (
         <>

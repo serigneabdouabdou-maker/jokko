@@ -429,7 +429,7 @@ export function rowsToShop(rows: ShopRows): Shop {
               ...(optNum(k.recent) !== undefined ? { recent: num(k.recent) } : {}),
               ...(optNum(k.older) !== undefined ? { older: num(k.older) } : {}),
             })).filter((k) => k.key);
-            const compat = rows(x.compat).map((g) => ({ models: (Array.isArray(g.models) ? (g.models as unknown[]) : []).filter((m): m is string => typeof m === "string"), n: num(g.n) || 1, last: str(g.last), ...(g.from === "liste" ? { from: "liste" as const } : {}) })).filter((g) => g.models.length >= 2);
+            const compat = rows(x.compat).map((g) => ({ models: (Array.isArray(g.models) ? (g.models as unknown[]) : []).filter((m): m is string => typeof m === "string"), n: num(g.n) || 1, last: str(g.last), ...(g.from === "liste" ? { from: "liste" as const } : {}), ...(g.mine === true ? { mine: true } : {}) })).filter((g) => g.models.length >= 2);
             const anomalies = rows(x.anomalies).map((a) => ({ date: str(a.date), text: str(a.text), serious: a.serious === true })).filter((a) => a.text);
             const lastKeys = Array.isArray(x.lastKeys) ? (x.lastKeys as unknown[]).filter((k): k is string => typeof k === "string") : [];
             const tiers = rows(x.tiers).map((k) => ({ label: str(k.label), qty: num(k.qty), total: num(k.total), ...(optNum(k.min) !== undefined ? { min: num(k.min) } : {}), ...(optNum(k.max) !== undefined ? { max: num(k.max) } : {}), ...(k.iphone === true ? { iphone: true } : {}) }));

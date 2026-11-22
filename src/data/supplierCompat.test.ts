@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type Shop, newShop } from "@/model";
-import { compatFor, mergeCompat, unlinkModel } from "./supplierCompat";
+import { compatFor, linkModel, mergeCompat, unlinkModel } from "./supplierCompat";
 import { readSupplierChat } from "./supplierChat";
 import { quickQuote } from "./quickQuote";
 import { holds, productsNamedIn, searchProducts } from "./partSearch";
@@ -79,6 +79,25 @@ describe("écrans qui vont ensemble : seulement les réponses à « List »", ()
     expect(compatFor(next.suppliers![0]!.compat!, "BF6", next.suppliers![0]!.compatNo).map((c) => c.key)).toEqual(["ki5k"]);
     expect(quickQuote(next, "BF6").lines.map((l) => l.name)).not.toContain("Écran Samsung A05S");
     expect(quickQuote(next, "A05s").lines.map((l) => l.name)).toEqual(["Écran Samsung A05S"]);
+  });
+
+  it("le patron ajoute lui-même un modèle : gardé même quand la discussion est relue", () => {
+    const shop: Shop = {
+      ...newShop("Atelier", "reparation"),
+      products: [
+        { id: "kg5k", name: "Écran Tecno KG5K", unit: "pièce", stock: 1, min: 0, price: 0, cost: 3800, aliases: ["BE8", "KH6"] },
+        { id: "be8", name: "Écran Tecno BE8", unit: "pièce", stock: 0, min: 0, price: 0, cost: 3800, aliases: ["KG5K"] },
+      ],
+      suppliers: [{ id: "f", name: "Bathie", phone: "", compat: [{ models: ["Kg5k", "Be8", "Kh6"], n: 1, last: "2026-10-23", from: "liste" }], compatNo: ["kg5k|spark8c"] }],
+    };
+    const next = linkModel(shop, "KG5K", "Spark 8c", "2026-11-22");
+    expect(next.products.map((p) => p.aliases)).toEqual([["BE8", "KH6", "SPARK 8C"], ["KG5K", "SPARK 8C"]]);
+    expect(next.suppliers![0]!.compatNo).toEqual([]);
+    expect(compatFor(next.suppliers![0]!.compat!, "KG5K")[0]).toMatchObject({ model: "SPARK 8C", mine: true });
+    expect(searchProducts(next.products, "Spark 8C").map((h) => h.product.id)).toEqual(["kg5k", "be8"]);
+    // Relire toute la discussion ne l'efface pas.
+    const reread = mergeCompat(next.suppliers![0]!.compat!, [], true);
+    expect(compatFor(reread, "KG5K").map((c) => c.key)).toEqual(["spark8c"]);
   });
 
   it("« A05 » ne trouve pas l'A05S, mais « iPhone 11 » trouve l'iPhone 11 Pro Max", () => {

@@ -270,7 +270,7 @@ export type SupplierItem = { key: string; name: string; kind: string; qty: numbe
 
 /** Écrans qui vont ensemble, dits par le fournisseur (« Liste BF6 » → « Bf6 / Bf7 / Ki5k… »), avec combien de fois. */
 /** Écrans qui vont ensemble : réponse du fournisseur à « List … » (`from: "liste"` ; les anciens groupes sans ce champ ne comptent plus). */
-export type SupplierCompat = { models: string[]; n: number; last: string; from?: "liste" };
+export type SupplierCompat = { models: string[]; n: number; last: string; from?: "liste"; /** Ajouté par le patron lui-même : jamais effacé par une relecture de la discussion. */ mine?: boolean };
 
 export type Supplier = {
   id: string;

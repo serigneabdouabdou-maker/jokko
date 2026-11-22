@@ -104,11 +104,12 @@ const keysOf = (models: string[]) => [...new Set(models.map(modelKey))];
  */
 export function mergeCompat(old: SupplierCompat[], groups: CompatAnswer[], replace: boolean): SupplierCompat[] {
   // Les anciens groupes (lus avant la règle « List », 22/11/2026) ne sont jamais repris.
-  const list: SupplierCompat[] = replace ? [] : old.filter((g) => g.from === "liste").map((g) => ({ ...g, models: [...g.models] }));
+  const list: SupplierCompat[] = old.filter((g) => g.from === "liste" && (!replace || g.mine)).map((g) => ({ ...g, models: [...g.models] }));
   for (const g of [...groups].sort((a, b) => a.date.localeCompare(b.date))) {
     const keys = keysOf(g.models);
     if (keys.length < 2) continue;
     const same = list.find((x) => {
+      if (x.mine) return false; // les groupes du patron ne sont jamais remplacés par le fournisseur
       const xk = keysOf(x.models);
       const common = xk.filter((k) => keys.includes(k)).length;
       return common >= 0.6 * Math.min(xk.length, keys.length) && common >= 2;
@@ -121,7 +122,7 @@ export function mergeCompat(old: SupplierCompat[], groups: CompatAnswer[], repla
   return list.sort((a, b) => b.last.localeCompare(a.last)).slice(0, 120);
 }
 
-export type CompatHit = { model: string; key: string; n: number; last: string };
+export type CompatHit = { model: string; key: string; n: number; last: string; mine?: boolean };
 
 const pair = (a: string, b: string) => [modelKey(a), modelKey(b)].sort().join("|");
 
@@ -139,12 +140,13 @@ export function compatFor(groups: SupplierCompat[], query: string, no: string[] 
       const k = keys[i]!;
       if (k === q || banned.has(pair(q, k))) return;
       const h = hits.get(k) ?? { model: m, key: k, n: 0, last: g.last };
-      h.n += g.n;
+      if (g.mine) h.mine = true;
+      else h.n += g.n;
       if (g.last > h.last) h.last = g.last;
       hits.set(k, h);
     });
   }
-  return [...hits.values()].sort((a, b) => b.n - a.n || a.model.localeCompare(b.model));
+  return [...hits.values()].sort((a, b) => Number(Boolean(b.mine)) - Number(Boolean(a.mine)) || b.n - a.n || a.model.localeCompare(b.model));
 }
 
 /** « A05s ne va pas avec BF6 » : la paire est écartée, et aussi avec chaque modèle du groupe du BF6. */
@@ -185,5 +187,41 @@ export function unlinkModel<S extends { products: Array<{ name: string; aliases?
     return aliases.length === p.aliases.length ? p : { ...p, aliases };
   });
   const suppliers = shop.suppliers?.map((x, i) => (x.compat?.length || i === 0 ? { ...x, compatNo: markNotCompat(groups, x.compatNo ?? [], query, model).concat([...family].filter((k) => k !== q).map((k) => [k, m].sort().join("|"))).filter((v, j, all) => all.indexOf(v) === j).slice(-300) } : x));
+  return { ...shop, products, ...(suppliers ? { suppliers } : {}) };
+}
+
+/**
+ * Le patron ajoute lui-même un modèle qui va avec (22/11/2026, demande de Fallou : « si un autre est compatible avec
+ * un nouvel écran, je l'ajoute moi-même ») : groupe « à moi » (jamais effacé par une relecture), « ne va pas » levé,
+ * et le modèle ajouté aux « autres noms » des écrans de la famille (et inversement) : la recherche le trouve.
+ */
+export function linkModel<S extends { products: Array<{ name: string; aliases?: string[] }>; suppliers?: Array<{ compat?: SupplierCompat[]; compatNo?: string[] }> }>(shop: S, query: string, model: string, today = new Date().toISOString().slice(0, 10)): S {
+  const q = modelKey(query);
+  const m = modelKey(model);
+  const label = model.trim().replace(/\s+/g, " ").toUpperCase();
+  if (q.length < 2 || m.length < 2 || q === m || !/\d/.test(m)) return shop;
+  const groups = (shop.suppliers ?? []).flatMap((x) => x.compat ?? []);
+  const nameKeys = (name: string) => (name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").match(/[a-z]*\s?\d+[a-z0-9+]*/g) ?? []).map(modelKey);
+  const isScreen = (name: string) => /^(ecran|écran|lcd)/i.test(name.trim());
+  const family = new Set([q, ...compatFor(groups, query).map((h) => h.key)]);
+  const products = shop.products.map((p) => {
+    if (!isScreen(p.name)) return p;
+    const own = nameKeys(p.name);
+    const aliases = p.aliases ?? [];
+    if ((own.some((k) => family.has(k)) || aliases.some((a) => modelKey(a) === q)) && !own.includes(m) && !aliases.some((a) => modelKey(a) === m)) {
+      return { ...p, aliases: [...aliases, label].slice(0, 40) };
+    }
+    if (own.includes(m) && !aliases.some((a) => modelKey(a) === q)) return { ...p, aliases: [...aliases, query.trim().toUpperCase()].slice(0, 40) };
+    return p;
+  });
+  const suppliers = shop.suppliers?.map((x, i) => {
+    if (i !== 0) return x.compatNo ? { ...x, compatNo: x.compatNo.filter((v) => !v.split("|").includes(m) || !v.split("|").some((k) => family.has(k))) } : x;
+    const compat = [...(x.compat ?? [])];
+    const at = compat.findIndex((g) => g.mine && g.models.some((y) => modelKey(y) === q));
+    if (at >= 0) { const g = compat[at]!; if (!g.models.some((y) => modelKey(y) === m)) compat[at] = { ...g, models: [...g.models, label], last: today }; }
+    else compat.unshift({ models: [query.trim().toUpperCase(), label], n: 1, last: today, from: "liste", mine: true });
+    const compatNo = (x.compatNo ?? []).filter((v) => !v.split("|").includes(m) || !v.split("|").some((k) => family.has(k)));
+    return { ...x, compat, compatNo };
+  });
   return { ...shop, products, ...(suppliers ? { suppliers } : {}) };
 }
