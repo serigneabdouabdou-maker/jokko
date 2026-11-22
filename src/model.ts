@@ -265,6 +265,9 @@ export type Shop = {
 export type SupplierMonth = { month: string; total: number; invoices: number };
 export type SupplierTier = { label: string; qty: number; total: number; min?: number; max?: number; iphone?: boolean };
 
+/** Une pièce achetée chez le fournisseur : quantités, historique des prix (date, prix à l'unité), tendance. */
+export type SupplierItem = { key: string; name: string; kind: string; qty: number; total: number; first: string; last: string; prices?: Array<[string, number]>; recent?: number; older?: number };
+
 export type Supplier = {
   id: string;
   name: string;
@@ -278,6 +281,14 @@ export type Supplier = {
   tiers?: SupplierTier[];
   historyFrom?: string;
   historyTo?: string;
+  /** Pièces achetées (lues dans la discussion), avec leurs prix. */
+  items?: SupplierItem[];
+  /** Factures du dernier jour lu (« date|total »), pour ne pas les recompter à la prochaine lecture. */
+  lastKeys?: string[];
+  /** Dernière lecture de la discussion. */
+  readAt?: string;
+  /** Erreurs trouvées dans les factures (ligne comptée trop cher, total faux…), les plus graves d'abord. */
+  anomalies?: Array<{ date: string; text: string; serious: boolean }>;
 };
 
 /** Une ligne de la commande à préparer pour le fournisseur. */

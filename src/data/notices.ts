@@ -12,6 +12,8 @@ import { orderPlan } from "./reorder.ts";
 import { inventoryDue, isServicePayment } from "./report.ts";
 import { zReport } from "./tickets.ts";
 import { weeklyNudge } from "./clientFiles.ts";
+import { metierOf } from "./metiers.ts";
+import { workshopWatch } from "./watch.ts";
 
 export type NoticeScreen = "parler" | "atelier" | "couture" | "stock" | "caisse" | "bilan" | "conseiller" | "dettes" | "clients" | "ventes";
 export type Notice = { id: string; screen: NoticeScreen; tone: "grave" | "attention"; text: string; n: number };
@@ -74,6 +76,12 @@ export function shopNotices(shop: Shop, opts: { patron: boolean; screens: (id: N
     const month = today.slice(0, 7);
     const blind = shop.sales.filter((s) => s.at.slice(0, 7) === month && s.cost === undefined && !isServicePayment(s));
     if (blind.length) add("bilan", "sans-prix", "attention", `${blind.length} ${plural(blind.length, "vente")} de ce mois sans prix d'achat : bénéfice incomplet`);
+  }
+
+  // Bénéfices (patron, réparateur) : surveillance de l'atelier (pièces à retrouver, factures fausses, réparations sans pièce…)
+  if (opts.patron && metierOf(shop.activity).id === "reparation") {
+    const look = workshopWatch(shop, now).filter((x) => x.level === "grave" || x.level === "attention");
+    if (look.length) add("bilan", "surveillance", look.some((x) => x.level === "grave") ? "grave" : "attention", `Surveillance de l'atelier : ${look.length} ${plural(look.length, "chose")} à regarder (${look[0]!.title})`);
   }
 
   // Conseiller (patron, offre qui l'ouvre) : conseils urgents

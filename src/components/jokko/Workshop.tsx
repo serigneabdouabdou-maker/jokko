@@ -244,6 +244,7 @@ export function SupplierPanel({ shop }: { shop: Shop }) {
       <h3>Mon argent chez {sup.name}</h3>
       <SupplierEstimateBlock shop={shop} />
       <PurchaseControlBlock shop={shop} />
+      <InvoiceErrors shop={shop} />
       <SupplierHistory shop={shop} />
     </div>
   );
@@ -306,5 +307,23 @@ function PurchaseControlBlock({ shop }: { shop: Shop }) {
         : "Tout ce que tu as acheté est sorti dans Jokko ou est en stock. Bien."}</p>
       <small className="note">Compté depuis ton premier jour dans Jokko. Les mois d'avant ne sont pas contrôlables.</small>
     </div>
+  );
+}
+
+/** Erreurs trouvées dans les factures du fournisseur (lecture de la discussion WhatsApp). */
+function InvoiceErrors({ shop }: { shop: Shop }) {
+  const sup = (shop.suppliers ?? []).find((x) => x.anomalies?.length);
+  if (!sup?.anomalies) return null;
+  const bad = sup.anomalies.filter((a) => a.serious);
+  const other = sup.anomalies.filter((a) => !a.serious);
+  return (
+    <details className="ws-hyp" open={bad.length > 0}>
+      <summary>Erreurs dans les factures : {bad.length} en ta défaveur{other.length ? `, ${other.length} autres à vérifier` : ""}</summary>
+      <ul className="watch-list">
+        {bad.map((a) => <li key={a.text} data-level="attention"><p>{a.text}</p></li>)}
+        {other.map((a) => <li key={a.text}><p>{a.text}</p></li>)}
+      </ul>
+      <p className="note">Montre ces lignes à {sup.name} : chaque erreur vient de ses propres messages.</p>
+    </details>
   );
 }

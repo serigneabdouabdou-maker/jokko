@@ -2,16 +2,18 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drill, DrillList, DrillOverview, usePhone } from "@/components/jokko/Drill";
 import { Input } from "@/components/ui/input";
-import { type Shop, money, uid } from "@/model";
+import { type Shop, money } from "@/model";
 import { licenceCharge } from "@/data/services";
 import { correctRepairParts, setArticleCost, setTotalCost } from "@/data/corrections";
 import { searchProducts } from "@/data/partSearch";
 import type { RepairPart } from "@/model";
 import { SalesList } from "./SalesList";
 import { ActivityPanel, ChinaPanel, SupplierPanel } from "./Workshop";
+import { StockCount, WatchPanel } from "./Surveillance";
 import { activityReport, supplierProfitEstimate } from "@/data/workshopStats";
+import { workshopWatch } from "@/data/watch";
 import { metierOf } from "@/data/metiers";
-import { buildReport, dailyReport, dayHistory, dayPeriod, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, recordInventory, reportText, stockValue } from "@/data/report";
+import { buildReport, dailyReport, dayHistory, dayPeriod, expenseBreakdown, inventoryDue, monthlyReport, type PeriodKind, periodOf, type ProfitDetail, type ProfitItem, profitDetails, reportText, stockValue } from "@/data/report";
 
 const PERIODS: Array<[PeriodKind, string]> = [
   ["jour", "Aujourd'hui"],
@@ -32,7 +34,6 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   // Ce mois d'abord : le bénéfice de chaque jour se lit dans « Jour par jour ».
   const [kind, setKind] = useState<PeriodKind>("mois");
   const [counting, setCounting] = useState(false);
-  const [counts, setCounts] = useState<Record<string, string>>({});
   const [result, setResult] = useState("");
   const report = useMemo(() => buildReport(shop, periodOf(kind)), [shop, kind]);
   // Mois par mois : l'année de la période choisie.
@@ -56,6 +57,10 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   }
   const value = useMemo(() => stockValue(shop), [shop]);
   const details = useMemo(() => profitDetails(shop, report.period), [shop, report.period]);
+  const isRepair = metierOf(shop.activity).id === "reparation";
+  const watch = useMemo(() => (isRepair ? workshopWatch(shop) : []), [shop, isRepair]);
+  const watchBad = watch.filter((x) => x.level === "grave" || x.level === "attention").length;
+  const watchSummary = watch.length ? `${watchBad} à regarder · ${watch.length - watchBad} nouvelle${watch.length - watchBad > 1 ? "s" : ""} (prix, tendances, services)` : "Prix, tendances, services, stock";
   const supplierEst = useMemo(() => {
     const sup = (shop.suppliers ?? []).find((x) => x.purchases?.length);
     const e = sup ? supplierProfitEstimate(shop) : null;
@@ -64,27 +69,8 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
   const due = inventoryDue(shop);
 
   function startCount() {
-    setCounts(Object.fromEntries(shop.products.map((p) => [p.id, String(p.stock)])));
     setCounting(true);
     setResult("");
-  }
-
-  function saveCount() {
-    const parsed: Record<string, number> = {};
-    for (const [id, raw] of Object.entries(counts)) {
-      const n = Number(raw.replace(",", "."));
-      if (raw.trim() !== "" && Number.isFinite(n) && n >= 0) parsed[id] = n;
-    }
-    const done = recordInventory(shop, parsed, () => uid("e"));
-    commit(done.shop);
-    setCounting(false);
-    const missing = done.lines.filter((l) => l.counted < l.expected);
-    const noCost = missing.filter((l) => l.loss === 0).length;
-    setResult(
-      missing.length
-        ? `Inventaire enregistré. ${missing.length} article(s) manquant(s), perte ${money(done.losses)}.${noCost ? ` ${noCost} article(s) sans prix d'achat : leur perte n'est pas chiffrée.` : ""}`
-        : "Inventaire enregistré. Rien ne manque.",
-    );
   }
 
   const phone = usePhone();
@@ -126,6 +112,11 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       )}
       </DrillOverview>
       <DrillList title="En détail">
+      {isRepair && (
+        <Drill id="surveillance" title="Surveillance de l'atelier : tout ce qui bouge" icon="alerte" summary={watchSummary} badge={watchBad}>
+        <WatchPanel shop={shop} commit={commit} />
+        </Drill>
+      )}
       <Drill id="articles" title="Le détail, ligne par ligne" icon="vente" summary={details.length ? `${details.length} ligne${details.length > 1 ? "s" : ""} · touche pour voir acheté, vendu, bénéfice` : "Aucune vente sur cette période"}>
       <h3>Le détail, ligne par ligne</h3>
       <ProfitDetailsList rows={details} shop={shop} commit={commit} />
@@ -259,19 +250,10 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       {!counting ? (
         <Button className="h-11 rounded-full px-5 font-semibold" disabled={!shop.products.length} onClick={startCount}>Faire l'inventaire</Button>
       ) : (
-        <div className="inventory">
-          <p className="note">Écris ce que tu comptes vraiment. Ce qui manque sera compté comme perte, au prix d'achat.</p>
-          {shop.products.map((p) => (
-            <label key={p.id} className="inventory-row">
-              <span>{p.name} <small>(prévu : {qty(p.stock)} {p.unit})</small></span>
-              <Input className="num h-10" inputMode="decimal" value={counts[p.id] ?? ""} onChange={(e) => setCounts({ ...counts, [p.id]: e.target.value })} />
-            </label>
-          ))}
-          <div className="import-actions">
-            <Button className="h-11 rounded-full px-5 font-semibold" onClick={saveCount}>Enregistrer l'inventaire</Button>
-            <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setCounting(false)}>Annuler</Button>
-          </div>
-        </div>
+        <>
+          <StockCount shop={shop} commit={commit} parts={isRepair} onDone={(m) => { setResult(m); setCounting(false); }} />
+          <Button variant="ghost" className="h-11 rounded-full px-4" onClick={() => setCounting(false)}>Annuler</Button>
+        </>
       )}
       </Drill>
       </DrillList>
