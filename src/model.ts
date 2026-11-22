@@ -295,6 +295,8 @@ export type Supplier = {
   compat?: SupplierCompat[];
   /** Modèles que le patron a marqués « ne va pas ensemble » (paires « a05s|bf6 ») : gagnent sur les listes. */
   compatNo?: string[];
+  /** Pièces déjà entrées au stock depuis ses factures : [date, pièce, quantité, prix] (90 jours) — une facture collée ne les remet jamais deux fois. */
+  received?: Array<[string, string, number, number]>;
   /** Erreurs trouvées dans les factures (ligne comptée trop cher, total faux…), les plus graves d'abord. */
   anomalies?: Array<{ date: string; text: string; serious: boolean }>;
 };

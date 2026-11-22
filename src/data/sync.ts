@@ -445,6 +445,7 @@ export function rowsToShop(rows: ShopRows): Shop {
               ...(lastKeys.length ? { lastKeys } : {}),
               ...(anomalies.length ? { anomalies } : {}),
               ...(compat.length ? { compat } : {}),
+              ...(Array.isArray(x.received) && x.received.length ? { received: (x.received as unknown[]).filter((r): r is [string, string, number, number] => Array.isArray(r) && typeof r[0] === "string" && typeof r[1] === "string" && typeof r[2] === "number" && typeof r[3] === "number").slice(-400) } : {}),
               ...(Array.isArray(x.compatNo) && x.compatNo.length ? { compatNo: (x.compatNo as unknown[]).filter((v): v is string => typeof v === "string").slice(-300) } : {}),
               ...(optStr(x.readAt) ? { readAt: str(x.readAt) } : {}),
               ...(optStr(x.historyFrom) ? { historyFrom: str(x.historyFrom) } : {}),

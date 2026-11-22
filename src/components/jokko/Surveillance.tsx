@@ -9,6 +9,7 @@ import { usageMap } from "@/data/reorder";
 import { partForSale } from "@/data/partSearch";
 import { type Signal, skillServices, workshopWatch } from "@/data/watch";
 import { applyPriceUpdates, supplierPriceUpdates } from "@/data/priceGuard";
+import { PasteInvoiceBox } from "./PasteInvoice";
 
 const LEVEL_ICON: Record<Signal["level"], string> = { grave: "🔴", attention: "🟠", info: "🔵", bon: "🟢" };
 const frDate = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
@@ -29,6 +30,7 @@ export function WatchPanel({ shop, commit }: { shop: Shop; commit: (s: Shop) => 
       <h3>Surveillance de l'atelier</h3>
       <p className="note">Jokko regarde tes réparations, tes services, ton stock et les factures de {sup?.name ?? "ton fournisseur"}. {sup?.readAt ? `Factures lues jusqu'au ${frDate(sup.historyTo ?? "")}.` : ""}</p>
 
+      <PasteInvoiceBox shop={shop} commit={commit} />
       <ChatImportBox shop={shop} commit={commit} />
 
       <b className="ws-title">À regarder maintenant ({look.length})</b>
@@ -143,9 +145,12 @@ export function ChatImportBox({ shop, commit }: { shop: Shop; commit: (s: Shop) 
   function save() {
     if (!merged) return;
     const suppliers = [...(shop.suppliers ?? [])];
-    if (current) suppliers[supIndex] = merged.supplier; else suppliers.push(merged.supplier);
-    let next: Shop = { ...shop, suppliers };
     const chosen = lines.filter((l) => picked[l.key] ?? !!l.productId);
+    // Pièces entrées au stock : notées « reçues », une facture collée plus tard ne les remet pas.
+    const day = merged.supplier.historyTo ?? new Date().toISOString().slice(0, 10);
+    const withReceived = { ...merged.supplier, received: [...(merged.supplier.received ?? []), ...chosen.map((l) => [day, l.key, l.qty, l.unit] as [string, string, number, number])].slice(-400) };
+    if (current) suppliers[supIndex] = withReceived; else suppliers.push(withReceived);
+    let next: Shop = { ...shop, suppliers };
     if (chosen.length) next = addStockLines(next, chosen, { updateCost }, () => uid("p"));
     // Les derniers prix du fournisseur vont dans le stock (baisse → baisse, hausse → hausse).
     const prices = updateCost ? supplierPriceUpdates(next) : [];

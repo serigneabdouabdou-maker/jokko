@@ -40,12 +40,15 @@ type Msg = { date: string; who: string; text: string };
 // Android : « 22/11/2026, 10:49 - Bathie: … » ; iPhone : « [22/11/2026 10:49:12] Bathie: … » (année sur 2 ou 4 chiffres).
 const ANDROID = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),? (\d{1,2}:\d{2})(?::\d{2})?(?:\s?[AP]M)? - ([^:]+?): ?(.*)$/;
 const IOS = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),? (\d{1,2}:\d{2})(?::\d{2})?(?:\s?[AP]M)?\] ([^:]+?): ?(.*)$/;
+// Messages copiés dans WhatsApp Android (plusieurs à la fois) : « [10:49, 22/11/2026] Bathie: … ».
+const COPIED = /^\[(\d{1,2}:\d{2})(?:\s?[AP]M)?, (\d{1,2})\/(\d{1,2})\/(\d{2,4})\] ([^:]+?): ?(.*)$/;
 
-function messages(text: string): Msg[] {
+export function messages(text: string): Msg[] {
   const out: Msg[] = [];
   for (const raw of text.replace(/\r/g, "").split("\n")) {
     const l = raw.replace(/[‎‏‪-‮]/g, "");
-    const m = ANDROID.exec(l) ?? IOS.exec(l);
+    const c = COPIED.exec(l);
+    const m = ANDROID.exec(l) ?? IOS.exec(l) ?? (c ? [c[0], c[2], c[3], c[4], c[1], c[5], c[6]] as unknown as RegExpExecArray : null);
     if (m) {
       const y = m[3]!.length === 2 ? `20${m[3]}` : m[3]!;
       out.push({ date: `${y}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}`, who: m[5]!.trim(), text: m[6]! });
@@ -218,10 +221,10 @@ function tierOf(unit: number, iphone: boolean): SupplierTier {
   return { label: "Écrans de 8 000 F et plus", qty: 0, total: 0, min: 8000 };
 }
 
-type Built = Required<Pick<Supplier, "purchases" | "kinds" | "tiers" | "items" | "top">>;
+export type Built = Required<Pick<Supplier, "purchases" | "kinds" | "tiers" | "items" | "top">>;
 
 /** Ajoute des factures aux cumuls (mois, types, gammes, pièces avec prix). */
-function addInvoices(base: Built, invoices: ChatInvoice[]): Built {
+export function addInvoices(base: Built, invoices: ChatInvoice[]): Built {
   const months = new Map<string, SupplierMonth>(base.purchases.map((m) => [m.month, { ...m }]));
   const kinds = new Map(base.kinds.map((k) => [k.label, { ...k }]));
   const tiers = new Map(base.tiers.map((t) => [t.label, { ...t }]));
@@ -284,7 +287,7 @@ function withTrend(items: SupplierItem[], invoices: ChatInvoice[], to: string, k
 // Les gros écrans (≥ 20 achetés) restent toujours, même quand ils baissent : c'est là qu'on voit la tendance.
 const weight = (i: SupplierItem) => (i.recent ?? 0) + (i.older ?? 0) + (i.kind === "Écran" && i.qty >= 20 ? 1000 : 0);
 
-function trimItems(items: SupplierItem[], to: string): SupplierItem[] {
+export function trimItems(items: SupplierItem[], to: string): SupplierItem[] {
   const year = Date.parse(to) - 365 * DAY;
   return items
     .filter((i) => i.qty >= 3 || Date.parse(i.last) >= year)
@@ -294,7 +297,7 @@ function trimItems(items: SupplierItem[], to: string): SupplierItem[] {
 }
 
 /** Erreurs gardées : les plus graves puis les plus récentes, 30 au plus. */
-function keepAnomalies(old: NonNullable<Supplier["anomalies"]>, fresh: ChatAnomaly[]): NonNullable<Supplier["anomalies"]> {
+export function keepAnomalies(old: NonNullable<Supplier["anomalies"]>, fresh: ChatAnomaly[]): NonNullable<Supplier["anomalies"]> {
   const all = [...fresh.map((a) => ({ date: a.date, text: a.text, serious: a.serious })), ...old];
   const seen = new Set<string>();
   return all

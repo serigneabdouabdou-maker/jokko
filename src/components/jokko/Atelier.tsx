@@ -14,6 +14,7 @@ import { productsNamedIn, searchProducts } from "@/data/partSearch";
 import { sellService } from "@/data/services";
 import { Commandes, PartLookup } from "./Commandes";
 import { QuickQuote } from "./QuickQuote";
+import { PasteInvoiceBox } from "./PasteInvoice";
 import { laborStats, suggestedPrice } from "@/data/pricing";
 import { orderPlan } from "@/data/reorder";
 import { imeiLooksWrong, mainModelKey, tacOf } from "@/data/modelKeys";
@@ -355,9 +356,14 @@ export function Atelier({ shop, commit }: { shop: Shop; commit: (s: Shop) => voi
         </p>
       )}
       {shop.products.length > 0 && (
+        <>
+        <Drill id="facture" title="Facture du fournisseur" icon="stock" summary="Colle son message : calculs, prix, nouvelles pièces au stock">
+          <PasteInvoiceBox shop={shop} commit={commit} />
+        </Drill>
         <Drill id="piece" title="Un client demande une pièce ?" icon="scanner" summary="Cherche par modèle (BF6, Spark 10…) ou par IMEI">
           <PartLookup shop={shop} commit={commit} />
         </Drill>
+        </>
       )}
       {phone && commandes}
       </DrillList>

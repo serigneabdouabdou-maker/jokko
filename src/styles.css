@@ -2593,3 +2593,20 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .quote-unlink { justify-self: start; border: 0; background: none; color: #b91c1c; font-size: 13px; font-weight: 600; padding: 2px 0; }
 .compat-add { display: flex; gap: 8px; align-items: center; }
 .compat-add input { flex: 1; min-width: 0; }
+.paste-area { width: 100%; min-height: 130px; border-radius: 12px; border: 1px solid var(--j-line, #e5e2da); padding: 10px 12px; font-size: 16px; font-family: ui-monospace, monospace; background: var(--j-card); color: var(--j-ink); }
+.paste-result { display: grid; gap: 10px; }
+.paste-errors { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: color-mix(in oklab, #dc2626 7%, var(--j-card)); }
+.paste-errors ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.paste-errors li[data-tone="error"] { color: #b91c1c; font-weight: 600; }
+.paste-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.paste-lines li { border: 1px solid var(--j-line, #e5e2da); border-radius: 12px; padding: 8px 10px; display: grid; gap: 4px; background: var(--j-card); }
+.paste-lines li.is-done { opacity: .65; }
+.paste-line-main { display: flex; gap: 10px; align-items: flex-start; }
+.paste-line-main input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.paste-line-main > span:nth-child(2) { flex: 1; display: grid; }
+.paste-change { font-weight: 700; font-size: 13px; white-space: nowrap; }
+.paste-change.is-hausse { color: #b91c1c; }
+.paste-change.is-baisse { color: #15803d; }
+.paste-change.is-nouvelle { color: #2563eb; }
+.paste-change.is-pareil { color: var(--j-muted, #6b6b6b); }
+.paste-pay { display: grid; gap: 8px; }
