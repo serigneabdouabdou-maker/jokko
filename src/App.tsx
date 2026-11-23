@@ -3,6 +3,7 @@ import { Receipt } from "@/components/jokko/Receipt";
 import { zReport, zText } from "@/data/tickets";
 import { voidEvents } from "@/data/voids";
 import { Cuisine } from "@/components/jokko/Cuisine";
+import { Transfert } from "@/components/jokko/Transfert";
 import { ForfaitChip } from "@/components/jokko/Forfait";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -62,6 +63,7 @@ import { LiveDesk, normalizeAction, pickByName } from "@/assistant/liveDesk";
 import { answerPending, type Pending, planLocal, replyFor } from "@/assistant/localVoice";
 import { freeEarPreferred, freeSpeechAvailable, listenOnce, setFreeEarPreferred } from "@/assistant/stockReader";
 import { recordQuote } from "@/data/quotes";
+import { addMmOp, MM_KINDS, operatorLabel } from "@/data/mobileMoney";
 import { AmountLedger, guardReply, moneyAmountsSaid } from "@/assistant/wolofNumbers";
 import { useCountUp } from "@/components/jokko/useCountUp";
 import { StockImport } from "@/components/jokko/StockImport";
@@ -153,7 +155,7 @@ type LogMessage = ChatMessage & { card?: OrderCardData; batch?: BatchCardData };
 
 const SYNC_LABELS: Record<SyncState, string> = { ok: "Sauvegardé", en_attente: "Sauvegarde…", hors_ligne: "Hors ligne" };
 
-type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "cuisine" | "vitrine" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
+type Screen = "parler" | "offre" | "distance" | "boutiques" | "conseiller" | "scanner" | "bilan" | "ventes" | "stock" | "clients" | "factures" | "atelier" | "couture" | "studio" | "cuisine" | "transfert" | "vitrine" | "depenses" | "dettes" | "caisse" | "equipe" | "journal" | "reglages";
 
 const LANGS: Array<[Lang, string]> = [
   ["wo", "Wolof"],
@@ -166,6 +168,7 @@ const NAV: Array<[Screen, string]> = [
   ["cuisine", "Cuisine"],
   ["studio", "Studio"],
   ["couture", "Couture"],
+  ["transfert", "Transfert"],
   ["atelier", "Atelier"],
   ["vitrine", "Ma vitrine"],
   ["distance", "À distance"],
@@ -202,6 +205,7 @@ const NAV_ICONS: Record<Screen, IconName> = {
   couture: "couture",
   studio: "photo",
   cuisine: "cuisine",
+  transfert: "echange",
   vitrine: "boutique",
   depenses: "depense",
   dettes: "dette",
@@ -1459,6 +1463,11 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
       settle(plan.text, undefined);
       return true;
     }
+    if (plan.kind === "mm") {
+      desk.commit(shopNow, addMmOp(shopNow, plan.op, () => uid("mm")), `Transfert · ${MM_KINDS[plan.op.kind].split(" (")[0]} ${operatorLabel(plan.op.operator)} ${money(plan.op.amount)}`, input);
+      say(plan.text);
+      return true;
+    }
     if (plan.kind === "lost") {
       desk.commit(shopNow, recordQuote(shopNow, plan.quote, uid), `Client perdu · ${plan.quote.model}`, input);
       say(plan.text);
@@ -1763,7 +1772,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
   const totalNotices = notices.reduce((a, n) => a + n.n, 0);
   const badgeOf = (id: Screen) => counts[id as NoticeScreen] ?? 0;
   // Barre du bas (téléphone) : les 4 écrans les plus utilisés du métier, puis « Tout ».
-  const main = (["cuisine", "couture", "atelier"] as Screen[]).find((id) => navItems.some(([x]) => x === id));
+  const main = (["cuisine", "couture", "transfert", "atelier"] as Screen[]).find((id) => navItems.some(([x]) => x === id));
   const tabIds = [...new Set<Screen>(["parler", main ?? "ventes", "stock", "caisse"])].filter((id) => navItems.some(([x]) => x === id)).slice(0, 4);
   const restBadge = navItems.filter(([id]) => !tabIds.includes(id)).reduce((a, [id]) => a + badgeOf(id), 0);
   const Badge2 = ({ id, n }: { id?: Screen; n: number }) => (n > 0 ? <span className="badge-dot num" data-tone={id && graves.has(id as NoticeScreen) ? "grave" : undefined}>{n > 99 ? "99+" : n}</span> : null);
@@ -2077,6 +2086,7 @@ export function Desk({ profile, setProfile, demo, onDemo }: { profile: Profile; 
             </Drill>
           )}
           {screen === "atelier" && (metierOf(shop.activity).id === "multiservice" ? <Travaux shop={shop} commit={commit} /> : <Atelier shop={shop} commit={commit} />)}
+          {screen === "transfert" && <Transfert shop={shop} commit={commit} patron={patron} />}
           {screen === "cuisine" && <Cuisine shop={shop} commit={commit} canEdit={patron} by={profile.owner || profile.phone} />}
           {screen === "vitrine" && <Vitrine shop={shop} commit={commit} canEdit={patron} />}
           {screen === "studio" && <Studio shopId={shop.id} shopName={shop.name} full={effectivePlan(shop).plan === "avance" && !effectivePlan(shop).trial} trial={effectivePlan(shop).trial} onOrder={(m) => { setCoutureDraft(m); setScreen("couture"); }} />}

@@ -24,13 +24,16 @@ import { findRepair, remaining, repairsOf } from "../data/repairs";
 import { buildReport, periodOf } from "../data/report";
 import { priceLadder } from "../data/priceGuard";
 import { overdueDebts } from "../data/debts";
+import { addMmOp, CASH, MM_KINDS, mmBalances, mmConf, mmFromText, mmWarning, needsFirstCount, operatorLabel, type MmOp } from "../data/mobileMoney";
+import { modulesOf } from "../data/metiers";
 
 export type LocalPlan =
   | { kind: "call"; call: LiveToolCall; what: string; quote?: Omit<QuoteRecord, "id" | "at"> }
   | { kind: "answer"; text: string }
   | { kind: "lost"; quote: Omit<QuoteRecord, "id" | "at">; text: string }
   | { kind: "count"; counts: Record<string, number>; lines: string[]; unknown: string[] }
-  | { kind: "ask"; text: string };
+  | { kind: "ask"; text: string }
+  | { kind: "mm"; op: Omit<MmOp, "id" | "at">; text: string };
 
 /** Question posée par Jokko qui attend une réponse courte (« Wave », « ajoute », « le BF6 »…). */
 export type Pending = { call: LiveToolCall; sorte: "paye_avec" | "ajout_ou_total" | "besoin"; at: number };
@@ -192,6 +195,12 @@ export function planLocal(raw: string, shop: Shop, patron = true): LocalPlan | n
   // 1. Annuler la dernière écriture.
   if (has(n, /^ (annule|annuler|efface|supprime|c'est faux|non annule)( ca| la derniere| le dernier| ce que je viens de dire| tout)? $/)) {
     return { kind: "call", call: { name: "annuler_derniere", args: {} }, what: "annuler" };
+  }
+
+  // 1 bis. Transfert d'argent (point Wave / Orange Money) : dépôt, retrait, paiement, recharge, solde.
+  if (modulesOf(shop.activity, shop.modules ?? []).has("transfert")) {
+    const mm = planTransfer(text, n, shop, amount);
+    if (mm) return mm;
   }
 
   // 2. Client perdu : il est parti sans prendre.
@@ -358,6 +367,36 @@ export function planLocal(raw: string, shop: Shop, patron = true): LocalPlan | n
     };
   }
   return null;
+}
+
+/** Opérations et soldes du point de transfert, compris par le code. */
+function planTransfer(text: string, n: string, shop: Shop, amount: number | null): LocalPlan | null {
+  const fmt = (v: number) => fr(v);
+  // « Solde Wave ? », « combien sur Orange Money ? », « mes soldes »
+  if (has(n, /\bsoldes?\b|combien (sur|dans|j'ai sur|il y a sur)|\buv\b/) && (has(n, QUESTION) || !amount)) {
+    if (needsFirstCount(shop)) return { kind: "answer", text: "Fais d'abord ton premier comptage dans l'écran Transfert : espèces et chaque solde." };
+    const bal = mmBalances(shop);
+    const asked = bal.filter((b) => b.account !== CASH && new RegExp(`\\b${b.account === "om" ? "(om|orange)" : b.account}\\b`).test(n));
+    const show = asked.length ? asked : bal;
+    return { kind: "answer", text: show.map((b) => `${b.label} : ${fmt(b.expected)}`).join(" · ") + "." };
+  }
+  // Une dépense de la boutique n'est pas un paiement pour un client (« j'ai payé ma facture Senelec »).
+  if (has(n, /j'ai paye|ma facture|mon loyer|notre/)) return null;
+  const m = mmFromText(text, amount);
+  if (!m) return null;
+  const conf = mmConf(shop);
+  const operator = m.operator ?? (m.kind === "paiement" && conf.operators.length === 1 ? conf.operators[0]! : null);
+  if (!operator) return { kind: "ask", text: `${MM_KINDS[m.kind].split(" (")[0]} par quel opérateur ? Redis avec « Wave » ou « Orange Money ».` };
+  if (!m.amount) return { kind: "ask", text: `Quel montant pour ce ${MM_KINDS[m.kind].split(" (")[0].toLowerCase()} ${operatorLabel(operator)} ?` };
+  if (needsFirstCount(shop)) return { kind: "ask", text: "Avant la première opération, ouvre l'écran Transfert et dis combien tu as en espèces et sur chaque compte." };
+  const op: Omit<MmOp, "id" | "at"> = { operator, kind: m.kind, amount: m.amount, ...(m.client ? { client: m.client } : {}), ...(m.fee ? { fee: m.fee } : {}), ...(m.kind === "recharge" && has(n, /banque|poche|autrement|virement/) ? { source: "autre" as const } : {}) };
+  const after = mmBalances(addMmOp(shop, op, () => "tmp"));
+  const warn = mmWarning(shop, operator, m.kind, m.amount);
+  return {
+    kind: "mm",
+    op,
+    text: `${MM_KINDS[m.kind].split(" (")[0]} ${operatorLabel(operator)} ${fmt(m.amount)}${m.client ? ` pour ${m.client}` : ""} noté. ${after.map((b) => `${b.label} : ${fmt(b.expected)}`).join(" · ")}.${warn ? ` ⚠ ${warn}` : ""}`,
+  };
 }
 
 /** « J'ai vendu des écouteurs 3 000 » → « Écouteurs » ; rien d'utile → « Vente ». */

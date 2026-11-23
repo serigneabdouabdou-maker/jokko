@@ -4,6 +4,7 @@
 // Elle vit seulement sur le téléphone : rien n'est envoyé au serveur, et « Quitter la démo » efface tout.
 import type { Client, CoutureOrder, CoutureStatus, Expense, Invoice, InvoiceLine, Licence, Product, Profile, Reminder, Repair, RepairStatus, Sale, ServiceItem, Shop } from "../model.ts";
 import { METIERS, metierOf, type MetierId } from "./metiers.ts";
+import type { MmConf, MmOp } from "./mobileMoney.ts";
 
 export const DEMO_PREFIX = "demo-";
 export const isDemoShop = (shop: Pick<Shop, "id">) => shop.id.startsWith(DEMO_PREFIX);
@@ -38,7 +39,7 @@ type DemoClient = { key: string; name: string; debt: number; dueDays?: number; m
 type DemoExpense = { key: string; daysAgo: number; hour: number; label: string; amount: number; kind: NonNullable<Expense["kind"]>; item?: string; qty?: number };
 
 type Ctx = { id: (k: string) => string; at: (daysAgo: number, hour: number) => string; now: Date; products: Product[]; clients: Client[]; rnd: () => number };
-type Extra = { couture?: CoutureOrder[]; repairs?: Repair[]; sales?: Sale[]; services?: ServiceItem[]; licences?: Licence[]; expenses?: Expense[] };
+type Extra = { couture?: CoutureOrder[]; repairs?: Repair[]; sales?: Sale[]; services?: ServiceItem[]; licences?: Licence[]; expenses?: Expense[]; mm?: MmOp[]; mmConf?: Partial<MmConf> };
 
 type Kit = {
   seed: number;
@@ -765,7 +766,19 @@ const multiservice: Kit = {
       { id: id("srv-logo"), name: "Conception de logo", price: 15000 },
       { id: id("srv-cartes"), name: "Cartes de visite (100)", price: 10000, unit: "piece" },
     ];
-    return { repairs, sales, services };
+    // Point de transfert : soldes comptés ce matin, puis les opérations de la journée (et d'hier).
+    const op = (k: string, daysAgo: number, hour: number, operator: string, kind: MmOp["kind"], amount: number, more: Partial<MmOp> = {}): MmOp => ({ id: id(`mm-${k}`), at: at(daysAgo, hour), operator, kind, amount, ...more });
+    const mm: MmOp[] = [
+      op("c1e", 1, 8, "especes", "comptage", 150000), op("c1w", 1, 8, "wave", "comptage", 250000), op("c1o", 1, 8, "om", "comptage", 120000),
+      op("y1", 1, 10, "wave", "depot", 50000, { commission: 250, client: "Ndèye Sarr" }), op("y2", 1, 12, "om", "retrait", 30000, { commission: 180 }),
+      op("y3", 1, 17, "wave", "paiement", 15000, { commission: 45, note: "Woyofal" }),
+      op("c0e", 0, 8, "especes", "comptage", 185000), op("c0w", 0, 8, "wave", "comptage", 185000), op("c0o", 0, 8, "om", "comptage", 150000),
+      op("t1", 0, 9, "wave", "depot", 25000, { commission: 125, client: "Moussa" }), op("t2", 0, 9.5, "om", "retrait", 10000, { commission: 60, fee: 100 }),
+      op("t3", 0, 10, "wave", "retrait", 40000, { commission: 200 }), op("t4", 0, 11, "om", "paiement", 5000, { note: "Crédit Seddo" }),
+      op("t5", 0, 12, "wave", "recharge", 100000, { source: "autre" }), op("t6", 0, 14, "wave", "depot", 15000, { commission: 75, client: "Awa" }),
+    ].reverse();
+    const mmConf: Partial<MmConf> = { operators: ["wave", "om"], rates: { wave: { depot: 0.5, retrait: 0.5, paiement: 0.3 }, om: { depot: 0.6, retrait: 0.6, paiement: 0 } }, low: { wave: 50000, om: 30000 } };
+    return { repairs, sales, services, mm, mmConf };
   },
 };
 
@@ -961,6 +974,7 @@ export function buildDemoShop(now = new Date(), activity: string | MetierId = "a
     ...(extra.couture ? { couture: extra.couture } : {}),
     ...(extra.services ? { services: extra.services } : {}),
     ...(extra.licences ? { licences: extra.licences } : {}),
+    ...(extra.mm ? { mm: extra.mm.filter((o) => Date.parse(o.at) < now.getTime()), mmConf: extra.mmConf } : {}),
   };
 }
 

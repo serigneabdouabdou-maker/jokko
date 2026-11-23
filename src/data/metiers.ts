@@ -11,19 +11,20 @@ export type MetierId = "alimentation" | "reparation" | "pharmacie" | "quincaille
  * d'un autre métier dans les réglages (ex. boutique + transfert d'argent). Un module absent n'apparaît nulle part :
  * ni écran, ni outil de Jokko, ni consigne de Gemini.
  */
-export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services" | "cuisine";
+export type ModuleId = "atelier" | "couture" | "peremption" | "vivres" | "services" | "cuisine" | "transfert";
 
 /** Écrans qui dépendent du métier (les autres sont communs à toutes les boutiques). */
-export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture", "studio", "cuisine"] as const;
+export const OPTIONAL_SCREENS = ["stock", "scanner", "distance", "boutiques", "conseiller", "atelier", "couture", "studio", "cuisine", "transfert"] as const;
 export type OptionalScreen = (typeof OPTIONAL_SCREENS)[number];
 /** Écran apporté par un module ajouté dans les réglages. */
-const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen[]>> = { atelier: ["atelier"], couture: ["studio", "couture"], cuisine: ["cuisine"] };
+const MODULE_SCREEN: Partial<Record<ModuleId, OptionalScreen[]>> = { atelier: ["atelier"], couture: ["studio", "couture"], cuisine: ["cuisine"], transfert: ["transfert"] };
 export const MODULES: { id: ModuleId; label: string; desc: string }[] = [
   { id: "atelier", label: "Atelier de réparation", desc: "Dépôts d'appareils, pannes, pièces posées, « c'est prêt » sur WhatsApp" },
   { id: "couture", label: "Atelier couture", desc: "Mesures des clients, commandes, essayages, « ton habit est prêt »" },
   { id: "peremption", label: "Dates de péremption", desc: "Lots, dates, alertes avant que ça périme" },
   { id: "vivres", label: "Vivres en wolof", desc: "Jokko comprend ceeb, diw, suukar… (riz, huile, sucre)" },
-  { id: "services", label: "Services et transfert", desc: "Photocopies, impression, transfert d'argent vendus comme services" },
+  { id: "services", label: "Services (photocopie, impression…)", desc: "Services vendus sans stock : photocopies, impression, saisie, flocage…" },
+  { id: "transfert", label: "Transfert d'argent (Wave, Orange Money…)", desc: "Dépôts, retraits, paiements, soldes Wave / Orange Money / espèces, commissions, écart du soir" },
   { id: "cuisine", label: "Plats et boissons", desc: "Plats du jour, coût de chaque plat, restes de fin de service" },
 ];
 
@@ -232,15 +233,17 @@ export const METIERS: Metier[] = [
   },
   {
     id: "multiservice",
-    label: "Multiservice (impression, photocopie, transfert d'argent)",
-    keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|secretariat|secrétariat|flocage|serigraph|sérigraph|grand format|bache|bâche|infographi|maillot/i,
-    units: ["page", "copie", "pièce", "unité", "rame", "m²", "mètre", "rouleau", "maillot", "t-shirt", "cartouche", "flacon"],
+    label: "Multiservice (électronique, transfert d'argent, impression)",
+    keywords: /multi.?service|photocop|impression|imprim|cyber|transfert|wave|orange money|kiosque|secretariat|secrétariat|flocage|serigraph|sérigraph|grand format|bache|bâche|infographi|maillot|electroni|électroni|accessoire/i,
+    units: ["page", "copie", "pièce", "unité", "rame", "m²", "mètre", "rouleau", "maillot", "t-shirt", "cartouche", "flacon", "carton", "lot"],
     screens: ["stock", "atelier", "distance", "conseiller"],
     atelier: true,
     peremption: false,
-    modules: ["services"],
+    modules: ["services", "transfert"],
     consigne:
-      "Multiservice : impression, photocopie, saisie, scan, plastification, reliure, transfert d'argent, petites réparations ; " +
+      "Multiservice : vente de matériel électronique et d'accessoires (téléphones, chargeurs, écouteurs, clés USB, cartes mémoire, ampoules, rallonges…), " +
+      "transfert d'argent (dépôts, retraits, paiements Wave / Orange Money / Free Money : ils se notent dans l'écran Transfert, JAMAIS comme une vente : seule la commission est un gain), " +
+      "impression, photocopie, saisie, scan, plastification, reliure, petites réparations ; " +
       "impression numérique grand format (bâche, vinyle, autocollant) vendue AU MÈTRE CARRÉ (largeur × hauteur × prix du m², calculé par l'outil) ; " +
       "flocage de t-shirts et maillots (flex vert, jaune, bleu, blanc… acheté au mètre ou au rouleau : c'est une matière du stock), " +
       "vente de maillots et t-shirts (par taille S, M, L, XL : chaque taille est un article), vente d'encre et de papier, " +
@@ -249,7 +252,7 @@ export const METIERS: Metier[] = [
       "Bâche, vinyle, autocollant : mets le nom du service dans productName et les mesures dites telles quelles dans heard (« bâche 2 sur 1,5 ») ; ne calcule jamais les m² ni le prix : l'outil le fait et te renvoie le calcul à redire. S'il manque les mesures, l'outil te dit de les demander. " +
       "Une commande à livrer plus tard (« 20 maillots floqués pour l'ASC, avance 30 000 ») se note dans l'écran Services et commandes, avec l'avance.",
     vivres: false,
-    ex: { stock: "« 10 rames de papier à 3 500 ; 2 cartouches d'encre ; 1 rouleau de flex vert de 25 mètres »", search: "papier, encre, flex, maillot…", invoice: "« Facture ASC Mboss, 20 maillots floqués, 70 000 »", prompts: ["50 photocopies à 25", "Bâche de 2 mètres sur 1,5", "Ajoute une vente de 2 000", "Qui me doit de l'argent ?", "Caisse du jour", "Il me reste combien de papier ?", "Bénéfice de la semaine"], units: "rame, pièce, unité…" },
+    ex: { stock: "« 10 chargeurs à 2 500, achetés à 1 500 ; 10 rames de papier à 3 500 ; 1 rouleau de flex vert de 25 mètres »", search: "chargeur, écouteurs, papier, flex…", invoice: "« Facture ASC Mboss, 20 maillots floqués, 70 000 »", prompts: ["Dépôt Wave 25 000", "Retrait Orange Money 10 000", "Vendu un chargeur 2 500", "50 photocopies à 25", "Solde Wave ?", "Qui me doit de l'argent ?", "Caisse du jour"], units: "pièce, rame, unité…" },
   },
   {
     id: "autre",
@@ -334,7 +337,8 @@ const MODULE_CONSIGNE: Record<ModuleId, string> = {
   couture: "MODULE COUTURE : la boutique coud aussi sur mesure (outil couture : commande dite à la voix, mesures en centimètres jamais en dërëm, avance, étape, livraison).",
   peremption: "MODULE PÉREMPTION : certains articles ont des dates de péremption suivies par lot.",
   vivres: "",
-  services: "MODULE SERVICES : photocopies, impression et transfert d'argent sont vendus comme des services (une vente sans stock).",
+  services: "MODULE SERVICES : photocopies, impression, saisie sont vendus comme des services (une vente sans stock).",
+  transfert: "MODULE TRANSFERT D'ARGENT : dépôts, retraits et paiements Wave / Orange Money / Free Money se notent dans l'écran Transfert (soldes et commissions), jamais comme une vente ni une dépense.",
   cuisine: "MODULE PLATS ET BOISSONS : la boutique vend aussi des plats ou des boissons à la portion (« j'ai préparé 30 plats » = ajouter au stock du plat).",
 };
 

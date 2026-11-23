@@ -1,3 +1,5 @@
+import type { MmConf, MmOp } from "./data/mobileMoney.ts";
+
 export type Lang = "fr" | "wo" | "en" | "ff";
 
 /** Vente au détail d'un article : 1 sac = 50 sachets à 150 F. */
@@ -261,6 +263,9 @@ export type Shop = {
   suppliers?: Supplier[];
   /** Prix donnés aux clients (« Prix pour un client ») : pris ou perdus, 300 au plus (src/data/quotes.ts). */
   quotes?: QuoteRecord[];
+  /** Transfert d'argent (Wave, Orange Money…) : opérations du point (table mm_ops) et réglages (src/data/mobileMoney.ts). */
+  mm?: MmOp[];
+  mmConf?: Partial<MmConf>;
 };
 
 export type LostReason = "cher" | "plus_tard" | "pas_stock" | "compare" | "autre";

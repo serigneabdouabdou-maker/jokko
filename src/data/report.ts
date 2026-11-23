@@ -1,5 +1,6 @@
 import type { Shop } from "../model.ts";
 import { licenceCharge } from "./services.ts";
+import { mmGain } from "./mobileMoney.ts";
 
 /**
  * Bilan de la boutique sur une période : ce qui s'est vendu, ce que ça a rapporté,
@@ -57,7 +58,9 @@ export type Report = {
   losses: number;
   /** Part du prix des licences (outils de décodage…) qui tombe dans la période. */
   licences: number;
-  /** Bénéfice net = bénéfice − dépenses − pertes − licences */
+  /** Transfert d'argent : commissions estimées + frais pris aux clients (src/data/mobileMoney.ts). */
+  transfer: number;
+  /** Bénéfice net = bénéfice + transfert − dépenses − pertes − licences */
   netProfit: number;
   byProduct: ProductLine[];
 };
@@ -118,6 +121,7 @@ export function buildReport(shop: Shop, period: Period): Report {
   // La part des licences se compte au mois (et à l'année), jamais sur une journée : un jour sans vente n'affiche plus
   // « Ce que tu as perdu 375 F » (constat chez Fallou le 18/11/2026). Même règle que « Jour par jour ».
   const licences = period.kind === "jour" ? 0 : licenceCharge(shop, period.from, period.to);
+  const transfer = shop.mm?.length ? mmGain(shop, period.from, period.to) : 0;
 
   const byProduct = [...lines.values()]
     .map(({ unknown, ...line }) => ({ ...line, profit: unknown ? null : line.profit }))
@@ -134,7 +138,8 @@ export function buildReport(shop: Shop, period: Period): Report {
     purchases,
     losses,
     licences,
-    netProfit: grossProfit - expenses - losses - licences,
+    transfer,
+    netProfit: grossProfit + transfer - expenses - losses - licences,
     byProduct,
   };
 }
@@ -232,7 +237,7 @@ export function dailyReport(shop: Shop, period: Period, now = new Date()): DayRo
     const r = buildReport(shop, { kind: "jour", from: d, to, label });
     const spent = r.expenses + r.losses;
     if (!r.salesCount && !spent) continue;
-    rows.push({ day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, label, revenue: r.revenue, grossProfit: r.grossProfit, spent, netProfit: r.grossProfit - spent, salesCount: r.salesCount });
+    rows.push({ day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, label, revenue: r.revenue, grossProfit: r.grossProfit, spent, netProfit: r.grossProfit + r.transfer - spent, salesCount: r.salesCount });
   }
   return rows.reverse();
 }

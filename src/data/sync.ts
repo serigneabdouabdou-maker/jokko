@@ -1,3 +1,4 @@
+import type { MmConf, MmOp } from "./mobileMoney.ts";
 import type { CartVoid, Client, Licence, LostReason, Repayment, ServiceUnit, CoutureOrder, Expense, Invoice, InvoiceLine, Product, Reminder, Repair, Sale, Shop, Shortcut } from "../model.ts";
 
 /** Synchronisation hors ligne des boutiques vers Supabase (sans React). */
@@ -7,7 +8,7 @@ export type Row = Record<string, unknown>;
 export type Op = { table: string; kind: "upsert" | "delete"; id: string; row?: Row };
 
 /** Tables filles, dans l'ordre d'envoi des upserts (parents avant enfants). */
-export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs", "couture_orders", "cart_voids", "debt_payments"] as const;
+export const CHILD_TABLES = ["products", "clients", "sales", "expenses", "invoices", "reminders", "shortcuts", "repairs", "couture_orders", "cart_voids", "debt_payments", "mm_ops"] as const;
 export type ChildTable = (typeof CHILD_TABLES)[number];
 const TABLE_ORDER: string[] = ["shops", ...CHILD_TABLES];
 
@@ -29,6 +30,7 @@ export function shopRow(s: Shop): Row {
     to_order: s.toOrder ?? [],
     suppliers: s.suppliers ?? [],
     quotes: (s.quotes ?? []).slice(-300),
+    mm_conf: s.mmConf ?? {},
   };
 }
 
@@ -73,6 +75,10 @@ const toRow = {
   debt_payments: (r: Repayment, shopId: string): Row => ({
     id: r.id, shop_id: shopId, at: r.at, client_id: r.clientId, client_name: r.clientName, amount: r.amount, payment: r.payment,
   }),
+  mm_ops: (o: MmOp, shopId: string): Row => ({
+    id: o.id, shop_id: shopId, at: o.at, operator: o.operator, kind: o.kind, amount: o.amount, commission: o.commission ?? 0, fee: o.fee ?? 0,
+    source: o.source ?? "", client: o.client ?? "", phone: o.phone ?? "", note: o.note ?? "",
+  }),
 };
 
 /** Lignes d'une table fille pour une boutique. */
@@ -89,6 +95,7 @@ export function childRows(shop: Shop, table: ChildTable): Row[] {
     case "couture_orders": return (shop.couture ?? []).map((x) => toRow.couture_orders(x, shop.id));
     case "cart_voids": return (shop.voids ?? []).map((x) => toRow.cart_voids(x, shop.id));
     case "debt_payments": return (shop.repayments ?? []).map((x) => toRow.debt_payments(x, shop.id));
+    case "mm_ops": return (shop.mm ?? []).map((x) => toRow.mm_ops(x, shop.id));
   }
 }
 
@@ -317,6 +324,7 @@ export type ShopRows = {
   couture_orders?: Row[];
   cart_voids?: Row[];
   debt_payments?: Row[];
+  mm_ops?: Row[];
 };
 
 /** numeric / bigint peuvent arriver en string. */
@@ -416,6 +424,9 @@ export function rowsToShop(rows: ShopRows): Shop {
             why: (x.why === "recherche" || x.why === "conseil" ? x.why : "main") as "main" | "recherche" | "conseil",
           })),
         }
+      : {}),
+    ...(s.mm_conf && typeof s.mm_conf === "object" && !Array.isArray(s.mm_conf) && Object.keys(s.mm_conf as object).length
+      ? { mmConf: readMmConf(s.mm_conf as Row) }
       : {}),
     ...(Array.isArray(s.quotes) && s.quotes.length
       ? {
@@ -570,6 +581,34 @@ export function rowsToShop(rows: ShopRows): Shop {
     ...(rows.couture_orders?.length ? { couture: byAtDesc(rows.couture_orders.map(readCouture)) } : {}),
     ...(rows.cart_voids?.length ? { voids: byAtDesc(rows.cart_voids.map(readVoid)) } : {}),
     ...(rows.debt_payments?.length ? { repayments: byAtDesc(rows.debt_payments.map(readRepayment)) } : {}),
+    ...(rows.mm_ops?.length ? { mm: byAtDesc(rows.mm_ops.map(readMmOp)) } : {}),
+  };
+}
+
+function readMmConf(c: Row): Partial<MmConf> {
+  const ops = Array.isArray(c.operators) ? (c.operators as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 8) : undefined;
+  const rates: MmConf["rates"] = {};
+  if (c.rates && typeof c.rates === "object") {
+    for (const [k, v] of Object.entries(c.rates as Record<string, Row>)) {
+      if (v && typeof v === "object") rates[k] = { depot: num(v.depot), retrait: num(v.retrait), paiement: num(v.paiement) };
+    }
+  }
+  const low: MmConf["low"] = {};
+  if (c.low && typeof c.low === "object") for (const [k, v] of Object.entries(c.low as Row)) low[k] = num(v);
+  return { ...(ops ? { operators: ops } : {}), rates, low };
+}
+
+const MM_KIND_SET = new Set(["depot", "retrait", "paiement", "recharge", "versement", "commission", "apport", "sortie", "comptage"]);
+function readMmOp(r: Row): MmOp {
+  const kind = (MM_KIND_SET.has(str(r.kind)) ? str(r.kind) : "depot") as MmOp["kind"];
+  return {
+    id: str(r.id), at: iso(r.at), operator: str(r.operator), kind, amount: num(r.amount),
+    ...(num(r.commission) ? { commission: num(r.commission) } : {}),
+    ...(num(r.fee) ? { fee: num(r.fee) } : {}),
+    ...(str(r.source) === "autre" || str(r.source) === "especes" ? { source: str(r.source) as "autre" | "especes" } : {}),
+    ...(str(r.client) ? { client: str(r.client) } : {}),
+    ...(str(r.phone) ? { phone: str(r.phone) } : {}),
+    ...(str(r.note) ? { note: str(r.note) } : {}),
   };
 }
 
@@ -644,6 +683,8 @@ export interface LoadQuery extends PromiseLike<SelectResult> {
   in(column: string, values: string[]): LoadQuery;
   order(column: string, options?: { ascending?: boolean }): LoadQuery;
   range(from: number, to: number): LoadQuery;
+  /** Seulement les lignes récentes (opérations de transfert : elles sont très nombreuses). */
+  gte?(column: string, value: string): LoadQuery;
 }
 
 /** Sous-ensemble de supabase-js v2 utilisé pour la lecture. */
@@ -654,11 +695,15 @@ export interface LoadClient {
 /** Taille de page (PostgREST limite à 1000 lignes par défaut). */
 const PAGE = 1000;
 
-async function selectAll(client: LoadClient, table: string, column: string, ids: string[] | null): Promise<Row[]> {
+/** Opérations de transfert chargées : 120 derniers jours (un point fait parfois plus de 100 opérations par jour). */
+export const MM_DAYS = 120;
+
+async function selectAll(client: LoadClient, table: string, column: string, ids: string[] | null, since?: string): Promise<Row[]> {
   const out: Row[] = [];
   for (let from = 0; ; from += PAGE) {
     let q = client.from(table).select("*");
     if (ids) q = q.in(column, ids);
+    if (since && q.gte) q = q.gte("at", since);
     const { data, error } = await q.order("id", { ascending: true }).range(from, from + PAGE - 1);
     if (error) throw new Error(`${table}: ${errorText(error)}`);
     const page = data ?? [];
@@ -676,7 +721,8 @@ export async function loadShops(client: LoadClient, shopIds?: string[]): Promise
   const shops = await selectAll(client, "shops", "id", shopIds ?? null);
   const ids = shops.map((s) => str(s.id));
   if (!ids.length) return [];
-  const children = await Promise.all(CHILD_TABLES.map((t) => selectAll(client, t, "shop_id", ids)));
+  const mmSince = new Date(Date.now() - MM_DAYS * 86_400_000).toISOString();
+  const children = await Promise.all(CHILD_TABLES.map((t) => selectAll(client, t, "shop_id", ids, t === "mm_ops" ? mmSince : undefined)));
   const byTable = new Map<ChildTable, Row[]>(CHILD_TABLES.map((t, i) => [t, children[i]]));
   const pick = (t: ChildTable, id: string) => (byTable.get(t) ?? []).filter((r) => str(r.shop_id) === id);
   // garde l'ordre demandé si des ids sont fournis
@@ -696,6 +742,7 @@ export async function loadShops(client: LoadClient, shopIds?: string[]): Promise
       couture_orders: pick("couture_orders", id),
       cart_voids: pick("cart_voids", id),
       debt_payments: pick("debt_payments", id),
+      mm_ops: pick("mm_ops", id),
     });
   });
 }

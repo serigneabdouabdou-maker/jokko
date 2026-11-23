@@ -97,6 +97,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
           <dl className="kpi-mini">
             <div><dt>Ventes</dt><dd className="num">{money(report.revenue)}</dd></div>
             <div><dt>Bénéfice ventes</dt><dd className="num">{money(report.grossProfit)}</dd></div>
+            {report.transfer > 0 && <div><dt>Transfert</dt><dd className="num">+ {money(report.transfer)}</dd></div>}
             <div><dt>{chargesLabel(report)}</dt><dd className="num">− {money(report.expenses + report.losses + report.licences)}</dd></div>
           </dl>
         </div>
@@ -104,6 +105,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <div className="kpis">
           <article><span>Ventes</span><b className="num">{money(report.revenue)}</b></article>
           <article><span>Bénéfice sur les ventes</span><b className="num">{money(report.grossProfit)}</b></article>
+          {report.transfer > 0 && <article><span>Transfert (commissions, frais)</span><b className="num">+ {money(report.transfer)}</b></article>}
           <article><span>Dépenses</span><b className="num">− {money(report.expenses)}</b></article>
           <article><span>Pertes</span><b className="num">− {money(report.losses)}</b></article>
           {report.licences > 0 && <article><span>Part des licences</span><b className="num">− {money(report.licences)}</b></article>}
@@ -140,7 +142,7 @@ export function Bilan({ shop, commit }: { shop: Shop; commit: (s: Shop) => void 
       <Drill id="calcul" title="Le calcul, ligne par ligne" icon="rapport" summary={`Ventes ${money(report.revenue)} − achats − dépenses = ${money(report.netProfit)}`}>
       <p className="note bilan-calc">
         Ventes {money(report.revenue)} − prix d'achat de ce qui est vendu {money(report.cost)}
-        {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)}{report.licences ? ` − licences ${money(report.licences)}` : ""} = <b>{money(report.netProfit)}</b>.
+        {report.unknownRevenue > 0 ? ` (sans les ${money(report.unknownRevenue)} de ventes sans prix d'achat)` : ""} = bénéfice sur les ventes {money(report.grossProfit)}{report.transfer ? ` + transfert ${money(report.transfer)}` : ""} ; − dépenses {money(report.expenses)} − pertes {money(report.losses)}{report.licences ? ` − licences ${money(report.licences)}` : ""} = <b>{money(report.netProfit)}</b>.
       </p>
       {report.licences > 0 && (
         <p className="note">

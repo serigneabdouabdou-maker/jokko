@@ -2623,3 +2623,39 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .paste-already p { margin: 4px 0 0; }
 .screen-notice.is-link { width: 100%; text-align: left; border: 0; cursor: pointer; font: inherit; }
 .drill-anchor { position: absolute; width: 0; height: 0; scroll-margin-top: 80px; }
+
+/* Transfert d'argent (23/11/2026) */
+.mm-balances { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 10px 0; }
+.mm-balances article { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--j-line); background: var(--j-card); }
+.mm-balances article span { font-size: 13px; color: var(--j-ink-2); font-weight: 600; }
+.mm-balances article b { font-size: 18px; }
+.mm-balances article small { font-size: 12px; color: var(--j-ink-3, #8a8578); }
+.mm-balances article[data-tone="bad"] { border-color: #fca5a5; background: #fef2f2; }
+.mm-balances article[data-tone="bad"] b, .mm-balances article[data-tone="bad"] small { color: #b91c1c; }
+.mm-form { display: grid; gap: 8px; margin: 12px 0; }
+.mm-form .pay-modes { margin-bottom: 0; }
+.mm-amount { font-size: 22px !important; font-weight: 700; }
+.mm-more { justify-self: start; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--j-ink-2); }
+.mm-extra { display: grid; gap: 6px; }
+.mm-first { display: grid; gap: 8px; padding: 14px; margin: 10px 0; border-radius: 14px; background: #fff7ed; border: 1px solid #fed7aa; }
+.mm-count { display: grid; grid-template-columns: 1fr 140px; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.mm-count small { font-weight: 400; color: var(--j-ink-2); }
+.mm-list { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+.mm-op { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--j-line); background: var(--j-card); }
+.mm-op-main { display: grid; min-width: 0; }
+.mm-op-main small { color: var(--j-ink-2); font-size: 12px; }
+.mm-op.is-depot .num, .mm-op.is-paiement .num { color: #15803d; }
+.mm-op.is-retrait .num { color: #b45309; }
+.mm-x { border: 0; background: none; color: #b91c1c; font-size: 16px; padding: 4px; }
+.mm-del { font-size: 12px; }
+.mm-kpis { margin-top: 8px; }
+.mm-rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.mm-rates > b { grid-column: 1 / -1; }
+.mm-rates label { display: grid; gap: 2px; font-size: 13px; }
+.mm-gaps { list-style: none; padding: 0; display: grid; gap: 6px; margin-top: 10px; }
+.mm-gaps li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--j-line); }
+.mm-gaps li span { grid-column: 1; font-size: 13px; color: var(--j-ink-2); }
+.mm-gaps li .num { grid-row: 1 / 3; grid-column: 2; align-self: center; }
+.mm-gaps li[data-tone="bad"] { background: #fef2f2; border-color: #fca5a5; }
+.mm-gaps li[data-tone="bad"] .num { color: #b91c1c; }
+.mm-gaps li[data-tone="good"] .num { color: #15803d; }

@@ -7,15 +7,16 @@
 import { lowStock, money, type Shop } from "../model.ts";
 import { overdueDebts } from "./debts.ts";
 import { buildInsights } from "./insights.ts";
-import { expiringSoon } from "./metiers.ts";
+import { expiringSoon, modulesOf } from "./metiers.ts";
 import { orderPlan } from "./reorder.ts";
 import { inventoryDue, isServicePayment } from "./report.ts";
 import { zReport } from "./tickets.ts";
 import { weeklyNudge } from "./clientFiles.ts";
 import { metierOf } from "./metiers.ts";
 import { workshopWatch } from "./watch.ts";
+import { lastGaps, mmBalances, needsFirstCount } from "./mobileMoney.ts";
 
-export type NoticeScreen = "parler" | "atelier" | "couture" | "stock" | "caisse" | "bilan" | "conseiller" | "dettes" | "clients" | "ventes";
+export type NoticeScreen = "parler" | "atelier" | "couture" | "stock" | "caisse" | "bilan" | "conseiller" | "dettes" | "clients" | "ventes" | "transfert";
 /** `drill` : la page à ouvrir directement dans l'écran (ex. « surveillance » dans Bénéfices). */
 export type Notice = { id: string; screen: NoticeScreen; tone: "grave" | "attention"; text: string; n: number; drill?: string };
 
@@ -34,6 +35,17 @@ export function shopNotices(shop: Shop, opts: { patron: boolean; screens: (id: N
   if (late.length) {
     const sum = late.reduce((a, d) => a + d.client.debt, 0);
     add("dettes", "retard", "grave", `${late.length} ${plural(late.length, "client")} en retard de paiement (${money(sum)}) : relancer`, late.length);
+  }
+
+  // Transfert d'argent : premier comptage, solde bas ou négatif, argent qui manquait au dernier comptage (2 jours).
+  if (opts.screens("transfert") && modulesOf(shop.activity, shop.modules ?? []).has("transfert")) {
+    if (needsFirstCount(shop)) add("transfert", "depart", "attention", "Transfert : dis combien tu as en espèces et sur chaque compte pour commencer");
+    else {
+      const bad = mmBalances(shop).filter((b) => b.expected < 0 || b.low);
+      if (bad.length) add("transfert", "solde", bad.some((b) => b.expected < 0) ? "grave" : "attention", bad.map((b) => `${b.label} ${b.expected < 0 ? "négatif" : "bas"} (${money(b.expected)})`).join(", "), bad.length);
+      const missing = lastGaps(shop).filter((g) => g.gap < 0 && now.getTime() - Date.parse(g.at) < 2 * DAY);
+      if (missing.length) add("transfert", "ecart", "grave", `Transfert : il manquait ${missing.map((g) => `${money(-g.gap)} (${g.label})`).join(", ")} au dernier comptage`, missing.length, "cloture");
+    }
   }
 
   // Stock : sous le seuil, péremptions, inventaire du mois
