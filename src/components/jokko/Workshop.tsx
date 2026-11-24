@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { type Shop, money } from "@/model";
@@ -324,6 +325,9 @@ function InvoiceErrors({ shop }: { shop: Shop }) {
         {other.map((a) => <li key={a.text}><p>{a.text}</p></li>)}
       </ul>
       <p className="note">Montre ces lignes à {sup.name} : chaque erreur vient de ses propres messages.</p>
+      {bad.length > 0 && (
+        <Button asChild variant="outline" className="h-11 rounded-full px-5"><a href={`https://wa.me/${(sup.phone ?? "").replace(/\D/g, "").length === 9 ? `221${(sup.phone ?? "").replace(/\D/g, "")}` : (sup.phone ?? "").replace(/\D/g, "")}?text=${encodeURIComponent(["Salam, j'ai vérifié tes factures, il y a des erreurs :", ...bad.map((a) => `- ${a.text}`), "Tu peux vérifier stp ? Merci."].join("\n"))}`} target="_blank" rel="noreferrer">Envoyer ces erreurs à {sup.name} sur WhatsApp</a></Button>
+      )}
     </details>
   );
 }

@@ -103,7 +103,7 @@ export function workshopWatch(shop: Shop, now = new Date()): Signal[] {
   const bad = (sup?.anomalies ?? []).filter((x) => x.serious);
   if (bad.length) {
     const over = bad.reduce((a, x) => a + (Number(/(\d[\d\s\u00a0\u202f]*) F de trop/.exec(x.text)?.[1]?.replace(/[\s\u00a0\u202f]/g, "")) || 0), 0);
-    out.push({ id: `factures-${bad.length}`, level: "attention", group: "controle", title: `${bad.length} erreur${bad.length > 1 ? "s" : ""} dans les factures${over ? ` : ${money(over)} comptés en trop` : ""}`, text: `${bad.slice(0, 3).map((a) => a.text).join(" ")}${bad.length > 3 ? " … (liste complète dans « Mon argent chez le fournisseur »)" : ""}` });
+    out.push({ id: `factures-${bad.length}`, level: "attention", group: "controle", title: `${bad.length} erreur${bad.length > 1 ? "s" : ""} dans les factures${over ? ` : ${money(over)} comptés en trop` : ""}`, text: `${bad.slice(0, 3).map((a) => a.text).join(" ")}${bad.length > 3 ? ` … Liste complète : Bénéfices → « Mon argent chez ${sup?.name ?? "ton fournisseur"} » → « Erreurs dans les factures ».` : ""}` });
   }
 
   // 2. Contrôle : acheté ↔ sorti.
